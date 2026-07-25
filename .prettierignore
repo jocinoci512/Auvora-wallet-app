@@ -1,0 +1,14 @@
+/**/*.js
+/**/*.cjs
+/**/*.mjs
+/**/*.ts
+/**/*.tsx
+/**/*.json
+/**/*.yml
+/**/*.yaml
+/**/*.md
+!pnpm-lock.yaml
+!**/dist/**
+!**/.next/**
+!**/coverage/**
+!**/node_modules/**

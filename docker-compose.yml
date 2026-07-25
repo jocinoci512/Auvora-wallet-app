@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: auvora-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: auvora
+      POSTGRES_PASSWORD: auvora
+      POSTGRES_DB: auvora_wallet
+    volumes:
+      - auvora-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U auvora -d auvora_wallet']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: auvora-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
+    volumes:
+      - auvora-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional application services (Phase 2).
+  # Dockerfile.service currently copies only services/gateway — extend it for auth before enabling.
+  # Run with: docker compose --profile services up -d
+  #
+  # auth:
+  #   profiles: [services]
+  #   build:
+  #     context: .
+  #     dockerfile: infrastructure/docker/Dockerfile.service
+  #     args:
+  #       SERVICE: auth
+  #   container_name: auvora-auth
+  #   restart: unless-stopped
+  #   ports:
+  #     - '4001:4001'
+  #   environment:
+  #     NODE_ENV: production
+  #     PORT: 4001
+  #     DATABASE_URL: postgresql://auvora:auvora@postgres:5432/auvora_wallet?schema=public
+  #     REDIS_URL: redis://redis:6379
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #
+  # gateway:
+  #   profiles: [services]
+  #   build:
+  #     context: .
+  #     dockerfile: infrastructure/docker/Dockerfile.service
+  #     args:
+  #       SERVICE: gateway
+  #   container_name: auvora-gateway
+  #   restart: unless-stopped
+  #   ports:
+  #     - '4000:4000'
+  #   environment:
+  #     NODE_ENV: production
+  #     PORT: 4000
+  #     AUTH_SERVICE_URL: http://auth:4001
+  #     REDIS_URL: redis://redis:6379
+  #   depends_on:
+  #     auth:
+  #       condition: service_started
+  #     redis:
+  #       condition: service_healthy
+
+volumes:
+  auvora-postgres-data:
+  auvora-redis-data:

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "packages/types/src/index.ts",
+    "packages/ui/src/index.ts",
+    "packages/sdk/src/index.ts",
+    "packages/security/src/index.ts",
+    "packages/database/src/index.ts"
+  ],
+  "out": "docs/api",
+  "tsconfig": "tsconfig.base.json",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "readme": "README.md",
+  "name": "Auvora Wallet API"
+}

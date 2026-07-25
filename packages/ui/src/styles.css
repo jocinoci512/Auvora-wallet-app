@@ -1,0 +1,15 @@
+:root {
+  --auvora-ink: #0b1220;
+  --auvora-paper: #f7f4ef;
+  --auvora-accent: #0f6e56;
+  --auvora-accent-muted: #d7ede6;
+  --auvora-border: #d6d3cd;
+  --auvora-font-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --auvora-font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.auvora-surface {
+  background: var(--auvora-paper);
+  color: var(--auvora-ink);
+  font-family: var(--auvora-font-sans);
+}

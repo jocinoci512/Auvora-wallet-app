@@ -1,0 +1,51 @@
+{
+  "name": "auvora-wallet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Auvora Wallet — enterprise cryptocurrency wallet platform monorepo",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.15.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rimraf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml}\"",
+    "db:generate": "pnpm --filter @auvora/database generate",
+    "db:migrate": "pnpm --filter @auvora/database migrate:dev",
+    "db:seed": "pnpm --filter @auvora/database seed",
+    "docs:api": "typedoc",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@auvora/config": "workspace:*",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "embedded-postgres": "18.4.0-beta.17",
+    "eslint": "^9.22.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "prettier": "^3.5.3",
+    "redis-memory-server": "^0.17.0",
+    "rimraf": "^6.0.1",
+    "turbo": "^2.4.4",
+    "typedoc": "^0.28.0",
+    "typescript": "^5.8.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,512 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  LOCKED
+  DEACTIVATED
+  DELETED
+}
+
+enum LoginOutcome {
+  SUCCESS
+  FAILURE
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  REGISTER
+  EMAIL_VERIFIED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  ACCOUNT_ACTIVATED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SESSION_REVOKED
+  DEVICE_REVOKED
+  USER_SOFT_DELETED
+  USER_RESTORED
+  USER_STATUS_CHANGED
+  ROLES_UPDATED
+  MFA_TOGGLED
+  TOKEN_REFRESH
+  REFRESH_REUSE_DETECTED
+}
+
+/// Infrastructure metadata row used to validate migrations without product models.
+model SchemaMeta {
+  id        String   @id @default("auvora")
+  version   String
+  appliedAt DateTime @default(now()) @map("applied_at")
+
+  @@map("schema_meta")
+}
+
+model User {
+  id                 String     @id @default(uuid()) @db.Uuid
+  email              String     @unique @db.Citext
+  username           String     @unique @db.Citext
+  passwordHash       String     @map("password_hash")
+  firstName          String?    @map("first_name")
+  lastName           String?    @map("last_name")
+  phoneNumber        String?    @map("phone_number")
+  avatarUrl          String?    @map("avatar_url")
+  preferredLanguage  String     @default("en") @map("preferred_language")
+  timeZone           String     @default("UTC") @map("time_zone")
+  country            String?
+  status             UserStatus @default(PENDING_VERIFICATION)
+  emailVerified      Boolean    @default(false) @map("email_verified")
+  mfaEnabled         Boolean    @default(false) @map("mfa_enabled")
+  failedLoginCount   Int        @default(0) @map("failed_login_count")
+  lockedUntil        DateTime?  @map("locked_until")
+  lastLoginAt        DateTime?  @map("last_login_at")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  deletedAt          DateTime?  @map("deleted_at")
+
+  roles                   UserRole[]
+  sessions                Session[]
+  devices                 Device[]
+  refreshTokens           RefreshToken[]
+  loginHistory            LoginHistory[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  auditLogsAsActor        SecurityAuditLog[]       @relation("AuditActor")
+  auditLogsAsTarget       SecurityAuditLog[]       @relation("AuditTarget")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Device {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  fingerprint String
+  name        String?
+  userAgent   String?  @map("user_agent")
+  trusted     Boolean  @default(false)
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  revokedAt   DateTime? @map("revoked_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+
+  @@unique([userId, fingerprint])
+  @@index([userId])
+  @@map("devices")
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  deviceId  String?   @map("device_id") @db.Uuid
+  ipAddress String?   @map("ip_address")
+  userAgent String?   @map("user_agent")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device        Device?        @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  sessionId       String    @map("session_id") @db.Uuid
+  deviceId        String?   @map("device_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash")
+  familyId        String    @map("family_id") @db.Uuid
+  expiresAt       DateTime  @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  replacedById    String?   @map("replaced_by_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  device  Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model LoginHistory {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String?      @map("user_id") @db.Uuid
+  email     String?
+  outcome   LoginOutcome
+  ipAddress String?      @map("ip_address")
+  userAgent String?      @map("user_agent")
+  reason    String?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("login_history")
+}
+
+model SecurityAuditLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  action       AuditAction
+  actorUserId  String?     @map("actor_user_id") @db.Uuid
+  targetUserId String?     @map("target_user_id") @db.Uuid
+  ipAddress    String?     @map("ip_address")
+  userAgent    String?     @map("user_agent")
+  metadata     Json?
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  actor  User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  target User? @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([createdAt])
+  @@map("security_audit_logs")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — Wallet Core
+// ---------------------------------------------------------------------------
+
+enum ChainNetwork {
+  BITCOIN
+  ETHEREUM
+  POLYGON
+  SOLANA
+  BNB_SMART_CHAIN
+  TRON
+  LITECOIN
+}
+
+enum AssetStandard {
+  NATIVE
+  ERC20
+  TRC20
+  BEP20
+  SPL
+  OTHER
+}
+
+enum WalletStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum LedgerEntryType {
+  CREDIT
+  DEBIT
+  PENDING
+  CONFIRMED
+  FAILED
+  REVERSED
+  CANCELLED
+  ADJUSTMENT
+  CORRECTION
+}
+
+enum TransactionType {
+  INTERNAL_TRANSFER
+  DEPOSIT
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REVERSED
+}
+
+model Asset {
+  id        String        @id @default(uuid()) @db.Uuid
+  code      String        @unique
+  name      String
+  symbol    String
+  decimals  Int           @default(8)
+  chain     ChainNetwork
+  standard  AssetStandard @default(NATIVE)
+  contractAddress String? @map("contract_address")
+  isActive  Boolean       @default(true) @map("is_active")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  wallets          Wallet[]
+  balances         WalletBalance[]
+  ledgerEntries    LedgerEntry[]
+  transactionsFrom WalletTransaction[] @relation("TxFromAsset")
+  transactionsTo   WalletTransaction[] @relation("TxToAsset")
+  balanceSnapshots BalanceSnapshot[]
+  balanceAudits    BalanceAudit[]
+
+  @@index([chain, standard])
+  @@map("assets")
+}
+
+model Wallet {
+  id          String       @id @default(uuid()) @db.Uuid
+  ownerUserId String       @map("owner_user_id") @db.Uuid
+  assetId     String       @map("asset_id") @db.Uuid
+  alias       String?
+  label       String?
+  status      WalletStatus @default(PENDING)
+  metadata    Json?
+  preferences Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  archivedAt  DateTime?    @map("archived_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  asset            Asset               @relation(fields: [assetId], references: [id])
+  balances         WalletBalance[]
+  ledgerEntries    LedgerEntry[]
+  transactionsFrom WalletTransaction[] @relation("TxFromWallet")
+  transactionsTo   WalletTransaction[] @relation("TxToWallet")
+  balanceSnapshots BalanceSnapshot[]
+  balanceAudits    BalanceAudit[]
+  statusHistory    WalletStatusHistory[]
+
+  @@unique([ownerUserId, assetId, alias])
+  @@index([ownerUserId, status])
+  @@index([assetId])
+  @@index([createdAt])
+  @@map("wallets")
+}
+
+model WalletBalance {
+  id              String   @id @default(uuid()) @db.Uuid
+  walletId        String   @map("wallet_id") @db.Uuid
+  assetId         String   @map("asset_id") @db.Uuid
+  available       Decimal  @default(0) @db.Decimal(36, 18)
+  pending         Decimal  @default(0) @db.Decimal(36, 18)
+  locked          Decimal  @default(0) @db.Decimal(36, 18)
+  reserved        Decimal  @default(0) @db.Decimal(36, 18)
+  total           Decimal  @default(0) @db.Decimal(36, 18)
+  version         Int      @default(0)
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  asset  Asset  @relation(fields: [assetId], references: [id])
+
+  @@unique([walletId, assetId])
+  @@index([walletId])
+  @@map("wallet_balances")
+}
+
+model LedgerEntry {
+  id              String          @id @default(uuid()) @db.Uuid
+  walletId        String          @map("wallet_id") @db.Uuid
+  assetId         String          @map("asset_id") @db.Uuid
+  transactionId   String?         @map("transaction_id") @db.Uuid
+  entryType       LedgerEntryType @map("entry_type")
+  amount          Decimal         @db.Decimal(36, 18)
+  balanceAfterAvailable Decimal   @map("balance_after_available") @db.Decimal(36, 18)
+  balanceAfterPending   Decimal   @map("balance_after_pending") @db.Decimal(36, 18)
+  balanceAfterLocked    Decimal   @map("balance_after_locked") @db.Decimal(36, 18)
+  balanceAfterReserved  Decimal   @map("balance_after_reserved") @db.Decimal(36, 18)
+  balanceAfterTotal     Decimal   @map("balance_after_total") @db.Decimal(36, 18)
+  reference       String
+  description     String?
+  metadata        Json?
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  wallet      Wallet             @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  asset       Asset              @relation(fields: [assetId], references: [id])
+  transaction WalletTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, createdAt])
+  @@index([transactionId])
+  @@index([reference])
+  @@index([createdAt])
+  @@map("ledger_entries")
+}
+
+model WalletTransaction {
+  id            String            @id @default(uuid()) @db.Uuid
+  reference     String            @unique
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  fromWalletId  String?           @map("from_wallet_id") @db.Uuid
+  toWalletId    String?           @map("to_wallet_id") @db.Uuid
+  assetId       String            @map("asset_id") @db.Uuid
+  toAssetId     String?           @map("to_asset_id") @db.Uuid
+  amount        Decimal           @db.Decimal(36, 18)
+  feeAmount     Decimal           @default(0) @map("fee_amount") @db.Decimal(36, 18)
+  initiatedBy   String?           @map("initiated_by") @db.Uuid
+  failureReason String?           @map("failure_reason")
+  metadata      Json?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  completedAt   DateTime?         @map("completed_at")
+
+  fromWallet Wallet? @relation("TxFromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet   Wallet? @relation("TxToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
+  asset      Asset   @relation("TxFromAsset", fields: [assetId], references: [id])
+  toAsset    Asset?  @relation("TxToAsset", fields: [toAssetId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@index([fromWalletId, createdAt])
+  @@index([toWalletId, createdAt])
+  @@index([status, createdAt])
+  @@index([initiatedBy])
+  @@map("wallet_transactions")
+}
+
+model BalanceSnapshot {
+  id         String   @id @default(uuid()) @db.Uuid
+  walletId   String   @map("wallet_id") @db.Uuid
+  assetId    String   @map("asset_id") @db.Uuid
+  available  Decimal  @db.Decimal(36, 18)
+  pending    Decimal  @db.Decimal(36, 18)
+  locked     Decimal  @db.Decimal(36, 18)
+  reserved   Decimal  @db.Decimal(36, 18)
+  total      Decimal  @db.Decimal(36, 18)
+  capturedAt DateTime @default(now()) @map("captured_at")
+  reason     String?
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  asset  Asset  @relation(fields: [assetId], references: [id])
+
+  @@index([walletId, capturedAt])
+  @@map("balance_snapshots")
+}
+
+model BalanceAudit {
+  id        String   @id @default(uuid()) @db.Uuid
+  walletId  String   @map("wallet_id") @db.Uuid
+  assetId   String   @map("asset_id") @db.Uuid
+  action    String
+  before    Json
+  after     Json
+  actorId   String?  @map("actor_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  asset  Asset  @relation(fields: [assetId], references: [id])
+
+  @@index([walletId, createdAt])
+  @@map("balance_audits")
+}
+
+model WalletStatusHistory {
+  id         String       @id @default(uuid()) @db.Uuid
+  walletId   String       @map("wallet_id") @db.Uuid
+  fromStatus WalletStatus? @map("from_status")
+  toStatus   WalletStatus @map("to_status")
+  reason     String?
+  actorId    String?      @map("actor_id") @db.Uuid
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+  @@map("wallet_status_history")
+}

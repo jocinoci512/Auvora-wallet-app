@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: auvora-wallet
+  labels:
+    app.kubernetes.io/name: auvora-wallet
+    app.kubernetes.io/part-of: auvora

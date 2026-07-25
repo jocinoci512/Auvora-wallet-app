@@ -1,0 +1,37 @@
+{
+  "name": "@auvora/database-schema",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./generated/client/index.js",
+  "types": "./generated/client/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./generated/client/index.d.ts",
+      "require": "./generated/client/index.js",
+      "import": "./generated/client/index.js",
+      "default": "./generated/client/index.js"
+    },
+    "./client": {
+      "types": "./generated/client/index.d.ts",
+      "require": "./generated/client/index.js",
+      "import": "./generated/client/index.js",
+      "default": "./generated/client/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "tsx seed/index.ts",
+    "build": "node ../scripts/ensure-prisma-client.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.5.0",
+    "argon2": "0.41.1"
+  },
+  "devDependencies": {
+    "prisma": "6.5.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

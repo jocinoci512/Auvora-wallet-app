@@ -1,0 +1,61 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Builds
+dist
+build
+.next
+out
+coverage
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Turbo
+.turbo
+
+# Prisma
+database/prisma/*.db
+database/prisma/*.db-journal
+database/generated
+packages/database/src/generated
+
+# Local embedded data plane
+.local-data
+
+
+# Testing
+coverage
+
+# Misc
+.tools
+*.pem
+.cache
+tmp
+temp
+
+# Typedoc
+docs/api
+
+# Docker
+docker-data
