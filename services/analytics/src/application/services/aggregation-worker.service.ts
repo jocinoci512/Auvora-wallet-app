@@ -35,6 +35,13 @@ export class AggregationWorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  status() {
+    return {
+      enabled: this.env.ANALYTICS_AGGREGATION_WORKER_ENABLED && this.env.NODE_ENV !== 'test',
+      running: this.timer != null && !this.stopped,
+    };
+  }
+
   private async tick(): Promise<void> {
     if (this.ticking || this.stopped) {
       return;

@@ -1,0 +1,32 @@
+global:
+  namespace: auvora-testing
+  environment: testing
+  imageTag: test
+  deploymentStrategy: rolling
+  hpa:
+    minReplicas: 1
+    maxReplicas: 2
+
+ingress:
+  host: test.wallet.example.com
+  tls:
+    enabled: false
+
+config:
+  NODE_ENV: test
+  LOG_LEVEL: debug
+
+services:
+  ai:
+    replicas: 1
+  analytics:
+    replicas: 1
+
+secrets:
+  create: false
+  externalSecret:
+    enabled: true
+    remoteKey: auvora/testing/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const boolFlag = (defaultValue: 'true' | 'false') =>
   z
@@ -19,6 +19,7 @@ export const envSchema = z.object({
   INTERNAL_API_KEY: z.string().min(32),
   ANALYTICS_FIELD_ENCRYPTION_KEY: z.string().min(32),
   APP_PUBLIC_URL: z.string().url().optional(),
+  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
   OTEL_ENABLED: z
     .enum(['true', 'false'])
     .default('false')

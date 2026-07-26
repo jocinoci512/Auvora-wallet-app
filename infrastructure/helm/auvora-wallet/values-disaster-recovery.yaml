@@ -1,0 +1,30 @@
+global:
+  namespace: auvora-disaster-recovery
+  environment: disaster-recovery
+  imageTag: "1.2.0"
+  deploymentStrategy: rolling
+  hpa:
+    minReplicas: 2
+    maxReplicas: 12
+
+ingress:
+  host: dr.wallet.example.com
+
+config:
+  NODE_ENV: production
+  LOG_LEVEL: warn
+  OTEL_ENABLED: "true"
+
+backup:
+  cronJob:
+    enabled: true
+    schedule: "0 2 * * *"
+
+secrets:
+  create: false
+  externalSecret:
+    enabled: true
+    remoteKey: auvora/disaster-recovery/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore

@@ -26,6 +26,10 @@ import { ComplianceFraudHttpClient } from './fraud/compliance-fraud-http.client'
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
 import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
 import { PrismaChargebackRepository } from './persistence/prisma-chargeback.repository';
 import { PrismaDisputeRepository } from './persistence/prisma-dispute.repository';
@@ -62,6 +66,7 @@ import { WalletLedgerHttpClient } from './wallet/wallet-ledger-http.client';
     NotificationsPublisherAdapter,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     PrismaPaymentRepository,
     PrismaPaymentMethodRepository,
     PrismaProviderRecordRepository,
@@ -119,6 +124,7 @@ import { WalletLedgerHttpClient } from './wallet/wallet-ledger-http.client';
     { provide: NOTIFICATIONS_PUBLISHER, useExisting: NotificationsPublisherAdapter },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -145,6 +151,7 @@ import { WalletLedgerHttpClient } from './wallet/wallet-ledger-http.client';
     NOTIFICATIONS_PUBLISHER,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

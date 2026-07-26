@@ -9,6 +9,10 @@ import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
 import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
 import { CustodyProviderRegistry } from './providers/provider-registry';
 import { SimulatorCustodyProvider } from './providers/simulator.provider';
@@ -31,6 +35,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     NotificationsPublisherAdapter,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
     { provide: CLOCK, useExisting: SystemClockAdapter },
@@ -41,6 +46,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     { provide: NOTIFICATIONS_PUBLISHER, useExisting: NotificationsPublisherAdapter },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -53,6 +59,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     NOTIFICATIONS_PUBLISHER,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

@@ -26,7 +26,7 @@ export function buildAiProxyOpenApiPaths(): OpenAPIObject['paths'] {
     '/api/v1/ai/chat': proxyPath('post', 'Send a chat message', userTag),
     '/api/v1/ai/conversations': proxyPath('get', 'List own conversations', userTag),
     '/api/v1/ai/conversations/{id}': proxyPath('get', 'Get conversation with messages', userTag),
-    '/api/v1/ai/knowledge/search': proxyPath('get', 'Search knowledge base', userTag),
+    '/api/v1/ai/knowledge/search': proxyPath('post', 'Search knowledge base', userTag),
     '/api/v1/ai/assistants': proxyPath('get', 'List available assistants', userTag),
     '/api/v1/ai/messages/{id}/feedback': proxyPath('post', 'Submit message feedback', userTag),
     '/api/v1/admin/ai/dashboard': proxyPath('get', 'AI platform dashboard', adminTag),

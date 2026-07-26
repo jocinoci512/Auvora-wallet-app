@@ -26,7 +26,10 @@ const postgres = new EmbeddedPostgres({
 const databaseUrl = 'postgresql://auvora:auvora@127.0.0.1:5432/auvora_wallet?schema=public';
 
 async function main() {
-  await postgres.initialise();
+  const alreadyInitialized = fs.existsSync(path.join(dataDir, 'PG_VERSION'));
+  if (!alreadyInitialized) {
+    await postgres.initialise();
+  }
   await postgres.start();
   try {
     await postgres.createDatabase('auvora_wallet');

@@ -1,0 +1,18 @@
+Auvora Wallet has been deployed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ include "auvora-wallet.namespace" . }}
+Environment: {{ .Values.global.environment }}
+
+Gateway API: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/api
+Web app:     http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/
+Admin app:   http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/admin
+
+Health checks (in-cluster):
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  {{ $name }}: http://{{ $name }}.{{ include "auvora-wallet.namespace" $ }}:{{ $svc.port }}/health
+{{- end }}
+{{- end }}
+
+IMPORTANT: Replace placeholder secrets in {{ include "auvora-wallet.fullname" . }}-secrets before production use.

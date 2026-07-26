@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const boolFlag = (defaultValue: 'true' | 'false') =>
   z
@@ -20,6 +20,7 @@ export const envSchema = z.object({
   /** Optional. When set with INTERNAL_API_KEY, AiPublisherAdapter forwards domain events to the AI platform. */
   AI_SERVICE_URL: z.string().url().optional(),
   ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
   NOTIFICATIONS_FIELD_ENCRYPTION_KEY: z.string().min(32),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
@@ -39,7 +40,7 @@ export const envSchema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
 
-  // Per-channel kill switches — evaluated before the DB-backed provider table so an operator
+  // Per-channel kill switches â€” evaluated before the DB-backed provider table so an operator
   // can hard-disable a channel via env even if enabled rows still exist.
   NOTIFICATIONS_CHANNEL_EMAIL_ENABLED: boolFlag('true'),
   NOTIFICATIONS_CHANNEL_SMS_ENABLED: boolFlag('true'),

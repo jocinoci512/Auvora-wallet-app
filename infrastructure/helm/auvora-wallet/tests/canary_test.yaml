@@ -1,0 +1,54 @@
+suite: canary deployments
+templates:
+  - services.yaml
+tests:
+  - it: should render stable and canary deployments
+    set:
+      global:
+        deploymentStrategy: canary
+        canary:
+          replicas: 1
+      services:
+        gateway:
+          enabled: true
+          image: gateway-service
+          port: 4000
+          replicas: 2
+          networkPolicy:
+            allowFromGateway: false
+            allowFromIngress: true
+        auth:
+          enabled: false
+        wallet:
+          enabled: false
+        blockchain:
+          enabled: false
+        payments:
+          enabled: false
+        compliance:
+          enabled: false
+        notifications:
+          enabled: false
+        analytics:
+          enabled: false
+        ai:
+          enabled: false
+        custody:
+          enabled: false
+        observability:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 7
+      - equal:
+          path: metadata.name
+          value: gateway
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: gateway-canary
+        documentIndex: 2
+      - equal:
+          path: metadata.name
+          value: gateway-canary
+        documentIndex: 3

@@ -1,21 +1,35 @@
 # Auvora Wallet
 
-Enterprise cryptocurrency wallet platform monorepo. This repository contains the engineering foundation: shared packages, NestJS microservices, Next.js apps, database schema, and infrastructure stubs.
+Enterprise cryptocurrency wallet platform monorepo. This repository contains shared packages, NestJS microservices, Next.js apps, database schema, and cloud-agnostic infrastructure.
+
+**Current product version:** `1.0.0-rc.1` — Phases 1–14 (Release Candidate). GA cut remains gated by staging soak and remaining checklist items.
+
+| Doc | Purpose |
+|-----|---------|
+| [`BUILD_STATUS.md`](BUILD_STATUS.md) | Latest lint/test/build/perf verification |
+| [`docs/RELEASE_CANDIDATE_v1.0.md`](docs/RELEASE_CANDIDATE_v1.0.md) | Phase 14 RC dossier (19 sections) |
+| [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) | RC release notes |
+| [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) | Documentation map |
+| [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) | Maintainability audit findings |
+| [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md) | Tracked debt and deferred upgrades |
+| [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md) | Pre-GA gate checklist |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture overview |
+| [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md) | ADR index (0001–0010) |
 
 ## Architecture
 
-- **packages/** — Shared libraries (`@auvora/types`, `@auvora/ui`, `@auvora/sdk`, `@auvora/database`, `@auvora/security`, `@auvora/config`)
+- **packages/** — Shared libraries (`types`, `ui`, `sdk`, `database`, `security`, `config`, `resilience`, `cache`, `secrets`)
 - **services/** — NestJS 11 services with hexagonal layout (domain, application, infrastructure, presentation)
 - **apps/** — Next.js 15 App Router frontends (web, admin, docs)
 - **database/** — Prisma schema, migrations, and seed scripts
-- **infrastructure/** — Docker, Kubernetes, Terraform, and observability configs
+- **infrastructure/** — Docker, Kubernetes/Helm, Terraform, and observability configs
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/diagrams/](docs/diagrams/) for details.
 
 ## Prerequisites
 
 - Node.js >= 22 (see `.nvmrc`)
-- pnpm >= 9.15
+- pnpm >= 9.15 (repo ships `.tools/pnpm` if needed)
 - Docker (optional, for Postgres and Redis)
 
 ## Setup
@@ -30,6 +44,35 @@ pnpm db:seed
 ```
 
 Copy `.env.example` values into `.env` via `scripts/bootstrap.mjs` if you have not already.
+
+## Quality / performance harness
+
+```bash
+pnpm lint && pnpm test && pnpm build
+pnpm perf:benchmark   # before/after optimization metrics
+pnpm perf:load        # load suite
+pnpm perf:chaos       # readiness / failure surfaces
+pnpm perf:resilience  # library failure simulation
+pnpm perf:a11y        # accessibility smoke (lang/viewport/landmarks)
+pnpm perf:journeys    # critical API journey contracts
+```
+
+## Phase overview
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| 1–2 | Foundation, gateway, auth | Complete |
+| 3–5 | Wallet, blockchain, payments | Complete |
+| 6–8 | Compliance, custody, notifications | Complete |
+| 9–11 | AI, analytics, observability | Complete |
+| 12 | Production infrastructure | Complete |
+| 13 | Performance / security / resilience | Complete |
+| ERV | Enterprise readiness verification | Complete |
+| Audit | Code quality / technical debt | Complete |
+| **14** | Final production readiness & **RC v1.0.0-rc.1** | **Complete (RC)** |
+| GA | Production GA | Not started |
+
+Historical phase runbooks remain below for local bring-up of early services.
 
 ## Phase 2 — Authentication
 
@@ -60,7 +103,7 @@ Browser (web :3000, admin :3001)
 | auth | 4001 |
 | web | 3000 |
 | admin | 3001 |
-| docs | 3002 |
+| docs | 3011 |
 
 Swagger (gateway proxy contract): [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
@@ -298,7 +341,7 @@ Phase 8 adds the **notifications service** (email/SMS/push/in-app/webhooks, temp
 |-----|------|
 | web | 3000 |
 | admin | 3001 |
-| docs | 3002 |
+| docs | 3011 |
 
 ## Architecture
 

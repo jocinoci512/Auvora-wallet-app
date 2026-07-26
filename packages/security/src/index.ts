@@ -5,6 +5,9 @@ export const SECURITY_HEADERS = {
   frameOptions: 'DENY',
   referrerPolicy: 'no-referrer',
   permissionsPolicy: 'camera=(), microphone=(), geolocation=()',
+  xssProtection: '0',
+  crossOriginOpenerPolicy: 'same-origin',
+  crossOriginResourcePolicy: 'same-site',
 } as const;
 
 export const REQUEST_ID_HEADER = 'x-request-id';
@@ -47,4 +50,43 @@ export function hashToken(value: string): string {
 
 export function generateOpaqueToken(bytes = 32): string {
   return randomBytes(bytes).toString('base64url');
+}
+
+export type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+  limit: number;
+  resetAt: number;
+};
+
+/** In-memory fixed-window rate limiter (gateway edge / local fallback). */
+export class FixedWindowRateLimiter {
+  private readonly windows = new Map<string, { count: number; resetAt: number }>();
+
+  constructor(
+    private readonly limit: number,
+    private readonly windowMs: number,
+  ) {}
+
+  consume(key: string): RateLimitResult {
+    const now = Date.now();
+    const existing = this.windows.get(key);
+    if (!existing || existing.resetAt <= now) {
+      const resetAt = now + this.windowMs;
+      this.windows.set(key, { count: 1, resetAt });
+      return { allowed: true, remaining: this.limit - 1, limit: this.limit, resetAt };
+    }
+    existing.count += 1;
+    const allowed = existing.count <= this.limit;
+    return {
+      allowed,
+      remaining: Math.max(0, this.limit - existing.count),
+      limit: this.limit,
+      resetAt: existing.resetAt,
+    };
+  }
+
+  size(): number {
+    return this.windows.size;
+  }
 }

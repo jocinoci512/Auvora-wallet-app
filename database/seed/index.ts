@@ -60,6 +60,16 @@ const PERMISSIONS: Array<{ code: string; description: string }> = [
   { code: 'analytics:reports', description: 'Generate and export analytics reports' },
   { code: 'analytics:dashboards', description: 'Manage analytics dashboards' },
   { code: 'analytics:kpis', description: 'Manage KPI definitions' },
+  { code: 'observability:read', description: 'View platform status and public incidents' },
+  { code: 'observability:write', description: 'Manage maintenance notices and operational notes' },
+  { code: 'observability:admin', description: 'Administer observability and SRE platform' },
+  { code: 'observability:alerts', description: 'Manage alert rules and alerts' },
+  { code: 'observability:incidents', description: 'Manage incidents and postmortems' },
+  { code: 'observability:slo', description: 'Manage SLO/SLI definitions and measurements' },
+  { code: 'infrastructure:read', description: 'View infrastructure environments and operations data' },
+  { code: 'infrastructure:admin', description: 'Administer infrastructure platform and feature flags' },
+  { code: 'infrastructure:deploy', description: 'Record and manage deployments' },
+  { code: 'infrastructure:backup', description: 'Record and manage backup jobs' },
 ];
 
 const USER_WALLET_PERMISSION_CODES = [
@@ -86,6 +96,7 @@ const USER_WALLET_PERMISSION_CODES = [
   'analytics:write',
   'analytics:reports',
   'analytics:dashboards',
+  'observability:read',
 ] as const;
 
 const NETWORK_CONFIGS: Array<{
@@ -178,8 +189,8 @@ async function hashPasswordArgon2(password: string): Promise<string> {
 async function main(): Promise<void> {
   await prisma.schemaMeta.upsert({
     where: { id: 'auvora' },
-    create: { id: 'auvora', version: '1.0.0' },
-    update: { version: '1.0.0' },
+    create: { id: 'auvora', version: '1.2.0' },
+    update: { version: '1.2.0' },
   });
 
   const permissionRecords = [];
@@ -1083,6 +1094,182 @@ async function main(): Promise<void> {
     });
   }
 
+  const obsMetrics = [
+    { code: 'http_latency_ms', name: 'HTTP latency', domain: 'GATEWAY' as const, kind: 'HISTOGRAM' as const, unit: 'ms' },
+    { code: 'error_rate', name: 'Error rate', domain: 'SYSTEM' as const, kind: 'GAUGE' as const, unit: 'ratio' },
+    { code: 'queue_depth', name: 'Queue depth', domain: 'NOTIFICATIONS' as const, kind: 'GAUGE' as const, unit: 'count' },
+    { code: 'cpu_percent', name: 'CPU percent', domain: 'INFRASTRUCTURE' as const, kind: 'GAUGE' as const, unit: '%' },
+  ];
+  for (const metric of obsMetrics) {
+    await prisma.obsMetricDefinition.upsert({
+      where: { code: metric.code },
+      create: {
+        code: metric.code,
+        name: metric.name,
+        domain: metric.domain,
+        kind: metric.kind,
+        unit: metric.unit,
+      },
+      update: { name: metric.name, isEnabled: true },
+    });
+  }
+
+  await prisma.obsAlertRule.upsert({
+    where: { code: 'http_latency_critical' },
+    create: {
+      code: 'http_latency_critical',
+      name: 'HTTP latency critical',
+      domain: 'GATEWAY',
+      metricCode: 'http_latency_ms',
+      ruleType: 'threshold',
+      severity: 'CRITICAL',
+      threshold: 1000,
+      comparison: 'gt',
+      windowSeconds: 300,
+    },
+    update: { isEnabled: true },
+  });
+
+  await prisma.obsSloDefinition.upsert({
+    where: { code: 'gateway_availability' },
+    create: {
+      code: 'gateway_availability',
+      name: 'Gateway availability',
+      serviceName: 'gateway',
+      domain: 'GATEWAY',
+      indicatorType: 'AVAILABILITY',
+      targetPercent: 99.9,
+      windowDays: 30,
+    },
+    update: { isEnabled: true },
+  });
+
+  const dependencies = [
+    { sourceService: 'gateway', targetService: 'auth', isCritical: true },
+    { sourceService: 'gateway', targetService: 'wallet', isCritical: true },
+    { sourceService: 'wallet', targetService: 'blockchain', isCritical: true },
+    { sourceService: 'payments', targetService: 'wallet', isCritical: true },
+    { sourceService: 'blockchain', targetService: 'custody', isCritical: false },
+  ];
+  for (const dep of dependencies) {
+    await prisma.obsServiceDependency.upsert({
+      where: {
+        sourceService_targetService_dependencyType: {
+          sourceService: dep.sourceService,
+          targetService: dep.targetService,
+          dependencyType: 'http',
+        },
+      },
+      create: {
+        sourceService: dep.sourceService,
+        targetService: dep.targetService,
+        dependencyType: 'http',
+        domain: 'SYSTEM',
+        isCritical: dep.isCritical,
+      },
+      update: { isCritical: dep.isCritical },
+    });
+  }
+
+  const infraEnvironments: Array<{ code: string; name: string; isActive?: boolean }> = [
+    { code: 'LOCAL', name: 'Local Development' },
+    { code: 'DEVELOPMENT', name: 'Development' },
+    { code: 'QA', name: 'Quality Assurance' },
+    { code: 'TESTING', name: 'Testing' },
+    { code: 'STAGING', name: 'Staging' },
+    { code: 'PRODUCTION', name: 'Production' },
+    { code: 'DISASTER_RECOVERY', name: 'Disaster Recovery', isActive: false },
+  ];
+
+  for (const env of infraEnvironments) {
+    await prisma.infraEnvironment.upsert({
+      where: { code: env.code as never },
+      create: {
+        code: env.code as never,
+        name: env.name,
+        isActive: env.isActive ?? true,
+        config: { region: 'local', cluster: 'auvora-local' },
+      },
+      update: { name: env.name, isActive: env.isActive ?? true },
+    });
+  }
+
+  const featureFlags = [
+    {
+      code: 'infra.canary_deployments',
+      description: 'Enable canary deployment strategy',
+      enabled: true,
+      environmentCode: 'STAGING' as const,
+    },
+    {
+      code: 'infra.auto_backup_verify',
+      description: 'Automatically verify backup checksums after completion',
+      enabled: true,
+      environmentCode: 'PRODUCTION' as const,
+    },
+    {
+      code: 'infra.drill_notifications',
+      description: 'Send notifications when recovery drills start',
+      enabled: false,
+      environmentCode: null,
+    },
+  ];
+
+  for (const flag of featureFlags) {
+    await prisma.featureFlag.upsert({
+      where: { code: flag.code },
+      create: {
+        code: flag.code,
+        description: flag.description,
+        enabled: flag.enabled,
+        environmentCode: flag.environmentCode as never,
+      },
+      update: {
+        description: flag.description,
+        enabled: flag.enabled,
+        environmentCode: flag.environmentCode as never,
+      },
+    });
+  }
+
+  const localDeploymentStartedAt = new Date(Date.now() - 86_400_000);
+  await prisma.infraDeployment.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000001' },
+    create: {
+      id: '00000000-0000-4000-8000-000000000001',
+      environmentCode: 'LOCAL',
+      version: '1.2.0',
+      strategy: 'ROLLING',
+      status: 'SUCCEEDED',
+      startedAt: localDeploymentStartedAt,
+      completedAt: new Date(localDeploymentStartedAt.getTime() + 120_000),
+      notes: 'Phase 12 infrastructure platform seed deployment',
+    },
+    update: {
+      version: '1.2.0',
+      status: 'SUCCEEDED',
+    },
+  });
+
+  await prisma.infraBackupJob.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000002' },
+    create: {
+      id: '00000000-0000-4000-8000-000000000002',
+      environmentCode: 'LOCAL',
+      componentKind: 'DATABASE',
+      componentName: 'auvora-postgres',
+      status: 'SUCCEEDED',
+      startedAt: new Date(Date.now() - 3_600_000),
+      completedAt: new Date(Date.now() - 3_540_000),
+      location: 's3://auvora-local-backups/postgres/2026-07-26.dump',
+      checksum: 'sha256:seed-backup-checksum',
+    },
+    update: {
+      status: 'SUCCEEDED',
+      location: 's3://auvora-local-backups/postgres/2026-07-26.dump',
+    },
+  });
+
   const adminEmail = process.env['SEED_ADMIN_EMAIL'] ?? 'admin@auvora.local';
   const adminUsername = process.env['SEED_ADMIN_USERNAME'] ?? 'auvora_admin';
   const adminPassword = process.env['SEED_ADMIN_PASSWORD'] ?? 'ChangeMe!AuvoraAdmin1';
@@ -1123,7 +1310,7 @@ async function main(): Promise<void> {
       level: 'info',
       msg: 'database seed completed',
       service: 'database-seed',
-      version: '1.0.0',
+      version: '1.2.0',
       adminEmail,
       adminUsername,
       // Intentionally omit password from logs.

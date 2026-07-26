@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "auvora-wallet.fullname" . }}-config
+  namespace: {{ include "auvora-wallet.namespace" . }}
+  labels:
+    {{- include "auvora-wallet.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  GATEWAY_PORT: "4000"
+  AUTH_PORT: "4001"
+  WALLET_PORT: "3002"
+  BLOCKCHAIN_PORT: "3003"
+  PAYMENTS_PORT: "3004"
+  COMPLIANCE_PORT: "3005"
+  NOTIFICATIONS_PORT: "3006"
+  ANALYTICS_PORT: "3007"
+  AI_PORT: "3008"
+  CUSTODY_PORT: "3009"
+  OBSERVABILITY_PORT: "3010"

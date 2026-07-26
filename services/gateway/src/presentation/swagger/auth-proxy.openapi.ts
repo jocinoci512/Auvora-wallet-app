@@ -37,6 +37,5 @@ export function buildAuthProxyOpenApiPaths(): OpenAPIObject['paths'] {
       ...proxyPath('patch', 'Update a user (admin)', 'admin-proxy'),
       ...proxyPath('delete', 'Deactivate a user (admin)', 'admin-proxy'),
     },
-    '/api/v1/admin/sessions': proxyPath('get', 'List active sessions (admin)', 'admin-proxy'),
   };
 }

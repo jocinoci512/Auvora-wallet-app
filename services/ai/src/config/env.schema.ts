@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const boolFlag = (defaultValue: 'true' | 'false') =>
   z
@@ -27,7 +27,7 @@ export const envSchema = z.object({
 
   AI_SIMULATOR_ENABLED: boolFlag('true'),
   AI_DEFAULT_PROVIDER_CODE: z.string().default('sim-default'),
-  AI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  AI_CACHE_TTL_SECONDS: z.coerce.number().int().nonnegative().default(120),
   AI_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   AI_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
 
@@ -41,6 +41,7 @@ export const envSchema = z.object({
   AI_LOCAL_LLM_BASE_URL: z.string().url().optional(),
   AI_LOCAL_LLM_API_KEY: z.string().optional(),
   ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
 });
 
 export type ServiceEnv = z.infer<typeof envSchema>;

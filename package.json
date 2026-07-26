@@ -1,6 +1,6 @@
 {
   "name": "auvora-wallet",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "description": "Auvora Wallet — enterprise cryptocurrency wallet platform monorepo",
   "license": "UNLICENSED",
@@ -22,6 +22,12 @@
     "db:migrate": "pnpm --filter @auvora/database migrate:dev",
     "db:seed": "pnpm --filter @auvora/database seed",
     "docs:api": "typedoc --skipErrorChecking",
+    "perf:load": "node scripts/perf/run-suite.mjs",
+    "perf:chaos": "node scripts/perf/chaos-test.mjs",
+    "perf:a11y": "node scripts/perf/a11y-smoke.mjs",
+    "perf:benchmark": "node scripts/perf/benchmark-compare.mjs",
+    "perf:journeys": "node scripts/perf/journey-smoke.mjs",
+    "perf:resilience": "node scripts/perf/resilience-sim.mjs",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -38,6 +44,17 @@
     "turbo": "^2.4.4",
     "typedoc": "^0.28.0",
     "typescript": "^5.8.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "brace-expansion@>=1.1.0 <2": "1.1.16",
+      "brace-expansion@>=2.0.0 <3": "2.0.2",
+      "brace-expansion@>=5.0.0": "5.0.8",
+      "postcss": "8.5.18",
+      "js-yaml": "5.2.2",
+      "nodemailer": "9.0.1",
+      "sharp": "0.35.0"
+    }
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [

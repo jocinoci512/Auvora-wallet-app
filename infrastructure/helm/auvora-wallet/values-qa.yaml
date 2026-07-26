@@ -1,0 +1,24 @@
+global:
+  namespace: auvora-qa
+  environment: qa
+  imageTag: qa
+  deploymentStrategy: rolling
+  hpa:
+    minReplicas: 2
+    maxReplicas: 6
+
+ingress:
+  host: qa.wallet.example.com
+
+config:
+  NODE_ENV: production
+  LOG_LEVEL: info
+
+secrets:
+  create: false
+  externalSecret:
+    enabled: true
+    remoteKey: auvora/qa/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore

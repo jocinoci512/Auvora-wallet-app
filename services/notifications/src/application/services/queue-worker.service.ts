@@ -34,6 +34,13 @@ export class QueueWorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  status() {
+    return {
+      enabled: this.env.NOTIFICATIONS_QUEUE_WORKER_ENABLED && this.env.NODE_ENV !== 'test',
+      running: this.timer != null && !this.stopped,
+    };
+  }
+
   private async tick(): Promise<void> {
     if (this.ticking || this.stopped) return;
     this.ticking = true;

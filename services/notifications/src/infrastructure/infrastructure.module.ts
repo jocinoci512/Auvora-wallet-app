@@ -6,6 +6,10 @@ import { CHANNEL_PROVIDER_REGISTRY } from '../application/ports/provider.tokens'
 import { EVENT_BUS } from '../domain';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
 import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { AesFieldEncryptionAdapter, FIELD_ENCRYPTION } from './crypto/field-encryption.adapter';
 import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
@@ -25,6 +29,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     ChannelProviderRegistry,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
     { provide: CLOCK, useExisting: SystemClockAdapter },
@@ -34,6 +39,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     { provide: CHANNEL_PROVIDER_REGISTRY, useExisting: ChannelProviderRegistry },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -45,6 +51,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     CHANNEL_PROVIDER_REGISTRY,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

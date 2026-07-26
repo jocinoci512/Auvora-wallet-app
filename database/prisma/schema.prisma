@@ -3105,3 +3105,537 @@ model AnalyticsAuditRecord {
   @@index([subjectUserId, createdAt])
   @@map("analytics_audit_records")
 }
+
+// ─── Phase 11: Enterprise Observability / SRE ────────────────────────────────
+
+enum ObsServiceDomain {
+  GATEWAY
+  AUTH
+  WALLET
+  BLOCKCHAIN
+  PAYMENTS
+  COMPLIANCE
+  CUSTODY
+  NOTIFICATIONS
+  AI
+  ANALYTICS
+  OBSERVABILITY
+  INFRASTRUCTURE
+  DATABASE
+  REDIS
+  SYSTEM
+}
+
+enum ObsMetricKind {
+  COUNTER
+  GAUGE
+  HISTOGRAM
+  SUMMARY
+}
+
+enum ObsHealthStatus {
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+  UNKNOWN
+}
+
+enum ObsAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+  SECURITY
+}
+
+enum ObsAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  SUPPRESSED
+}
+
+enum ObsIncidentSeverity {
+  SEV1
+  SEV2
+  SEV3
+  SEV4
+}
+
+enum ObsIncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  INVESTIGATING
+  MITIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum ObsSloIndicatorType {
+  AVAILABILITY
+  LATENCY
+  ERROR_RATE
+  THROUGHPUT
+  CUSTOM
+}
+
+model ObsMetricDefinition {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  name        String
+  description String?
+  domain      ObsServiceDomain
+  kind        ObsMetricKind    @default(GAUGE)
+  unit        String?
+  isEnabled   Boolean          @default(true) @map("is_enabled")
+  metadata    Json?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  samples ObsMetricSample[]
+
+  @@index([domain, isEnabled])
+  @@map("obs_metric_definitions")
+}
+
+model ObsMetricSample {
+  id           String   @id @default(uuid()) @db.Uuid
+  metricId     String   @map("metric_id") @db.Uuid
+  serviceName  String   @map("service_name")
+  value        Float
+  labels       Json?
+  correlationId String? @map("correlation_id")
+  observedAt   DateTime @default(now()) @map("observed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  metric ObsMetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@index([metricId, observedAt])
+  @@index([serviceName, observedAt])
+  @@index([correlationId])
+  @@map("obs_metric_samples")
+}
+
+model ObsTrace {
+  id            String   @id @default(uuid()) @db.Uuid
+  traceId       String   @unique @map("trace_id")
+  rootService   String?  @map("root_service")
+  rootOperation String?  @map("root_operation")
+  correlationId String?  @map("correlation_id")
+  statusCode    String?  @map("status_code")
+  durationMs    Float?   @map("duration_ms")
+  startedAt     DateTime @map("started_at")
+  endedAt       DateTime? @map("ended_at")
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  spans ObsSpan[]
+
+  @@index([startedAt])
+  @@index([correlationId])
+  @@index([rootService, startedAt])
+  @@map("obs_traces")
+}
+
+model ObsSpan {
+  id            String   @id @default(uuid()) @db.Uuid
+  traceRecordId String   @map("trace_record_id") @db.Uuid
+  spanId        String   @map("span_id")
+  parentSpanId  String?  @map("parent_span_id")
+  serviceName   String   @map("service_name")
+  operationName String   @map("operation_name")
+  statusCode    String?  @map("status_code")
+  durationMs    Float?   @map("duration_ms")
+  startedAt     DateTime @map("started_at")
+  endedAt       DateTime? @map("ended_at")
+  attributes    Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  trace ObsTrace @relation(fields: [traceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([traceRecordId, spanId])
+  @@index([serviceName, startedAt])
+  @@index([parentSpanId])
+  @@map("obs_spans")
+}
+
+model ObsLogEntry {
+  id            String           @id @default(uuid()) @db.Uuid
+  serviceName   String           @map("service_name")
+  domain        ObsServiceDomain @default(SYSTEM)
+  level         String
+  message       String
+  payload       Json?
+  correlationId String?          @map("correlation_id")
+  traceId       String?          @map("trace_id")
+  spanId        String?          @map("span_id")
+  isMasked      Boolean          @default(true) @map("is_masked")
+  isImmutable   Boolean          @default(false) @map("is_immutable")
+  retentionDays Int              @default(30) @map("retention_days")
+  occurredAt    DateTime         @default(now()) @map("occurred_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  @@index([serviceName, occurredAt])
+  @@index([level, occurredAt])
+  @@index([correlationId])
+  @@index([traceId])
+  @@map("obs_log_entries")
+}
+
+model ObsHealthCheck {
+  id            String          @id @default(uuid()) @db.Uuid
+  serviceName   String          @map("service_name")
+  checkName     String          @map("check_name")
+  status        ObsHealthStatus @default(UNKNOWN)
+  latencyMs     Float?          @map("latency_ms")
+  details       Json?
+  checkedAt     DateTime        @default(now()) @map("checked_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  @@index([serviceName, checkName, checkedAt])
+  @@index([status, checkedAt])
+  @@map("obs_health_checks")
+}
+
+model ObsServiceDependency {
+  id             String           @id @default(uuid()) @db.Uuid
+  sourceService  String           @map("source_service")
+  targetService  String           @map("target_service")
+  dependencyType String           @default("http") @map("dependency_type")
+  domain         ObsServiceDomain @default(SYSTEM)
+  isCritical     Boolean          @default(false) @map("is_critical")
+  metadata       Json?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@unique([sourceService, targetService, dependencyType])
+  @@index([sourceService])
+  @@index([targetService])
+  @@map("obs_service_dependencies")
+}
+
+model ObsAlertRule {
+  id             String           @id @default(uuid()) @db.Uuid
+  code           String           @unique
+  name           String
+  description    String?
+  domain         ObsServiceDomain
+  metricCode     String?          @map("metric_code")
+  ruleType       String           @default("threshold") @map("rule_type")
+  severity       ObsAlertSeverity @default(WARNING)
+  threshold      Float?
+  comparison     String?          @default("gt")
+  windowSeconds  Int              @default(300) @map("window_seconds")
+  isEnabled      Boolean          @default(true) @map("is_enabled")
+  metadata       Json?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  alerts ObsAlert[]
+
+  @@index([domain, isEnabled])
+  @@map("obs_alert_rules")
+}
+
+model ObsAlert {
+  id            String           @id @default(uuid()) @db.Uuid
+  ruleId        String?          @map("rule_id") @db.Uuid
+  code          String
+  title         String
+  message       String
+  severity      ObsAlertSeverity
+  status        ObsAlertStatus   @default(OPEN)
+  serviceName   String?          @map("service_name")
+  correlationId String?          @map("correlation_id")
+  firedAt       DateTime         @default(now()) @map("fired_at")
+  acknowledgedAt DateTime?       @map("acknowledged_at")
+  acknowledgedBy String?         @map("acknowledged_by") @db.Uuid
+  resolvedAt    DateTime?        @map("resolved_at")
+  resolvedBy    String?          @map("resolved_by") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  rule ObsAlertRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([status, severity, firedAt])
+  @@index([serviceName, firedAt])
+  @@index([correlationId])
+  @@map("obs_alerts")
+}
+
+model ObsIncident {
+  id             String              @id @default(uuid()) @db.Uuid
+  code           String              @unique
+  title          String
+  summary        String?
+  severity       ObsIncidentSeverity @default(SEV3)
+  status         ObsIncidentStatus   @default(OPEN)
+  serviceName    String?             @map("service_name")
+  assigneeUserId String?             @map("assignee_user_id") @db.Uuid
+  reporterUserId String?             @map("reporter_user_id") @db.Uuid
+  rootCause      String?             @map("root_cause")
+  postmortem     String?
+  publicVisible  Boolean             @default(false) @map("public_visible")
+  startedAt      DateTime            @default(now()) @map("started_at")
+  acknowledgedAt DateTime?           @map("acknowledged_at")
+  resolvedAt     DateTime?           @map("resolved_at")
+  closedAt       DateTime?           @map("closed_at")
+  metadata       Json?
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  events ObsIncidentEvent[]
+
+  @@index([status, severity, startedAt])
+  @@index([serviceName, startedAt])
+  @@index([publicVisible, status])
+  @@map("obs_incidents")
+}
+
+model ObsIncidentEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  incidentId    String   @map("incident_id") @db.Uuid
+  eventType     String   @map("event_type")
+  message       String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  metadata      Json?
+  occurredAt    DateTime @default(now()) @map("occurred_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  incident ObsIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, occurredAt])
+  @@map("obs_incident_events")
+}
+
+model ObsSloDefinition {
+  id               String              @id @default(uuid()) @db.Uuid
+  code             String              @unique
+  name             String
+  description      String?
+  serviceName      String              @map("service_name")
+  domain           ObsServiceDomain
+  indicatorType    ObsSloIndicatorType @map("indicator_type")
+  targetPercent    Float               @map("target_percent")
+  latencyMsTarget  Float?              @map("latency_ms_target")
+  windowDays       Int                 @default(30) @map("window_days")
+  isEnabled        Boolean             @default(true) @map("is_enabled")
+  metadata         Json?
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  measurements ObsSliMeasurement[]
+
+  @@index([serviceName, isEnabled])
+  @@index([domain, isEnabled])
+  @@map("obs_slo_definitions")
+}
+
+model ObsSliMeasurement {
+  id              String   @id @default(uuid()) @db.Uuid
+  sloId           String   @map("slo_id") @db.Uuid
+  windowStart     DateTime @map("window_start")
+  windowEnd       DateTime @map("window_end")
+  goodEvents      Float    @map("good_events")
+  totalEvents     Float    @map("total_events")
+  sliPercent      Float    @map("sli_percent")
+  errorBudgetRemaining Float @map("error_budget_remaining")
+  reliabilityScore Float?  @map("reliability_score")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  slo ObsSloDefinition @relation(fields: [sloId], references: [id], onDelete: Cascade)
+
+  @@unique([sloId, windowStart, windowEnd])
+  @@index([windowStart])
+  @@map("obs_sli_measurements")
+}
+
+model ObsCapacitySample {
+  id            String           @id @default(uuid()) @db.Uuid
+  serviceName   String           @map("service_name")
+  domain        ObsServiceDomain @default(INFRASTRUCTURE)
+  cpuPercent    Float?           @map("cpu_percent")
+  memoryPercent Float?           @map("memory_percent")
+  diskPercent   Float?           @map("disk_percent")
+  networkMbps   Float?           @map("network_mbps")
+  dbGrowthMb    Float?           @map("db_growth_mb")
+  storageGrowthMb Float?         @map("storage_growth_mb")
+  txThroughput  Float?           @map("tx_throughput")
+  queueDepth    Float?           @map("queue_depth")
+  forecastLoad  Float?           @map("forecast_load")
+  labels        Json?
+  observedAt    DateTime         @default(now()) @map("observed_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  @@index([serviceName, observedAt])
+  @@index([domain, observedAt])
+  @@map("obs_capacity_samples")
+}
+
+model ObsMaintenanceNotice {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  message     String
+  severity    String    @default("info")
+  isActive    Boolean   @default(true) @map("is_active")
+  startsAt    DateTime  @map("starts_at")
+  endsAt      DateTime? @map("ends_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([isActive, startsAt])
+  @@map("obs_maintenance_notices")
+}
+
+model ObsAuditRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  resourceType  String?  @map("resource_type")
+  resourceId    String?  @map("resource_id")
+  details       Json?
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("obs_audit_records")
+}
+
+enum InfraEnvironmentCode {
+  LOCAL
+  DEVELOPMENT
+  QA
+  TESTING
+  STAGING
+  PRODUCTION
+  DISASTER_RECOVERY
+}
+
+enum InfraDeploymentStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+  ROLLED_BACK
+}
+
+enum InfraBackupStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  VERIFIED
+}
+
+enum InfraComponentKind {
+  SERVICE
+  DATABASE
+  REDIS
+  STORAGE
+  CLUSTER
+  INGRESS
+}
+
+enum InfraDeploymentStrategy {
+  BLUE_GREEN
+  CANARY
+  ROLLING
+}
+
+model InfraEnvironment {
+  id        String               @id @default(uuid()) @db.Uuid
+  code      InfraEnvironmentCode @unique
+  name      String
+  isActive  Boolean              @default(true) @map("is_active")
+  config    Json?
+  metadata  Json?
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  @@map("infra_environments")
+}
+
+model InfraDeployment {
+  id              String                  @id @default(uuid()) @db.Uuid
+  environmentCode InfraEnvironmentCode    @map("environment_code")
+  version         String
+  strategy        InfraDeploymentStrategy
+  status          InfraDeploymentStatus
+  startedAt       DateTime                @default(now()) @map("started_at")
+  completedAt     DateTime?               @map("completed_at")
+  actorUserId     String?                 @map("actor_user_id") @db.Uuid
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  @@index([environmentCode, startedAt])
+  @@index([status, startedAt])
+  @@map("infra_deployments")
+}
+
+model InfraBackupJob {
+  id              String               @id @default(uuid()) @db.Uuid
+  environmentCode InfraEnvironmentCode   @map("environment_code")
+  componentKind   InfraComponentKind     @map("component_kind")
+  componentName   String                 @map("component_name")
+  status          InfraBackupStatus
+  startedAt       DateTime               @default(now()) @map("started_at")
+  completedAt     DateTime?              @map("completed_at")
+  location        String?
+  checksum        String?
+  verifiedAt      DateTime?              @map("verified_at")
+  metadata        Json?
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  @@index([environmentCode, startedAt])
+  @@index([status, startedAt])
+  @@map("infra_backup_jobs")
+}
+
+model InfraRecoveryDrill {
+  id              String                 @id @default(uuid()) @db.Uuid
+  environmentCode InfraEnvironmentCode   @map("environment_code")
+  name            String
+  status          InfraDeploymentStatus
+  startedAt       DateTime               @default(now()) @map("started_at")
+  completedAt     DateTime?              @map("completed_at")
+  rtoMinutes      Int?                   @map("rto_minutes")
+  rpoMinutes      Int?                   @map("rpo_minutes")
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  @@index([environmentCode, startedAt])
+  @@index([status, startedAt])
+  @@map("infra_recovery_drills")
+}
+
+model FeatureFlag {
+  id              String                @id @default(uuid()) @db.Uuid
+  code            String                @unique
+  description     String?
+  enabled         Boolean               @default(false)
+  environmentCode InfraEnvironmentCode? @map("environment_code")
+  metadata        Json?
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  @@index([environmentCode, enabled])
+  @@map("feature_flags")
+}
+
+model InfraAuditRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  action      String
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("infra_audit_records")
+}

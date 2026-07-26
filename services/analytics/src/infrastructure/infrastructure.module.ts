@@ -6,6 +6,10 @@ import { EVENT_BUS } from '../domain';
 import { AesFieldEncryptionAdapter, FIELD_ENCRYPTION } from './crypto/field-encryption.adapter';
 import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { RedisAdapter } from './redis/redis.adapter';
 import { REDIS_PORT } from './redis/redis.port';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
@@ -18,12 +22,14 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     UuidIdGeneratorAdapter,
     AesFieldEncryptionAdapter,
     EventBusService,
+    ObservabilityPublisherAdapter,
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
     { provide: CLOCK, useExisting: SystemClockAdapter },
     { provide: ID_GENERATOR, useExisting: UuidIdGeneratorAdapter },
     { provide: FIELD_ENCRYPTION, useExisting: AesFieldEncryptionAdapter },
     { provide: EVENT_BUS, useExisting: EventBusService },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -32,6 +38,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     ID_GENERATOR,
     FIELD_ENCRYPTION,
     EVENT_BUS,
+    OBSERVABILITY_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

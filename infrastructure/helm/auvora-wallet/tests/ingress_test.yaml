@@ -1,0 +1,35 @@
+suite: ingress tls and routing
+templates:
+  - ingress.yaml
+tests:
+  - it: should render TLS ingress for gateway and apps
+    set:
+      ingress:
+        enabled: true
+        className: nginx
+        host: wallet.example.com
+        tls:
+          enabled: true
+          secretName: auvora-wallet-tls
+        annotations:
+          nginx.ingress.kubernetes.io/limit-rps: "50"
+      apps:
+        web:
+          enabled: true
+          port: 3000
+        admin:
+          enabled: true
+          port: 3001
+      services:
+        gateway:
+          enabled: true
+          port: 4000
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.tls[0].secretName
+          value: auvora-wallet-tls
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/limit-rps"]
+          value: "50"

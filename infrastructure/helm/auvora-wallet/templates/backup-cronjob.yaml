@@ -1,0 +1,54 @@
+{{- if .Values.backup.cronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "auvora-wallet.fullname" . }}-db-backup
+  namespace: {{ include "auvora-wallet.namespace" . }}
+  labels:
+    {{- include "auvora-wallet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.cronJob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            {{- toYaml .Values.global.podSecurityContext | nindent 12 }}
+          containers:
+            - name: backup
+              image: {{ .Values.backup.cronJob.image }}
+              securityContext:
+                {{- toYaml .Values.global.securityContext | nindent 16 }}
+              envFrom:
+                - secretRef:
+                    name: {{ include "auvora-wallet.secretName" . }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+                  FILE="/tmp/auvora-${STAMP}.sql.gz"
+                  echo "Starting logical backup ${STAMP}"
+                  pg_dump "$DATABASE_URL" | gzip > "$FILE"
+                  # Upload hook — replace with cloud CLI / rclone in provider-specific overlays
+                  if [ -n "${BACKUP_UPLOAD_URI:-}" ]; then
+                    echo "Upload target configured: ${BACKUP_UPLOAD_URI}"
+                  fi
+                  echo "Backup complete: ${FILE}"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+{{- end }}

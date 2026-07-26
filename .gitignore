@@ -16,6 +16,13 @@ coverage
 .env.*.local
 !.env.example
 
+# Terraform / secrets hygiene
+**/*.tfvars
+!**/*.tfvars.example
+**/.terraform/
+**/secrets/*.yaml
+!**/secrets/*.yaml.example
+
 # IDE / OS
 .DS_Store
 Thumbs.db

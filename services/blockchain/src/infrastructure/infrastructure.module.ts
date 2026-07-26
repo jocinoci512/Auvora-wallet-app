@@ -17,6 +17,10 @@ import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
 import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
 import { PrismaChainAddressRepository } from './persistence/prisma-chain-address.repository';
 import { PrismaChainBlockRepository } from './persistence/prisma-chain-block.repository';
@@ -64,6 +68,7 @@ import { ENV, type ServiceEnv } from '../config/env.schema';
     NotificationsPublisherAdapter,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     CustodySigningHttpClient,
     NoopCustodySigningAdapter,
     {
@@ -102,6 +107,7 @@ import { ENV, type ServiceEnv } from '../config/env.schema';
     { provide: NOTIFICATIONS_PUBLISHER, useExisting: NotificationsPublisherAdapter },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -123,6 +129,7 @@ import { ENV, type ServiceEnv } from '../config/env.schema';
     NOTIFICATIONS_PUBLISHER,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     CUSTODY_SIGNING_CLIENT,
     LoggerInfrastructureModule,
     PrismaModule,

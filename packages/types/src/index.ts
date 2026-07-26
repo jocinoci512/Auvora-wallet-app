@@ -93,7 +93,17 @@ export type PermissionCode =
   | 'analytics:admin'
   | 'analytics:reports'
   | 'analytics:dashboards'
-  | 'analytics:kpis';
+  | 'analytics:kpis'
+  | 'observability:read'
+  | 'observability:write'
+  | 'observability:admin'
+  | 'observability:alerts'
+  | 'observability:incidents'
+  | 'observability:slo'
+  | 'infrastructure:read'
+  | 'infrastructure:admin'
+  | 'infrastructure:deploy'
+  | 'infrastructure:backup';
 
 export interface JwtAccessClaims {
   sub: string;

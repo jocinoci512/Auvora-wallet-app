@@ -11,9 +11,10 @@ export const envSchema = z.object({
   CUSTODY_SERVICE_URL: z.string().url().default('http://127.0.0.1:3009'),
   NOTIFICATIONS_SERVICE_URL: z.string().url().default('http://127.0.0.1:3006'),
   ANALYTICS_SERVICE_URL: z.string().url().default('http://127.0.0.1:3007'),
+  OBSERVABILITY_SERVICE_URL: z.string().url().default('http://127.0.0.1:3010'),
   AI_SERVICE_URL: z.string().url().default('http://127.0.0.1:3008'),
   SERVICE_NAME: z.string().default('gateway'),
-  SERVICE_VERSION: z.string().default('0.1.0'),
+  SERVICE_VERSION: z.string().default('1.0.0-rc.1'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
@@ -31,6 +32,11 @@ export const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().default('http://localhost:4318'),
+  GATEWAY_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  GATEWAY_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  PROXY_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  /** When set (required in production), protects /metrics/resilience via x-internal-api-key. */
+  INTERNAL_API_KEY: z.string().min(8).optional(),
 });
 
 export type ServiceEnv = z.infer<typeof envSchema>;

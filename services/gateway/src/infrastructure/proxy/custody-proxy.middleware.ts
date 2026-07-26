@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { hardenProxyRequest } from './proxy-hardening';
+import { getProxyTimeoutMs } from './proxy-timeout';
 
 export const CUSTODY_PROXY_PREFIXES = [
   '/api/v1/custody',
@@ -18,6 +19,8 @@ export function createCustodyProxyMiddleware(custodyServiceUrl: string): Request
     target: custodyServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,
     pathFilter: (pathname) => isCustodyProxyPath(pathname),
+    timeout: getProxyTimeoutMs(),
+    proxyTimeout: getProxyTimeoutMs(),
     on: {
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);

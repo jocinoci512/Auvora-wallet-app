@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { hardenProxyRequest } from './proxy-hardening';
+import { getProxyTimeoutMs } from './proxy-timeout';
 
 export const COMPLIANCE_PROXY_PREFIXES = [
   '/api/v1/compliance',
@@ -18,6 +19,8 @@ export function createComplianceProxyMiddleware(complianceServiceUrl: string): R
     target: complianceServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,
     pathFilter: (pathname) => isComplianceProxyPath(pathname),
+    timeout: getProxyTimeoutMs(),
+    proxyTimeout: getProxyTimeoutMs(),
     on: {
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);

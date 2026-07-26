@@ -1,8 +1,12 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, Optional } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '@auvora/database';
 import { HealthStatus, type HealthCheckResponse } from '@auvora/types';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
+import {
+  OBSERVABILITY_PUBLISHER,
+  type ObservabilityPublisherPort,
+} from '../../infrastructure/observability/observability-publisher.adapter';
 import { REDIS_PORT, type RedisPort } from '../../infrastructure/redis/redis.port';
 import { Public } from '../decorators/auth.decorators';
 
@@ -15,6 +19,9 @@ export class HealthController {
     @Inject(ENV) private readonly env: ServiceEnv,
     @Inject(REDIS_PORT) private readonly redis: RedisPort,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(OBSERVABILITY_PUBLISHER)
+    private readonly observability?: ObservabilityPublisherPort,
   ) {}
 
   @Public()
@@ -34,6 +41,7 @@ export class HealthController {
   @Get('ready')
   @ApiOkResponse({ description: 'Readiness probe' })
   async getReady(): Promise<HealthCheckResponse> {
+    const started = Date.now();
     const [dbHealthy, redisHealthy] = await Promise.all([
       this.prisma.isHealthy(),
       this.redis.ping(),
@@ -46,6 +54,13 @@ export class HealthController {
     };
 
     const allHealthy = dbHealthy && redisHealthy;
+    void this.observability?.reportHealth({
+      serviceName: this.env.SERVICE_NAME,
+      checkName: 'ready',
+      status: allHealthy ? 'HEALTHY' : 'UNHEALTHY',
+      latencyMs: Date.now() - started,
+      details: checks,
+    });
 
     return {
       status: allHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,

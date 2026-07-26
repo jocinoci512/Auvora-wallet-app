@@ -1,0 +1,17 @@
+environment  = "testing"
+aws_region   = "us-east-1"
+project_name = "auvora-wallet"
+vpc_cidr     = "10.22.0.0/16"
+
+modules = {
+  networking   = { enabled = false }
+  postgres     = { enabled = false, instance_size = "small", backup_retention_days = 1 }
+  redis        = { enabled = false, node_type = "small" }
+  storage      = { enabled = false }
+  secrets      = { enabled = false, backend = "aws_sm" }
+  iam          = { enabled = false }
+  monitoring   = { enabled = false, log_retention_days = 7 }
+  kubernetes   = { enabled = false, node_count_min = 1, node_count_max = 2 }
+  dns          = { enabled = false, subdomain = "test" }
+  loadbalancer = { enabled = false, tls_enabled = false }
+}

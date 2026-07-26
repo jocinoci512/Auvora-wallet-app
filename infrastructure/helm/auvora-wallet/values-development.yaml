@@ -1,0 +1,32 @@
+global:
+  namespace: auvora-development
+  environment: development
+  imageTag: dev
+  deploymentStrategy: rolling
+  hpa:
+    minReplicas: 1
+    maxReplicas: 4
+
+ingress:
+  host: dev.wallet.example.com
+  tls:
+    enabled: true
+
+postgres:
+  enabled: false
+
+redis:
+  enabled: false
+
+config:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+
+secrets:
+  create: false
+  externalSecret:
+    enabled: true
+    remoteKey: auvora/development/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore

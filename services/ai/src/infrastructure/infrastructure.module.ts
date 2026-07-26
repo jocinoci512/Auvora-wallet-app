@@ -5,6 +5,10 @@ import { CLOCK, ID_GENERATOR, RATE_LIMITER } from '../application/ports/clock.po
 import { MODEL_ROUTER, REQUEST_CACHE } from '../application/ports/provider.tokens';
 import { EVENT_BUS } from '../domain';
 import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { AesFieldEncryptionAdapter, FIELD_ENCRYPTION } from './crypto/field-encryption.adapter';
 import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
@@ -25,6 +29,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     AiProviderRegistry,
     RequestCacheAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
     { provide: CLOCK, useExisting: SystemClockAdapter },
@@ -34,6 +39,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     { provide: MODEL_ROUTER, useExisting: AiProviderRegistry },
     { provide: REQUEST_CACHE, useExisting: RequestCacheAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -45,6 +51,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     MODEL_ROUTER,
     REQUEST_CACHE,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

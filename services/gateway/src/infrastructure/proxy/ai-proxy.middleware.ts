@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { hardenProxyRequest } from './proxy-hardening';
+import { getProxyTimeoutMs } from './proxy-timeout';
 
 export const AI_PROXY_PREFIXES = ['/api/v1/ai', '/api/v1/admin/ai'] as const;
 
@@ -13,6 +14,8 @@ export function createAiProxyMiddleware(aiServiceUrl: string): RequestHandler {
     target: aiServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,
     pathFilter: (pathname) => isAiProxyPath(pathname),
+    timeout: getProxyTimeoutMs(),
+    proxyTimeout: getProxyTimeoutMs(),
     on: {
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);

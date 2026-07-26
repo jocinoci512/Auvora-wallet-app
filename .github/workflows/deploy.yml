@@ -1,0 +1,89 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - development
+          - qa
+          - testing
+          - staging
+          - production
+          - disaster-recovery
+      strategy:
+        description: Deployment strategy
+        required: true
+        type: choice
+        default: rolling
+        options:
+          - rolling
+          - blue-green
+          - canary
+      image_tag:
+        description: Container image tag (git sha or semver)
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Pre-release artifact validation
+        run: bash infrastructure/scripts/validate-deployment-artifacts.sh
+      - name: Configure kubeconfig
+        run: |
+          if [ -z "${{ secrets.KUBE_CONFIG_DATA }}" ]; then
+            echo "KUBE_CONFIG_DATA not configured — recording dry-run only."
+            echo "DRY_RUN=true" >> "$GITHUB_ENV"
+          else
+            mkdir -p ~/.kube
+            echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > ~/.kube/config
+            echo "DRY_RUN=false" >> "$GITHUB_ENV"
+          fi
+      - name: Helm upgrade
+        run: |
+          VALUES="infrastructure/helm/auvora-wallet/values-${{ inputs.environment }}.yaml"
+          STRATEGY="${{ inputs.strategy }}"
+          ARGS=(upgrade --install auvora-${{ inputs.environment }} infrastructure/helm/auvora-wallet
+            -f "$VALUES"
+            --namespace "auvora-${{ inputs.environment }}"
+            --create-namespace
+            --set "global.imageTag=${{ inputs.image_tag }}"
+            --set "global.deploymentStrategy=${STRATEGY}"
+            --wait --timeout 15m)
+          if [ "$STRATEGY" = "blue-green" ]; then
+            ARGS+=(--set "global.blueGreen.slot=green" --set "global.blueGreen.activeSlot=blue")
+          fi
+          if [ "$STRATEGY" = "canary" ]; then
+            ARGS+=(--set "global.canary.replicas=1" --set "global.canary.imageTag=${{ inputs.image_tag }}")
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            helm "${ARGS[@]}" --dry-run
+          else
+            helm "${ARGS[@]}"
+          fi
+      - name: Smoke health
+        if: env.DRY_RUN == 'false'
+        run: bash infrastructure/scripts/smoke-health.sh "${{ inputs.environment }}"
+      - name: Rollback on failure
+        if: failure() && env.DRY_RUN == 'false'
+        run: |
+          helm rollback auvora-${{ inputs.environment }} --namespace auvora-${{ inputs.environment }} || true

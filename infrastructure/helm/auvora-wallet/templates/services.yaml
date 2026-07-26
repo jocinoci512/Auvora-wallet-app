@@ -1,0 +1,284 @@
+{{- $strategy := default "rolling" .Values.global.deploymentStrategy -}}
+{{- $activeSlot := default "blue" .Values.global.blueGreen.activeSlot -}}
+{{- $releaseSlot := default $activeSlot .Values.global.blueGreen.slot -}}
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}-sa
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ if eq $strategy "blue-green" }}{{ $name }}-{{ $releaseSlot }}{{ else }}{{ $name }}{{ end }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+    auvora.io/deployment-strategy: {{ $strategy | quote }}
+    {{- if eq $strategy "blue-green" }}
+    auvora.io/slot: {{ $releaseSlot | quote }}
+    {{- end }}
+spec:
+  replicas: {{ default 2 $svc.replicas }}
+  strategy:
+    {{- include "auvora-wallet.podStrategy" $ | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+      {{- if eq $strategy "blue-green" }}
+      auvora.io/slot: {{ $releaseSlot | quote }}
+      {{- else }}
+      auvora.io/track: stable
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 8 }}
+        app.kubernetes.io/component: api
+        auvora.io/deployment-strategy: {{ $strategy | quote }}
+        {{- if eq $strategy "blue-green" }}
+        auvora.io/slot: {{ $releaseSlot | quote }}
+        {{- else }}
+        auvora.io/track: stable
+        {{- end }}
+    spec:
+      serviceAccountName: {{ $name }}-sa
+      securityContext:
+        {{- toYaml $.Values.global.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "auvora-wallet.image" (dict "root" $ "image" $svc.image) }}
+          imagePullPolicy: {{ $.Values.global.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.global.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ $svc.port | quote }}
+            - name: SERVICE_NAME
+              value: {{ $name | quote }}
+            - name: AUVORA_DEPLOYMENT_STRATEGY
+              value: {{ $strategy | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "auvora-wallet.fullname" $ }}-config
+            - secretRef:
+                name: {{ include "auvora-wallet.secretName" $ }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml (mergeOverwrite (deepCopy $.Values.global.resources) (default dict $svc.resources)) | nindent 12 }}
+{{- if eq $strategy "canary" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}-canary
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+    auvora.io/deployment-strategy: canary
+    auvora.io/track: canary
+spec:
+  replicas: {{ default $.Values.global.canary.replicas (index (default dict $svc.canary) "replicas") | default 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+      auvora.io/track: canary
+  template:
+    metadata:
+      labels:
+        {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 8 }}
+        app.kubernetes.io/component: api
+        auvora.io/track: canary
+        auvora.io/deployment-strategy: canary
+    spec:
+      serviceAccountName: {{ $name }}-sa
+      securityContext:
+        {{- toYaml $.Values.global.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "auvora-wallet.image" (dict "root" $ "image" $svc.image "tag" (default $.Values.global.imageTag $.Values.global.canary.imageTag)) }}
+          imagePullPolicy: {{ $.Values.global.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.global.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ $svc.port | quote }}
+            - name: SERVICE_NAME
+              value: {{ $name | quote }}
+            - name: AUVORA_DEPLOYMENT_STRATEGY
+              value: canary
+            - name: AUVORA_CANARY
+              value: "true"
+          envFrom:
+            - configMapRef:
+                name: {{ include "auvora-wallet.fullname" $ }}-config
+            - secretRef:
+                name: {{ include "auvora-wallet.secretName" $ }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml (mergeOverwrite (deepCopy $.Values.global.resources) (default dict $svc.resources)) | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-canary
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+    auvora.io/track: canary
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 4 }}
+    auvora.io/track: canary
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+    auvora.io/deployment-strategy: {{ $strategy | quote }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "auvora-wallet.trafficSelectorLabels" (dict "root" $ "name" $name) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ if eq $strategy "blue-green" }}{{ $name }}-{{ $releaseSlot }}{{ else }}{{ $name }}{{ end }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ if eq $strategy "blue-green" }}{{ $name }}-{{ $releaseSlot }}{{ else }}{{ $name }}{{ end }}
+  minReplicas: {{ default $.Values.global.hpa.minReplicas (index (default dict $svc.hpa) "minReplicas") }}
+  maxReplicas: {{ default $.Values.global.hpa.maxReplicas (index (default dict $svc.hpa) "maxReplicas") }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ default $.Values.global.hpa.targetCPUUtilizationPercentage (index (default dict $svc.hpa) "targetCPUUtilizationPercentage") }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+spec:
+  minAvailable: {{ default $.Values.global.pdb.minAvailable (index (default dict $svc.pdb) "minAvailable") }}
+  selector:
+    matchLabels:
+      {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "api") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    {{- if $svc.networkPolicy.allowFromIngress }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ $svc.port }}
+    {{- end }}
+    {{- if $svc.networkPolicy.allowFromGateway }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/service: gateway
+      ports:
+        - protocol: TCP
+          port: {{ $svc.port }}
+    {{- end }}
+    {{- if and (not $svc.networkPolicy.allowFromGateway) (not $svc.networkPolicy.allowFromIngress) }}
+    []
+    {{- end }}
+{{- end }}
+{{- end }}

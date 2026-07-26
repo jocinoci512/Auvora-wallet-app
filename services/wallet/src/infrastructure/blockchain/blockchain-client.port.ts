@@ -13,10 +13,9 @@ export const BLOCKCHAIN_HTTP_CLIENT = Symbol('BLOCKCHAIN_HTTP_CLIENT');
  */
 export interface BlockchainHttpClientPort {
   /**
-   * Validate an address for a given chain via the blockchain service.
-   * Returns `true` when `BLOCKCHAIN_SERVICE_URL` is not configured, since
-   * chain address validation is deferred to the blockchain service and the
-   * absence of the env var means Wallet Core has no way to check it locally.
+   * Validate an address for a given chain via the blockchain service when configured.
+   * When `BLOCKCHAIN_SERVICE_URL` is unset, applies local format validation and
+   * rejects unknown chains (fail-closed).
    */
   validateAddress(chain: string, address: string): Promise<boolean>;
 }

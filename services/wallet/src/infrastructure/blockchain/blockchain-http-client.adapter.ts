@@ -7,6 +7,36 @@ interface ValidateAddressResponse {
   valid?: boolean;
 }
 
+/** Local format checks used when blockchain service URL is not configured (fail-closed for unknown chains). */
+export function localFormatValidateAddress(chain: string, address: string): boolean {
+  if (!address || typeof address !== 'string') return false;
+  const c = chain.trim().toUpperCase().replace(/[-\s]/g, '_');
+  switch (c) {
+    case 'BITCOIN':
+    case 'BTC':
+      return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(address);
+    case 'ETHEREUM':
+    case 'ETH':
+    case 'POLYGON':
+    case 'MATIC':
+    case 'BNB_SMART_CHAIN':
+    case 'BSC':
+    case 'BNB':
+      return /^0x[a-fA-F0-9]{40}$/.test(address);
+    case 'SOLANA':
+    case 'SOL':
+      return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+    case 'TRON':
+    case 'TRX':
+      return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address);
+    case 'LITECOIN':
+    case 'LTC':
+      return /^(ltc1|[LM3])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(address);
+    default:
+      return false;
+  }
+}
+
 /**
  * Calls the blockchain service's `POST /api/v1/blockchain/addresses/validate`
  * endpoint when `BLOCKCHAIN_SERVICE_URL` is configured. Only `validateAddress`
@@ -24,7 +54,13 @@ export class BlockchainHttpClientAdapter implements BlockchainHttpClientPort {
 
   async validateAddress(chain: string, address: string): Promise<boolean> {
     if (!this.baseUrl) {
-      return true;
+      const ok = localFormatValidateAddress(chain, address);
+      if (!ok) {
+        this.logger.debug(
+          `Local format validation rejected address for chain=${chain} (blockchain URL unset)`,
+        );
+      }
+      return ok;
     }
 
     try {
@@ -34,6 +70,7 @@ export class BlockchainHttpClientAdapter implements BlockchainHttpClientPort {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chain, address }),
+          signal: AbortSignal.timeout(5_000),
         },
       );
       if (!response.ok) {

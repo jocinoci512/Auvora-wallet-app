@@ -20,6 +20,10 @@ import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
 import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
 import {
   AddressRiskSimulatorProvider,
@@ -95,6 +99,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     NotificationsPublisherAdapter,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     ...providerBindings,
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
@@ -105,6 +110,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     { provide: NOTIFICATIONS_PUBLISHER, useExisting: NotificationsPublisherAdapter },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
+    { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
   ],
   exports: [
     REDIS_PORT,
@@ -116,6 +122,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     NOTIFICATIONS_PUBLISHER,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     IDENTITY_VERIFICATION_PROVIDER,
     DOCUMENT_VERIFICATION_PROVIDER,
     SANCTIONS_PROVIDER,

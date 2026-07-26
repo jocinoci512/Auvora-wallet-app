@@ -1,0 +1,138 @@
+{{- $strategy := default "rolling" .Values.global.deploymentStrategy -}}
+{{- $activeSlot := default "blue" .Values.global.blueGreen.activeSlot -}}
+{{- $releaseSlot := default $activeSlot .Values.global.blueGreen.slot -}}
+{{- range $name, $app := .Values.apps }}
+{{- if $app.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}-sa
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "app") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ if eq $strategy "blue-green" }}{{ $name }}-{{ $releaseSlot }}{{ else }}{{ $name }}{{ end }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "app") | nindent 4 }}
+    auvora.io/deployment-strategy: {{ $strategy | quote }}
+spec:
+  replicas: {{ default 2 $app.replicas }}
+  strategy:
+    {{- include "auvora-wallet.podStrategy" $ | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+      {{- if eq $strategy "blue-green" }}
+      auvora.io/slot: {{ $releaseSlot | quote }}
+      {{- else }}
+      auvora.io/track: stable
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 8 }}
+        app.kubernetes.io/component: app
+        {{- if eq $strategy "blue-green" }}
+        auvora.io/slot: {{ $releaseSlot | quote }}
+        {{- else }}
+        auvora.io/track: stable
+        {{- end }}
+    spec:
+      serviceAccountName: {{ $name }}-sa
+      securityContext:
+        {{- toYaml $.Values.global.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "auvora-wallet.image" (dict "root" $ "image" $app.image) }}
+          imagePullPolicy: {{ $.Values.global.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.global.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ $app.port }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ $app.port | quote }}
+            - name: AUVORA_DEPLOYMENT_STRATEGY
+              value: {{ $strategy | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "auvora-wallet.fullname" $ }}-config
+            - secretRef:
+                name: {{ include "auvora-wallet.secretName" $ }}
+          startupProbe:
+            httpGet:
+              path: {{ default "/api/health" $app.healthPath }}
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: {{ default "/api/health" $app.healthPath }}
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: {{ default "/api/health" $app.readyPath }}
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml $.Values.global.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+  labels:
+    {{- include "auvora-wallet.serviceLabels" (dict "root" $ "name" $name "component" "app") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "auvora-wallet.trafficSelectorLabels" (dict "root" $ "name" $name) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $app.port }}
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ if eq $strategy "blue-green" }}{{ $name }}-{{ $releaseSlot }}{{ else }}{{ $name }}{{ end }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ if eq $strategy "blue-green" }}{{ $name }}-{{ $releaseSlot }}{{ else }}{{ $name }}{{ end }}
+  minReplicas: {{ $.Values.global.hpa.minReplicas }}
+  maxReplicas: {{ $.Values.global.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $.Values.global.hpa.targetCPUUtilizationPercentage }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "auvora-wallet.namespace" $ }}
+spec:
+  minAvailable: {{ $.Values.global.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "auvora-wallet.serviceSelectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+{{- end }}
+{{- end }}

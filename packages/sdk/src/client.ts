@@ -13,6 +13,8 @@ export interface AuvoraClientOptions {
   fetchImpl?: typeof fetch;
   defaultHeaders?: Record<string, string>;
   credentials?: 'include' | 'omit' | 'same-origin';
+  /** Default request timeout in ms (AbortSignal). Set 0 to disable. Default 30_000. */
+  timeoutMs?: number;
 }
 
 export interface RegisterInput {
@@ -1330,6 +1332,186 @@ export interface RunAnalyticsAggregationInput {
   bucketStart?: string;
 }
 
+export interface PlatformStatus {
+  overall: string;
+  generatedAt: string;
+  services: Array<{ serviceName: string; status: string }>;
+  maintenanceNotices: MaintenanceNotice[];
+  incidents: PublicIncident[];
+}
+
+export interface MaintenanceNotice {
+  id: string;
+  title: string;
+  message: string;
+  severity: string;
+  startsAt: string;
+  endsAt?: string | null;
+}
+
+export interface PublicIncident {
+  code: string;
+  title: string;
+  status: string;
+  severity: string;
+  startedAt: string;
+}
+
+export interface OpsAlert {
+  id: string;
+  code: string;
+  title: string;
+  message: string;
+  severity: string;
+  status: string;
+  serviceName?: string | null;
+  firedAt: string;
+}
+
+export interface OpsIncident {
+  id: string;
+  code: string;
+  title: string;
+  status: string;
+  severity: string;
+  serviceName?: string | null;
+  startedAt: string;
+}
+
+export interface OpsSlo {
+  id: string;
+  code: string;
+  name: string;
+  serviceName: string;
+  targetPercent: number;
+  indicatorType: string;
+}
+
+export interface OpsCapacityOverview {
+  latest: unknown[];
+  samples: unknown[];
+  forecast: unknown;
+}
+
+export interface OpsHealthOverview {
+  services: Array<{ serviceName: string; status: string }>;
+  recent: unknown[];
+}
+
+export interface OpsDependencyGraph {
+  nodes: Array<{ id: string }>;
+  edges: unknown[];
+}
+
+export interface OpsTrace {
+  id: string;
+  traceId: string;
+  rootService?: string | null;
+  durationMs?: number | null;
+  startedAt: string;
+}
+
+export interface OpsLogEntry {
+  id: string;
+  serviceName: string;
+  level: string;
+  message: string;
+  occurredAt: string;
+}
+
+export interface OpsDashboardOverview {
+  generatedAt: string;
+  openAlertCount: number;
+  openIncidentCount: number;
+  unhealthyServiceCount: number;
+  openAlerts: OpsAlert[];
+  openIncidents: OpsIncident[];
+  services: Array<{ serviceName: string; status: string }>;
+  maintenanceNotices: MaintenanceNotice[];
+  slos: OpsSlo[];
+}
+
+export interface InfraEnvironment {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  config: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InfraDeployment {
+  id: string;
+  environmentCode: string;
+  version: string;
+  strategy: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  actorUserId: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InfraBackupJob {
+  id: string;
+  environmentCode: string;
+  componentKind: string;
+  componentName: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  location: string | null;
+  checksum: string | null;
+  verifiedAt: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InfraRecoveryDrill {
+  id: string;
+  environmentCode: string;
+  name: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  rtoMinutes: number | null;
+  rpoMinutes: number | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeatureFlag {
+  id: string;
+  code: string;
+  description: string | null;
+  enabled: boolean;
+  environmentCode: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InfraDashboardOverview {
+  generatedAt: string;
+  activeEnvironmentCount: number;
+  enabledFeatureFlagCount: number;
+  environments: InfraEnvironment[];
+  recentDeployments: InfraDeployment[];
+  recentBackups: InfraBackupJob[];
+  activeDrills: InfraRecoveryDrill[];
+  featureFlags: FeatureFlag[];
+  deploymentCounts: Record<string, number>;
+  backupCounts: Record<string, number>;
+}
+
 export interface BroadcastNotificationResult {
   broadcastId: string;
   recipientCount: number;
@@ -1353,6 +1535,7 @@ export class AuvoraClient {
   private readonly fetchImpl: typeof fetch;
   private readonly defaultHeaders: Record<string, string>;
   private readonly credentials: 'include' | 'omit' | 'same-origin';
+  private readonly timeoutMs: number;
   private accessToken: string | null = null;
 
   constructor(options: AuvoraClientOptions) {
@@ -1360,6 +1543,12 @@ export class AuvoraClient {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.defaultHeaders = options.defaultHeaders ?? {};
     this.credentials = options.credentials ?? 'include';
+    this.timeoutMs = options.timeoutMs === undefined ? 30_000 : options.timeoutMs;
+  }
+
+  private requestSignal(): AbortSignal | undefined {
+    if (!this.timeoutMs || this.timeoutMs <= 0) return undefined;
+    return AbortSignal.timeout(this.timeoutMs);
   }
 
   setAccessToken(token: string | null): void {
@@ -1373,6 +1562,7 @@ export class AuvoraClient {
         Accept: 'application/json',
         ...this.defaultHeaders,
       },
+      signal: this.requestSignal(),
     });
 
     const body: unknown = await response.json().catch(() => undefined);
@@ -2033,10 +2223,10 @@ export class AuvoraClient {
   }
 
   async searchAiKnowledge(query: string): Promise<{ items: AiKnowledgeSearchResult[]; total: number }> {
-    const params = new URLSearchParams({ q: query });
     return this.request<{ items: AiKnowledgeSearchResult[]; total: number }>(
-      'GET',
-      `/api/v1/ai/knowledge/search?${params}`,
+      'POST',
+      '/api/v1/ai/knowledge/search',
+      { query },
     );
   }
 
@@ -2098,7 +2288,7 @@ export class AuvoraClient {
   }
 
   async adminListAiKnowledgeSources(): Promise<AiKnowledgeSource[]> {
-    return this.request<AiKnowledgeSource[]>('GET', '/api/v1/admin/ai/knowledge');
+    return this.request<AiKnowledgeSource[]>('GET', '/api/v1/admin/ai/knowledge/sources');
   }
 
   async adminListAiConversations(): Promise<{ items: AiConversation[]; total: number }> {
@@ -2134,7 +2324,7 @@ export class AuvoraClient {
   }
 
   async adminAnalyticsInsights(): Promise<AnalyticsInsightsSummary> {
-    return this.request<AnalyticsInsightsSummary>('GET', '/api/v1/admin/analytics/insights');
+    return this.request<AnalyticsInsightsSummary>('GET', '/api/v1/analytics/insights');
   }
 
   async adminListAnalyticsMetrics(): Promise<AnalyticsMetricDefinition[]> {
@@ -2142,7 +2332,12 @@ export class AuvoraClient {
   }
 
   async adminGetAnalyticsMetric(code: string): Promise<AnalyticsMetricDetail> {
-    return this.request<AnalyticsMetricDetail>('GET', `/api/v1/admin/analytics/metrics/${code}`);
+    const metrics = await this.adminListAnalyticsMetrics();
+    const match = metrics.find((m) => (m as { code?: string }).code === code);
+    if (!match) {
+      throw new AuvoraClientError(`Analytics metric not found: ${code}`, 404, null);
+    }
+    return match as unknown as AnalyticsMetricDetail;
   }
 
   async adminListAnalyticsForecasts(): Promise<AnalyticsForecast[]> {
@@ -2150,18 +2345,21 @@ export class AuvoraClient {
   }
 
   async adminGetAnalyticsForecast(code: string): Promise<AnalyticsForecast> {
-    return this.request<AnalyticsForecast>('GET', `/api/v1/admin/analytics/forecasts/${code}`);
+    const forecasts = await this.adminListAnalyticsForecasts();
+    const match = forecasts.find((f) => (f as { code?: string }).code === code);
+    if (!match) {
+      throw new AuvoraClientError(`Analytics forecast not found: ${code}`, 404, null);
+    }
+    return match;
   }
 
   async adminListAnalyticsAggregationJobs(): Promise<{ items: AnalyticsAggregationJob[]; total: number }> {
-    return this.request<{ items: AnalyticsAggregationJob[]; total: number }>(
-      'GET',
-      '/api/v1/admin/analytics/aggregation/jobs',
-    );
+    // Nest exposes trigger-only aggregate/run; no job list endpoint yet.
+    return { items: [], total: 0 };
   }
 
   async adminRunAnalyticsAggregation(input: RunAnalyticsAggregationInput = {}): Promise<AnalyticsAggregationJob> {
-    return this.request<AnalyticsAggregationJob>('POST', '/api/v1/admin/analytics/aggregation/run', input);
+    return this.request<AnalyticsAggregationJob>('POST', '/api/v1/admin/analytics/aggregate/run', input);
   }
 
   async adminListAnalyticsDashboards(): Promise<AnalyticsDashboard[]> {
@@ -2174,6 +2372,146 @@ export class AuvoraClient {
 
   async adminListAnalyticsReports(): Promise<{ items: AnalyticsReport[]; total: number }> {
     return this.request<{ items: AnalyticsReport[]; total: number }>('GET', '/api/v1/admin/analytics/reports');
+  }
+
+  async getPlatformStatus(): Promise<PlatformStatus> {
+    return this.request<PlatformStatus>('GET', '/api/v1/observability/status');
+  }
+
+  async listMaintenanceNotices(): Promise<MaintenanceNotice[]> {
+    return this.request<MaintenanceNotice[]>('GET', '/api/v1/observability/maintenance');
+  }
+
+  async listPublicIncidents(): Promise<{ items: PublicIncident[]; total: number }> {
+    return this.request<{ items: PublicIncident[]; total: number }>('GET', '/api/v1/observability/incidents');
+  }
+
+  async adminObservabilityDashboard(): Promise<OpsDashboardOverview> {
+    return this.request<OpsDashboardOverview>('GET', '/api/v1/admin/observability/dashboard');
+  }
+
+  async adminListObservabilityAlerts(): Promise<{ items: OpsAlert[]; total: number }> {
+    return this.request<{ items: OpsAlert[]; total: number }>('GET', '/api/v1/admin/observability/alerts');
+  }
+
+  async adminListObservabilityIncidents(): Promise<{ items: OpsIncident[]; total: number }> {
+    return this.request<{ items: OpsIncident[]; total: number }>('GET', '/api/v1/admin/observability/incidents');
+  }
+
+  async adminListObservabilitySlos(): Promise<OpsSlo[]> {
+    return this.request<OpsSlo[]>('GET', '/api/v1/admin/observability/slos');
+  }
+
+  async adminObservabilityCapacity(): Promise<OpsCapacityOverview> {
+    return this.request<OpsCapacityOverview>('GET', '/api/v1/admin/observability/capacity');
+  }
+
+  async adminObservabilityHealth(): Promise<OpsHealthOverview> {
+    return this.request<OpsHealthOverview>('GET', '/api/v1/admin/observability/health');
+  }
+
+  async adminObservabilityDependencies(): Promise<OpsDependencyGraph> {
+    return this.request<OpsDependencyGraph>('GET', '/api/v1/admin/observability/dependencies');
+  }
+
+  async adminSearchObservabilityTraces(params?: {
+    serviceName?: string;
+    correlationId?: string;
+  }): Promise<{ items: OpsTrace[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params?.serviceName) query.set('serviceName', params.serviceName);
+    if (params?.correlationId) query.set('correlationId', params.correlationId);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request<{ items: OpsTrace[]; total: number }>(
+      'GET',
+      `/api/v1/admin/observability/traces${suffix}`,
+    );
+  }
+
+  async adminSearchObservabilityLogs(params?: {
+    serviceName?: string;
+    level?: string;
+    correlationId?: string;
+  }): Promise<{ items: OpsLogEntry[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params?.serviceName) query.set('serviceName', params.serviceName);
+    if (params?.level) query.set('level', params.level);
+    if (params?.correlationId) query.set('correlationId', params.correlationId);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request<{ items: OpsLogEntry[]; total: number }>(
+      'GET',
+      `/api/v1/admin/observability/logs${suffix}`,
+    );
+  }
+
+  async adminInfrastructureDashboard(): Promise<InfraDashboardOverview> {
+    return this.request<InfraDashboardOverview>('GET', '/api/v1/admin/infrastructure/dashboard');
+  }
+
+  async adminInfrastructureClusterHealth(): Promise<{
+    generatedAt: string;
+    status: string;
+    activeEnvironmentCount: number;
+    recentFailedDeployments: number;
+    recentVerifiedBackups: number;
+    activeRecoveryDrills: number;
+    environments: Array<{ code: string; name: string; isActive: boolean }>;
+    notes: string;
+  }> {
+    return this.request('GET', '/api/v1/admin/infrastructure/cluster-health');
+  }
+
+  async adminListInfraEnvironments(): Promise<InfraEnvironment[]> {
+    return this.request<InfraEnvironment[]>('GET', '/api/v1/admin/infrastructure/environments');
+  }
+
+  async adminListInfraDeployments(environmentCode?: string): Promise<{
+    items: InfraDeployment[];
+    total: number;
+  }> {
+    const suffix = environmentCode
+      ? `?${new URLSearchParams({ environmentCode }).toString()}`
+      : '';
+    return this.request<{ items: InfraDeployment[]; total: number }>(
+      'GET',
+      `/api/v1/admin/infrastructure/deployments${suffix}`,
+    );
+  }
+
+  async adminListInfraBackups(environmentCode?: string): Promise<{
+    items: InfraBackupJob[];
+    total: number;
+  }> {
+    const suffix = environmentCode
+      ? `?${new URLSearchParams({ environmentCode }).toString()}`
+      : '';
+    return this.request<{ items: InfraBackupJob[]; total: number }>(
+      'GET',
+      `/api/v1/admin/infrastructure/backups${suffix}`,
+    );
+  }
+
+  async adminListInfraRecovery(environmentCode?: string): Promise<{
+    items: InfraRecoveryDrill[];
+    total: number;
+  }> {
+    const suffix = environmentCode
+      ? `?${new URLSearchParams({ environmentCode }).toString()}`
+      : '';
+    return this.request<{ items: InfraRecoveryDrill[]; total: number }>(
+      'GET',
+      `/api/v1/admin/infrastructure/recovery${suffix}`,
+    );
+  }
+
+  async adminListFeatureFlags(environmentCode?: string): Promise<FeatureFlag[]> {
+    const suffix = environmentCode
+      ? `?${new URLSearchParams({ environmentCode }).toString()}`
+      : '';
+    return this.request<FeatureFlag[]>(
+      'GET',
+      `/api/v1/admin/infrastructure/feature-flags${suffix}`,
+    );
   }
 
   private async request<T>(
@@ -2199,6 +2537,7 @@ export class AuvoraClient {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       credentials: this.credentials,
+      signal: this.requestSignal(),
     });
 
     const payload = (await response.json().catch(() => undefined)) as ApiResponse<T> | undefined;

@@ -14,9 +14,12 @@ import { createCustodyProxyMiddleware } from './infrastructure/proxy/custody-pro
 import { createNotificationsProxyMiddleware } from './infrastructure/proxy/notifications-proxy.middleware';
 import { createAnalyticsProxyMiddleware } from './infrastructure/proxy/analytics-proxy.middleware';
 import { createAiProxyMiddleware } from './infrastructure/proxy/ai-proxy.middleware';
+import { createObservabilityProxyMiddleware } from './infrastructure/proxy/observability-proxy.middleware';
 import { createSecurityHeadersMiddleware } from './infrastructure/security/security-headers.middleware';
 import { createInternalRouteDenyMiddleware } from './infrastructure/security/internal-route-deny.middleware';
+import { createGatewayRateLimitMiddleware } from './infrastructure/security/rate-limit.middleware';
 import { shutdownOpenTelemetry, startOpenTelemetry } from './infrastructure/observability/otel';
+import { applyDatabasePoolEnv } from '@auvora/database';
 import { buildAuthProxyOpenApiPaths } from './presentation/swagger/auth-proxy.openapi';
 import { buildWalletProxyOpenApiPaths } from './presentation/swagger/wallet-proxy.openapi';
 import { buildBlockchainProxyOpenApiPaths } from './presentation/swagger/blockchain-proxy.openapi';
@@ -26,8 +29,10 @@ import { buildCustodyProxyOpenApiPaths } from './presentation/swagger/custody-pr
 import { buildNotificationsProxyOpenApiPaths } from './presentation/swagger/notifications-proxy.openapi';
 import { buildAnalyticsProxyOpenApiPaths } from './presentation/swagger/analytics-proxy.openapi';
 import { buildAiProxyOpenApiPaths } from './presentation/swagger/ai-proxy.openapi';
+import { buildObservabilityProxyOpenApiPaths } from './presentation/swagger/observability-proxy.openapi';
 
 async function bootstrap(): Promise<void> {
+  applyDatabasePoolEnv(process.env, { connectionLimit: 10, poolTimeout: 10 });
   const env = loadEnv();
   await startOpenTelemetry(env);
   const app = await NestFactory.create(AppModule, {
@@ -41,10 +46,18 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  for (const middleware of createSecurityHeadersMiddleware()) {
+  for (const middleware of createSecurityHeadersMiddleware({
+    enableHsts: env.NODE_ENV === 'production',
+  })) {
     app.use(middleware);
   }
   app.use(createInternalRouteDenyMiddleware());
+  app.use(
+    createGatewayRateLimitMiddleware({
+      limit: env.GATEWAY_RATE_LIMIT_MAX,
+      windowSeconds: env.GATEWAY_RATE_LIMIT_WINDOW_SECONDS,
+    }),
+  );
   app.use(cookieParser());
   app.use(createAuthProxyMiddleware(env.AUTH_SERVICE_URL));
   app.use(createWalletProxyMiddleware(env.WALLET_SERVICE_URL));
@@ -55,6 +68,7 @@ async function bootstrap(): Promise<void> {
   app.use(createNotificationsProxyMiddleware(env.NOTIFICATIONS_SERVICE_URL));
   app.use(createAnalyticsProxyMiddleware(env.ANALYTICS_SERVICE_URL));
   app.use(createAiProxyMiddleware(env.AI_SERVICE_URL));
+  app.use(createObservabilityProxyMiddleware(env.OBSERVABILITY_SERVICE_URL));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Auvora Gateway')
@@ -68,9 +82,10 @@ async function bootstrap(): Promise<void> {
         'routes under `/api/v1/custody` and `/api/v1/admin/custody` are proxied to the custody service; ' +
         'routes under `/api/v1/notifications` and `/api/v1/admin/notifications` are proxied to the notifications service; ' +
         'routes under `/api/v1/analytics` and `/api/v1/admin/analytics` are proxied to the analytics service; ' +
-        'routes under `/api/v1/ai` and `/api/v1/admin/ai` are proxied to the AI service. ' +
+        'routes under `/api/v1/ai` and `/api/v1/admin/ai` are proxied to the AI service; ' +
+        'routes under `/api/v1/observability` and `/api/v1/admin/observability` are proxied to the observability service. ' +
         'See tagged proxy endpoints below. Each downstream service owns request validation and business logic. ' +
-        'For full OpenAPI documents, refer to the auth, wallet, blockchain, payments, compliance, custody, notifications, analytics, and AI services directly.',
+        'For full OpenAPI documents, refer to the auth, wallet, blockchain, payments, compliance, custody, notifications, analytics, AI, and observability services directly.',
     )
     .setVersion(env.SERVICE_VERSION)
     .addServer(`http://localhost:${env.PORT}`, 'Local gateway')
@@ -94,6 +109,8 @@ async function bootstrap(): Promise<void> {
     .addTag('analytics-admin-proxy', 'Analytics administration — proxied to analytics service')
     .addTag('ai-proxy', 'AI platform — proxied to AI service')
     .addTag('ai-admin-proxy', 'AI platform administration — proxied to AI service')
+    .addTag('observability-proxy', 'Observability — proxied to observability service')
+    .addTag('observability-admin-proxy', 'Observability administration — proxied to observability service')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   document.paths = {
@@ -106,6 +123,7 @@ async function bootstrap(): Promise<void> {
     ...buildNotificationsProxyOpenApiPaths(),
     ...buildAnalyticsProxyOpenApiPaths(),
     ...buildAiProxyOpenApiPaths(),
+    ...buildObservabilityProxyOpenApiPaths(),
     ...document.paths,
   };
   SwaggerModule.setup('api/docs', app, document);

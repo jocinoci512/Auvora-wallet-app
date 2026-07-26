@@ -21,6 +21,10 @@ import { ConsoleMailAdapter } from './mail/console-mail.adapter';
 import { SmtpMailAdapter } from './mail/smtp-mail.adapter';
 import { NotificationsMailAdapter } from './mail/notifications-mail.adapter';
 import { AnalyticsPublisherAdapter, ANALYTICS_PUBLISHER } from './analytics/analytics-publisher.adapter';
+import {
+  OBSERVABILITY_PUBLISHER,
+  ObservabilityPublisherAdapter,
+} from './observability/observability-publisher.adapter';
 import { PrismaAuditRepository } from './persistence/prisma-audit.repository';
 import { PrismaDeviceRepository } from './persistence/prisma-device.repository';
 import { PrismaLoginHistoryRepository } from './persistence/prisma-login-history.repository';
@@ -118,9 +122,14 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     ConsoleMailAdapter,
     NotificationsMailAdapter,
     AnalyticsPublisherAdapter,
+    ObservabilityPublisherAdapter,
     {
       provide: ANALYTICS_PUBLISHER,
       useExisting: AnalyticsPublisherAdapter,
+    },
+    {
+      provide: OBSERVABILITY_PUBLISHER,
+      useExisting: ObservabilityPublisherAdapter,
     },
   ],
   exports: [
@@ -138,6 +147,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     AUDIT_REPOSITORY,
     MAIL_PORT,
     ANALYTICS_PUBLISHER,
+    OBSERVABILITY_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

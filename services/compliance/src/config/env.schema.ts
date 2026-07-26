@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -16,6 +16,7 @@ export const envSchema = z.object({
   /** Optional. When set with INTERNAL_API_KEY, AiPublisherAdapter forwards domain events to the AI platform. */
   AI_SERVICE_URL: z.string().url().optional(),
   ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
   COMPLIANCE_FIELD_ENCRYPTION_KEY: z.string().min(32),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),

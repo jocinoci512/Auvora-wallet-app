@@ -1,4 +1,4 @@
-import { redactSensitive, timingSafeEqualString } from './index';
+import { FixedWindowRateLimiter, redactSensitive, timingSafeEqualString } from './index';
 
 describe('security helpers', () => {
   it('compares equal strings', () => {
@@ -11,5 +11,12 @@ describe('security helpers', () => {
     expect(redactSensitive('supersecretvalue')).toMatch(/^supe/);
     expect(redactSensitive('supersecretvalue')).toMatch(/alue$/);
     expect(redactSensitive('ab')).toBe('**');
+  });
+
+  it('rate-limits after window capacity', () => {
+    const limiter = new FixedWindowRateLimiter(2, 60_000);
+    expect(limiter.consume('ip:1').allowed).toBe(true);
+    expect(limiter.consume('ip:1').allowed).toBe(true);
+    expect(limiter.consume('ip:1').allowed).toBe(false);
   });
 });

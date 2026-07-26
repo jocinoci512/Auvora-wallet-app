@@ -11,6 +11,7 @@ const links = [
   { href: '/notifications', label: 'Notifications' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/ai', label: 'AI' },
+  { href: '/status', label: 'Status' },
 ];
 
 export function Nav(): ReactElement {

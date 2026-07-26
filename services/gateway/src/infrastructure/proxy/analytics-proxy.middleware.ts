@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { hardenProxyRequest } from './proxy-hardening';
+import { getProxyTimeoutMs } from './proxy-timeout';
 
 export const ANALYTICS_PROXY_PREFIXES = ['/api/v1/analytics', '/api/v1/admin/analytics'] as const;
 
@@ -15,6 +16,8 @@ export function createAnalyticsProxyMiddleware(analyticsServiceUrl: string): Req
     target: analyticsServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,
     pathFilter: (pathname) => isAnalyticsProxyPath(pathname),
+    timeout: getProxyTimeoutMs(),
+    proxyTimeout: getProxyTimeoutMs(),
     on: {
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);

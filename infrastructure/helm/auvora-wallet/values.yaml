@@ -1,0 +1,230 @@
+global:
+  namespace: auvora-wallet
+  imageRegistry: auvora
+  imageTag: latest
+  environment: production
+  pullPolicy: IfNotPresent
+  # rolling | blue-green | canary
+  deploymentStrategy: rolling
+  blueGreen:
+    # Pods created by this release
+    slot: blue
+    # Service traffic target (flip to cut over without rebuilding)
+    activeSlot: blue
+  canary:
+    replicas: 1
+    imageTag: ""
+    weightPercent: 10
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  hpa:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+  pdb:
+    minAvailable: 1
+
+config:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  OTEL_ENABLED: "false"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+
+# NestJS microservices (@auvora/{name}-service; gateway uses gateway-service)
+services:
+  gateway:
+    enabled: true
+    image: gateway-service
+    port: 4000
+    replicas: 2
+    exposeViaIngress: true
+    ingressPath: /api
+    networkPolicy:
+      allowFromGateway: false
+      allowFromIngress: true
+    resources: {}
+    hpa: {}
+  auth:
+    enabled: true
+    image: auth-service
+    port: 4001
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  wallet:
+    enabled: true
+    image: wallet-service
+    port: 3002
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  blockchain:
+    enabled: true
+    image: blockchain-service
+    port: 3003
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  payments:
+    enabled: true
+    image: payments-service
+    port: 3004
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  compliance:
+    enabled: true
+    image: compliance-service
+    port: 3005
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  notifications:
+    enabled: true
+    image: notifications-service
+    port: 3006
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  analytics:
+    enabled: true
+    image: analytics-service
+    port: 3007
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  ai:
+    enabled: true
+    image: ai-service
+    port: 3008
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  custody:
+    enabled: true
+    image: custody-service
+    port: 3009
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  observability:
+    enabled: true
+    image: observability-service
+    port: 3010
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+
+# Frontend apps
+apps:
+  web:
+    enabled: true
+    image: web
+    port: 3000
+    replicas: 2
+    exposeViaIngress: true
+    ingressPath: /
+    healthPath: /api/health
+    readyPath: /api/health
+  admin:
+    enabled: true
+    image: admin
+    port: 3001
+    replicas: 2
+    exposeViaIngress: true
+    ingressPath: /admin
+    healthPath: /api/health
+    readyPath: /api/health
+
+postgres:
+  enabled: false
+  image: postgres:16-alpine
+  storageClass: ""
+  storageSize: 10Gi
+  database: auvora_wallet
+  username: auvora
+
+redis:
+  enabled: false
+  image: redis:7-alpine
+  replicas: 1
+
+backup:
+  cronJob:
+    enabled: false
+    schedule: "0 2 * * *"
+    image: postgres:16-alpine
+
+ingress:
+  enabled: true
+  className: nginx
+  host: wallet.example.com
+  tls:
+    enabled: true
+    secretName: auvora-wallet-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+
+# Secrets are externally managed in non-local environments.
+# Never commit real credentials. Local chart Secret is opt-in via secrets.create.
+secrets:
+  create: false
+  existingSecretName: ""
+  data: {}
+  externalSecret:
+    enabled: true
+    refreshInterval: 1h
+    remoteKey: auvora/production/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore
+    keys:
+      - DATABASE_URL
+      - REDIS_URL
+      - POSTGRES_PASSWORD
+      - JWT_ACCESS_SECRET
+      - JWT_REFRESH_SECRET
+      - INTERNAL_API_KEY

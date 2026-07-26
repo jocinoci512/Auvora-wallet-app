@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -26,6 +26,7 @@ export const envSchema = z.object({
   AI_SERVICE_URL: z.string().url().optional(),
   /** Optional. When set with INTERNAL_API_KEY, AnalyticsPublisherAdapter forwards domain events to the analytics platform. */
   ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
   INTERNAL_API_KEY: z.string().min(32),
   OTEL_ENABLED: z
     .enum(['true', 'false'])

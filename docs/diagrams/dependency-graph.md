@@ -1,6 +1,6 @@
 # Workspace Dependency Graph
 
-Generated during Phase 6 architecture integrity verification (2026-07-25). Edges are `workspace:*` package dependencies only — runtime HTTP calls between services are shown separately.
+Updated during code-quality audit (2026-07-26). Edges are `workspace:*` package dependencies only — **runtime HTTP calls between services** are documented in [`runtime-service-dependency-graph.md`](./runtime-service-dependency-graph.md).
 
 ## Package / service dependency (workspace)
 
@@ -23,6 +23,7 @@ flowchart TB
     notifications["@auvora/notifications-service"]
     analytics["@auvora/analytics-service"]
     ai["@auvora/ai-service"]
+    observability["@auvora/observability-service"]
   end
 
   subgraph packages [Shared packages]
@@ -33,6 +34,9 @@ flowchart TB
     database["@auvora/database"]
     schema["@auvora/database-schema"]
     config["@auvora/config"]
+    resilience["@auvora/resilience"]
+    cache["@auvora/cache"]
+    secrets["@auvora/secrets"]
   end
 
   web --> sdk
@@ -41,76 +45,57 @@ flowchart TB
   admin --> sdk
   admin --> types
   admin --> ui
-  docsApp --> sdk
   docsApp --> types
   docsApp --> ui
 
+  gateway --> types
+  gateway --> security
+  gateway --> database
+  gateway --> resilience
+  auth --> types
+  auth --> security
+  auth --> database
+  wallet --> types
+  wallet --> security
+  wallet --> database
+  blockchain --> types
+  blockchain --> security
+  blockchain --> database
+  payments --> types
+  payments --> security
+  payments --> database
+  compliance --> types
+  compliance --> security
+  compliance --> database
+  custody --> types
+  custody --> security
+  custody --> database
+  notifications --> types
+  notifications --> security
+  notifications --> database
+  analytics --> types
+  analytics --> security
+  analytics --> database
+  ai --> types
+  ai --> security
+  ai --> database
+  observability --> types
+  observability --> security
+  observability --> database
+
   sdk --> types
+  ui --> types
   security --> types
   database --> schema
-
-  gateway --> database
-  gateway --> security
-  gateway --> types
-  auth --> database
-  auth --> security
-  auth --> types
-  wallet --> database
-  wallet --> security
-  wallet --> types
-  blockchain --> database
-  blockchain --> security
-  blockchain --> types
-  payments --> database
-  payments --> security
-  payments --> types
-  compliance --> database
-  compliance --> security
-  compliance --> types
-  custody --> database
-  custody --> security
-  custody --> types
-  notifications --> database
-  notifications --> security
-  notifications --> types
-  analytics --> database
-  analytics --> security
-  analytics --> types
-  ai --> database
-  ai --> security
-  ai --> types
-
-  types -.-> config
-  ui -.-> config
-  sdk -.-> config
-  security -.-> config
-  database -.-> config
+  database --> types
+  secrets --> types
+  cache --> types
+  resilience --> types
+  config --> types
 ```
 
-**Boundary rules enforced:** no service→service package imports; apps never import `@auvora/database` or other services; packages never import apps/services.
+## Notes
 
-## Runtime HTTP integration (Phase 6)
-
-```mermaid
-sequenceDiagram
-  participant Web as Web/Admin
-  participant GW as Gateway :4000
-  participant Comp as Compliance :3005
-  participant Pay as Payments :3004
-  participant DB as Postgres
-
-  Web->>GW: /api/v1/compliance/* (JWT)
-  GW->>Comp: proxy
-  Comp->>DB: Prisma R/W
-
-  Web->>GW: /api/v1/admin/compliance/* (JWT+RBAC)
-  GW->>Comp: proxy
-
-  Pay->>Comp: POST /api/v1/internal/compliance/fraud/check<br/>(x-internal-api-key)
-  Note over GW: Public clients cannot reach /api/v1/internal/**
-```
-
-## Cycles
-
-Workspace dependency cycles: **none**.  
-Sampled relative TypeScript import cycles (compliance, payments, gateway, sdk, types, database): **none**.
+- `@auvora/cache` and `@auvora/secrets` are published workspace packages with limited runtime adoption (Phase 13 / 12 foundations). Wiring into domain services is tracked debt.
+- `@auvora/docs` intentionally does **not** depend on `@auvora/sdk`.
+- For scale/resilience topology see [`scalability-resilience-topology.md`](./scalability-resilience-topology.md).

@@ -1,0 +1,54 @@
+global:
+  namespace: auvora-production
+  environment: production
+  imageTag: "1.2.0"
+  pullPolicy: IfNotPresent
+  deploymentStrategy: rolling
+  blueGreen:
+    slot: blue
+    activeSlot: blue
+  canary:
+    replicas: 1
+    weightPercent: 10
+  hpa:
+    minReplicas: 3
+    maxReplicas: 20
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+ingress:
+  host: wallet.example.com
+  tls:
+    enabled: true
+    secretName: auvora-wallet-prod-tls
+
+config:
+  NODE_ENV: production
+  LOG_LEVEL: warn
+  OTEL_ENABLED: "true"
+
+postgres:
+  enabled: false
+
+redis:
+  enabled: false
+
+backup:
+  cronJob:
+    enabled: true
+    schedule: "0 2 * * *"
+
+secrets:
+  create: false
+  existingSecretName: ""
+  externalSecret:
+    enabled: true
+    remoteKey: auvora/production/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore

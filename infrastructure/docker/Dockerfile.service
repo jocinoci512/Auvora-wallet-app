@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
 
+# Production NestJS service image (multi-stage, non-root).
+# Build: docker build -f infrastructure/docker/Dockerfile.service --build-arg SERVICE=gateway -t auvora/gateway-service:latest .
+
 FROM node:22-alpine AS base
 WORKDIR /app
 RUN corepack enable
@@ -8,6 +11,16 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY packages ./packages
 COPY services/gateway/package.json ./services/gateway/
+COPY services/auth/package.json ./services/auth/
+COPY services/wallet/package.json ./services/wallet/
+COPY services/blockchain/package.json ./services/blockchain/
+COPY services/payments/package.json ./services/payments/
+COPY services/compliance/package.json ./services/compliance/
+COPY services/notifications/package.json ./services/notifications/
+COPY services/analytics/package.json ./services/analytics/
+COPY services/ai/package.json ./services/ai/
+COPY services/custody/package.json ./services/custody/
+COPY services/observability/package.json ./services/observability/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -19,10 +32,15 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ARG SERVICE=gateway
-RUN addgroup -S auvora && adduser -S auvora -G auvora
+ARG PORT=4000
+ENV PORT=${PORT}
+RUN addgroup -S auvora && adduser -S auvora -G auvora \
+  && apk add --no-cache wget
 COPY --from=build /app/services/${SERVICE}/dist ./dist
 COPY --from=build /app/services/${SERVICE}/package.json ./package.json
 COPY --from=build /app/node_modules ./node_modules
 USER auvora
-EXPOSE 3000
+EXPOSE ${PORT}
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
 CMD ["node", "dist/main.js"]

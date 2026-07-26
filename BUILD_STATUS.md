@@ -1,51 +1,54 @@
 # Build Status
 
-Last verified: **2026-07-26** (Analytics Governance & Data Quality)
+Last verified: **2026-07-26** (Code Quality Audit refresh — post–RC)
 
 ## Summary
 
 | Check | Result |
 |-------|--------|
-| Workspace `pnpm build` | **PASS** (19/19) |
-| Workspace `pnpm lint` | **PASS** (24/24) |
-| Workspace `pnpm test` | **PASS** (24/24) |
-| Prisma migrate `20260726120000_analytics_platform` | APPLIED |
-| Prisma migrate `20260726130000_analytics_scheduled_retry` | APPLIED |
-| Seed version | **1.0.0** |
-| Governance checklist | [`docs/PRODUCTION_READINESS_ANALYTICS.md`](docs/PRODUCTION_READINESS_ANALYTICS.md) |
-| Data flow diagram | [`docs/diagrams/analytics-data-flow.md`](docs/diagrams/analytics-data-flow.md) |
-
-### Test counts (selected)
-
-| Package | Suites | Tests |
-|---------|--------|-------|
-| `@auvora/analytics-service` | 21 | **89** |
-| `@auvora/ai-service` | 11 | 90 |
-| `@auvora/blockchain-service` | 6 | 31 |
-| `@auvora/custody-service` | 7 | 51 |
-| `@auvora/wallet-service` | 3 | 14 |
+| Workspace `pnpm lint` | **PASS** (29/29) |
+| Workspace `pnpm test` | **PASS** (29/29) |
+| Workspace `pnpm build` | **PASS** (23/23) |
+| `pnpm perf:journeys` | **PASS** (RC: 13/0/6 — login, register, wallets) |
+| Auth login + register | **PASS** (RC) |
+| Wallet list (authed) | **PASS** (RC) |
+| `pnpm perf:chaos` | **PASS** (6/6) |
+| `pnpm perf:resilience` | **PASS** (5/5) |
+| `pnpm perf:a11y` | **PASS** (web + admin) |
+| `pnpm audit --prod` | **0 critical**; OTEL highs accepted |
+| Seed / migrate | **1.2.0** schema |
+| Release Candidate | **v1.0.0-rc.1** |
+| Code quality audit | **Complete** (initial + post-RC refresh) — [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) |
 
 ## Phase status
 
 | Phase | Scope | Status |
 |-------|--------|--------|
-| 1–9 | Foundation → AI | Complete |
-| 10 | **Analytics / BI** | **Complete** + governance verified |
-| 11+ | Infrastructure / SRE | Not started |
+| 1–12 | Foundation → Production Infrastructure | Complete |
+| 13 | Performance / Security / Resilience | Complete |
+| ERV | Enterprise Readiness Verification | Complete |
+| Audit | Code quality / technical debt | Complete |
+| **14** | **Final Production Readiness & RC** | **Complete (RC)** |
+| 14 GA | Production GA cut | Not started |
 
-## Phase 10 deliverables
+## RC hardening
 
-- `@auvora/analytics-service` on port **3007**
-- Event ingest + aggregation worker (hourly/daily/monthly)
-- Configurable metrics & KPIs (definitions in DB; admin create/update)
-- System dashboards (executive, ops, finance, compliance, security, AI, infrastructure)
-- Reports (JSON/CSV/XLSX/PDF stubs) with encrypted storage; scheduled reports **with retry/backoff**
-- Performance SLIs: `dashboard_load_ms`, `report_generate_ms`, `aggregation_duration_ms` via `/admin/analytics/performance`
-- Linear-trend forecasting framework
-- Gateway proxy; SDK; Web `/analytics`; Admin analytics portals
-- Publishers on auth/wallet/payments/compliance/custody/blockchain/notifications/AI (`domain` + optional `metrics`)
-- Permissions `analytics:read|write|admin|reports|dashboards|kpis`; SHARED dashboards owner/admin only
+| Item | Status |
+|------|--------|
+| RB1 fail-open address validation | **Fixed** — local format validation, fail-closed |
+| RB3 unauthenticated resilience metrics | **Fixed** — requires `x-internal-api-key` when key set or production |
+| OTEL highs | **Accepted** with upgrade plan |
 
-## Local env note
+## Verification URLs
 
-Ensure `.env` includes `ANALYTICS_SERVICE_URL`, `ANALYTICS_FIELD_ENCRYPTION_KEY` (≥32 chars).
+- Web: http://localhost:3000
+- Admin: http://localhost:3001
+- API: http://localhost:4000
+- Swagger: http://localhost:4000/api/docs
+- Health: http://localhost:4000/health
+- Ready: http://localhost:4000/ready
+- Resilience metrics: http://localhost:4000/metrics/resilience (authenticated)
+
+## Documentation
+
+See [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md).

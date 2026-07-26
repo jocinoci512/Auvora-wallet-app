@@ -1,0 +1,41 @@
+global:
+  namespace: auvora-local
+  environment: local
+  imageTag: dev
+  deploymentStrategy: rolling
+  hpa:
+    minReplicas: 1
+    maxReplicas: 3
+
+ingress:
+  host: localhost
+  tls:
+    enabled: false
+
+postgres:
+  enabled: true
+
+redis:
+  enabled: true
+
+backup:
+  cronJob:
+    enabled: false
+
+config:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+  OTEL_ENABLED: "false"
+
+# Local-only chart Secret — never use real production credentials here.
+secrets:
+  create: true
+  externalSecret:
+    enabled: false
+  data:
+    DATABASE_URL: "postgresql://auvora:local-dev-only@postgres:5432/auvora_wallet"
+    REDIS_URL: "redis://redis:6379"
+    POSTGRES_PASSWORD: "local-dev-only"
+    JWT_ACCESS_SECRET: "local-dev-access-secret-change-me"
+    JWT_REFRESH_SECRET: "local-dev-refresh-secret-change-me"
+    INTERNAL_API_KEY: "local-dev-internal-api-key"

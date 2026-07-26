@@ -1,0 +1,27 @@
+# Local development — no remote backend; state stored on disk.
+# Copy to backend.tfvars and customize.
+
+environment  = "local"
+aws_region   = "us-east-1"
+project_name = "auvora-wallet"
+vpc_cidr     = "10.20.0.0/16"
+
+modules = {
+  networking   = { enabled = false }
+  postgres     = { enabled = false }
+  redis        = { enabled = false }
+  storage      = { enabled = false }
+  secrets      = { enabled = false, backend = "k8s" }
+  iam          = { enabled = false }
+  monitoring   = { enabled = false }
+  kubernetes   = { enabled = false }
+  dns          = { enabled = false }
+  loadbalancer = { enabled = false }
+}
+
+# Example local backend block (create backend.tf when ready):
+# terraform {
+#   backend "local" {
+#     path = ".terraform/auvora-local.tfstate"
+#   }
+# }

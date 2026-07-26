@@ -1,0 +1,30 @@
+global:
+  namespace: auvora-staging
+  environment: staging
+  imageTag: staging
+  deploymentStrategy: rolling
+  hpa:
+    minReplicas: 2
+    maxReplicas: 8
+
+ingress:
+  host: staging.wallet.example.com
+
+config:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  OTEL_ENABLED: "true"
+
+backup:
+  cronJob:
+    enabled: true
+    schedule: "0 3 * * *"
+
+secrets:
+  create: false
+  externalSecret:
+    enabled: true
+    remoteKey: auvora/staging/app
+    secretStoreRef:
+      name: auvora-cluster-secret-store
+      kind: ClusterSecretStore

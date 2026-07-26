@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { hardenProxyRequest } from './proxy-hardening';
+import { getProxyTimeoutMs } from './proxy-timeout';
 
 /** Specific prefixes so /api/v1/admin/wallets can route to the wallet service. */
 export const AUTH_PROXY_PREFIXES = [
@@ -21,6 +22,8 @@ export function createAuthProxyMiddleware(authServiceUrl: string): RequestHandle
     target: authServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,
     pathFilter: (pathname) => isAuthProxyPath(pathname),
+    timeout: getProxyTimeoutMs(),
+    proxyTimeout: getProxyTimeoutMs(),
     on: {
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);

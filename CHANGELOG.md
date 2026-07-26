@@ -4,6 +4,113 @@ All notable changes to this monorepo are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0-rc.1] — 2026-07-26
+
+### Added — Phase 14 Final Production Readiness & Release Candidate
+
+- Release Candidate packaging: root version **1.0.0-rc.1**, [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), [`docs/RELEASE_CANDIDATE_v1.0.md`](docs/RELEASE_CANDIDATE_v1.0.md).
+- Production docs: API_DOCUMENTATION, SECURITY_GUIDE, OPERATIONS_GUIDE, RUNBOOKS.
+- Wallet address validation fail-closed local format checks when blockchain URL unset (RB1).
+- Gateway `/metrics/resilience` protected by `x-internal-api-key` when `INTERNAL_API_KEY` set or `NODE_ENV=production` (RB3).
+- Embedded Postgres migrate script skips re-init when data directory already initialized.
+
+### Changed
+
+- Gateway default `SERVICE_VERSION` → `1.0.0-rc.1`.
+- FINAL_RELEASE_CHECKLIST / BUILD_STATUS updated for Phase 14 RC.
+
+### Changed — Code Quality Audit (post-RC refresh)
+
+- Aligned SDK/OpenAPI to Nest for AI knowledge search (POST), admin knowledge sources, analytics insights/aggregate, custody recovery docs.
+- Removed unused `@nestjs/terminus` from Nest services; docs app port **3011** (was colliding with wallet **3002**).
+- Refreshed [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md), [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md), [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md).
+
+## [1.3.0] — 2026-07-26
+
+### Added — Phase 13 Performance, Scalability, Security Hardening & Resilience
+
+- **`@auvora/resilience`**: timeout, retry/backoff, circuit breaker, bulkhead, `resilientCall` + metrics.
+- **`@auvora/cache`**: memory store, read-through/write-through, TTL policy constants, invalidation, hot-key tracking.
+- **Gateway**: edge rate limiting, proxy timeouts, hardened headers (COOP/CORP/HSTS), DB pool URL defaults, `/metrics/resilience`, resilient proxy helper.
+- **Database**: `withDatabaseUrlPool` / `applyDatabasePoolEnv` helpers.
+- **Frontend**: compression, `optimizePackageImports`, security headers on Web/Admin.
+- **Perf harness**: `scripts/perf/load-test.mjs`, `run-suite.mjs`, `chaos-test.mjs`, `a11y-smoke.mjs` + npm scripts `perf:load|chaos|a11y`.
+- Docs: `PERFORMANCE_REPORT.md`, `SECURITY_HARDENING.md`, `LOAD_TEST_RESULTS.md`, `CHAOS_TEST_RESULTS.md`, ADR [0010](docs/adr/0010-resilience-and-cache.md).
+
+### Changed
+
+- AI request cache default TTL **120s** (aligned to platform cache policy).
+- Security package exports `FixedWindowRateLimiter` and additional header constants.
+
+### Changed — Enterprise Readiness Verification
+
+- Extended perf harness: `benchmark-compare.mjs`, `journey-smoke.mjs`, `resilience-sim.mjs` + scripts `perf:benchmark|journeys|resilience`.
+- Dependency overrides: `nodemailer@9.0.1`, `sharp@0.35.0`, `postcss@8.5.18`, `js-yaml@5.2.2`, major-scoped `brace-expansion` patches (avoids ESLint breakage from global 5.x pin).
+- Architecture diagram: [`docs/diagrams/scalability-resilience-topology.md`](docs/diagrams/scalability-resilience-topology.md).
+- Updated evidence docs: BUILD_STATUS, PERFORMANCE_REPORT, SECURITY_HARDENING, LOAD_TEST_RESULTS, ARCHITECTURE_DECISIONS.
+
+### Changed — Code Quality Audit
+
+- Aligned gateway OpenAPI custody/auth paths with Nest + SDK; removed phantom `/api/v1/admin/sessions`.
+- SDK default request timeout (30s); wallet blockchain validate timeout (5s).
+- Gateway proxies honor `PROXY_TIMEOUT_MS`; Next apps share COOP/CORP/XSS headers; docs drops unused `@auvora/sdk`.
+- Reports: [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md), [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md), [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md).
+
+### Compatibility
+
+- Additive libraries and gateway middleware. Domain services unchanged unless they adopt the new packages.
+
+## [1.2.0] — 2026-07-26
+
+### Added — Phase 12 Enterprise Production Infrastructure
+
+- **Terraform** modules under `infrastructure/terraform/modules` (networking, kubernetes, postgres, redis, storage, secrets, iam, dns, loadbalancer, monitoring) with per-env tfvars examples.
+- **Helm** umbrella chart `infrastructure/helm/auvora-wallet` (Deployments, StatefulSets, Services, Ingress, ConfigMaps/Secrets, HPA, PDB, NetworkPolicy, RBAC) + values for local/development/qa/testing/staging/production/disaster-recovery.
+- **Kustomize** overlays for the same seven environments.
+- **Docker** multi-stage non-root images (`Dockerfile.service`, `Dockerfile.next`) with healthchecks.
+- **Secrets package** `@auvora/secrets` (env / k8s / vault / aws_sm / azure_kv factory).
+- **Prisma** migration `20260726150000_infrastructure_platform`; seed **1.2.0** with infra permissions, environments, feature flags, sample deployment/backup.
+- **Admin infrastructure portal** + Observability admin APIs (`/api/v1/admin/infrastructure/*`); gateway proxy + OpenAPI stubs; SDK client methods.
+- **CI/CD**: `infra-validate`, `build-images`, `sign-images`, `image-scan`, `security-scan`, `deploy`, `release` workflows.
+- Docs: [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md), [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md), ADR [0009](docs/adr/0009-cloud-agnostic-infrastructure.md).
+
+### Changed — Production Deployment Readiness
+
+- Helm strategies: `rolling` / `blue-green` / `canary` with traffic selectors, canary Deployments/Services, and Deploy workflow wiring.
+- Secrets: External Secrets by default; chart Secret only for local (`secrets.create`); removed committed placeholder credentials from base/production values.
+- Containers: startup + liveness + readiness probes; non-root securityContext on services/apps/postgres/redis.
+- Backup CronJob template + validated RPO/RTO procedures in `DISASTER_RECOVERY.md`.
+- CI: `deployment-artifacts` job + `validate-deployment-artifacts.sh`; PR security gates in `ci.yml`.
+- Diagrams: environments, networking, service topology; checklist [`docs/PRODUCTION_READINESS_DEPLOYMENT.md`](docs/PRODUCTION_READINESS_DEPLOYMENT.md).
+
+### Compatibility
+
+- Additive only. Application services unchanged when not deploying via Helm/K8s.
+
+## [1.1.0] — 2026-07-26
+
+### Added — Phase 11 Enterprise Observability & SRE
+
+- **Observability service** (`services/observability`, port 3010): metrics ingest, distributed traces/spans, masked log aggregation, health monitoring, alert rules + evaluation worker, incident management, SLO/SLI measurements, capacity samples/forecast, dependency graph, maintenance notices, ops dashboard.
+- **Prisma** migration `20260726140000_observability_platform`; seed **1.1.0** with obs permissions, metric/alert/SLO/dependency seeds.
+- **Gateway** `OBSERVABILITY_SERVICE_URL` proxy + OpenAPI stubs.
+- **SDK** platform status + admin ops client methods; **Web** `/status`; **Admin** `/observability/*` portals.
+- Cross-module `ObservabilityPublisherAdapter` + readiness health reporting on auth/wallet/blockchain/payments/compliance/custody/notifications/AI/analytics.
+- Permissions: `observability:read|write|admin|alerts|incidents|slo`.
+
+### Changed — Operational Readiness Verification
+
+- Correlation middleware on gateway/auth/wallet; gateway propagates `traceparent`/`tracestate`/`x-correlation-id` on proxies.
+- HTTP metrics interceptor emits `http_latency_ms` and `error_rate` from platform services.
+- Alert rules: `PATCH /admin/observability/alert-rules/:code` for enable/disable/modify without code changes.
+- SLO compliance report: `GET /admin/observability/slos/compliance` (latency, error rate, uptime vs targets).
+- Worker readiness checks for analytics aggregation, notifications queue, and observability alert worker.
+- Runtime dependency diagram: `docs/diagrams/runtime-service-dependency-graph.md`.
+
+### Compatibility
+
+- Additive only. Prior phases unchanged when `OBSERVABILITY_SERVICE_URL` is unset.
+
 ## [1.0.0] — 2026-07-26
 
 ### Added — Phase 10 Enterprise Analytics & BI

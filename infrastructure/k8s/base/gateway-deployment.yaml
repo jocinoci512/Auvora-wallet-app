@@ -21,13 +21,13 @@ spec:
           image: auvora/gateway-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3000
+            - containerPort: 4000
               name: http
           env:
             - name: NODE_ENV
               value: production
             - name: PORT
-              value: '3000'
+              value: '4000'
             - name: SERVICE_NAME
               value: gateway
             - name: OTEL_ENABLED

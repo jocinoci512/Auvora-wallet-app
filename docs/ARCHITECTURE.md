@@ -24,6 +24,9 @@ services/<name>/src/
 | `@auvora/database` | Prisma NestJS module |
 | `@auvora/security` | Security headers and crypto helpers |
 | `@auvora/config` | ESLint, Prettier, Jest, and TS configs |
+| `@auvora/resilience` | Timeout, retry, circuit breaker, bulkhead |
+| `@auvora/cache` | Read-through cache helpers |
+| `@auvora/secrets` | Secrets provider factory |
 
 ## Services (ports)
 
@@ -36,13 +39,14 @@ services/<name>/src/
 | payments | 3004 | 5 |
 | compliance | 3005 | 6 |
 | notifications | 3006 | 8 |
-| analytics | 3007 | **Phase 10 — Analytics & BI** |
-| ai | 3008 | **Phase 9 — Enterprise AI Platform** |
+| analytics | 3007 | 10 |
+| ai | 3008 | 9 |
 | custody | 3009 | 7 |
+| observability | 3010 | 11 |
 
 ## Data
 
-Prisma manages a single shared schema with additive migrations per phase. Phase 8 adds notification/template/webhook/queue models (`20260726020000_notification_platform`). Seed version **0.8.0**.
+Prisma manages a shared schema with additive migrations. Seed version **1.2.0** (infrastructure platform). Release candidate: **v1.0.0-rc.1**.
 
 ## Cross-service communication
 

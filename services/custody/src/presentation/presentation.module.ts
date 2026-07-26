@@ -1,5 +1,5 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PassportModule } from '@nestjs/passport';
 import { ApplicationModule } from '../application/application.module';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
@@ -13,6 +13,7 @@ import { JwtStrategy } from './guards/jwt.strategy';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { HealthController } from './http/health.controller';
+import { ObservabilityMetricsInterceptor } from './interceptors/observability-metrics.interceptor';
 import { RequestContextMiddleware } from './middleware/request-context.middleware';
 
 @Module({
@@ -25,6 +26,7 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_INTERCEPTOR, useClass: ObservabilityMetricsInterceptor },
   ],
 })
 export class PresentationModule implements NestModule {

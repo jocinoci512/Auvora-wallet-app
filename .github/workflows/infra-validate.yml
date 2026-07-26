@@ -1,0 +1,71 @@
+name: Infrastructure Validate
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infra-validate.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infra-validate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: infra-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    name: Terraform fmt + validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  helm:
+    name: Helm lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Lint umbrella chart
+        run: |
+          helm lint infrastructure/helm/auvora-wallet
+          for env in local development qa testing staging production disaster-recovery; do
+            echo "==> values-$env.yaml"
+            helm lint infrastructure/helm/auvora-wallet -f "infrastructure/helm/auvora-wallet/values-$env.yaml"
+          done
+      - name: Template production (dry-run)
+        run: |
+          helm template auvora infrastructure/helm/auvora-wallet \
+            -f infrastructure/helm/auvora-wallet/values-production.yaml \
+            --namespace auvora-production \
+            > /tmp/auvora-prod.yaml
+          test -s /tmp/auvora-prod.yaml
+
+  kustomize:
+    name: Kustomize build overlays
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Build overlays
+        run: |
+          for env in local development qa testing staging production disaster-recovery; do
+            echo "==> overlay $env"
+            kubectl kustomize "infrastructure/k8s/overlays/$env" > "/tmp/kustomize-$env.yaml"
+            test -s "/tmp/kustomize-$env.yaml"
+          done

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 export const envSchema = z
   .object({
@@ -32,6 +32,7 @@ export const envSchema = z
     APP_PUBLIC_URL: z.string().url(),
     NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
     ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
     INTERNAL_API_KEY: z.string().min(32).optional(),
     OTEL_ENABLED: z
       .enum(['true', 'false'])

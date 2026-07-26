@@ -45,3 +45,38 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  deployment-artifacts:
+    name: Deployment artifact validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Install helm-unittest
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.6.3 || true
+      - name: Validate Helm + Terraform artifacts
+        run: bash infrastructure/scripts/validate-deployment-artifacts.sh
+
+  security-gates:
+    name: Security scan (PR gate)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

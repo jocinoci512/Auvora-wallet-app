@@ -7,8 +7,8 @@ export default function HomePage(): ReactElement {
     <main>
       <h1>{env.NEXT_PUBLIC_APP_NAME}</h1>
       <p>
-        Engineering foundation for the Auvora Wallet platform. Product surfaces will land in later
-        phases.
+        Enterprise wallet platform — wallets, payments, compliance, custody, notifications, AI,
+        analytics, and operations surfaces are available through this app and the admin console.
       </p>
       <p style={{ marginTop: '1.5rem' }}>
         <Button>Platform ready</Button>

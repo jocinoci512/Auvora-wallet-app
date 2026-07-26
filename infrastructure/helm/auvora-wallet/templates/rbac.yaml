@@ -1,0 +1,44 @@
+{{- if .Values.rbac.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "auvora-wallet.fullname" . }}-workload
+  namespace: {{ include "auvora-wallet.namespace" . }}
+  labels:
+    {{- include "auvora-wallet.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "auvora-wallet.fullname" . }}-workload
+  namespace: {{ include "auvora-wallet.namespace" . }}
+  labels:
+    {{- include "auvora-wallet.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "auvora-wallet.fullname" . }}-workload
+subjects:
+  {{- range $name, $svc := .Values.services }}
+  {{- if $svc.enabled }}
+  - kind: ServiceAccount
+    name: {{ $name }}-sa
+    namespace: {{ include "auvora-wallet.namespace" $ }}
+  {{- end }}
+  {{- end }}
+  {{- range $name, $app := .Values.apps }}
+  {{- if $app.enabled }}
+  - kind: ServiceAccount
+    name: {{ $name }}-sa
+    namespace: {{ include "auvora-wallet.namespace" $ }}
+  {{- end }}
+  {{- end }}
+{{- end }}
