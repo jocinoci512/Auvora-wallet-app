@@ -14,6 +14,13 @@
 | Final release checklist | [`FINAL_RELEASE_CHECKLIST.md`](../FINAL_RELEASE_CHECKLIST.md) |
 | Code quality | [`CODE_QUALITY_REPORT.md`](../CODE_QUALITY_REPORT.md) |
 | Technical debt | [`TECHNICAL_DEBT_REPORT.md`](../TECHNICAL_DEBT_REPORT.md) |
+| Architecture audit (Phase 15) | [`ARCHITECTURE_AUDIT.md`](../ARCHITECTURE_AUDIT.md) |
+| Security review (Phase 15) | [`SECURITY_REVIEW.md`](../SECURITY_REVIEW.md) |
+| Performance review (Phase 15) | [`PERFORMANCE_REVIEW.md`](../PERFORMANCE_REVIEW.md) |
+| Dependency review (Phase 15) | [`DEPENDENCY_REVIEW.md`](../DEPENDENCY_REVIEW.md) |
+| UX review | [`UX_REVIEW.md`](../UX_REVIEW.md) |
+| UI consistency | [`UI_CONSISTENCY_REPORT.md`](../UI_CONSISTENCY_REPORT.md) |
+| Accessibility | [`ACCESSIBILITY_REPORT.md`](../ACCESSIBILITY_REPORT.md) |
 
 ## Architecture & API
 

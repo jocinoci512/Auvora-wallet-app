@@ -448,3 +448,141 @@ code {
   background: rgba(15, 110, 86, 0.1);
   color: var(--auvora-accent);
 }
+
+/* Shared layout primitives (ops/status + forms) */
+.page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.page__subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.page__subnav a {
+  color: var(--auvora-accent);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.page__subnav a:hover,
+.page__subnav a[aria-current='page'] {
+  text-decoration: underline;
+}
+
+.stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.stack > li {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--auvora-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.form-stack {
+  display: grid;
+  gap: 1rem;
+  max-width: 32rem;
+  margin-bottom: 1rem;
+}
+
+.form-stack label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.form-stack input,
+.form-stack select,
+.form-stack textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--auvora-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--auvora-ink);
+}
+
+.form-stack input:focus-visible,
+.form-stack select:focus-visible,
+.form-stack textarea:focus-visible,
+.field-input:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--auvora-accent);
+  outline-offset: 2px;
+}
+
+.alert--success {
+  background: #ecfdf3;
+  border: 1px solid #abefc6;
+  color: #0f6e56;
+}
+
+.alert--info {
+  background: #eff8ff;
+  border: 1px solid #b2ddff;
+  color: #175cd3;
+}
+
+.field-error {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #912018;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.site-nav__links {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.site-nav__links a[aria-current='page'] {
+  color: var(--auvora-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (max-width: 768px) {
+  .site-nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .site-nav__links {
+    gap: 0.75rem 1rem;
+    justify-content: flex-start;
+  }
+
+  main {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+
+  .data-table {
+    font-size: 0.85rem;
+  }
+}

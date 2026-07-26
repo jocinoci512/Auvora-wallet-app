@@ -42,6 +42,7 @@ export function Button({
         padding: `${tokens.space.sm} ${tokens.space.md}`,
         cursor: rest.disabled ? 'not-allowed' : 'pointer',
         opacity: rest.disabled ? 0.6 : 1,
+        lineHeight: 1.25,
         ...variantStyles[variant],
         ...style,
       }}

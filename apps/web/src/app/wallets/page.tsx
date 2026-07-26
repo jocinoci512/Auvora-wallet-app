@@ -1,7 +1,7 @@
 'use client';
 
 import { AuvoraClientError, type Wallet } from '@auvora/sdk';
-import { Button } from '@auvora/ui';
+import { Alert, Button, EmptyState, LoadingBlock, Skeleton } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
@@ -48,33 +48,48 @@ export default function WalletsPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Wallets</h1>
-          <p className="page-subtitle">{total} wallet{total === 1 ? '' : 's'}</p>
+          <p className="page-subtitle">
+            {loading ? 'Loading…' : `${total} wallet${total === 1 ? '' : 's'}`}
+          </p>
         </div>
         <Link href="/wallets/new">
           <Button>New wallet</Button>
         </Link>
       </header>
 
-      {loading ? <p className="state-message">Loading wallets…</p> : null}
+      {loading ? (
+        <>
+          <LoadingBlock message="Loading wallets…" />
+          <Skeleton rows={4} label="Loading wallet list" />
+        </>
+      ) : null}
 
       {unauthorized ? (
-        <div className="alert alert--warn">
-          <strong>Sign in required.</strong> Save a JWT access token above, then refresh this page.
-          Use <code>POST /api/v1/auth/login</code> on the gateway to obtain one.
-        </div>
+        <Alert tone="warn" title="Sign in required">
+          Save a JWT access token above, then refresh this page. Use{' '}
+          <code>POST /api/v1/auth/login</code> on the gateway to obtain one.
+        </Alert>
       ) : null}
 
       {error ? (
-        <div className="alert alert--error">
-          {error}
+        <Alert tone="error" title="Could not load wallets">
+          <p>{error}</p>
           <Button type="button" variant="secondary" onClick={() => void load()} style={{ marginTop: '0.75rem' }}>
             Retry
           </Button>
-        </div>
+        </Alert>
       ) : null}
 
       {!loading && !error && !unauthorized && wallets.length === 0 ? (
-        <p className="state-message">No wallets yet. Create your first wallet to get started.</p>
+        <EmptyState
+          title="No wallets yet"
+          description="Create your first wallet to hold balances and start payments."
+          action={
+            <Link href="/wallets/new">
+              <Button>Create wallet</Button>
+            </Link>
+          }
+        />
       ) : null}
 
       {!loading && wallets.length > 0 ? (

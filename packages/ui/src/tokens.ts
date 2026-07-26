@@ -5,8 +5,12 @@ export const tokens = {
     accent: '#0F6E56',
     accentMuted: '#D7EDE6',
     danger: '#B42318',
+    warn: '#7A2E0E',
+    success: '#0F6E56',
     border: '#D6D3CD',
+    muted: 'rgba(11, 18, 32, 0.65)',
   },
+
   font: {
     sans: '"IBM Plex Sans", "Segoe UI", sans-serif',
     mono: '"IBM Plex Mono", ui-monospace, monospace',

@@ -53,7 +53,11 @@ export function AccessTokenPanel(): ReactElement {
         <Button type="button" variant="ghost" onClick={clear}>
           Clear
         </Button>
-        {saved ? <span className="token-panel__saved">Saved</span> : null}
+        {saved ? (
+          <span className="token-panel__saved" role="status" aria-live="polite">
+            Saved
+          </span>
+        ) : null}
       </div>
     </section>
   );

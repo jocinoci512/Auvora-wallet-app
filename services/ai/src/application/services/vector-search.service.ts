@@ -23,7 +23,7 @@ export class VectorSearchService {
     @Inject(MODEL_ROUTER) private readonly router: ModelRouterPort,
   ) {}
 
-  /** Embeds `query` and ranks it against every stored `AiEmbedding` vector via in-DB cosine similarity. */
+  /** Embeds `query` and ranks up to 5k stored `AiEmbedding` vectors via in-process cosine similarity. */
   async search(
     query: string,
     options: { sourceIds?: string[]; topK?: number; providerCode?: string } = {},

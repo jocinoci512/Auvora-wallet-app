@@ -1,6 +1,6 @@
 # Build Status
 
-Last verified: **2026-07-26** (Code Quality Audit refresh — post–RC)
+Last verified: **2026-07-26** (Phase 15 — Enterprise Repository Audit)
 
 ## Summary
 
@@ -8,17 +8,12 @@ Last verified: **2026-07-26** (Code Quality Audit refresh — post–RC)
 |-------|--------|
 | Workspace `pnpm lint` | **PASS** (29/29) |
 | Workspace `pnpm test` | **PASS** (29/29) |
-| Workspace `pnpm build` | **PASS** (23/23) |
-| `pnpm perf:journeys` | **PASS** (RC: 13/0/6 — login, register, wallets) |
-| Auth login + register | **PASS** (RC) |
-| Wallet list (authed) | **PASS** (RC) |
-| `pnpm perf:chaos` | **PASS** (6/6) |
-| `pnpm perf:resilience` | **PASS** (5/5) |
-| `pnpm perf:a11y` | **PASS** (web + admin) |
-| `pnpm audit --prod` | **0 critical**; OTEL highs accepted |
+| Workspace `pnpm build` | **PASS** (23/23) — after clearing stale `apps/*/.next` |
+| `pnpm audit --prod` | **0 critical**; 5 high + 2 moderate (OTEL accepted) |
+| Deployment artifacts (local) | **SKIP/FAIL tooling** — helm/terraform/docker not on PATH; CI job authoritative |
 | Seed / migrate | **1.2.0** schema |
 | Release Candidate | **v1.0.0-rc.1** |
-| Code quality audit | **Complete** (initial + post-RC refresh) — [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) |
+| Phase 15 audit | **Complete** |
 
 ## Phase status
 
@@ -27,28 +22,22 @@ Last verified: **2026-07-26** (Code Quality Audit refresh — post–RC)
 | 1–12 | Foundation → Production Infrastructure | Complete |
 | 13 | Performance / Security / Resilience | Complete |
 | ERV | Enterprise Readiness Verification | Complete |
-| Audit | Code quality / technical debt | Complete |
-| **14** | **Final Production Readiness & RC** | **Complete (RC)** |
-| 14 GA | Production GA cut | Not started |
+| 14 | Release Candidate v1.0.0-rc.1 | Complete |
+| 15 | Enterprise Repository Audit | Complete |
 
-## RC hardening
+## Audit artifacts
 
-| Item | Status |
-|------|--------|
-| RB1 fail-open address validation | **Fixed** — local format validation, fail-closed |
-| RB3 unauthenticated resilience metrics | **Fixed** — requires `x-internal-api-key` when key set or production |
-| OTEL highs | **Accepted** with upgrade plan |
+| Report | Path |
+|--------|------|
+| Code quality | [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) |
+| Technical debt | [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md) |
+| Architecture | [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) |
+| Security | [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md) |
+| Performance | [`PERFORMANCE_REVIEW.md`](PERFORMANCE_REVIEW.md) |
+| Dependencies | [`DEPENDENCY_REVIEW.md`](DEPENDENCY_REVIEW.md) |
+| Release checklist | [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md) |
 
-## Verification URLs
+## Notes
 
-- Web: http://localhost:3000
-- Admin: http://localhost:3001
-- API: http://localhost:4000
-- Swagger: http://localhost:4000/api/docs
-- Health: http://localhost:4000/health
-- Ready: http://localhost:4000/ready
-- Resilience metrics: http://localhost:4000/metrics/resilience (authenticated)
-
-## Documentation
-
-See [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md).
+- Docs app build can fail with a stale `.next` cache (`Html` / `_document` prerender error). Run `pnpm --filter @auvora/docs clean` (or delete `apps/*/ .next`) before release builds.
+- Local `infrastructure/scripts/validate-deployment-artifacts.sh` requires helm, terraform, and optionally docker — use CI `deployment-artifacts` job for gate.
