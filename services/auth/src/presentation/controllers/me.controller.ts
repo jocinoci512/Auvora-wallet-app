@@ -3,24 +3,28 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   Patch,
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { type AuthService } from '../../application/services/auth.service';
+import { AuthService } from '../../application/services/auth.service';
 import { CurrentUser, extractRequestContext } from '../decorators/current-user.decorator';
 import type { JwtAccessClaims } from '@auvora/types';
 import { Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { successResponse } from '../common/api-response';
-import { type UpdateProfileDto } from '../dto/profile.dto';
-import { type DeviceIdParamDto, type SessionIdParamDto } from '../dto/admin.dto';
+import { UpdateProfileDto } from '../dto/profile.dto';
+import { DeviceIdParamDto, SessionIdParamDto } from '../dto/admin.dto';
+
+const _meDtoRuntime = { UpdateProfileDto, DeviceIdParamDto, SessionIdParamDto };
+void _meDtoRuntime;
 
 @ApiTags('me')
 @Controller('api/v1/me')
 export class MeController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Get()
   async getProfile(@CurrentUser() user: JwtAccessClaims) {

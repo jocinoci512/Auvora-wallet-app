@@ -9,6 +9,11 @@ import {
   BLOCKCHAIN_PROVIDERS,
   type BlockchainProviderRegistry,
 } from './blockchain/blockchain-providers';
+import { BLOCKCHAIN_HTTP_CLIENT } from './blockchain/blockchain-client.port';
+import { BlockchainHttpClientAdapter } from './blockchain/blockchain-http-client.adapter';
+import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
+import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
 import { PrismaLedgerRepository } from './persistence/prisma-ledger.repository';
 import { PrismaTransactionRepository } from './persistence/prisma-transaction.repository';
 import { PrismaWalletRepository } from './persistence/prisma-wallet.repository';
@@ -26,6 +31,10 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     PrismaWalletRepository,
     PrismaLedgerRepository,
     PrismaTransactionRepository,
+    BlockchainHttpClientAdapter,
+    NotificationsPublisherAdapter,
+    AiPublisherAdapter,
+    AnalyticsPublisherAdapter,
     ...BLOCKCHAIN_PROVIDERS,
     {
       provide: BLOCKCHAIN_PROVIDER_REGISTRY,
@@ -66,6 +75,22 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
       provide: TRANSACTION_REPOSITORY,
       useExisting: PrismaTransactionRepository,
     },
+    {
+      provide: BLOCKCHAIN_HTTP_CLIENT,
+      useExisting: BlockchainHttpClientAdapter,
+    },
+    {
+      provide: NOTIFICATIONS_PUBLISHER,
+      useExisting: NotificationsPublisherAdapter,
+    },
+    {
+      provide: AI_PUBLISHER,
+      useExisting: AiPublisherAdapter,
+    },
+    {
+      provide: ANALYTICS_PUBLISHER,
+      useExisting: AnalyticsPublisherAdapter,
+    },
   ],
   exports: [
     REDIS_PORT,
@@ -76,6 +101,10 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     LEDGER_REPOSITORY,
     TRANSACTION_REPOSITORY,
     BLOCKCHAIN_PROVIDER_REGISTRY,
+    BLOCKCHAIN_HTTP_CLIENT,
+    NOTIFICATIONS_PUBLISHER,
+    AI_PUBLISHER,
+    ANALYTICS_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

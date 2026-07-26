@@ -42,6 +42,9 @@ function createWalletService(deps: {
   ledger?: Record<string, jest.Mock>;
   transactions?: Record<string, jest.Mock>;
   ids?: Record<string, jest.Mock>;
+  notifications?: Record<string, jest.Mock>;
+  ai?: Record<string, jest.Mock>;
+  analytics?: Record<string, jest.Mock>;
 }): WalletService {
   return new WalletService(
     (deps.wallets ?? {
@@ -70,6 +73,9 @@ function createWalletService(deps: {
       findById: jest.fn(),
     }) as never,
     (deps.ids ?? { uuid: jest.fn().mockReturnValue('uuid-1') }) as never,
+    (deps.notifications ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
+    (deps.ai ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
+    (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
   );
 }
 

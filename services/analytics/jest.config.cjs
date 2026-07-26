@@ -5,6 +5,7 @@ module.exports = {
   ...base,
   displayName: '@auvora/analytics-service',
   rootDir: __dirname,
+  setupFiles: ['<rootDir>/jest.setup.cjs'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -11,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { type AuthService } from '../../application/services/auth.service';
+import { AuthService } from '../../application/services/auth.service';
 import {
   PERMISSION_ROLES_MANAGE,
   PERMISSION_SESSIONS_REVOKE,
@@ -19,6 +20,7 @@ import {
   PERMISSION_USERS_READ,
   PERMISSION_USERS_WRITE,
   ROLE_ADMIN,
+  ROLE_SUPER_ADMIN,
 } from '../../domain/permission-codes';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser, extractRequestContext } from '../decorators/current-user.decorator';
@@ -26,18 +28,27 @@ import type { JwtAccessClaims } from '@auvora/types';
 import { Roles } from '../decorators/auth.decorators';
 import { successResponse } from '../common/api-response';
 import {
-  type AdminAssignRolesDto,
-  type AdminSearchUsersQueryDto,
-  type AdminToggleMfaDto,
-  type AdminUpdateStatusDto,
-  type UserIdParamDto,
+  AdminAssignRolesDto,
+  AdminSearchUsersQueryDto,
+  AdminToggleMfaDto,
+  AdminUpdateStatusDto,
+  UserIdParamDto,
 } from '../dto/admin.dto';
+
+const _adminUsersDtoRuntime = {
+  AdminAssignRolesDto,
+  AdminSearchUsersQueryDto,
+  AdminToggleMfaDto,
+  AdminUpdateStatusDto,
+  UserIdParamDto,
+};
+void _adminUsersDtoRuntime;
 
 @ApiTags('admin-users')
 @Controller('api/v1/admin/users')
-@Roles(ROLE_ADMIN)
+@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
 export class AdminUsersController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Get()
   @Permissions(PERMISSION_USERS_READ)

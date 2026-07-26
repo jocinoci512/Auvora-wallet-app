@@ -4,6 +4,13 @@ import type { ReactElement } from 'react';
 const links = [
   { href: '/', label: 'Home' },
   { href: '/wallets', label: 'Wallets' },
+  { href: '/blockchain', label: 'Blockchain' },
+  { href: '/payments', label: 'Payments' },
+  { href: '/compliance', label: 'Compliance' },
+  { href: '/custody', label: 'Custody' },
+  { href: '/notifications', label: 'Notifications' },
+  { href: '/analytics', label: 'Analytics' },
+  { href: '/ai', label: 'AI' },
   { href: '/', label: 'Users' },
 ];
 

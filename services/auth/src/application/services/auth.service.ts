@@ -37,6 +37,10 @@ import {
   type UpdateProfileInput,
   type UserRepositoryPort,
 } from '../ports/user-repository.port';
+import {
+  ANALYTICS_PUBLISHER,
+  type AnalyticsPublisherPort,
+} from '../../infrastructure/analytics/analytics-publisher.adapter';
 
 export interface RequestContext {
   ipAddress?: string;
@@ -58,7 +62,8 @@ export interface LoginInput {
   deviceName?: string;
 }
 
-export interface AuthResult extends AuthTokens {
+export interface AuthResult extends Omit<AuthTokens, 'refreshToken'> {
+  refreshToken: string;
   csrfToken: string;
   sessionId: string;
 }
@@ -99,6 +104,7 @@ export class AuthService {
     @Inject(RATE_LIMITER) private readonly rateLimiter: RateLimiterPort,
     @Inject(CLOCK) private readonly clock: ClockPort,
     @Inject(ID_GENERATOR) private readonly ids: IdGeneratorPort,
+    @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
   ) {}
 
   async register(input: RegisterInput, ctx: RequestContext): Promise<{ userId: string; message: string }> {
@@ -257,6 +263,15 @@ export class AuthService {
       metadata: { sessionId: session.id, deviceId: device.id },
     });
 
+    await this.analytics.publishEvent({
+      eventType: 'auth.login.completed',
+      domain: 'AUTH',
+      aggregateId: user.id,
+      ownerUserId: user.id,
+      metrics: { dau: 1 },
+      payload: { sessionId: session.id, deviceId: device.id },
+    });
+
     return {
       accessToken,
       refreshToken,
@@ -267,7 +282,7 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string, ctx: RequestContext): Promise<AuthTokens & { csrfToken: string }> {
+  async refresh(refreshToken: string, ctx: RequestContext): Promise<AuthResult> {
     await this.enforceRateLimit(`refresh:${ctx.ipAddress ?? 'unknown'}`);
 
     const tokenHash = this.tokenService.hashRefreshToken(refreshToken);
@@ -341,6 +356,7 @@ export class AuthService {
       expiresIn: this.env.JWT_ACCESS_TTL_SECONDS,
       tokenType: 'Bearer',
       csrfToken: generateOpaqueToken(32),
+      sessionId: session.id,
     };
   }
 

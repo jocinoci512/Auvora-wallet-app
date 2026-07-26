@@ -25,6 +25,7 @@ function createAuthService(deps: {
   rateLimiter?: Record<string, jest.Mock>;
   clock?: Record<string, jest.Mock>;
   ids?: Record<string, jest.Mock>;
+  analytics?: Record<string, jest.Mock>;
 }): AuthService {
   const users = {
     findByEmail: jest.fn(),
@@ -63,6 +64,7 @@ function createAuthService(deps: {
     }) as never,
     (deps.clock ?? { now: jest.fn().mockReturnValue(new Date('2026-01-01T00:00:00.000Z')) }) as never,
     (deps.ids ?? { uuid: jest.fn().mockReturnValue('family-uuid') }) as never,
+    (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
   );
 }
 

@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { type PrismaService } from '@auvora/database';
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '@auvora/database';
 import type {
   CreateSessionInput,
   SessionRecord,
@@ -8,7 +8,7 @@ import type {
 
 @Injectable()
 export class PrismaSessionRepository implements SessionRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async create(input: CreateSessionInput): Promise<SessionRecord> {
     return this.prisma.session.create({ data: input });

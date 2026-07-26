@@ -8,9 +8,11 @@
     "packages/database/src/index.ts"
   ],
   "out": "docs/api",
-  "tsconfig": "tsconfig.base.json",
+  "tsconfig": "docs/typedoc.tsconfig.json",
   "excludePrivate": true,
   "excludeInternal": true,
-  "readme": "README.md",
-  "name": "Auvora Wallet API"
+  "excludeExternals": true,
+  "readme": "none",
+  "name": "Auvora Wallet Shared Packages API",
+  "entryPointStrategy": "resolve"
 }

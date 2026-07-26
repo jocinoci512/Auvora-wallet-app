@@ -22,7 +22,7 @@ export function setStoredAccessToken(token: string | null): void {
 export function createApiClient(): AuvoraClient {
   const client = new AuvoraClient({
     baseUrl: env.NEXT_PUBLIC_API_URL,
-    credentials: 'omit',
+    credentials: 'include',
   });
   client.setAccessToken(getStoredAccessToken());
   return client;

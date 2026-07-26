@@ -510,3 +510,2598 @@ model WalletStatusHistory {
   @@index([walletId, createdAt])
   @@map("wallet_status_history")
 }
+
+// ---------------------------------------------------------------------------
+// Phase 4 — Blockchain Integration
+// ---------------------------------------------------------------------------
+
+enum ChainAddressStatus {
+  PENDING
+  ACTIVE
+  ARCHIVED
+}
+
+enum ChainTxDirection {
+  INCOMING
+  OUTGOING
+  INTERNAL
+}
+
+enum ChainTxStatus {
+  MEMPOOL
+  PENDING
+  CONFIRMED
+  FAILED
+  REJECTED
+  CANCELLED
+  REORGED
+}
+
+enum SyncJobType {
+  BLOCK_SCAN
+  ADDRESS_WATCH
+  MEMPOOL
+  REORG_CHECK
+  RETRY
+}
+
+enum SyncJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  RETRYING
+  CANCELLED
+}
+
+enum FeePriority {
+  SLOW
+  STANDARD
+  FAST
+  PRIORITY
+}
+
+model BlockchainNetworkConfig {
+  id                      String       @id @default(uuid()) @db.Uuid
+  chain                   ChainNetwork @unique
+  displayName             String       @map("display_name")
+  isEnabled               Boolean      @default(true) @map("is_enabled")
+  requiredConfirmations   Int          @map("required_confirmations")
+  blockTimeSeconds        Int          @default(15) @map("block_time_seconds")
+  nativeSymbol            String       @map("native_symbol")
+  explorerUrl             String?      @map("explorer_url")
+  rpcUrl                  String?      @map("rpc_url")
+  metadata                Json?
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @updatedAt @map("updated_at")
+
+  providers BlockchainProviderRecord[]
+  addresses ChainAddress[]
+  transactions ChainTransaction[]
+  blocks    ChainBlock[]
+  syncJobs  SyncJob[]
+  health    ProviderHealthSnapshot[]
+
+  @@map("blockchain_network_configs")
+}
+
+model BlockchainProviderRecord {
+  id          String       @id @default(uuid()) @db.Uuid
+  chain       ChainNetwork
+  networkId   String       @map("network_id") @db.Uuid
+  code        String
+  name        String
+  isPrimary   Boolean      @default(false) @map("is_primary")
+  isEnabled   Boolean      @default(true) @map("is_enabled")
+  endpointUrl String?      @map("endpoint_url")
+  priority    Int          @default(100)
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  network BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  health  ProviderHealthSnapshot[]
+
+  @@unique([chain, code])
+  @@index([networkId, isEnabled])
+  @@map("blockchain_providers")
+}
+
+model ChainAddress {
+  id           String             @id @default(uuid()) @db.Uuid
+  chain        ChainNetwork
+  networkId    String             @map("network_id") @db.Uuid
+  walletId     String?            @map("wallet_id") @db.Uuid
+  ownerUserId  String             @map("owner_user_id") @db.Uuid
+  address      String
+  label        String?
+  isPrimary    Boolean            @default(false) @map("is_primary")
+  status       ChainAddressStatus @default(PENDING)
+  watched      Boolean            @default(true)
+  metadata     Json?
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  activatedAt  DateTime?          @map("activated_at")
+  archivedAt   DateTime?          @map("archived_at")
+  deletedAt    DateTime?          @map("deleted_at")
+
+  network      BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Restrict)
+  transactions ChainTransaction[]
+  confirmations ConfirmationRecord[]
+
+  @@unique([chain, address])
+  @@index([ownerUserId, chain, status])
+  @@index([walletId])
+  @@index([watched, status])
+  @@map("chain_addresses")
+}
+
+model ChainTransaction {
+  id              String           @id @default(uuid()) @db.Uuid
+  chain           ChainNetwork
+  networkId       String           @map("network_id") @db.Uuid
+  addressId       String?          @map("address_id") @db.Uuid
+  txHash          String           @map("tx_hash")
+  direction       ChainTxDirection
+  status          ChainTxStatus    @default(PENDING)
+  amount          Decimal          @db.Decimal(36, 18)
+  feeAmount       Decimal          @default(0) @map("fee_amount") @db.Decimal(36, 18)
+  fromAddress     String?          @map("from_address")
+  toAddress       String?          @map("to_address")
+  blockNumber     BigInt?          @map("block_number")
+  confirmations   Int              @default(0)
+  requiredConfirmations Int        @map("required_confirmations")
+  broadcastAt     DateTime?        @map("broadcast_at")
+  confirmedAt     DateTime?        @map("confirmed_at")
+  failedAt        DateTime?        @map("failed_at")
+  failureReason   String?          @map("failure_reason")
+  rawPayload      Json?            @map("raw_payload")
+  metadata        Json?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  network            BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Restrict)
+  address            ChainAddress?           @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  confirmationRecords ConfirmationRecord[]
+
+  @@unique([chain, txHash])
+  @@index([status, createdAt])
+  @@index([addressId, createdAt])
+  @@index([networkId, blockNumber])
+  @@map("chain_transactions")
+}
+
+model ConfirmationRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  transactionId String   @map("transaction_id") @db.Uuid
+  addressId     String?  @map("address_id") @db.Uuid
+  chain         ChainNetwork
+  confirmations Int
+  blockNumber   BigInt?  @map("block_number")
+  isFinal       Boolean  @default(false) @map("is_final")
+  observedAt    DateTime @default(now()) @map("observed_at")
+
+  transaction ChainTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  address     ChainAddress?    @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId, observedAt])
+  @@index([chain, observedAt])
+  @@map("confirmation_records")
+}
+
+model ChainBlock {
+  id          String       @id @default(uuid()) @db.Uuid
+  chain       ChainNetwork
+  networkId   String       @map("network_id") @db.Uuid
+  height      BigInt
+  hash        String
+  parentHash  String?      @map("parent_hash")
+  timestamp   DateTime
+  isOrphan    Boolean      @default(false) @map("is_orphan")
+  syncedAt    DateTime     @default(now()) @map("synced_at")
+
+  network BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  @@unique([chain, height, hash])
+  @@index([networkId, height])
+  @@index([chain, isOrphan])
+  @@map("chain_blocks")
+}
+
+model SyncJob {
+  id           String        @id @default(uuid()) @db.Uuid
+  chain        ChainNetwork
+  networkId    String        @map("network_id") @db.Uuid
+  type         SyncJobType
+  status       SyncJobStatus @default(QUEUED)
+  cursor       String?
+  attempts     Int           @default(0)
+  maxAttempts  Int           @default(5) @map("max_attempts")
+  lastError    String?       @map("last_error")
+  scheduledAt  DateTime      @default(now()) @map("scheduled_at")
+  startedAt    DateTime?     @map("started_at")
+  finishedAt   DateTime?     @map("finished_at")
+  metadata     Json?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  network BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledAt])
+  @@index([chain, type, status])
+  @@map("sync_jobs")
+}
+
+model ProviderHealthSnapshot {
+  id              String       @id @default(uuid()) @db.Uuid
+  chain           ChainNetwork
+  networkId       String       @map("network_id") @db.Uuid
+  providerId      String?      @map("provider_id") @db.Uuid
+  status          String
+  latencyMs       Int?         @map("latency_ms")
+  blockHeight     BigInt?      @map("block_height")
+  errorMessage    String?      @map("error_message")
+  checkedAt       DateTime     @default(now()) @map("checked_at")
+
+  network  BlockchainNetworkConfig  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  provider BlockchainProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([chain, checkedAt])
+  @@index([providerId, checkedAt])
+  @@map("provider_health_snapshots")
+}
+
+model BlockchainEventLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventType   String   @map("event_type")
+  chain       ChainNetwork?
+  aggregateId String?  @map("aggregate_id")
+  payload     Json
+  correlationId String? @map("correlation_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([chain, createdAt])
+  @@map("blockchain_event_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Payment Orchestration & Settlement
+// ---------------------------------------------------------------------------
+
+enum PaymentType {
+  FIAT_DEPOSIT
+  FIAT_WITHDRAWAL
+  CRYPTO_DEPOSIT
+  CRYPTO_WITHDRAWAL
+  INTERNAL_TRANSFER
+  WALLET_TRANSFER
+  MERCHANT_PAYMENT
+  SCHEDULED_PAYMENT
+  RECURRING_PAYMENT
+  PAYMENT_REQUEST
+  REFUND
+  REVERSAL
+  SETTLEMENT
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  AUTHORIZED
+  PROCESSING
+  SETTLED
+  COMPLETED
+  CANCELLED
+  FAILED
+  EXPIRED
+  REFUNDED
+  REVERSED
+  DISPUTED
+  CHARGEBACK
+}
+
+enum PaymentMethodType {
+  BANK_ACCOUNT
+  CARD
+  WALLET
+  CRYPTO_ADDRESS
+  MERCHANT
+  OTHER
+}
+
+enum SettlementMode {
+  INSTANT
+  DAILY
+  SCHEDULED
+  MANUAL
+}
+
+enum SettlementStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ReconciliationStatus {
+  PENDING
+  MATCHED
+  MISMATCH
+  EXCEPTION
+  MANUAL_REVIEW
+  RESOLVED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  WON
+  LOST
+  CLOSED
+}
+
+enum ChargebackStatus {
+  OPEN
+  ACCEPTED
+  DEFENDED
+  WON
+  LOST
+  CLOSED
+}
+
+enum LimitWindow {
+  PER_TRANSACTION
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model PaymentProviderRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  providerType String  @map("provider_type")
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  priority    Int      @default(100)
+  capabilities Json?
+  endpointUrl String?  @map("endpoint_url")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  payments Payment[]
+  health   PaymentProviderHealthSnapshot[]
+
+  @@index([isEnabled, priority])
+  @@map("payment_providers")
+}
+
+model PaymentMethod {
+  id          String            @id @default(uuid()) @db.Uuid
+  ownerUserId String            @map("owner_user_id") @db.Uuid
+  type        PaymentMethodType
+  label       String?
+  isDefault   Boolean           @default(false) @map("is_default")
+  isActive    Boolean           @default(true) @map("is_active")
+  last4       String?
+  country     String?
+  currency    String?
+  metadata    Json?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  archivedAt  DateTime?         @map("archived_at")
+
+  payments Payment[]
+
+  @@index([ownerUserId, isActive])
+  @@map("payment_methods")
+}
+
+model Payment {
+  id                   String        @id @default(uuid()) @db.Uuid
+  reference            String        @unique
+  type                 PaymentType
+  status               PaymentStatus @default(CREATED)
+  ownerUserId          String        @map("owner_user_id") @db.Uuid
+  amount               Decimal       @db.Decimal(36, 18)
+  feeAmount            Decimal       @default(0) @map("fee_amount") @db.Decimal(36, 18)
+  currency             String
+  assetCode            String?       @map("asset_code")
+  fromWalletId         String?       @map("from_wallet_id") @db.Uuid
+  toWalletId           String?       @map("to_wallet_id") @db.Uuid
+  paymentMethodId      String?       @map("payment_method_id") @db.Uuid
+  providerId           String?       @map("provider_id") @db.Uuid
+  providerRef          String?       @map("provider_ref")
+  idempotencyKey       String?       @unique @map("idempotency_key")
+  correlationId        String?       @map("correlation_id")
+  walletTransactionId  String?       @map("wallet_transaction_id") @db.Uuid
+  chainTxId            String?       @map("chain_tx_id") @db.Uuid
+  country              String?
+  accountTier         String?       @map("account_tier")
+  riskProfile          String?       @map("risk_profile")
+  riskFlags            String[]      @default([]) @map("risk_flags")
+  description          String?
+  failureReason        String?       @map("failure_reason")
+  scheduledAt          DateTime?     @map("scheduled_at")
+  authorizedAt         DateTime?     @map("authorized_at")
+  settledAt            DateTime?     @map("settled_at")
+  completedAt          DateTime?     @map("completed_at")
+  cancelledAt          DateTime?     @map("cancelled_at")
+  expiresAt            DateTime?     @map("expires_at")
+  metadata             Json?
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  paymentMethod PaymentMethod?         @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  provider      PaymentProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  settlements   Settlement[]
+  refunds       Refund[]
+  disputes      Dispute[]
+  chargebacks   Chargeback[]
+  reconciliations ReconciliationRecord[]
+
+  @@index([ownerUserId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([providerRef])
+  @@index([correlationId])
+  @@index([type, status])
+  @@map("payments")
+}
+
+model SettlementBatch {
+  id          String           @id @default(uuid()) @db.Uuid
+  reference   String           @unique
+  mode        SettlementMode
+  status      SettlementStatus @default(PENDING)
+  currency    String
+  totalAmount Decimal          @default(0) @map("total_amount") @db.Decimal(36, 18)
+  paymentCount Int             @default(0) @map("payment_count")
+  scheduledAt DateTime?        @map("scheduled_at")
+  startedAt   DateTime?        @map("started_at")
+  completedAt DateTime?        @map("completed_at")
+  failedAt    DateTime?        @map("failed_at")
+  failureReason String?        @map("failure_reason")
+  report      Json?
+  metadata    Json?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  settlements Settlement[]
+
+  @@index([status, scheduledAt])
+  @@index([mode, createdAt])
+  @@map("settlement_batches")
+}
+
+model Settlement {
+  id          String           @id @default(uuid()) @db.Uuid
+  batchId     String?          @map("batch_id") @db.Uuid
+  paymentId   String           @map("payment_id") @db.Uuid
+  mode        SettlementMode
+  status      SettlementStatus @default(PENDING)
+  amount      Decimal          @db.Decimal(36, 18)
+  currency    String
+  reference   String           @unique
+  auditTrail  Json?            @map("audit_trail")
+  startedAt   DateTime?        @map("started_at")
+  completedAt DateTime?        @map("completed_at")
+  failedAt    DateTime?        @map("failed_at")
+  failureReason String?        @map("failure_reason")
+  metadata    Json?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  batch   SettlementBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  payment Payment          @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([batchId])
+  @@index([paymentId])
+  @@index([status, createdAt])
+  @@map("settlements")
+}
+
+model PaymentLimit {
+  id            String      @id @default(uuid()) @db.Uuid
+  window        LimitWindow
+  amount        Decimal     @db.Decimal(36, 18)
+  currency      String?
+  assetCode     String?     @map("asset_code")
+  ownerUserId   String?     @map("owner_user_id") @db.Uuid
+  accountTier  String?     @map("account_tier")
+  country       String?
+  riskProfile   String?     @map("risk_profile")
+  isEnabled     Boolean     @default(true) @map("is_enabled")
+  metadata      Json?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@index([ownerUserId, window, isEnabled])
+  @@index([accountTier, window])
+  @@index([country, window])
+  @@index([riskProfile, window])
+  @@map("payment_limits")
+}
+
+model ReconciliationRecord {
+  id              String               @id @default(uuid()) @db.Uuid
+  paymentId       String?              @map("payment_id") @db.Uuid
+  settlementId    String?              @map("settlement_id") @db.Uuid
+  status          ReconciliationStatus @default(PENDING)
+  source          String
+  expectedAmount  Decimal?             @map("expected_amount") @db.Decimal(36, 18)
+  actualAmount    Decimal?             @map("actual_amount") @db.Decimal(36, 18)
+  currency        String?
+  mismatchReason  String?              @map("mismatch_reason")
+  requiresManualReview Boolean         @default(false) @map("requires_manual_review")
+  resolvedAt      DateTime?            @map("resolved_at")
+  resolvedBy      String?              @map("resolved_by") @db.Uuid
+  metadata        Json?
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([paymentId])
+  @@index([requiresManualReview, status])
+  @@map("reconciliation_records")
+}
+
+model Refund {
+  id          String        @id @default(uuid()) @db.Uuid
+  paymentId   String        @map("payment_id") @db.Uuid
+  amount      Decimal       @db.Decimal(36, 18)
+  currency    String
+  status      PaymentStatus @default(CREATED)
+  reason      String?
+  providerRef String?       @map("provider_ref")
+  metadata    Json?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  completedAt DateTime?     @map("completed_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, createdAt])
+  @@index([status, createdAt])
+  @@map("refunds")
+}
+
+model Dispute {
+  id          String        @id @default(uuid()) @db.Uuid
+  paymentId   String        @map("payment_id") @db.Uuid
+  status      DisputeStatus @default(OPEN)
+  reason      String?
+  amount      Decimal?      @db.Decimal(36, 18)
+  currency    String?
+  metadata    Json?
+  openedAt    DateTime      @default(now()) @map("opened_at")
+  closedAt    DateTime?     @map("closed_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([status, openedAt])
+  @@map("disputes")
+}
+
+model Chargeback {
+  id          String           @id @default(uuid()) @db.Uuid
+  paymentId   String           @map("payment_id") @db.Uuid
+  status      ChargebackStatus @default(OPEN)
+  amount      Decimal          @db.Decimal(36, 18)
+  currency    String
+  reason      String?
+  providerRef String?          @map("provider_ref")
+  metadata    Json?
+  openedAt    DateTime         @default(now()) @map("opened_at")
+  closedAt    DateTime?        @map("closed_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([status, openedAt])
+  @@map("chargebacks")
+}
+
+model PaymentEventLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  eventType     String   @map("event_type")
+  aggregateId   String?  @map("aggregate_id") @db.Uuid
+  payload       Json
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([aggregateId, createdAt])
+  @@map("payment_event_logs")
+}
+
+model PaymentProviderHealthSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  providerId   String?  @map("provider_id") @db.Uuid
+  providerCode String   @map("provider_code")
+  status       String
+  latencyMs    Int?     @map("latency_ms")
+  errorMessage String?  @map("error_message")
+  checkedAt    DateTime @default(now()) @map("checked_at")
+
+  provider PaymentProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([providerCode, checkedAt])
+  @@index([providerId, checkedAt])
+  @@map("payment_provider_health_snapshots")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Compliance, KYC, AML, Risk & Financial Crime Prevention
+// ---------------------------------------------------------------------------
+
+enum KycSubjectType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum KycLevel {
+  NONE
+  BASIC
+  STANDARD
+  ENHANCED
+  FULL
+}
+
+enum VerificationStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  PENDING_PROVIDER
+  APPROVED
+  REJECTED
+  EXPIRED
+  RENEWAL_REQUIRED
+  CANCELLED
+}
+
+enum DocumentType {
+  PASSPORT
+  DRIVER_LICENSE
+  NATIONAL_ID
+  PROOF_OF_ADDRESS
+  SELFIE
+  LIVENESS
+  INCORPORATION
+  OTHER
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum RiskBand {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AmlAlertSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AmlAlertStatus {
+  OPEN
+  UNDER_REVIEW
+  ESCALATED
+  CLOSED_FALSE_POSITIVE
+  CLOSED_CONFIRMED
+  SUPPRESSED
+}
+
+enum CaseStatus {
+  OPEN
+  ASSIGNED
+  INVESTIGATING
+  ESCALATED
+  PENDING_EXTERNAL
+  RESOLVED
+  CLOSED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ScreeningMatchStatus {
+  CLEAR
+  POTENTIAL
+  CONFIRMED
+  FALSE_POSITIVE
+  PENDING
+}
+
+enum ComplianceRuleAction {
+  ALLOW
+  FLAG
+  HOLD
+  BLOCK
+  REQUIRE_REVIEW
+  OPEN_CASE
+}
+
+enum ComplianceProviderType {
+  IDENTITY
+  DOCUMENT
+  SANCTIONS
+  PEP
+  ADDRESS_RISK
+  BLOCKCHAIN_ANALYTICS
+  FRAUD
+  RISK_SCORING
+  TRAVEL_RULE
+}
+
+model ComplianceProviderRecord {
+  id           String                 @id @default(uuid()) @db.Uuid
+  code         String                 @unique
+  name         String
+  providerType ComplianceProviderType @map("provider_type")
+  isPrimary    Boolean                @default(false) @map("is_primary")
+  isEnabled    Boolean                @default(true) @map("is_enabled")
+  priority     Int                    @default(100)
+  capabilities Json?
+  endpointUrl  String?                @map("endpoint_url")
+  metadata     Json?
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  health ComplianceProviderHealthSnapshot[]
+
+  @@index([providerType, isEnabled, priority])
+  @@map("compliance_providers")
+}
+
+model ComplianceProviderHealthSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  providerId   String?  @map("provider_id") @db.Uuid
+  providerCode String   @map("provider_code")
+  status       String
+  latencyMs    Int?     @map("latency_ms")
+  errorMessage String?  @map("error_message")
+  checkedAt    DateTime @default(now()) @map("checked_at")
+
+  provider ComplianceProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([providerCode, checkedAt])
+  @@map("compliance_provider_health_snapshots")
+}
+
+model KycProfile {
+  id                 String         @id @default(uuid()) @db.Uuid
+  ownerUserId        String         @unique @map("owner_user_id") @db.Uuid
+  subjectType        KycSubjectType @default(INDIVIDUAL) @map("subject_type")
+  level              KycLevel       @default(NONE)
+  status             VerificationStatus @default(DRAFT)
+  country            String?
+  nationality        String?
+  legalNameEncrypted String?        @map("legal_name_encrypted")
+  dateOfBirthEncrypted String?      @map("date_of_birth_encrypted")
+  businessNameEncrypted String?     @map("business_name_encrypted")
+  riskBand           RiskBand       @default(LOW) @map("risk_band")
+  riskScore          Decimal        @default(0) @map("risk_score") @db.Decimal(10, 4)
+  verifiedAt         DateTime?      @map("verified_at")
+  expiresAt          DateTime?      @map("expires_at")
+  lastScreenedAt     DateTime?      @map("last_screened_at")
+  metadata           Json?
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  verificationRequests VerificationRequest[]
+  documents            ComplianceDocument[]
+  riskScores           RiskScoreRecord[]
+  sanctionsResults     SanctionsScreeningResult[]
+  pepResults           PepScreeningResult[]
+  travelRuleRecords    TravelRuleRecord[]
+
+  @@index([status, level])
+  @@index([riskBand, updatedAt])
+  @@map("kyc_profiles")
+}
+
+model VerificationRequest {
+  id              String             @id @default(uuid()) @db.Uuid
+  profileId       String             @map("profile_id") @db.Uuid
+  ownerUserId     String             @map("owner_user_id") @db.Uuid
+  requestedLevel  KycLevel           @map("requested_level")
+  status          VerificationStatus @default(SUBMITTED)
+  providerCode    String?            @map("provider_code")
+  providerRef     String?            @map("provider_ref")
+  rejectionReason String?            @map("rejection_reason")
+  reviewerUserId  String?            @map("reviewer_user_id") @db.Uuid
+  submittedAt     DateTime           @default(now()) @map("submitted_at")
+  reviewedAt      DateTime?          @map("reviewed_at")
+  completedAt     DateTime?          @map("completed_at")
+  expiresAt       DateTime?          @map("expires_at")
+  metadata        Json?
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  profile   KycProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  documents ComplianceDocument[]
+
+  @@index([ownerUserId, status, createdAt])
+  @@index([status, submittedAt])
+  @@index([profileId, createdAt])
+  @@map("verification_requests")
+}
+
+model ComplianceDocument {
+  id                   String         @id @default(uuid()) @db.Uuid
+  profileId            String         @map("profile_id") @db.Uuid
+  verificationRequestId String?       @map("verification_request_id") @db.Uuid
+  ownerUserId          String         @map("owner_user_id") @db.Uuid
+  documentType         DocumentType   @map("document_type")
+  status               DocumentStatus @default(UPLOADED)
+  storageKeyEncrypted  String         @map("storage_key_encrypted")
+  contentType          String?        @map("content_type")
+  fileName             String?        @map("file_name")
+  checksumSha256       String?        @map("checksum_sha256")
+  providerRef          String?        @map("provider_ref")
+  rejectionReason      String?        @map("rejection_reason")
+  verifiedAt           DateTime?      @map("verified_at")
+  expiresAt            DateTime?      @map("expires_at")
+  metadata             Json?
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  profile             KycProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  verificationRequest VerificationRequest? @relation(fields: [verificationRequestId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, documentType])
+  @@index([verificationRequestId])
+  @@index([status, createdAt])
+  @@map("compliance_documents")
+}
+
+model RiskScoreRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  profileId   String?  @map("profile_id") @db.Uuid
+  ownerUserId String   @map("owner_user_id") @db.Uuid
+  score       Decimal  @db.Decimal(10, 4)
+  band        RiskBand
+  factors     Json
+  providerCode String? @map("provider_code")
+  correlationId String? @map("correlation_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, createdAt])
+  @@index([band, createdAt])
+  @@map("risk_score_records")
+}
+
+model AmlAlert {
+  id            String           @id @default(uuid()) @db.Uuid
+  ownerUserId   String?          @map("owner_user_id") @db.Uuid
+  paymentId     String?          @map("payment_id") @db.Uuid
+  walletId      String?          @map("wallet_id") @db.Uuid
+  ruleCode      String           @map("rule_code")
+  severity      AmlAlertSeverity
+  status        AmlAlertStatus   @default(OPEN)
+  title         String
+  description   String?
+  amount        Decimal?         @db.Decimal(36, 18)
+  currency      String?
+  evidence      Json?
+  caseId        String?          @map("case_id") @db.Uuid
+  resolvedAt    DateTime?        @map("resolved_at")
+  resolvedBy    String?          @map("resolved_by") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  case ComplianceCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@index([status, severity, createdAt])
+  @@index([ownerUserId, createdAt])
+  @@index([ruleCode, createdAt])
+  @@index([paymentId])
+  @@map("aml_alerts")
+}
+
+model ComplianceCase {
+  id              String       @id @default(uuid()) @db.Uuid
+  reference       String       @unique
+  ownerUserId     String?      @map("owner_user_id") @db.Uuid
+  title           String
+  description     String?
+  status          CaseStatus   @default(OPEN)
+  priority        CasePriority @default(MEDIUM)
+  assignedToUserId String?     @map("assigned_to_user_id") @db.Uuid
+  openedByUserId  String?      @map("opened_by_user_id") @db.Uuid
+  resolution      String?
+  resolvedAt      DateTime?    @map("resolved_at")
+  closedAt        DateTime?    @map("closed_at")
+  metadata        Json?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  alerts      AmlAlert[]
+  notes       ComplianceCaseNote[]
+  attachments ComplianceCaseAttachment[]
+  auditTrail  ComplianceCaseAudit[]
+
+  @@index([status, priority, createdAt])
+  @@index([assignedToUserId, status])
+  @@index([ownerUserId, createdAt])
+  @@map("compliance_cases")
+}
+
+model ComplianceCaseNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  caseId    String   @map("case_id") @db.Uuid
+  authorUserId String @map("author_user_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  case ComplianceCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@map("compliance_case_notes")
+}
+
+model ComplianceCaseAttachment {
+  id                  String   @id @default(uuid()) @db.Uuid
+  caseId              String   @map("case_id") @db.Uuid
+  uploadedByUserId    String   @map("uploaded_by_user_id") @db.Uuid
+  storageKeyEncrypted String   @map("storage_key_encrypted")
+  fileName            String?
+  contentType         String?  @map("content_type")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  case ComplianceCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@map("compliance_case_attachments")
+}
+
+model ComplianceCaseAudit {
+  id          String   @id @default(uuid()) @db.Uuid
+  caseId      String   @map("case_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  case ComplianceCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@map("compliance_case_audits")
+}
+
+model SanctionsScreeningResult {
+  id           String                @id @default(uuid()) @db.Uuid
+  profileId    String?               @map("profile_id") @db.Uuid
+  ownerUserId  String                @map("owner_user_id") @db.Uuid
+  listSource   String                @map("list_source")
+  matchStatus  ScreeningMatchStatus  @default(PENDING) @map("match_status")
+  matchScore   Decimal?              @map("match_score") @db.Decimal(10, 4)
+  matchedName  String?               @map("matched_name")
+  providerCode String?               @map("provider_code")
+  providerRef  String?               @map("provider_ref")
+  rawResult    Json?                 @map("raw_result")
+  screenedAt   DateTime              @default(now()) @map("screened_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, screenedAt])
+  @@index([matchStatus, screenedAt])
+  @@index([listSource, matchStatus])
+  @@map("sanctions_screening_results")
+}
+
+model PepScreeningResult {
+  id           String               @id @default(uuid()) @db.Uuid
+  profileId    String?              @map("profile_id") @db.Uuid
+  ownerUserId  String               @map("owner_user_id") @db.Uuid
+  matchStatus  ScreeningMatchStatus @default(PENDING) @map("match_status")
+  matchScore   Decimal?             @map("match_score") @db.Decimal(10, 4)
+  matchedName  String?              @map("matched_name")
+  providerCode String?              @map("provider_code")
+  providerRef  String?              @map("provider_ref")
+  rawResult    Json?                @map("raw_result")
+  screenedAt   DateTime             @default(now()) @map("screened_at")
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, screenedAt])
+  @@index([matchStatus, screenedAt])
+  @@map("pep_screening_results")
+}
+
+model TravelRuleRecord {
+  id              String   @id @default(uuid()) @db.Uuid
+  profileId       String?  @map("profile_id") @db.Uuid
+  ownerUserId     String   @map("owner_user_id") @db.Uuid
+  paymentId       String?  @map("payment_id") @db.Uuid
+  direction       String
+  counterpartyVasp String? @map("counterparty_vasp")
+  status          String   @default("PENDING")
+  payloadEncrypted String? @map("payload_encrypted")
+  providerCode    String?  @map("provider_code")
+  providerRef     String?  @map("provider_ref")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, createdAt])
+  @@index([paymentId])
+  @@index([status, createdAt])
+  @@map("travel_rule_records")
+}
+
+model ComplianceRule {
+  id          String                @id @default(uuid()) @db.Uuid
+  code        String                @unique
+  name        String
+  description String?
+  isEnabled   Boolean               @default(true) @map("is_enabled")
+  priority    Int                   @default(100)
+  action      ComplianceRuleAction
+  expression  Json
+  metadata    Json?
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  @@index([isEnabled, priority])
+  @@map("compliance_rules")
+}
+
+model ComplianceAuditRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  subjectUserId String?  @map("subject_user_id") @db.Uuid
+  resourceType  String?  @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  details       Json?
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("compliance_audit_records")
+}
+
+model ComplianceEventLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  eventType     String   @map("event_type")
+  aggregateId   String?  @map("aggregate_id") @db.Uuid
+  payload       Json
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([aggregateId, createdAt])
+  @@map("compliance_event_logs")
+}
+
+// ─── Phase 7: Custody / Key Management / Signing ─────────────────────────────
+
+enum CustodyModel {
+  SELF
+  HOSTED
+  SHARED
+  INSTITUTIONAL
+  MPC
+  HSM
+}
+
+enum KeyAlgorithm {
+  SECP256K1
+  ED25519
+  BITCOIN_SECP256K1
+  ETHEREUM_SECP256K1
+  FUTURE_PQ
+}
+
+enum KeyStatus {
+  PENDING
+  ACTIVE
+  ROTATING
+  REVOKED
+  DESTROYED
+  RECOVERING
+}
+
+enum SigningRequestStatus {
+  PENDING
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  QUEUED
+  SCHEDULED
+  SIGNING
+  SIGNED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum SigningRequestType {
+  TRANSACTION
+  MESSAGE
+  BATCH
+  OFFLINE
+}
+
+enum ApprovalPolicyKind {
+  SINGLE
+  DUAL
+  MULTI
+  THRESHOLD
+  RISK_BASED
+  AMOUNT_BASED
+  ROLE_BASED
+  EMERGENCY
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum RecoveryRequestStatus {
+  PENDING
+  AWAITING_APPROVAL
+  APPROVED
+  COMPLETED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum CustodyPolicyAction {
+  ALLOW
+  DENY
+  REQUIRE_APPROVAL
+  DELAY
+  ALERT
+}
+
+model CustodyProviderRecord {
+  id           String       @id @default(uuid()) @db.Uuid
+  code         String       @unique
+  name         String
+  custodyModel CustodyModel @map("custody_model")
+  isEnabled    Boolean      @default(true) @map("is_enabled")
+  priority     Int          @default(100)
+  config       Json?
+  healthStatus String       @default("UNKNOWN") @map("health_status")
+  lastCheckedAt DateTime?   @map("last_checked_at")
+  metadata     Json?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  keys CryptographicKey[]
+
+  @@index([isEnabled, priority])
+  @@index([custodyModel])
+  @@map("custody_providers")
+}
+
+model CryptographicKey {
+  id              String       @id @default(uuid()) @db.Uuid
+  ownerUserId     String       @map("owner_user_id") @db.Uuid
+  walletId        String?      @map("wallet_id") @db.Uuid
+  providerId      String?      @map("provider_id") @db.Uuid
+  label           String?
+  algorithm       KeyAlgorithm
+  custodyModel    CustodyModel @map("custody_model")
+  status          KeyStatus    @default(PENDING)
+  publicKey       String       @map("public_key")
+  /// Encrypted private key material or provider handle — never returned via API.
+  materialEncrypted String?    @map("material_encrypted")
+  providerRef     String?      @map("provider_ref")
+  currentVersion  Int          @default(1) @map("current_version")
+  exportAllowed   Boolean      @default(false) @map("export_allowed")
+  metadata        Json?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  revokedAt       DateTime?    @map("revoked_at")
+  destroyedAt     DateTime?    @map("destroyed_at")
+
+  provider         CustodyProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  versions         KeyVersion[]
+  auditLogs        KeyAuditLog[]
+  signingRequests  SigningRequest[]
+  recoveryRequests RecoveryRequest[]
+
+  @@index([ownerUserId, status])
+  @@index([walletId])
+  @@index([providerId])
+  @@index([status, createdAt])
+  @@map("cryptographic_keys")
+}
+
+model KeyVersion {
+  id                String   @id @default(uuid()) @db.Uuid
+  keyId             String   @map("key_id") @db.Uuid
+  version           Int
+  publicKey         String   @map("public_key")
+  materialEncrypted String?  @map("material_encrypted")
+  providerRef       String?  @map("provider_ref")
+  createdAt         DateTime @default(now()) @map("created_at")
+  rotatedFromVersion Int?    @map("rotated_from_version")
+
+  key CryptographicKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+
+  @@unique([keyId, version])
+  @@index([keyId, createdAt])
+  @@map("key_versions")
+}
+
+model KeyAuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  keyId     String?  @map("key_id") @db.Uuid
+  action    String
+  actorUserId String? @map("actor_user_id") @db.Uuid
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  key CryptographicKey? @relation(fields: [keyId], references: [id], onDelete: SetNull)
+
+  @@index([keyId, createdAt])
+  @@index([action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("key_audit_logs")
+}
+
+model SignerGroup {
+  id          String   @id @default(uuid()) @db.Uuid
+  ownerUserId String?  @map("owner_user_id") @db.Uuid
+  name        String
+  description String?
+  threshold   Int      @default(1)
+  totalSigners Int     @default(1) @map("total_signers")
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  members          SignerGroupMember[]
+  approvalPolicies ApprovalPolicy[]
+
+  @@index([ownerUserId])
+  @@index([isEnabled])
+  @@map("signer_groups")
+}
+
+model SignerGroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String   @default("SIGNER")
+  weight    Int      @default(1)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group SignerGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("signer_group_members")
+}
+
+model ApprovalPolicy {
+  id           String             @id @default(uuid()) @db.Uuid
+  code         String             @unique
+  name         String
+  description  String?
+  kind         ApprovalPolicyKind
+  isEnabled    Boolean            @default(true) @map("is_enabled")
+  threshold    Int                @default(1)
+  amountThreshold String?         @map("amount_threshold")
+  riskThreshold Int?              @map("risk_threshold")
+  requiredRoles Json?             @map("required_roles")
+  signerGroupId String?           @map("signer_group_id") @db.Uuid
+  expression   Json?
+  metadata     Json?
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  signerGroup     SignerGroup?      @relation(fields: [signerGroupId], references: [id], onDelete: SetNull)
+  signingRequests SigningRequest[]
+  approvalRequests ApprovalRequest[]
+
+  @@index([isEnabled, kind])
+  @@map("approval_policies")
+}
+
+model RecoveryPolicy {
+  id                 String   @id @default(uuid()) @db.Uuid
+  ownerUserId        String?  @map("owner_user_id") @db.Uuid
+  code               String   @unique
+  name               String
+  description        String?
+  requiredApprovals  Int      @default(1) @map("required_approvals")
+  timeoutHours       Int      @default(72) @map("timeout_hours")
+  isEnabled          Boolean  @default(true) @map("is_enabled")
+  metadata           Json?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  contacts  RecoveryContact[]
+  requests  RecoveryRequest[]
+
+  @@index([ownerUserId, isEnabled])
+  @@map("recovery_policies")
+}
+
+model RecoveryContact {
+  id         String   @id @default(uuid()) @db.Uuid
+  policyId   String   @map("policy_id") @db.Uuid
+  ownerUserId String  @map("owner_user_id") @db.Uuid
+  label      String
+  emailEncrypted String? @map("email_encrypted")
+  phoneEncrypted String? @map("phone_encrypted")
+  userId     String?  @map("user_id") @db.Uuid
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  policy RecoveryPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+  @@index([ownerUserId])
+  @@map("recovery_contacts")
+}
+
+model RecoveryRequest {
+  id          String                @id @default(uuid()) @db.Uuid
+  policyId    String                @map("policy_id") @db.Uuid
+  keyId       String?               @map("key_id") @db.Uuid
+  ownerUserId String                @map("owner_user_id") @db.Uuid
+  status      RecoveryRequestStatus @default(PENDING)
+  reason      String?
+  approvalsCount Int                @default(0) @map("approvals_count")
+  expiresAt   DateTime?             @map("expires_at")
+  completedAt DateTime?             @map("completed_at")
+  metadata    Json?
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  policy RecoveryPolicy   @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  key    CryptographicKey? @relation(fields: [keyId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, status])
+  @@index([status, createdAt])
+  @@map("recovery_requests")
+}
+
+model TransactionPolicy {
+  id          String              @id @default(uuid()) @db.Uuid
+  code        String              @unique
+  name        String
+  description String?
+  isEnabled   Boolean             @default(true) @map("is_enabled")
+  priority    Int                 @default(100)
+  action      CustodyPolicyAction
+  expression  Json
+  metadata    Json?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([isEnabled, priority])
+  @@map("custody_transaction_policies")
+}
+
+model SigningRequest {
+  id              String               @id @default(uuid()) @db.Uuid
+  keyId           String               @map("key_id") @db.Uuid
+  ownerUserId     String               @map("owner_user_id") @db.Uuid
+  requestType     SigningRequestType   @map("request_type")
+  status          SigningRequestStatus @default(PENDING)
+  payloadHash     String               @map("payload_hash")
+  payloadEncrypted String?             @map("payload_encrypted")
+  amount          String?
+  asset           String?
+  destination     String?
+  riskScore       Int?                 @map("risk_score")
+  approvalPolicyId String?             @map("approval_policy_id") @db.Uuid
+  requiredApprovals Int                @default(0) @map("required_approvals")
+  receivedApprovals Int                @default(0) @map("received_approvals")
+  scheduledAt     DateTime?            @map("scheduled_at")
+  delayUntil      DateTime?            @map("delay_until")
+  signature       String?
+  signatureAlg    String?              @map("signature_alg")
+  failureReason   String?              @map("failure_reason")
+  metadata        Json?
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  completedAt     DateTime?            @map("completed_at")
+
+  key            CryptographicKey @relation(fields: [keyId], references: [id], onDelete: Restrict)
+  approvalPolicy ApprovalPolicy?  @relation(fields: [approvalPolicyId], references: [id], onDelete: SetNull)
+  sessions       SigningSession[]
+  approvals      ApprovalRequest[]
+
+  @@index([ownerUserId, status])
+  @@index([keyId, createdAt])
+  @@index([status, createdAt])
+  @@index([scheduledAt])
+  @@map("signing_requests")
+}
+
+model SigningSession {
+  id               String   @id @default(uuid()) @db.Uuid
+  signingRequestId String   @map("signing_request_id") @db.Uuid
+  providerCode     String?  @map("provider_code")
+  startedAt        DateTime @default(now()) @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  latencyMs        Int?     @map("latency_ms")
+  success          Boolean  @default(false)
+  errorMessage     String?  @map("error_message")
+  metadata         Json?
+
+  request SigningRequest @relation(fields: [signingRequestId], references: [id], onDelete: Cascade)
+
+  @@index([signingRequestId])
+  @@index([startedAt])
+  @@map("signing_sessions")
+}
+
+model ApprovalRequest {
+  id               String                @id @default(uuid()) @db.Uuid
+  signingRequestId String                @map("signing_request_id") @db.Uuid
+  policyId         String?               @map("policy_id") @db.Uuid
+  approverUserId   String?               @map("approver_user_id") @db.Uuid
+  status           ApprovalRequestStatus @default(PENDING)
+  decisionNote     String?               @map("decision_note")
+  decidedAt        DateTime?             @map("decided_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+
+  signingRequest SigningRequest  @relation(fields: [signingRequestId], references: [id], onDelete: Cascade)
+  policy         ApprovalPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+
+  @@index([signingRequestId, status])
+  @@index([approverUserId, status])
+  @@map("approval_requests")
+}
+
+model CustodyAuditRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  subjectUserId String?  @map("subject_user_id") @db.Uuid
+  resourceType  String?  @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  details       Json?
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("custody_audit_records")
+}
+
+model CustodyEventLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  eventType     String   @map("event_type")
+  aggregateId   String?  @map("aggregate_id") @db.Uuid
+  payload       Json
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([aggregateId, createdAt])
+  @@map("custody_event_logs")
+}
+
+model CustodyPolicyViolation {
+  id        String   @id @default(uuid()) @db.Uuid
+  policyCode String  @map("policy_code")
+  ownerUserId String? @map("owner_user_id") @db.Uuid
+  signingRequestId String? @map("signing_request_id") @db.Uuid
+  action    CustodyPolicyAction
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([policyCode, createdAt])
+  @@index([ownerUserId, createdAt])
+  @@map("custody_policy_violations")
+}
+
+// ─── Phase 8: Notifications / Messaging ──────────────────────────────────────
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+  BROWSER
+  WEBHOOK
+  SLACK
+  TEAMS
+}
+
+enum NotificationCategory {
+  AUTH
+  SECURITY
+  KYC
+  COMPLIANCE
+  PAYMENT
+  DEPOSIT
+  WITHDRAWAL
+  TRANSACTION
+  WALLET
+  CUSTODY
+  RISK
+  SYSTEM
+  MARKETING
+  ADMIN
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum NotificationStatus {
+  PENDING
+  QUEUED
+  SCHEDULED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  DEAD_LETTER
+  CANCELLED
+  SUPPRESSED
+}
+
+enum TemplateFormat {
+  HTML
+  TEXT
+  MARKDOWN
+  RICH
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+  DEAD_LETTER
+}
+
+model NotificationChannelProvider {
+  id           String              @id @default(uuid()) @db.Uuid
+  code         String              @unique
+  name         String
+  channel      NotificationChannel
+  isEnabled    Boolean             @default(true) @map("is_enabled")
+  priority     Int                 @default(100)
+  configEncrypted String?          @map("config_encrypted")
+  healthStatus String              @default("UNKNOWN") @map("health_status")
+  lastCheckedAt DateTime?          @map("last_checked_at")
+  metadata     Json?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  @@index([channel, isEnabled])
+  @@index([isEnabled, priority])
+  @@map("notification_channel_providers")
+}
+
+model NotificationTemplate {
+  id          String              @id @default(uuid()) @db.Uuid
+  code        String
+  name        String
+  description String?
+  category    NotificationCategory
+  channel     NotificationChannel
+  format      TemplateFormat      @default(HTML)
+  locale      String              @default("en")
+  subject     String?
+  body        String
+  variables   Json?
+  isEnabled   Boolean             @default(true) @map("is_enabled")
+  currentVersion Int              @default(1) @map("current_version")
+  metadata    Json?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  versions NotificationTemplateVersion[]
+  notifications NotificationMessage[]
+
+  @@unique([code, channel, locale])
+  @@index([category, isEnabled])
+  @@index([channel, isEnabled])
+  @@map("notification_templates")
+}
+
+model NotificationTemplateVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  templateId String   @map("template_id") @db.Uuid
+  version    Int
+  subject    String?
+  body       String
+  variables  Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@index([templateId, createdAt])
+  @@map("notification_template_versions")
+}
+
+model NotificationPreference {
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerUserId     String   @unique @map("owner_user_id") @db.Uuid
+  language        String   @default("en")
+  timeZone        String   @default("UTC") @map("time_zone")
+  quietHoursStart Int?     @map("quiet_hours_start")
+  quietHoursEnd   Int?     @map("quiet_hours_end")
+  digestEnabled   Boolean  @default(false) @map("digest_enabled")
+  digestHour      Int?     @map("digest_hour")
+  channelToggles  Json     @default("{}") @map("channel_toggles")
+  categoryToggles Json     @default("{}") @map("category_toggles")
+  frequencyLimits Json?    @map("frequency_limits")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_preferences")
+}
+
+model NotificationMessage {
+  id              String                @id @default(uuid()) @db.Uuid
+  ownerUserId     String?               @map("owner_user_id") @db.Uuid
+  templateId      String?               @map("template_id") @db.Uuid
+  category        NotificationCategory
+  channel         NotificationChannel
+  priority        NotificationPriority  @default(NORMAL)
+  status          NotificationStatus    @default(PENDING)
+  subject         String?
+  body            String
+  payload         Json?
+  dedupeKey       String?               @map("dedupe_key")
+  correlationId   String?               @map("correlation_id")
+  sourceEventType String?               @map("source_event_type")
+  sourceEventId   String?               @map("source_event_id")
+  scheduledAt     DateTime?             @map("scheduled_at")
+  delayUntil      DateTime?             @map("delay_until")
+  sentAt          DateTime?             @map("sent_at")
+  deliveredAt     DateTime?             @map("delivered_at")
+  failedAt        DateTime?             @map("failed_at")
+  failureReason   String?               @map("failure_reason")
+  attemptCount    Int                   @default(0) @map("attempt_count")
+  maxAttempts     Int                   @default(5) @map("max_attempts")
+  providerCode    String?               @map("provider_code")
+  providerRef     String?               @map("provider_ref")
+  metadata        Json?
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  template NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  queueItems NotificationQueueItem[]
+  deliveryLogs NotificationDeliveryLog[]
+
+  @@unique([dedupeKey])
+  @@index([ownerUserId, createdAt])
+  @@index([status, priority, createdAt])
+  @@index([channel, status])
+  @@index([scheduledAt])
+  @@index([category, createdAt])
+  @@index([sourceEventType, createdAt])
+  @@index([correlationId])
+  @@map("notification_messages")
+}
+
+model NotificationQueueItem {
+  id             String             @id @default(uuid()) @db.Uuid
+  notificationId String             @map("notification_id") @db.Uuid
+  priority       NotificationPriority @default(NORMAL)
+  status         NotificationStatus @default(QUEUED)
+  availableAt    DateTime           @default(now()) @map("available_at")
+  lockedAt       DateTime?          @map("locked_at")
+  lockedBy       String?            @map("locked_by")
+  attemptCount   Int                @default(0) @map("attempt_count")
+  nextAttemptAt  DateTime?          @map("next_attempt_at")
+  deadLetteredAt DateTime?          @map("dead_lettered_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  notification NotificationMessage @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt, priority])
+  @@index([notificationId])
+  @@index([deadLetteredAt])
+  @@map("notification_queue_items")
+}
+
+model NotificationDeliveryLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  notificationId String   @map("notification_id") @db.Uuid
+  channel        NotificationChannel
+  providerCode   String?  @map("provider_code")
+  success        Boolean
+  latencyMs      Int?     @map("latency_ms")
+  errorMessage   String?  @map("error_message")
+  responseMeta   Json?    @map("response_meta")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  notification NotificationMessage @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId, createdAt])
+  @@index([channel, success, createdAt])
+  @@map("notification_delivery_logs")
+}
+
+model WebhookEndpoint {
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerUserId     String?  @map("owner_user_id") @db.Uuid
+  name            String
+  url             String
+  secretEncrypted String   @map("secret_encrypted")
+  isEnabled       Boolean  @default(true) @map("is_enabled")
+  eventFilters    Json?    @map("event_filters")
+  version         String   @default("v1")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  deliveries WebhookDelivery[]
+
+  @@index([ownerUserId, isEnabled])
+  @@index([isEnabled])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id           String                @id @default(uuid()) @db.Uuid
+  endpointId   String                @map("endpoint_id") @db.Uuid
+  eventType    String                @map("event_type")
+  payload      Json
+  status       WebhookDeliveryStatus @default(PENDING)
+  attemptCount Int                   @default(0) @map("attempt_count")
+  responseCode Int?                  @map("response_code")
+  responseBody String?               @map("response_body")
+  signature    String?
+  nextAttemptAt DateTime?            @map("next_attempt_at")
+  deliveredAt  DateTime?             @map("delivered_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId, status])
+  @@index([status, nextAttemptAt])
+  @@index([eventType, createdAt])
+  @@map("webhook_deliveries")
+}
+
+model NotificationEventLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  eventType     String   @map("event_type")
+  aggregateId   String?  @map("aggregate_id") @db.Uuid
+  payload       Json
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([aggregateId, createdAt])
+  @@map("notification_event_logs")
+}
+
+model NotificationAuditRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  subjectUserId String?  @map("subject_user_id") @db.Uuid
+  resourceType  String?  @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  details       Json?
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@map("notification_audit_records")
+}
+
+// ─── Phase 9: Enterprise AI Platform ─────────────────────────────────────────
+
+enum AiProviderType {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+  AZURE_OPENAI
+  LOCAL
+  SIMULATOR
+}
+
+enum AiProviderStatus {
+  HEALTHY
+  DEGRADED
+  UNAVAILABLE
+  UNKNOWN
+}
+
+enum AiPromptCategory {
+  SYSTEM
+  SUPPORT
+  WALLET
+  PAYMENT
+  COMPLIANCE
+  FRAUD
+  OPERATIONS
+  ADMIN
+  DEVELOPER
+  DOCUMENTATION
+  AUTOMATION
+  GENERAL
+}
+
+enum AiPromptStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ARCHIVED
+}
+
+enum AiAssistantType {
+  CUSTOMER_SUPPORT
+  WALLET
+  PAYMENT
+  COMPLIANCE
+  FRAUD_ANALYST
+  OPERATIONS
+  ADMIN
+  DEVELOPER
+  DOCUMENTATION
+}
+
+enum AiConversationStatus {
+  ACTIVE
+  ARCHIVED
+  EXPIRED
+}
+
+enum AiMessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+
+enum AiRequestStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  MODERATED
+  CACHED
+}
+
+enum AiKnowledgeSourceType {
+  MANUAL
+  UPLOAD
+  URL
+  CONNECTOR
+}
+
+enum AiDocumentStatus {
+  PENDING
+  PARSING
+  CHUNKING
+  EMBEDDING
+  INDEXED
+  FAILED
+  ARCHIVED
+}
+
+model AiProvider {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique
+  name            String
+  providerType    AiProviderType   @map("provider_type")
+  isEnabled       Boolean          @default(true) @map("is_enabled")
+  priority        Int              @default(100)
+  baseUrl         String?          @map("base_url")
+  defaultModel    String?          @map("default_model")
+  configEncrypted String?          @map("config_encrypted")
+  healthStatus    AiProviderStatus @default(UNKNOWN) @map("health_status")
+  lastCheckedAt   DateTime?        @map("last_checked_at")
+  metadata        Json?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  requests AiRequest[]
+  metrics  AiProviderMetric[]
+
+  @@index([isEnabled, priority])
+  @@index([providerType, isEnabled])
+  @@map("ai_providers")
+}
+
+model AiPromptTemplate {
+  id             String           @id @default(uuid()) @db.Uuid
+  code           String           @unique
+  name           String
+  description    String?
+  category       AiPromptCategory
+  status         AiPromptStatus   @default(DRAFT)
+  currentVersion Int              @default(1) @map("current_version")
+  isEnabled      Boolean          @default(true) @map("is_enabled")
+  metadata       Json?
+  createdBy      String?          @map("created_by") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  versions AiPromptVersion[]
+  requests AiRequest[]
+
+  @@index([category, status])
+  @@index([isEnabled, category])
+  @@map("ai_prompt_templates")
+}
+
+model AiPromptVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  templateId    String   @map("template_id") @db.Uuid
+  version       Int
+  systemPrompt  String?  @map("system_prompt")
+  userPrompt    String   @map("user_prompt")
+  variables     Json?
+  modelHint     String?  @map("model_hint")
+  temperature   Float?   @default(0.2)
+  maxTokens     Int?     @map("max_tokens")
+  changeNotes   String?  @map("change_notes")
+  createdBy     String?  @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  template AiPromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@index([templateId, createdAt])
+  @@map("ai_prompt_versions")
+}
+
+model AiConversation {
+  id            String                @id @default(uuid()) @db.Uuid
+  ownerUserId   String                @map("owner_user_id") @db.Uuid
+  assistantType AiAssistantType       @default(CUSTOMER_SUPPORT) @map("assistant_type")
+  title         String?
+  status        AiConversationStatus  @default(ACTIVE)
+  locale        String                @default("en")
+  metadata      Json?
+  lastMessageAt DateTime?             @map("last_message_at")
+  expiresAt     DateTime?             @map("expires_at")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  messages AiMessage[]
+  requests AiRequest[]
+
+  @@index([ownerUserId, status, updatedAt])
+  @@index([assistantType, createdAt])
+  @@index([expiresAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String        @id @default(uuid()) @db.Uuid
+  conversationId String        @map("conversation_id") @db.Uuid
+  role           AiMessageRole
+  content        String
+  tokenCount     Int?          @map("token_count")
+  model          String?
+  providerCode   String?       @map("provider_code")
+  metadata       Json?
+  feedbackScore  Int?          @map("feedback_score")
+  feedbackNotes  String?       @map("feedback_notes")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([role, createdAt])
+  @@map("ai_messages")
+}
+
+model AiRequest {
+  id               String          @id @default(uuid()) @db.Uuid
+  ownerUserId      String?         @map("owner_user_id") @db.Uuid
+  conversationId   String?         @map("conversation_id") @db.Uuid
+  promptTemplateId String?         @map("prompt_template_id") @db.Uuid
+  providerId       String?         @map("provider_id") @db.Uuid
+  assistantType    AiAssistantType? @map("assistant_type")
+  status           AiRequestStatus @default(PENDING)
+  model            String?
+  inputText        String          @map("input_text")
+  outputText       String?         @map("output_text")
+  inputTokens      Int             @default(0) @map("input_tokens")
+  outputTokens     Int             @default(0) @map("output_tokens")
+  latencyMs        Int?            @map("latency_ms")
+  costUsdMicros    Int             @default(0) @map("cost_usd_micros")
+  cacheHit         Boolean         @default(false) @map("cache_hit")
+  correlationId    String?         @map("correlation_id")
+  sourceEventType  String?         @map("source_event_type")
+  sourceEventId    String?         @map("source_event_id")
+  errorMessage     String?         @map("error_message")
+  metadata         Json?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  completedAt      DateTime?       @map("completed_at")
+
+  conversation   AiConversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  promptTemplate AiPromptTemplate? @relation(fields: [promptTemplateId], references: [id], onDelete: SetNull)
+  provider       AiProvider?      @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  usage          AiTokenUsage?
+
+  @@index([ownerUserId, createdAt])
+  @@index([status, createdAt])
+  @@index([providerId, createdAt])
+  @@index([correlationId])
+  @@index([sourceEventType, createdAt])
+  @@map("ai_requests")
+}
+
+model AiTokenUsage {
+  id            String   @id @default(uuid()) @db.Uuid
+  requestId     String   @unique @map("request_id") @db.Uuid
+  ownerUserId   String?  @map("owner_user_id") @db.Uuid
+  providerCode  String   @map("provider_code")
+  model         String
+  inputTokens   Int      @map("input_tokens")
+  outputTokens  Int      @map("output_tokens")
+  totalTokens   Int      @map("total_tokens")
+  costUsdMicros Int      @default(0) @map("cost_usd_micros")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  request AiRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId, createdAt])
+  @@index([providerCode, createdAt])
+  @@map("ai_token_usage")
+}
+
+model AiProviderMetric {
+  id             String   @id @default(uuid()) @db.Uuid
+  providerId     String   @map("provider_id") @db.Uuid
+  windowStart    DateTime @map("window_start")
+  requestCount   Int      @default(0) @map("request_count")
+  successCount   Int      @default(0) @map("success_count")
+  failureCount   Int      @default(0) @map("failure_count")
+  cacheHitCount  Int      @default(0) @map("cache_hit_count")
+  totalLatencyMs BigInt   @default(0) @map("total_latency_ms")
+  totalTokens    BigInt   @default(0) @map("total_tokens")
+  totalCostMicros BigInt  @default(0) @map("total_cost_micros")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  provider AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, windowStart])
+  @@index([windowStart])
+  @@map("ai_provider_metrics")
+}
+
+model AiKnowledgeSource {
+  id          String                @id @default(uuid()) @db.Uuid
+  code        String                @unique
+  name        String
+  description String?
+  sourceType  AiKnowledgeSourceType @map("source_type")
+  isEnabled   Boolean               @default(true) @map("is_enabled")
+  version     Int                   @default(1)
+  metadata    Json?
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  documents AiDocument[]
+
+  @@index([isEnabled, sourceType])
+  @@map("ai_knowledge_sources")
+}
+
+model AiDocument {
+  id             String           @id @default(uuid()) @db.Uuid
+  sourceId       String           @map("source_id") @db.Uuid
+  title          String
+  contentType    String           @default("text/plain") @map("content_type")
+  content        String
+  status         AiDocumentStatus @default(PENDING)
+  version        Int              @default(1)
+  checksum       String?
+  errorMessage   String?          @map("error_message")
+  indexedAt      DateTime?        @map("indexed_at")
+  metadata       Json?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  source AiKnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  chunks AiDocumentChunk[]
+
+  @@index([sourceId, status])
+  @@index([status, updatedAt])
+  @@map("ai_documents")
+}
+
+model AiDocumentChunk {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  chunkIndex Int      @map("chunk_index")
+  content    String
+  tokenCount Int?     @map("token_count")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document  AiDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  embedding AiEmbedding?
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+  @@map("ai_document_chunks")
+}
+
+model AiEmbedding {
+  id          String   @id @default(uuid()) @db.Uuid
+  chunkId     String   @unique @map("chunk_id") @db.Uuid
+  model       String
+  dimensions  Int
+  vector      Json
+  providerCode String  @map("provider_code")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  chunk AiDocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([model, createdAt])
+  @@map("ai_embeddings")
+}
+
+model AiVectorIndexMeta {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  model       String
+  dimensions  Int
+  documentCount Int    @default(0) @map("document_count")
+  chunkCount  Int      @default(0) @map("chunk_count")
+  lastRefreshAt DateTime? @map("last_refresh_at")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_vector_index_meta")
+}
+
+model AiAuditRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  subjectUserId String?  @map("subject_user_id") @db.Uuid
+  resourceType  String?  @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  details       Json?
+  correlationId String?  @map("correlation_id")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@index([correlationId])
+  @@map("ai_audit_records")
+}
+
+model AiEventLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  eventType     String   @map("event_type")
+  aggregateId   String?  @map("aggregate_id") @db.Uuid
+  payload       Json
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([aggregateId, createdAt])
+  @@map("ai_event_logs")
+}
+
+// ─── Phase 10: Enterprise Analytics / BI ─────────────────────────────────────
+
+enum AnalyticsDomain {
+  AUTH
+  WALLET
+  BLOCKCHAIN
+  PAYMENTS
+  COMPLIANCE
+  KYC
+  AML
+  RISK
+  FRAUD
+  CUSTODY
+  AI
+  NOTIFICATIONS
+  INFRASTRUCTURE
+  SYSTEM
+  CUSTOMER
+  ADMIN
+}
+
+enum MetricValueType {
+  COUNTER
+  GAUGE
+  RATE
+  RATIO
+  CURRENCY
+  DURATION_MS
+}
+
+enum AggregationWindow {
+  REALTIME
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum AggregationJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ReportFormat {
+  PDF
+  CSV
+  XLSX
+  JSON
+}
+
+enum ReportStatus {
+  DRAFT
+  READY
+  GENERATING
+  FAILED
+  ARCHIVED
+}
+
+enum ScheduledReportStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+}
+
+enum DashboardVisibility {
+  PRIVATE
+  SHARED
+  ORGANIZATION
+  SYSTEM
+}
+
+enum ForecastHorizon {
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+enum ForecastStatus {
+  DRAFT
+  READY
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model AnalyticsEvent {
+  id            String          @id @default(uuid()) @db.Uuid
+  eventType     String          @map("event_type")
+  domain        AnalyticsDomain
+  aggregateId   String?         @map("aggregate_id")
+  ownerUserId   String?         @map("owner_user_id") @db.Uuid
+  payload       Json
+  metrics       Json?
+  correlationId String?         @map("correlation_id")
+  sourceService String?         @map("source_service")
+  occurredAt    DateTime        @default(now()) @map("occurred_at")
+  ingestedAt    DateTime        @default(now()) @map("ingested_at")
+  processedAt   DateTime?       @map("processed_at")
+
+  @@index([domain, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([ownerUserId, occurredAt])
+  @@index([correlationId])
+  @@index([processedAt])
+  @@map("analytics_events")
+}
+
+model MetricDefinition {
+  id          String          @id @default(uuid()) @db.Uuid
+  code        String          @unique
+  name        String
+  description String?
+  domain      AnalyticsDomain
+  valueType   MetricValueType @map("value_type")
+  unit        String?
+  isEnabled   Boolean         @default(true) @map("is_enabled")
+  formula     String?
+  metadata    Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  values MetricValue[]
+
+  @@index([domain, isEnabled])
+  @@map("metric_definitions")
+}
+
+model MetricValue {
+  id           String            @id @default(uuid()) @db.Uuid
+  metricId     String            @map("metric_id") @db.Uuid
+  window       AggregationWindow
+  bucketStart  DateTime          @map("bucket_start")
+  value        Float
+  dimensions   Json?
+  sampleCount  Int               @default(1) @map("sample_count")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  metric MetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@unique([metricId, window, bucketStart])
+  @@index([bucketStart])
+  @@index([metricId, bucketStart])
+  @@map("metric_values")
+}
+
+model KpiDefinition {
+  id          String          @id @default(uuid()) @db.Uuid
+  code        String          @unique
+  name        String
+  description String?
+  domain      AnalyticsDomain
+  metricCode  String          @map("metric_code")
+  targetValue Float?          @map("target_value")
+  warningThreshold Float?     @map("warning_threshold")
+  criticalThreshold Float?    @map("critical_threshold")
+  higherIsBetter Boolean      @default(true) @map("higher_is_better")
+  isEnabled   Boolean         @default(true) @map("is_enabled")
+  metadata    Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([domain, isEnabled])
+  @@map("kpi_definitions")
+}
+
+model AnalyticsDashboard {
+  id          String               @id @default(uuid()) @db.Uuid
+  code        String               @unique
+  name        String
+  description String?
+  domain      AnalyticsDomain?
+  visibility  DashboardVisibility  @default(PRIVATE)
+  ownerUserId String?              @map("owner_user_id") @db.Uuid
+  layout      Json?
+  isSystem    Boolean              @default(false) @map("is_system")
+  isEnabled   Boolean              @default(true) @map("is_enabled")
+  metadata    Json?
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  widgets DashboardWidget[]
+
+  @@index([ownerUserId, visibility])
+  @@index([isSystem, isEnabled])
+  @@map("analytics_dashboards")
+}
+
+model DashboardWidget {
+  id          String   @id @default(uuid()) @db.Uuid
+  dashboardId String   @map("dashboard_id") @db.Uuid
+  title       String
+  widgetType  String   @map("widget_type")
+  metricCode  String?  @map("metric_code")
+  kpiCode     String?  @map("kpi_code")
+  config      Json?
+  positionX   Int      @default(0) @map("position_x")
+  positionY   Int      @default(0) @map("position_y")
+  width       Int      @default(4)
+  height      Int      @default(2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  dashboard AnalyticsDashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  @@index([dashboardId])
+  @@map("dashboard_widgets")
+}
+
+model ReportTemplate {
+  id          String          @id @default(uuid()) @db.Uuid
+  code        String          @unique
+  name        String
+  description String?
+  domain      AnalyticsDomain
+  querySpec   Json            @map("query_spec")
+  defaultFormat ReportFormat  @default(JSON) @map("default_format")
+  isEnabled   Boolean         @default(true) @map("is_enabled")
+  version     Int             @default(1)
+  metadata    Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  reports          AnalyticsReport[]
+  scheduledReports ScheduledReport[]
+
+  @@index([domain, isEnabled])
+  @@map("report_templates")
+}
+
+model AnalyticsReport {
+  id              String       @id @default(uuid()) @db.Uuid
+  templateId      String?      @map("template_id") @db.Uuid
+  ownerUserId     String?      @map("owner_user_id") @db.Uuid
+  name            String
+  status          ReportStatus @default(DRAFT)
+  format          ReportFormat @default(JSON)
+  parameters      Json?
+  resultEncrypted String?      @map("result_encrypted")
+  resultChecksum  String?      @map("result_checksum")
+  version         Int          @default(1)
+  generatedAt     DateTime?    @map("generated_at")
+  errorMessage    String?      @map("error_message")
+  correlationId   String?      @map("correlation_id")
+  metadata        Json?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  template ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, createdAt])
+  @@index([status, createdAt])
+  @@index([templateId, version])
+  @@map("analytics_reports")
+}
+
+model ScheduledReport {
+  id              String                @id @default(uuid()) @db.Uuid
+  templateId      String                @map("template_id") @db.Uuid
+  ownerUserId     String?               @map("owner_user_id") @db.Uuid
+  name            String
+  cronExpression  String                @map("cron_expression")
+  format          ReportFormat          @default(JSON)
+  parameters      Json?
+  status          ScheduledReportStatus @default(ACTIVE)
+  nextRunAt       DateTime?             @map("next_run_at")
+  lastRunAt       DateTime?             @map("last_run_at")
+  attemptCount    Int                   @default(0) @map("attempt_count")
+  maxAttempts     Int                   @default(5) @map("max_attempts")
+  lastError       String?               @map("last_error")
+  nextAttemptAt   DateTime?             @map("next_attempt_at")
+  metadata        Json?
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  template ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRunAt])
+  @@index([status, nextAttemptAt])
+  @@index([ownerUserId])
+  @@map("scheduled_reports")
+}
+
+model ForecastModel {
+  id          String          @id @default(uuid()) @db.Uuid
+  code        String          @unique
+  name        String
+  description String?
+  domain      AnalyticsDomain
+  metricCode  String          @map("metric_code")
+  algorithm   String          @default("linear_trend")
+  horizon     ForecastHorizon @default(MONTH)
+  isEnabled   Boolean         @default(true) @map("is_enabled")
+  config      Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  results ForecastResult[]
+
+  @@index([domain, isEnabled])
+  @@map("forecast_models")
+}
+
+model ForecastResult {
+  id            String         @id @default(uuid()) @db.Uuid
+  modelId       String         @map("model_id") @db.Uuid
+  status        ForecastStatus @default(DRAFT)
+  horizonStart  DateTime       @map("horizon_start")
+  horizonEnd    DateTime       @map("horizon_end")
+  points        Json
+  confidence    Float?
+  generatedAt   DateTime?      @map("generated_at")
+  errorMessage  String?        @map("error_message")
+  metadata      Json?
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  model ForecastModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId, createdAt])
+  @@index([status, createdAt])
+  @@map("forecast_results")
+}
+
+model AggregationJob {
+  id            String               @id @default(uuid()) @db.Uuid
+  jobType       String               @map("job_type")
+  window        AggregationWindow
+  status        AggregationJobStatus @default(PENDING)
+  domain        AnalyticsDomain?
+  bucketStart   DateTime?            @map("bucket_start")
+  bucketEnd     DateTime?            @map("bucket_end")
+  processedCount Int                 @default(0) @map("processed_count")
+  errorMessage  String?              @map("error_message")
+  startedAt     DateTime?            @map("started_at")
+  completedAt   DateTime?            @map("completed_at")
+  metadata      Json?
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([window, bucketStart])
+  @@map("aggregation_jobs")
+}
+
+model AnalyticsAuditRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  subjectUserId String?  @map("subject_user_id") @db.Uuid
+  resourceType  String?  @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  details       Json?
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@map("analytics_audit_records")
+}

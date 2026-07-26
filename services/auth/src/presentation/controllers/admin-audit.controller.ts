@@ -1,17 +1,20 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { type AuthService } from '../../application/services/auth.service';
-import { PERMISSION_AUDIT_READ, ROLE_ADMIN } from '../../domain/permission-codes';
+import { AuthService } from '../../application/services/auth.service';
+import { PERMISSION_AUDIT_READ, ROLE_ADMIN, ROLE_SUPER_ADMIN } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { successResponse } from '../common/api-response';
-import { type AdminAuditQueryDto } from '../dto/admin.dto';
+import { AdminAuditQueryDto } from '../dto/admin.dto';
 import type { AuditAction } from '../../application/ports/audit-repository.port';
+
+const _adminAuditDtoRuntime = { AdminAuditQueryDto };
+void _adminAuditDtoRuntime;
 
 @ApiTags('admin-audit')
 @Controller('api/v1/admin/audit')
-@Roles(ROLE_ADMIN)
+@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
 export class AdminAuditController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Get()
   @Permissions(PERMISSION_AUDIT_READ)

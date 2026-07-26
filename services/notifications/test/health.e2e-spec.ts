@@ -12,6 +12,13 @@ describe('notifications health (e2e)', () => {
     process.env['OTEL_ENABLED'] = 'false';
     process.env['NODE_ENV'] = 'test';
     process.env['LOG_LEVEL'] = 'silent';
+    process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? 'postgresql://user:pass@localhost:5432/auvora_test';
+    process.env['REDIS_URL'] = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
+    process.env['JWT_ACCESS_SECRET'] = process.env['JWT_ACCESS_SECRET'] ?? 'a'.repeat(32);
+    process.env['CSRF_SECRET'] = process.env['CSRF_SECRET'] ?? 'b'.repeat(32);
+    process.env['INTERNAL_API_KEY'] = process.env['INTERNAL_API_KEY'] ?? 'c'.repeat(32);
+    process.env['NOTIFICATIONS_FIELD_ENCRYPTION_KEY'] =
+      process.env['NOTIFICATIONS_FIELD_ENCRYPTION_KEY'] ?? 'd'.repeat(32);
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],

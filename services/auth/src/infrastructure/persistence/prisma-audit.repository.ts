@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { type PrismaService } from '@auvora/database';
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '@auvora/database';
 import { type AuditAction as PrismaAuditAction, type Prisma } from '@auvora/database';
 import type {
   AuditRepositoryPort,
@@ -10,7 +10,7 @@ import type {
 
 @Injectable()
 export class PrismaAuditRepository implements AuditRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async create(input: CreateAuditLogInput): Promise<void> {
     await this.prisma.securityAuditLog.create({

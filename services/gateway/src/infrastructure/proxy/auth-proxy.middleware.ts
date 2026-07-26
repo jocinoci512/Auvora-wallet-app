@@ -1,5 +1,6 @@
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
+import { hardenProxyRequest } from './proxy-hardening';
 
 /** Specific prefixes so /api/v1/admin/wallets can route to the wallet service. */
 export const AUTH_PROXY_PREFIXES = [
@@ -23,14 +24,7 @@ export function createAuthProxyMiddleware(authServiceUrl: string): RequestHandle
     on: {
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);
-
-        const existing = req.headers['x-forwarded-for'];
-        const clientIp = req.ip ?? req.socket.remoteAddress;
-        if (typeof existing === 'string' && existing.length > 0) {
-          proxyReq.setHeader('x-forwarded-for', clientIp ? `${existing}, ${clientIp}` : existing);
-        } else if (clientIp) {
-          proxyReq.setHeader('x-forwarded-for', clientIp);
-        }
+        hardenProxyRequest(proxyReq, req);
       },
     },
   });

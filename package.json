@@ -21,7 +21,7 @@
     "db:generate": "pnpm --filter @auvora/database generate",
     "db:migrate": "pnpm --filter @auvora/database migrate:dev",
     "db:seed": "pnpm --filter @auvora/database seed",
-    "docs:api": "typedoc",
+    "docs:api": "typedoc --skipErrorChecking",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -13,6 +13,20 @@ export const envSchema = z.object({
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   APP_PUBLIC_URL: z.string().url().optional(),
+  /**
+   * Optional. When set, `BlockchainHttpClientAdapter` calls the blockchain
+   * service (Phase 4, system of record for chain addresses) for address
+   * validation instead of relying only on the local regex stubs in
+   * `infrastructure/blockchain/blockchain-providers.ts`.
+   */
+  BLOCKCHAIN_SERVICE_URL: z.string().url().optional(),
+  /** Optional. When set with INTERNAL_API_KEY, NotificationsPublisherAdapter forwards completed-transfer events for downstream webhook/notification fan-out. */
+  NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
+  /** Optional. When set with INTERNAL_API_KEY, AiPublisherAdapter forwards domain events to the AI platform. */
+  AI_SERVICE_URL: z.string().url().optional(),
+  /** Optional. When set with INTERNAL_API_KEY, AnalyticsPublisherAdapter forwards domain events to the analytics platform. */
+  ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  INTERNAL_API_KEY: z.string().min(32),
   OTEL_ENABLED: z
     .enum(['true', 'false'])
     .default('false')

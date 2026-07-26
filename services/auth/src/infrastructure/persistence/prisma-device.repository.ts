@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { type PrismaService } from '@auvora/database';
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '@auvora/database';
 import type {
   DeviceRecord,
   DeviceRepositoryPort,
@@ -8,7 +8,7 @@ import type {
 
 @Injectable()
 export class PrismaDeviceRepository implements DeviceRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByFingerprint(userId: string, fingerprint: string): Promise<DeviceRecord | null> {
     return this.prisma.device.findUnique({

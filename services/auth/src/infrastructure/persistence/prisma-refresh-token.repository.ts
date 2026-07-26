@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { type PrismaService } from '@auvora/database';
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '@auvora/database';
 import type {
   CreateRefreshTokenInput,
   RefreshTokenRecord,
@@ -8,7 +8,7 @@ import type {
 
 @Injectable()
 export class PrismaRefreshTokenRepository implements RefreshTokenRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async create(input: CreateRefreshTokenInput): Promise<RefreshTokenRecord> {
     return this.prisma.refreshToken.create({ data: input });

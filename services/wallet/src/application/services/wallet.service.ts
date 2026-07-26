@@ -14,6 +14,18 @@ import {
   ValidationError,
 } from '../../domain';
 import { PERMISSION_WALLETS_ADMIN } from '../../domain/permission-codes';
+import {
+  AI_PUBLISHER,
+  type AiPublisherPort,
+} from '../../infrastructure/ai/ai-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  type AnalyticsPublisherPort,
+} from '../../infrastructure/analytics/analytics-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  type NotificationsPublisherPort,
+} from '../../infrastructure/notifications/notifications-publisher.adapter';
 import { ID_GENERATOR, type IdGeneratorPort } from '../ports/clock.port';
 import {
   LEDGER_REPOSITORY,
@@ -69,6 +81,8 @@ export interface CreditDebitInput {
   amount: string;
   description?: string;
   metadata?: Record<string, unknown>;
+  /** When set, overrides default ADJUSTMENT (e.g. DEPOSIT / WITHDRAWAL from payments). */
+  transactionType?: TransactionType;
 }
 
 export interface InternalTransferInput {
@@ -86,6 +100,9 @@ export class WalletService {
     @Inject(LEDGER_REPOSITORY) private readonly ledger: LedgerRepositoryPort,
     @Inject(TRANSACTION_REPOSITORY) private readonly transactions: TransactionRepositoryPort,
     @Inject(ID_GENERATOR) private readonly ids: IdGeneratorPort,
+    @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
+    @Inject(AI_PUBLISHER) private readonly ai: AiPublisherPort,
+    @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
   ) {}
 
   async createWallet(input: CreateWalletInput): Promise<WalletRecord> {
@@ -259,7 +276,7 @@ export class WalletService {
 
     const transaction = await this.transactions.create({
       reference,
-      type: TransactionType.ADJUSTMENT,
+      type: input.transactionType ?? TransactionType.ADJUSTMENT,
       toWalletId: wallet.id,
       assetId: wallet.assetId,
       amount: amount.toString(),
@@ -298,7 +315,7 @@ export class WalletService {
 
     const transaction = await this.transactions.create({
       reference,
-      type: TransactionType.ADJUSTMENT,
+      type: input.transactionType ?? TransactionType.ADJUSTMENT,
       fromWalletId: wallet.id,
       assetId: wallet.assetId,
       amount: amount.toString(),
@@ -380,6 +397,43 @@ export class WalletService {
     });
 
     const completed = await this.transactions.complete(transaction.id);
+
+    await this.notifications.publishEvent({
+      eventType: 'wallet.transfer.completed',
+      aggregateId: completed.id,
+      payload: {
+        reference: completed.reference,
+        fromWalletId: fromWallet.id,
+        toWalletId: toWallet.id,
+        assetId: fromWallet.assetId,
+        amount: amount.toString(),
+      },
+    });
+    await this.ai.publishEvent({
+      eventType: 'wallet.transfer.completed',
+      aggregateId: completed.id,
+      payload: {
+        reference: completed.reference,
+        fromWalletId: fromWallet.id,
+        toWalletId: toWallet.id,
+        assetId: fromWallet.assetId,
+        amount: amount.toString(),
+      },
+    });
+    await this.analytics.publishEvent({
+      eventType: 'wallet.transfer.completed',
+      domain: 'WALLET',
+      aggregateId: completed.id,
+      ownerUserId: requester.sub,
+      metrics: { tx_volume: 1 },
+      payload: {
+        reference: completed.reference,
+        fromWalletId: fromWallet.id,
+        toWalletId: toWallet.id,
+        assetId: fromWallet.assetId,
+        amount: amount.toString(),
+      },
+    });
 
     return {
       transaction: completed,

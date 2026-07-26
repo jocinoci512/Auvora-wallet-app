@@ -5,11 +5,27 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   AUTH_SERVICE_URL: z.string().url().default('http://127.0.0.1:4001'),
   WALLET_SERVICE_URL: z.string().url().default('http://127.0.0.1:3002'),
+  BLOCKCHAIN_SERVICE_URL: z.string().url().default('http://127.0.0.1:3003'),
+  PAYMENTS_SERVICE_URL: z.string().url().default('http://127.0.0.1:3004'),
+  COMPLIANCE_SERVICE_URL: z.string().url().default('http://127.0.0.1:3005'),
+  CUSTODY_SERVICE_URL: z.string().url().default('http://127.0.0.1:3009'),
+  NOTIFICATIONS_SERVICE_URL: z.string().url().default('http://127.0.0.1:3006'),
+  ANALYTICS_SERVICE_URL: z.string().url().default('http://127.0.0.1:3007'),
+  AI_SERVICE_URL: z.string().url().default('http://127.0.0.1:3008'),
   SERVICE_NAME: z.string().default('gateway'),
   SERVICE_VERSION: z.string().default('0.1.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:3000,http://localhost:3001')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ),
   OTEL_ENABLED: z
     .enum(['true', 'false'])
     .default('false')
@@ -27,5 +43,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
       .join('; ');
     throw new Error(`Invalid environment configuration: ${details}`);
   }
-  return parsed.data;
+  // Shared monorepo shells may set SERVICE_NAME for another package.
+  return { ...parsed.data, SERVICE_NAME: 'gateway' };
 }

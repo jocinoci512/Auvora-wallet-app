@@ -1,0 +1,25 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "rootDir": "..",
+    "noEmit": true
+  },
+  "include": [
+    "../packages/types/src/**/*.ts",
+    "../packages/ui/src/**/*.{ts,tsx}",
+    "../packages/sdk/src/**/*.ts",
+    "../packages/security/src/**/*.ts",
+    "../packages/database/src/**/*.ts"
+  ],
+  "exclude": [
+    "../**/node_modules",
+    "../**/dist",
+    "../apps/**",
+    "../services/**",
+    "../**/*.test.ts",
+    "../**/*.spec.ts",
+    "../**/*.test.tsx",
+    "../**/*.spec.tsx"
+  ]
+}

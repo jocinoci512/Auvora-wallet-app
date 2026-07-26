@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { type PrismaService } from '@auvora/database';
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '@auvora/database';
 import { LoginOutcome } from '@auvora/database';
 import type {
   LoginHistoryRecord,
@@ -9,7 +9,7 @@ import type {
 
 @Injectable()
 export class PrismaLoginHistoryRepository implements LoginHistoryRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async record(input: RecordLoginInput): Promise<void> {
     await this.prisma.loginHistory.create({

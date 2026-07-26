@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { type PrismaService } from '@auvora/database';
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '@auvora/database';
 import { UserStatus as PrismaUserStatus } from '@auvora/database';
 import type { PermissionCode, UserStatus } from '@auvora/types';
 import type {
@@ -92,7 +92,7 @@ function mapUser(record: {
 
 @Injectable()
 export class PrismaUserRepository implements UserRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findById(id: string): Promise<AuthUser | null> {
     const user = await this.prisma.user.findUnique({ where: { id }, include: userInclude });

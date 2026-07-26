@@ -4,6 +4,8 @@ import { PassportModule } from '@nestjs/passport';
 import { ApplicationModule } from '../application/application.module';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { AdminWalletsController } from './controllers/admin-wallets.controller';
+import { InternalLedgerController } from './controllers/internal-ledger.controller';
+import { InternalWalletController } from './controllers/internal-wallet.controller';
 import { WalletsController } from './controllers/wallets.controller';
 import { DomainExceptionFilter } from './filters/domain-exception.filter';
 import { CsrfGuard } from './guards/csrf.guard';
@@ -15,7 +17,13 @@ import { HealthController } from './http/health.controller';
 
 @Module({
   imports: [InfrastructureModule, ApplicationModule, PassportModule.register({ defaultStrategy: 'jwt' })],
-  controllers: [HealthController, WalletsController, AdminWalletsController],
+  controllers: [
+    HealthController,
+    WalletsController,
+    AdminWalletsController,
+    InternalLedgerController,
+    InternalWalletController,
+  ],
   providers: [
     JwtStrategy,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

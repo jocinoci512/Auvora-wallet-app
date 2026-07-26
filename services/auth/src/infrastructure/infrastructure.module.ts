@@ -19,6 +19,8 @@ import { JwtTokenAdapter } from './crypto/jwt-token.adapter';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { ConsoleMailAdapter } from './mail/console-mail.adapter';
 import { SmtpMailAdapter } from './mail/smtp-mail.adapter';
+import { NotificationsMailAdapter } from './mail/notifications-mail.adapter';
+import { AnalyticsPublisherAdapter, ANALYTICS_PUBLISHER } from './analytics/analytics-publisher.adapter';
 import { PrismaAuditRepository } from './persistence/prisma-audit.repository';
 import { PrismaDeviceRepository } from './persistence/prisma-device.repository';
 import { PrismaLoginHistoryRepository } from './persistence/prisma-login-history.repository';
@@ -98,15 +100,28 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     },
     {
       provide: MAIL_PORT,
-      useFactory: (env: ServiceEnv, consoleMail: ConsoleMailAdapter) => {
+      useFactory: (
+        env: ServiceEnv,
+        consoleMail: ConsoleMailAdapter,
+        notificationsMail: NotificationsMailAdapter,
+      ) => {
+        if (env.NOTIFICATIONS_SERVICE_URL && env.INTERNAL_API_KEY) {
+          return notificationsMail;
+        }
         if (env.MAIL_DRIVER === 'smtp') {
           return new SmtpMailAdapter(env);
         }
         return consoleMail;
       },
-      inject: [ENV, ConsoleMailAdapter],
+      inject: [ENV, ConsoleMailAdapter, NotificationsMailAdapter],
     },
     ConsoleMailAdapter,
+    NotificationsMailAdapter,
+    AnalyticsPublisherAdapter,
+    {
+      provide: ANALYTICS_PUBLISHER,
+      useExisting: AnalyticsPublisherAdapter,
+    },
   ],
   exports: [
     REDIS_PORT,
@@ -122,6 +137,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     LOGIN_HISTORY_REPOSITORY,
     AUDIT_REPOSITORY,
     MAIL_PORT,
+    ANALYTICS_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],

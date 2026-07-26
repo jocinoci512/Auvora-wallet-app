@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { type AuthService } from '../../application/services/auth.service';
+import { AuthService } from '../../application/services/auth.service';
 import { UnauthorizedError } from '../../domain';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
@@ -23,21 +23,33 @@ import {
 } from '../common/cookie.helper';
 import { successResponse } from '../common/api-response';
 import {
-  type ChangePasswordDto,
-  type ForgotPasswordDto,
-  type LoginDto,
-  type RefreshDto,
-  type RegisterDto,
-  type ResendVerificationDto,
-  type ResetPasswordDto,
-  type VerifyEmailDto,
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RefreshDto,
+  RegisterDto,
+  ResendVerificationDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
 } from '../dto/auth.dto';
+
+// Keep DTO classes as runtime values for Nest ValidationPipe.
+const _authDtoRuntime = {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RefreshDto,
+  RegisterDto,
+  ResendVerificationDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+};
+void _authDtoRuntime;
 
 @ApiTags('auth')
 @Controller('api/v1/auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
+  constructor(@Inject(AuthService) private readonly authService: AuthService,
     @Inject(ENV) private readonly env: ServiceEnv,
   ) {}
 
@@ -57,9 +69,9 @@ export class AuthController {
     const result = await this.authService.login(dto, extractRequestContext(req));
     setRefreshTokenCookie(res, this.env, result.refreshToken);
     setCsrfTokenCookie(res, this.env, result.csrfToken);
+    // Refresh token is httpOnly-cookie only — never return it in the JSON body (XSS surface).
     return successResponse({
       accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
       csrfToken: result.csrfToken,
@@ -84,7 +96,13 @@ export class AuthController {
     const result = await this.authService.refresh(refreshToken, extractRequestContext(req));
     setRefreshTokenCookie(res, this.env, result.refreshToken);
     setCsrfTokenCookie(res, this.env, result.csrfToken);
-    return successResponse(result);
+    return successResponse({
+      accessToken: result.accessToken,
+      expiresIn: result.expiresIn,
+      tokenType: result.tokenType,
+      csrfToken: result.csrfToken,
+      sessionId: result.sessionId,
+    });
   }
 
   @Post('logout')

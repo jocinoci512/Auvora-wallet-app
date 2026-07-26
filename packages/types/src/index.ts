@@ -53,7 +53,47 @@ export type PermissionCode =
   | 'wallets:write'
   | 'wallets:admin'
   | 'wallets:suspend'
-  | 'wallets:archive';
+  | 'wallets:archive'
+  | 'blockchain:read'
+  | 'blockchain:write'
+  | 'blockchain:admin'
+  | 'blockchain:sync'
+  | 'payment:read'
+  | 'payment:write'
+  | 'payment:admin'
+  | 'payment:settle'
+  | 'payment:reconcile'
+  | 'compliance:read'
+  | 'compliance:write'
+  | 'compliance:admin'
+  | 'compliance:review'
+  | 'compliance:cases'
+  | 'compliance:rules'
+  | 'custody:read'
+  | 'custody:write'
+  | 'custody:admin'
+  | 'custody:sign'
+  | 'custody:approve'
+  | 'custody:policies'
+  | 'custody:recovery'
+  | 'notification:read'
+  | 'notification:write'
+  | 'notification:admin'
+  | 'notification:templates'
+  | 'notification:webhooks'
+  | 'notification:broadcast'
+  | 'ai:read'
+  | 'ai:write'
+  | 'ai:admin'
+  | 'ai:prompts'
+  | 'ai:knowledge'
+  | 'ai:chat'
+  | 'analytics:read'
+  | 'analytics:write'
+  | 'analytics:admin'
+  | 'analytics:reports'
+  | 'analytics:dashboards'
+  | 'analytics:kpis';
 
 export interface JwtAccessClaims {
   sub: string;
@@ -67,7 +107,8 @@ export interface JwtAccessClaims {
 
 export interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
+  /** Present only for non-browser clients that cannot use httpOnly cookies. */
+  refreshToken?: string;
   expiresIn: number;
   tokenType: 'Bearer';
 }

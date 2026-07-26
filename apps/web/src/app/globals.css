@@ -334,3 +334,117 @@ code {
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
+
+.chain-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.chain-card {
+  border: 1px solid var(--auvora-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 1rem 1.25rem;
+}
+
+.chain-card__name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  display: block;
+}
+
+.chain-card__symbol {
+  font-size: 0.8rem;
+  color: rgba(11, 18, 32, 0.55);
+}
+
+.chain-card__meta {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(11, 18, 32, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  margin-right: 0.4rem;
+}
+
+.dot--healthy {
+  background: var(--auvora-accent);
+}
+
+.dot--unhealthy {
+  background: #d92d20;
+}
+
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.copy-row .mono {
+  flex: 1 1 auto;
+}
+
+.address-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.address-card {
+  border: 1px solid var(--auvora-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.address-card__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.address-card__link:hover {
+  background: rgba(215, 237, 230, 0.35);
+}
+
+.address-card__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.status-badge--active {
+  background: var(--auvora-accent-muted);
+  color: var(--auvora-accent);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(15, 110, 86, 0.1);
+  color: var(--auvora-accent);
+}

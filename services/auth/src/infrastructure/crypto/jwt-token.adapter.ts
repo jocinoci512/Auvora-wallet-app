@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type JwtService } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import { hashToken, generateOpaqueToken } from '@auvora/security';
 import type { JwtAccessClaims } from '@auvora/types';
 import { UnauthorizedError } from '../../domain';
@@ -9,7 +9,7 @@ import type { AccessTokenPayload, TokenServicePort } from '../../application/por
 @Injectable()
 export class JwtTokenAdapter implements TokenServicePort {
   constructor(
-    private readonly jwtService: JwtService,
+    @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(ENV) private readonly env: ServiceEnv,
   ) {}
 
