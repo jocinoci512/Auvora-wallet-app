@@ -1,10 +1,22 @@
 'use client';
 
 import { AuvoraClientError, type OpsDashboardOverview } from '@auvora/sdk';
-import { Alert, EmptyState, LoadingBlock, Skeleton } from '@auvora/ui';
-import Link from 'next/link';
+import { Alert, EmptyState, LoadingBlock, PageHeader, Skeleton } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { Subnav } from '../../components/Subnav';
 import { createApiClient, formatApiError } from '../../lib/api-client';
+
+const OPS_LINKS = [
+  { href: '/observability', label: 'Dashboard' },
+  { href: '/observability/alerts', label: 'Alerts' },
+  { href: '/observability/incidents', label: 'Incidents' },
+  { href: '/observability/slos', label: 'SLOs' },
+  { href: '/observability/capacity', label: 'Capacity' },
+  { href: '/observability/health', label: 'Health' },
+  { href: '/observability/dependencies', label: 'Dependencies' },
+  { href: '/observability/traces', label: 'Traces' },
+  { href: '/observability/logs', label: 'Logs' },
+];
 
 export default function AdminObservabilityPage(): ReactElement {
   const [overview, setOverview] = useState<OpsDashboardOverview | null>(null);
@@ -35,20 +47,9 @@ export default function AdminObservabilityPage(): ReactElement {
 
   return (
     <main className="page">
-      <header className="page__header">
-        <h1>Operations</h1>
-        <nav className="page__subnav" aria-label="Observability sections">
-          <Link href="/observability">Dashboard</Link>
-          <Link href="/observability/alerts">Alerts</Link>
-          <Link href="/observability/incidents">Incidents</Link>
-          <Link href="/observability/slos">SLOs</Link>
-          <Link href="/observability/capacity">Capacity</Link>
-          <Link href="/observability/health">Health</Link>
-          <Link href="/observability/dependencies">Dependencies</Link>
-          <Link href="/observability/traces">Traces</Link>
-          <Link href="/observability/logs">Logs</Link>
-        </nav>
-      </header>
+      <PageHeader title="Operations" subtitle="Live health, alerts, and incident posture.">
+        <Subnav label="Observability sections" links={OPS_LINKS} />
+      </PageHeader>
 
       {loading ? (
         <>

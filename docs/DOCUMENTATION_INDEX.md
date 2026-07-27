@@ -21,6 +21,10 @@
 | UX review | [`UX_REVIEW.md`](../UX_REVIEW.md) |
 | UI consistency | [`UI_CONSISTENCY_REPORT.md`](../UI_CONSISTENCY_REPORT.md) |
 | Accessibility | [`ACCESSIBILITY_REPORT.md`](../ACCESSIBILITY_REPORT.md) |
+| ADR 0011 — UX primitives | [`adr/0011-shared-ux-primitives.md`](./adr/0011-shared-ux-primitives.md) |
+| Build verification (post Phase 17) | [`../BUILD_VERIFICATION_REPORT.md`](../BUILD_VERIFICATION_REPORT.md) |
+| Error fix report (post Phase 17) | [`../ERROR_FIX_REPORT.md`](../ERROR_FIX_REPORT.md) |
+| Code health report (post Phase 17) | [`../CODE_HEALTH_REPORT.md`](../CODE_HEALTH_REPORT.md) |
 
 ## Architecture & API
 
@@ -29,6 +33,14 @@
 | Architecture | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 | ADR index | [`ARCHITECTURE_DECISIONS.md`](../ARCHITECTURE_DECISIONS.md) |
 | API documentation | [`API_DOCUMENTATION.md`](./API_DOCUMENTATION.md) |
+| Blockchain provider guide (Phase 17) | [`BLOCKCHAIN_PROVIDER_GUIDE.md`](./BLOCKCHAIN_PROVIDER_GUIDE.md) |
+| Alchemy configuration (Phase 17) | [`ALCHEMY_CONFIGURATION.md`](./ALCHEMY_CONFIGURATION.md) |
+| Network support (Phase 17) | [`NETWORK_SUPPORT.md`](./NETWORK_SUPPORT.md) |
+| RPC health report (Phase 17) | [`RPC_HEALTH_REPORT.md`](./RPC_HEALTH_REPORT.md) |
+| Wallet engine (Phase 18) | [`WALLET_ENGINE.md`](./WALLET_ENGINE.md) |
+| Portfolio engine (Phase 18) | [`PORTFOLIO_ENGINE.md`](./PORTFOLIO_ENGINE.md) |
+| Background workers (Phase 18) | [`BACKGROUND_WORKERS.md`](./BACKGROUND_WORKERS.md) |
+| Sync architecture (Phase 18) | [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) |
 | Dependency graph | [`diagrams/dependency-graph.md`](./diagrams/dependency-graph.md) |
 | Scalability topology | [`diagrams/scalability-resilience-topology.md`](./diagrams/scalability-resilience-topology.md) |
 

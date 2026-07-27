@@ -1,10 +1,16 @@
 export { Alert } from './Alert';
 export type { AlertProps, AlertTone } from './Alert';
+export { AsyncStates } from './AsyncStates';
+export type { AsyncStatesProps } from './AsyncStates';
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant } from './Button';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
+export { PageHeader } from './PageHeader';
+export type { PageHeaderProps } from './PageHeader';
 export { LoadingBlock, Skeleton } from './Skeleton';
 export type { LoadingBlockProps, SkeletonProps } from './Skeleton';
+export { StatusBadge } from './StatusBadge';
+export type { StatusBadgeProps } from './StatusBadge';
 export { tokens } from './tokens';
 export type { Tokens } from './tokens';

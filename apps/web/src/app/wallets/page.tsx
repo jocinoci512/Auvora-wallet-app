@@ -1,7 +1,7 @@
 'use client';
 
 import { AuvoraClientError, type Wallet } from '@auvora/sdk';
-import { Alert, Button, EmptyState, LoadingBlock, Skeleton } from '@auvora/ui';
+import { Alert, Button, EmptyState, LoadingBlock, PageHeader, Skeleton } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
@@ -45,17 +45,15 @@ export default function WalletsPage(): ReactElement {
 
   return (
     <main>
-      <header className="page-header">
-        <div>
-          <h1>Wallets</h1>
-          <p className="page-subtitle">
-            {loading ? 'Loading…' : `${total} wallet${total === 1 ? '' : 's'}`}
-          </p>
-        </div>
-        <Link href="/wallets/new">
-          <Button>New wallet</Button>
-        </Link>
-      </header>
+      <PageHeader
+        title="Wallets"
+        subtitle={loading ? 'Loading…' : `${total} wallet${total === 1 ? '' : 's'}`}
+        actions={
+          <Link href="/wallets/new">
+            <Button>New wallet</Button>
+          </Link>
+        }
+      />
 
       {loading ? (
         <>

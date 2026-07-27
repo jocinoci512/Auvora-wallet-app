@@ -6,9 +6,9 @@ import {
   type AiChatMessage,
   type AiConversation,
 } from '@auvora/sdk';
-import { Button } from '@auvora/ui';
-import Link from 'next/link';
+import { Alert, Button, EmptyState, PageHeader } from '@auvora/ui';
 import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react';
+import { Subnav } from '../../components/Subnav';
 import { createApiClient, formatApiError } from '../../lib/api-client';
 
 export default function AiPage(): ReactElement {
@@ -75,7 +75,13 @@ export default function AiPage(): ReactElement {
       setConversationId(result.conversationId);
       setMessages((prev) => [
         ...prev,
-        { id: `local-${Date.now()}`, conversationId: result.conversationId, role: 'USER', content: input, createdAt: new Date().toISOString() },
+        {
+          id: `local-${Date.now()}`,
+          conversationId: result.conversationId,
+          role: 'USER',
+          content: input,
+          createdAt: new Date().toISOString(),
+        },
         result.message,
       ]);
       setInput('');
@@ -103,17 +109,30 @@ export default function AiPage(): ReactElement {
 
   return (
     <main className="page">
-      <header className="page__header">
-        <h1>AI assistant</h1>
-        <nav className="page__subnav">
-          <Link href="/ai">Chat</Link>
-          <Link href="/ai/knowledge">Knowledge search</Link>
-        </nav>
-      </header>
-      {error ? <div className="alert alert--error">{error}</div> : null}
-      <label>
-        Assistant
-        <select value={assistantId} onChange={(e) => setAssistantId(e.target.value)}>
+      <PageHeader title="AI assistant" subtitle="Ask questions grounded in your knowledge base.">
+        <Subnav
+          label="AI sections"
+          links={[
+            { href: '/ai', label: 'Chat' },
+            { href: '/ai/knowledge', label: 'Knowledge search' },
+          ]}
+        />
+      </PageHeader>
+
+      {error ? (
+        <Alert tone="error" title="AI request failed">
+          {error}
+        </Alert>
+      ) : null}
+
+      <label className="field" style={{ maxWidth: '24rem' }}>
+        <span className="field-label">Assistant</span>
+        <select
+          className="field-input"
+          value={assistantId}
+          onChange={(e) => setAssistantId(e.target.value)}
+          aria-label="Select assistant"
+        >
           {assistants.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name} ({a.type})
@@ -122,53 +141,94 @@ export default function AiPage(): ReactElement {
           {!assistants.length ? <option value="">Default</option> : null}
         </select>
       </label>
-      <section className="stack">
-        <h2>Conversations</h2>
-        <Button type="button" onClick={newConversation}>
-          New conversation
-        </Button>
-        <ul>
-          {conversations.map((c) => (
-            <li key={c.id}>
-              <Button type="button" onClick={() => void openConversation(c.id)}>
-                {c.title ?? c.id} · {c.status}
-              </Button>
-            </li>
-          ))}
-          {!conversations.length ? <li>No conversations yet.</li> : null}
-        </ul>
-      </section>
-      <section className="stack">
-        <h2>Messages</h2>
-        <ul>
-          {messages.map((m) => (
-            <li key={m.id}>
-              <strong>{m.role}</strong>: {m.content}
-              {m.role === 'ASSISTANT' ? (
-                <span>
-                  {' '}
-                  <Button type="button" onClick={() => void onFeedback(m.id, 'UP')}>
-                    👍
+
+      <div className="auvora-chat" style={{ marginTop: '1rem' }}>
+        <aside className="auvora-chat__sidebar" aria-label="Conversations">
+          <div className="section-header">
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Conversations</h2>
+            <Button type="button" variant="secondary" onClick={newConversation}>
+              New
+            </Button>
+          </div>
+          {conversations.length === 0 ? (
+            <EmptyState
+              title="No conversations"
+              description="Start a new chat to begin."
+            />
+          ) : (
+            <ul className="stack">
+              {conversations.map((c) => (
+                <li key={c.id}>
+                  <Button
+                    type="button"
+                    variant={conversationId === c.id ? 'primary' : 'ghost'}
+                    onClick={() => void openConversation(c.id)}
+                    style={{ width: '100%', textAlign: 'left' }}
+                  >
+                    {c.title ?? c.id.slice(0, 8)} · {c.status}
                   </Button>
-                  <Button type="button" onClick={() => void onFeedback(m.id, 'DOWN')}>
-                    👎
-                  </Button>
-                </span>
-              ) : null}
-            </li>
-          ))}
-          {!messages.length ? <li>No messages yet. Say hello below.</li> : null}
-        </ul>
-        <form onSubmit={onSend} className="stack">
-          <label>
-            Message
-            <input value={input} onChange={(e) => setInput(e.target.value)} required />
-          </label>
-          <Button type="submit" disabled={sending}>
-            {sending ? 'Sending…' : 'Send'}
-          </Button>
-        </form>
-      </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+
+        <section className="auvora-chat__main" aria-label="Chat messages">
+          <div className="auvora-chat__messages" role="log" aria-live="polite">
+            {messages.length === 0 ? (
+              <EmptyState
+                title="Say hello"
+                description="Send a message to start the conversation."
+              />
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`auvora-chat__bubble auvora-chat__bubble--${m.role === 'USER' ? 'user' : 'assistant'}`}
+                >
+                  <strong>{m.role === 'USER' ? 'You' : 'Assistant'}</strong>
+                  <p style={{ margin: '0.35rem 0 0' }}>{m.content}</p>
+                  {m.role === 'ASSISTANT' ? (
+                    <div className="action-row" style={{ marginTop: '0.5rem' }}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-label="Helpful response"
+                        onClick={() => void onFeedback(m.id, 'UP')}
+                      >
+                        Helpful
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-label="Unhelpful response"
+                        onClick={() => void onFeedback(m.id, 'DOWN')}
+                      >
+                        Not helpful
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+          <form className="form-stack" onSubmit={(e) => void onSend(e)}>
+            <label>
+              Message
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                required
+                placeholder="Ask a question…"
+                aria-label="Chat message"
+              />
+            </label>
+            <Button type="submit" disabled={sending || !input.trim()}>
+              {sending ? 'Sending…' : 'Send'}
+            </Button>
+          </form>
+        </section>
+      </div>
     </main>
   );
 }

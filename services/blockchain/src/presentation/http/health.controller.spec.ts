@@ -1,9 +1,24 @@
 import { Test } from '@nestjs/testing';
 import { HealthStatus } from '@auvora/types';
 import { PrismaService } from '@auvora/database';
+import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { ENV } from '../../config/env.schema';
 import { REDIS_PORT } from '../../infrastructure/redis/redis.port';
 import { HealthController } from './health.controller';
+
+const providerHealthStub = {
+  getAll: async () => [],
+  getOne: async () => ({
+    chain: 'ETHEREUM',
+    status: 'up',
+    backend: 'simulator',
+    latencyMs: 1,
+    latestBlockHeight: '1',
+    synchronized: true,
+    lastSuccessfulRpc: new Date().toISOString(),
+    endpoint: null,
+  }),
+};
 
 describe('HealthController', () => {
   it('returns ok liveness payload', () => {
@@ -14,6 +29,7 @@ describe('HealthController', () => {
       } as never,
       { ping: async () => true },
       { isHealthy: async () => true } as PrismaService,
+      providerHealthStub as never,
     );
     const result = controller.getHealth();
     expect(result.status).toBe(HealthStatus.Ok);
@@ -29,6 +45,7 @@ describe('HealthController', () => {
       } as never,
       { ping: async () => true },
       { isHealthy: async () => true } as PrismaService,
+      providerHealthStub as never,
     );
     const result = await controller.getReady();
     expect(result.status).toBe(HealthStatus.Ok);
@@ -44,6 +61,7 @@ describe('HealthController', () => {
       } as never,
       { ping: async () => false },
       { isHealthy: async () => true } as PrismaService,
+      providerHealthStub as never,
     );
     const result = await controller.getReady();
     expect(result.status).toBe(HealthStatus.Unhealthy);
@@ -65,6 +83,10 @@ describe('HealthController', () => {
         {
           provide: PrismaService,
           useValue: { isHealthy: async () => true },
+        },
+        {
+          provide: ProviderRpcHealthService,
+          useValue: providerHealthStub,
         },
       ],
     }).compile();

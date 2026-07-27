@@ -20,6 +20,17 @@ export const envSchema = z.object({
    * `infrastructure/blockchain/blockchain-providers.ts`.
    */
   BLOCKCHAIN_SERVICE_URL: z.string().url().optional(),
+  BLOCKCHAIN_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(12_000),
+  /** Background wallet workers (sync/balance/portfolio/retry/health). */
+  WALLET_WORKERS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  WALLET_SYNC_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
+  WALLET_BALANCE_INTERVAL_MS: z.coerce.number().int().positive().default(45_000),
+  WALLET_PORTFOLIO_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  WALLET_RETRY_INTERVAL_MS: z.coerce.number().int().positive().default(20_000),
+  WALLET_HEALTH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   /** Optional. When set with INTERNAL_API_KEY, NotificationsPublisherAdapter forwards completed-transfer events for downstream webhook/notification fan-out. */
   NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
   /** Optional. When set with INTERNAL_API_KEY, AiPublisherAdapter forwards domain events to the AI platform. */

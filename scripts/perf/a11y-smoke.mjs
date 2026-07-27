@@ -19,11 +19,18 @@ for (const target of targets) {
       hasHtmlLang: /<html[^>]*lang=/i.test(html),
       hasMainOrRole: /<(main|nav|header|footer)\b/i.test(html) || /role=["'](main|navigation)/i.test(html),
       hasViewport: /name=["']viewport["']/i.test(html),
+      hasSkipLink: /skip to content/i.test(html),
+      hasMainTarget: /id=["']main-content["']/i.test(html),
       avoidsAutoplayAudio: !/<audio[^>]+autoplay/i.test(html),
       contentTypeOptions:
         (res.headers.get('x-content-type-options') || '').toLowerCase() === 'nosniff',
     };
-    const ok = checks.statusOk && checks.hasHtmlLang && checks.hasViewport;
+    const ok =
+      checks.statusOk &&
+      checks.hasHtmlLang &&
+      checks.hasViewport &&
+      checks.hasSkipLink &&
+      checks.hasMainTarget;
     results.push({ target: target.name, url: target.url, ok, checks });
   } catch (error) {
     results.push({

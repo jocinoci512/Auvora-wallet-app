@@ -1,16 +1,12 @@
 'use client';
 
 import { AuvoraClientError, type Wallet, type WalletStatus } from '@auvora/sdk';
-import { Button } from '@auvora/ui';
+import { AsyncStates, Button, PageHeader, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
 
 const STATUSES: Array<WalletStatus | ''> = ['', 'PENDING', 'ACTIVE', 'SUSPENDED', 'ARCHIVED'];
-
-function statusClass(status: Wallet['status']): string {
-  return `status-badge status-badge--${status.toLowerCase()}`;
-}
 
 export default function AdminWalletsPage(): ReactElement {
   const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -50,14 +46,12 @@ export default function AdminWalletsPage(): ReactElement {
 
   return (
     <main>
-      <header className="page-header">
-        <div>
-          <h1>Wallets</h1>
-          <p className="page-subtitle">{total} wallet{total === 1 ? '' : 's'} found</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Wallets"
+        subtitle={loading ? 'Searching…' : `${total} wallet${total === 1 ? '' : 's'} found`}
+      />
 
-      <section className="panel filters">
+      <section className="panel filters" aria-label="Wallet filters">
         <div className="filters__row">
           <label className="field">
             <span className="field-label">Owner user ID</span>
@@ -97,43 +91,50 @@ export default function AdminWalletsPage(): ReactElement {
         </div>
       </section>
 
-      {loading ? <p className="state-message">Loading wallets…</p> : null}
-      {error ? <div className="alert alert--error">{error}</div> : null}
-
-      {!loading && !error && wallets.length === 0 ? (
-        <p className="state-message">No wallets match your filters.</p>
-      ) : null}
-
-      {!loading && wallets.length > 0 ? (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Asset</th>
-              <th>Label</th>
-              <th>Owner</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {wallets.map((wallet) => (
-              <tr key={wallet.id}>
-                <td>{wallet.assetCode}</td>
-                <td>{wallet.label ?? '—'}</td>
-                <td className="mono">{wallet.ownerUserId.slice(0, 8)}…</td>
-                <td>
-                  <span className={statusClass(wallet.status)}>{wallet.status}</span>
-                </td>
-                <td>{new Date(wallet.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <Link href={`/wallets/${wallet.id}`}>View</Link>
-                </td>
+      <AsyncStates
+        loading={loading}
+        loadingMessage="Loading wallets…"
+        error={error}
+        errorTitle="Could not load wallets"
+        onRetry={() => void load()}
+        empty={!loading && !error && wallets.length === 0}
+        emptyTitle="No wallets match"
+        emptyDescription="Try clearing filters or searching by a different owner or asset."
+      >
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="auvora-sr-only">Admin wallet search results</caption>
+            <thead>
+              <tr>
+                <th scope="col">Asset</th>
+                <th scope="col">Label</th>
+                <th scope="col">Owner</th>
+                <th scope="col">Status</th>
+                <th scope="col">Created</th>
+                <th scope="col">
+                  <span className="auvora-sr-only">Actions</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
+            </thead>
+            <tbody>
+              {wallets.map((wallet) => (
+                <tr key={wallet.id}>
+                  <td>{wallet.assetCode}</td>
+                  <td>{wallet.label ?? '—'}</td>
+                  <td className="mono">{wallet.ownerUserId.slice(0, 8)}…</td>
+                  <td>
+                    <StatusBadge status={wallet.status} />
+                  </td>
+                  <td>{new Date(wallet.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <Link href={`/wallets/${wallet.id}`}>View</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AsyncStates>
     </main>
   );
 }

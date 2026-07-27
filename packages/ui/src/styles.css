@@ -156,3 +156,123 @@
     animation: none;
   }
 }
+
+.auvora-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.auvora-page-header__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.auvora-page-header__title {
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  letter-spacing: -0.04em;
+  margin: 0 0 0.35rem;
+}
+
+.auvora-page-header__subtitle {
+  margin: 0;
+  color: var(--auvora-muted);
+  font-size: 0.95rem;
+  max-width: 42rem;
+}
+
+.auvora-page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.auvora-chat {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(12rem, 16rem) 1fr;
+}
+
+@media (max-width: 768px) {
+  .auvora-chat {
+    grid-template-columns: 1fr;
+  }
+
+  .auvora-page-header__row {
+    flex-direction: column;
+  }
+}
+
+.auvora-chat__sidebar,
+.auvora-chat__main {
+  border: 1px solid var(--auvora-border);
+  border-radius: var(--auvora-radius-md);
+  background: rgba(255, 255, 255, 0.65);
+  padding: 1rem;
+}
+
+.auvora-chat__messages {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 16rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.auvora-chat__bubble {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--auvora-radius-md);
+  border: 1px solid var(--auvora-border);
+  background: #fff;
+}
+
+.auvora-chat__bubble--user {
+  background: var(--auvora-accent-muted);
+  border-color: transparent;
+}
+
+.auvora-chat__bubble--assistant {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.token-panel details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--auvora-accent);
+  list-style: none;
+}
+
+.token-panel details summary::-webkit-details-marker {
+  display: none;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  border: 1px solid var(--auvora-border);
+  border-radius: var(--auvora-radius-md);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 1rem 1.25rem;
+}
+
+.metric-card__label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--auvora-muted);
+  margin-bottom: 0.35rem;
+}
+
+.metric-card__value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}

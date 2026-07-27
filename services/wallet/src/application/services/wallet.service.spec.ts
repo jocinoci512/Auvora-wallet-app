@@ -16,6 +16,8 @@ const baseWallet = {
   assetCode: 'BTC',
   assetSymbol: 'BTC',
   assetDecimals: 8,
+  assetChain: 'BITCOIN',
+  assetStandard: 'NATIVE',
   alias: null,
   label: null,
   status: WalletStatus.ACTIVE,

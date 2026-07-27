@@ -1,6 +1,6 @@
 # Build Status
 
-Last verified: **2026-07-26** (Phase 15 — Enterprise Repository Audit)
+Last verified: **2026-07-26** (Phase 18 — Enterprise Wallet Infrastructure Integration)
 
 ## Summary
 
@@ -8,36 +8,34 @@ Last verified: **2026-07-26** (Phase 15 — Enterprise Repository Audit)
 |-------|--------|
 | Workspace `pnpm lint` | **PASS** (29/29) |
 | Workspace `pnpm test` | **PASS** (29/29) |
-| Workspace `pnpm build` | **PASS** (23/23) — after clearing stale `apps/*/.next` |
-| `pnpm audit --prod` | **0 critical**; 5 high + 2 moderate (OTEL accepted) |
-| Deployment artifacts (local) | **SKIP/FAIL tooling** — helm/terraform/docker not on PATH; CI job authoritative |
-| Seed / migrate | **1.2.0** schema |
+| Workspace `pnpm build` | **PASS** (23/23) |
+| Wallet engine integration tests | **PASS** (24 wallet tests incl. engine) |
 | Release Candidate | **v1.0.0-rc.1** |
-| Phase 15 audit | **Complete** |
+| Phase 18 wallet infrastructure | **Complete** |
 
 ## Phase status
 
 | Phase | Scope | Status |
 |-------|--------|--------|
-| 1–12 | Foundation → Production Infrastructure | Complete |
-| 13 | Performance / Security / Resilience | Complete |
-| ERV | Enterprise Readiness Verification | Complete |
-| 14 | Release Candidate v1.0.0-rc.1 | Complete |
-| 15 | Enterprise Repository Audit | Complete |
+| 1–17 | Foundation → Alchemy live providers | Complete |
+| 18 | Enterprise Wallet Infrastructure Integration | Complete |
 
-## Audit artifacts
+## Phase 18 docs
 
-| Report | Path |
-|--------|------|
-| Code quality | [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) |
-| Technical debt | [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md) |
-| Architecture | [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) |
-| Security | [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md) |
-| Performance | [`PERFORMANCE_REVIEW.md`](PERFORMANCE_REVIEW.md) |
-| Dependencies | [`DEPENDENCY_REVIEW.md`](DEPENDENCY_REVIEW.md) |
-| Release checklist | [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md) |
+| Document | Path |
+|----------|------|
+| Wallet engine | [`docs/WALLET_ENGINE.md`](docs/WALLET_ENGINE.md) |
+| Portfolio engine | [`docs/PORTFOLIO_ENGINE.md`](docs/PORTFOLIO_ENGINE.md) |
+| Background workers | [`docs/BACKGROUND_WORKERS.md`](docs/BACKGROUND_WORKERS.md) |
+| Sync architecture | [`docs/SYNC_ARCHITECTURE.md`](docs/SYNC_ARCHITECTURE.md) |
 
-## Notes
+## Verification URLs (local)
 
-- Docs app build can fail with a stale `.next` cache (`Html` / `_document` prerender error). Run `pnpm --filter @auvora/docs clean` (or delete `apps/*/ .next`) before release builds.
-- Local `infrastructure/scripts/validate-deployment-artifacts.sh` requires helm, terraform, and optionally docker — use CI `deployment-artifacts` job for gate.
+| Surface | URL |
+|---------|-----|
+| Web | http://localhost:3000 |
+| Admin | http://localhost:3001 |
+| API / Gateway | http://localhost:4000 |
+| Swagger | http://localhost:4000/api/docs |
+| Health | http://localhost:4000/health |
+| Wallet engine | http://localhost:4000/api/v1/wallet-engine |

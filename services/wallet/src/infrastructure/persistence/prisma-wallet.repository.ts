@@ -26,7 +26,7 @@ function mapWallet(record: {
   createdAt: Date;
   updatedAt: Date;
   archivedAt: Date | null;
-  asset: { code: string; symbol: string; decimals: number };
+  asset: { code: string; symbol: string; decimals: number; chain: string; standard: string };
 }): WalletRecord {
   return {
     id: record.id,
@@ -35,6 +35,8 @@ function mapWallet(record: {
     assetCode: record.asset.code,
     assetSymbol: record.asset.symbol,
     assetDecimals: record.asset.decimals,
+    assetChain: record.asset.chain,
+    assetStandard: record.asset.standard,
     alias: record.alias,
     label: record.label,
     status: record.status,
@@ -50,17 +52,37 @@ function mapWallet(record: {
 export class PrismaWalletRepository implements WalletRepositoryPort {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findAssetByCode(
-    code: string,
-  ): Promise<{ id: string; code: string; symbol: string; decimals: number } | null> {
+  async findAssetByCode(code: string): Promise<{
+    id: string;
+    code: string;
+    symbol: string;
+    decimals: number;
+    chain: string;
+    standard: string;
+  } | null> {
     const asset = await this.prisma.asset.findUnique({
       where: { code },
-      select: { id: true, code: true, symbol: true, decimals: true, isActive: true },
+      select: {
+        id: true,
+        code: true,
+        symbol: true,
+        decimals: true,
+        chain: true,
+        standard: true,
+        isActive: true,
+      },
     });
     if (!asset || !asset.isActive) {
       return null;
     }
-    return { id: asset.id, code: asset.code, symbol: asset.symbol, decimals: asset.decimals };
+    return {
+      id: asset.id,
+      code: asset.code,
+      symbol: asset.symbol,
+      decimals: asset.decimals,
+      chain: asset.chain,
+      standard: asset.standard,
+    };
   }
 
   async findById(id: string): Promise<WalletRecord | null> {
@@ -231,5 +253,16 @@ export class PrismaWalletRepository implements WalletRepositoryPort {
       actorId: r.actorId,
       createdAt: r.createdAt,
     }));
+  }
+
+  async listActiveForSync(skip = 0, take = 100): Promise<WalletRecord[]> {
+    const items = await this.prisma.wallet.findMany({
+      where: { status: WalletStatus.ACTIVE, deletedAt: null },
+      include: walletInclude,
+      skip,
+      take,
+      orderBy: { updatedAt: 'asc' },
+    });
+    return items.map(mapWallet);
   }
 }

@@ -1,21 +1,55 @@
 export const BLOCKCHAIN_HTTP_CLIENT = Symbol('BLOCKCHAIN_HTTP_CLIENT');
 
+export type ChainAddressResult = {
+  id: string;
+  chain: string;
+  address: string;
+  walletId?: string | null;
+  status?: string;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type ChainBalanceResult = {
+  chain: string;
+  address: string;
+  balance: string;
+};
+
+export type ChainNetworkStatusResult = {
+  chain: string;
+  blockHeight: string;
+  healthy: boolean;
+  latencyMs: number;
+};
+
+export type ChainSyncJobResult = {
+  id: string;
+  chain: string;
+  type?: string;
+  status?: string;
+};
+
 /**
- * Optional HTTP client interface for talking to the Phase 4 blockchain service
- * (`services/blockchain`), the system of record for chain addresses, balances,
- * transactions, and network status.
- *
- * Wallet Core does not currently depend on this port — `WalletService.createWallet`
- * only issues an internal ledger wallet and never needs on-chain address state.
- * It is registered in the DI graph so future wallet features (e.g. attaching a
- * chain address to a wallet, or validating a withdrawal destination) can inject
- * it without introducing a new integration seam.
+ * HTTP client for the blockchain service — system of record for chain addresses,
+ * balances, transactions, and network status. Wallet Core never talks to Alchemy.
  */
 export interface BlockchainHttpClientPort {
-  /**
-   * Validate an address for a given chain via the blockchain service when configured.
-   * When `BLOCKCHAIN_SERVICE_URL` is unset, applies local format validation and
-   * rejects unknown chains (fail-closed).
-   */
+  isConfigured(): boolean;
+
   validateAddress(chain: string, address: string): Promise<boolean>;
+
+  createAddress(input: {
+    chain: string;
+    ownerUserId: string;
+    walletId?: string;
+    label?: string;
+  }): Promise<ChainAddressResult | null>;
+
+  getBalance(chain: string, address: string): Promise<ChainBalanceResult | null>;
+
+  getNetworkStatus(chain: string): Promise<ChainNetworkStatusResult | null>;
+
+  triggerSync(chain: string): Promise<ChainSyncJobResult | null>;
+
+  listChains(): Promise<string[]>;
 }

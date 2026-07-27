@@ -1,7 +1,7 @@
 'use client';
 
 import { AuvoraClientError } from '@auvora/sdk';
-import { Button } from '@auvora/ui';
+import { Alert, Button, PageHeader } from '@auvora/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type ReactElement } from 'react';
@@ -42,17 +42,17 @@ export default function NewWalletPage(): ReactElement {
 
   return (
     <main>
-      <header className="page-header">
-        <div>
-          <h1>Create wallet</h1>
-          <p className="page-subtitle">Choose an asset and optional display fields.</p>
-        </div>
-        <Link href="/wallets">
-          <Button variant="ghost">Back</Button>
-        </Link>
-      </header>
+      <PageHeader
+        title="Create wallet"
+        subtitle="Choose an asset and optional display fields."
+        actions={
+          <Link href="/wallets">
+            <Button variant="ghost">Back</Button>
+          </Link>
+        }
+      />
 
-      <form className="form-card" onSubmit={(e) => void handleSubmit(e)}>
+      <form className="form-card" onSubmit={(e) => void handleSubmit(e)} noValidate>
         <label className="field">
           <span className="field-label">Asset</span>
           <select
@@ -89,7 +89,11 @@ export default function NewWalletPage(): ReactElement {
           />
         </label>
 
-        {error ? <div className="alert alert--error">{error}</div> : null}
+        {error ? (
+          <Alert tone="error" title="Could not create wallet">
+            {error}
+          </Alert>
+        ) : null}
 
         <div className="form-actions">
           <Button type="submit" disabled={submitting}>

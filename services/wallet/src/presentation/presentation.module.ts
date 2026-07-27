@@ -6,6 +6,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { AdminWalletsController } from './controllers/admin-wallets.controller';
 import { InternalLedgerController } from './controllers/internal-ledger.controller';
 import { InternalWalletController } from './controllers/internal-wallet.controller';
+import { WalletEngineController } from './controllers/wallet-engine.controller';
 import { WalletsController } from './controllers/wallets.controller';
 import { DomainExceptionFilter } from './filters/domain-exception.filter';
 import { CsrfGuard } from './guards/csrf.guard';
@@ -22,6 +23,7 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
   controllers: [
     HealthController,
     WalletsController,
+    WalletEngineController,
     AdminWalletsController,
     InternalLedgerController,
     InternalWalletController,

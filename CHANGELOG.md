@@ -4,6 +4,21 @@ All notable changes to this monorepo are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] — Phase 16 UX / UI polish
+
+### Added
+
+- `@auvora/ui` primitives: `PageHeader`, `AsyncStates`, `StatusBadge` (plus prior Alert / EmptyState / Skeleton).
+- App `Subnav` with `aria-current` for section navigation (Web + Admin).
+- ADR [0011](docs/adr/0011-shared-ux-primitives.md) — shared UX primitives decision.
+- Expanded `perf:a11y` checks for skip-link and `#main-content`.
+
+### Changed
+
+- Collapsible API token panel; AI chat layout; payments / wallets / ops / alerts presentation polish.
+- Shared UI styles for chat, metric cards, page headers; tables use scroll wrappers + captions where upgraded.
+- Refreshed [`UX_REVIEW.md`](UX_REVIEW.md), [`UI_CONSISTENCY_REPORT.md`](UI_CONSISTENCY_REPORT.md), [`ACCESSIBILITY_REPORT.md`](ACCESSIBILITY_REPORT.md).
+
 ## [1.0.0-rc.1] — 2026-07-26
 
 ### Added — Phase 14 Final Production Readiness & Release Candidate

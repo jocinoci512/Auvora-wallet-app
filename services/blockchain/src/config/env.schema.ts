@@ -23,6 +23,14 @@ export const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   BLOCKCHAIN_SYNC_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
+  /** Alchemy API key — used to construct per-chain RPC URLs when explicit URLs are unset. */
+  ALCHEMY_API_KEY: z.string().min(1).optional(),
+  ALCHEMY_ETHEREUM_RPC_URL: z.string().url().optional(),
+  ALCHEMY_BSC_RPC_URL: z.string().url().optional(),
+  ALCHEMY_SOLANA_RPC_URL: z.string().url().optional(),
+  ALCHEMY_TRON_RPC_URL: z.string().url().optional(),
+  ALCHEMY_BITCOIN_RPC_URL: z.string().url().optional(),
+  ALCHEMY_RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(12_000),
   CUSTODY_SERVICE_URL: z.string().url().optional(),
   /** Optional. When set with INTERNAL_API_KEY, NotificationsPublisherAdapter forwards confirmed-transaction events for downstream webhook/notification fan-out. */
   NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
@@ -45,6 +53,20 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   }
   if (parsed.data.NODE_ENV === 'production' && parsed.data.BLOCKCHAIN_SIMULATOR_ENABLED) {
     throw new Error('BLOCKCHAIN_SIMULATOR_ENABLED must be false in production');
+  }
+  if (
+    parsed.data.NODE_ENV === 'production' &&
+    !parsed.data.ALCHEMY_API_KEY &&
+    !parsed.data.ALCHEMY_ETHEREUM_RPC_URL &&
+    !parsed.data.ALCHEMY_BSC_RPC_URL &&
+    !parsed.data.ALCHEMY_SOLANA_RPC_URL &&
+    !parsed.data.ALCHEMY_TRON_RPC_URL &&
+    !parsed.data.ALCHEMY_BITCOIN_RPC_URL
+  ) {
+    // Soft requirement: allow boot so ops can bring Alchemy online without a hard outage.
+    console.warn(
+      '[blockchain] ALCHEMY_API_KEY / ALCHEMY_*_RPC_URL missing in production — live RPC providers will not activate',
+    );
   }
   return parsed.data;
 }

@@ -4,6 +4,7 @@ import type { ChainNetwork } from '@auvora/database';
 import type { ApiResponse, JwtAccessClaims } from '@auvora/types';
 import { BlockchainService } from '../../application/services/blockchain.service';
 import { FeeEngine } from '../../application/services/fee-engine.service';
+import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { TransactionEngine } from '../../application/services/transaction-engine.service';
 import { PERMISSION_BLOCKCHAIN_READ, PERMISSION_BLOCKCHAIN_WRITE } from '../../domain/permission-codes';
 import { successResponse } from '../common/api-response';
@@ -44,12 +45,27 @@ export class BlockchainController {
     @Inject(BlockchainService) private readonly blockchainService: BlockchainService,
     @Inject(TransactionEngine) private readonly transactionEngine: TransactionEngine,
     @Inject(FeeEngine) private readonly feeEngine: FeeEngine,
+    @Inject(ProviderRpcHealthService) private readonly providerHealth: ProviderRpcHealthService,
   ) {}
 
   @Get('chains')
   @Permissions(PERMISSION_BLOCKCHAIN_READ)
   list(): ApiResponse<{ chains: ChainNetwork[] }> {
     return successResponse({ chains: this.blockchainService.getSupportedChains() });
+  }
+
+  @Get('providers/health')
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
+  async listProviderHealth() {
+    const providers = await this.providerHealth.getAll();
+    return successResponse({ providers });
+  }
+
+  @Get('providers/:chain/health')
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
+  async getProviderHealth(@Param() params: ChainParamDto) {
+    const provider = await this.providerHealth.getOne(params.chain);
+    return successResponse({ provider });
   }
 
   @Post('addresses')

@@ -5,6 +5,7 @@ import { ApplicationModule } from '../application/application.module';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { AdminBlockchainController } from './controllers/admin-blockchain.controller';
 import { BlockchainController } from './controllers/blockchain.controller';
+import { InternalBlockchainController } from './controllers/internal-blockchain.controller';
 import { DomainExceptionFilter } from './filters/domain-exception.filter';
 import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -17,7 +18,12 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
 
 @Module({
   imports: [InfrastructureModule, ApplicationModule, PassportModule.register({ defaultStrategy: 'jwt' })],
-  controllers: [HealthController, BlockchainController, AdminBlockchainController],
+  controllers: [
+    HealthController,
+    BlockchainController,
+    AdminBlockchainController,
+    InternalBlockchainController,
+  ],
   providers: [
     JwtStrategy,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

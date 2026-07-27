@@ -546,6 +546,14 @@ a:focus-visible {
   color: #912018;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;

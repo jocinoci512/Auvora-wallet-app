@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-Index of architecture decision records (ADRs) from foundation through Phase 13 (performance, security hardening, and resilience).
+Index of architecture decision records (ADRs) from foundation through Phase 16 (UX / UI polish).
 
 ## ADR index
 
@@ -16,6 +16,15 @@ Index of architecture decision records (ADRs) from foundation through Phase 13 (
 | [0008](docs/adr/0008-centralized-observability.md) | Centralized observability & SRE platform | Accepted |
 | [0009](docs/adr/0009-cloud-agnostic-infrastructure.md) | Cloud-agnostic production infrastructure | Accepted |
 | [0010](docs/adr/0010-resilience-and-cache.md) | Shared resilience & cache libraries | Accepted |
+| [0011](docs/adr/0011-shared-ux-primitives.md) | Shared UX primitives for Web/Admin polish | Accepted |
+
+## Phase 16 decision summary
+
+1. **Polish without regeneration** — extend `@auvora/ui` presentation primitives; do not rewrite domain screens or APIs.
+2. **Next-specific chrome stays in apps** — `Subnav` / collapsible token panel use `next/navigation` locally.
+3. **Light-theme-first** — dark mode deferred; document rather than half-ship.
+4. **Perceived performance via skeletons + AsyncStates** — no business-logic optimistic writes in this phase.
+5. Evidence: [`UX_REVIEW.md`](UX_REVIEW.md), [`UI_CONSISTENCY_REPORT.md`](UI_CONSISTENCY_REPORT.md), [`ACCESSIBILITY_REPORT.md`](ACCESSIBILITY_REPORT.md), ADR [0011](docs/adr/0011-shared-ux-primitives.md).
 
 ## Phase 13 decision summary
 

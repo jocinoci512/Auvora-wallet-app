@@ -35,6 +35,8 @@ import { ProviderFactory } from './providers/provider-factory.service';
 import { ProviderHealthMonitor } from './providers/provider-health-monitor.service';
 import { ProviderResolver } from './providers/provider-resolver.service';
 import { SimulatorLedgerAdapter } from './providers/simulator-ledger.adapter';
+import { createAlchemyProviders } from './providers/alchemy/create-alchemy-providers';
+import { isAlchemyConfigured, redactRpcUrl, resolveAlchemyRpcUrls } from './providers/alchemy/alchemy-rpc.config';
 import { RedisAdapter } from './redis/redis.adapter';
 import { REDIS_PORT } from './redis/redis.port';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
@@ -44,6 +46,7 @@ import {
   NoopCustodySigningAdapter,
 } from './custody/custody-signing-http.client';
 import { ENV, type ServiceEnv } from '../config/env.schema';
+import { Logger } from '@nestjs/common';
 
 @Module({
   imports: [ConfigModule, PrismaModule, LoggerInfrastructureModule],
@@ -79,14 +82,31 @@ import { ENV, type ServiceEnv } from '../config/env.schema';
     },
     {
       provide: PROVIDER_REGISTRY,
-      useFactory: (...providers: InstanceType<(typeof CHAIN_PROVIDERS)[number]>[]) => {
+      useFactory: (env: ServiceEnv, ...providers: InstanceType<(typeof CHAIN_PROVIDERS)[number]>[]) => {
         const registry: ProviderRegistry = new Map();
         for (const provider of providers) {
           registry.set(provider.getChain(), provider);
         }
+        const alchemy = createAlchemyProviders(env);
+        for (const [chain, live] of alchemy) {
+          registry.set(chain, live);
+        }
+        const log = new Logger('ProviderRegistry');
+        if (alchemy.size > 0) {
+          const urls = resolveAlchemyRpcUrls(env);
+          const summary = [...alchemy.keys()].map((chain) => {
+            const url = urls.get(chain);
+            return `${chain}@${url ? redactRpcUrl(url) : 'alchemy'}`;
+          });
+          log.log(`Alchemy live providers active: ${summary.join(', ')}`);
+        } else if (!isAlchemyConfigured(env)) {
+          log.warn(
+            'No Alchemy RPC configured — using simulator providers. Set ALCHEMY_API_KEY or ALCHEMY_*_RPC_URL for live chains.',
+          );
+        }
         return registry;
       },
-      inject: [...CHAIN_PROVIDERS],
+      inject: [ENV, ...CHAIN_PROVIDERS],
     },
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
