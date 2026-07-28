@@ -21,7 +21,8 @@ on:
 
 concurrency:
   group: cd-${{ github.ref }}
-  cancel-in-progress: true
+  # Do not cancel in-flight staging Helm / image pushes mid-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read

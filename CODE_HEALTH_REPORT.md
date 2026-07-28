@@ -1,73 +1,58 @@
-# Code Health Report
+# Code Health Report — Pre-Deployment Audit
 
-**Date:** 2026-07-26  
-**Scope:** Whole-repo health after Phase 17 Alchemy integration  
-**Method:** Automated gates + structural infra scan + prod audit + Prisma validate
+**Date:** 2026-07-27  
+**Supersedes prior snapshot for gate metrics below**
 
-## Overall repository health score
+---
 
-### **88 / 100**
+## Health score: **91 / 100**
 
-| Band | Meaning |
-|------|---------|
-| 90–100 | Excellent — gates green, infra tooling available, audit clean |
-| **80–89** | **Strong — gates green; tooling/audit residual risk** ← current |
-| 70–79 | Acceptable with known debt |
-| &lt; 70 | Blocked or unstable |
+| Dimension | Score | Weight | Notes |
+|-----------|------:|-------:|-------|
+| Build / type safety | 98 | 20% | Lint, typecheck, build green |
+| Tests | 94 | 20% | Unit + int + e2e green; UI Jest thin |
+| Security | 82 | 20% | CSP RO, JWT storage, OTEL advisories |
+| Performance | 92 | 10% | First Load ~103 kB; harnesses present |
+| Ops / deploy | 88 | 15% | CD ready; prod gated; secrets one-time |
+| Maintainability | 90 | 15% | Hexagonal Nest; Turbo monorepo; WIP debt |
 
-### Score breakdown
+Weighted ≈ **91**.
 
-| Factor | Points | Max | Notes |
-|--------|--------|-----|-------|
-| Lint clean | 12 | 12 | 29/29 |
-| Unit/integration tests | 15 | 15 | 29/29 packages; ~527 tests |
-| Production build | 12 | 12 | 23/23 |
-| TypeScript typecheck | 10 | 10 | 29/29 |
-| Prisma schema validity | 5 | 5 | `prisma validate` OK |
-| Install / lockfile integrity | 8 | 8 | Frozen lockfile install OK after env fix |
-| Security audit (prod) | 4 | 8 | 0 critical; 5 high / 2 moderate OTEL (accepted) |
-| Docker / K8s executable validation | 3 | 8 | Files present; Docker/kubectl CLI absent |
-| Runtime stack availability | 4 | 6 | Web/gateway previously up; DB down for blockchain boot |
-| Dead code / unused / circulars (via lint+build) | 5 | 6 | ESLint+TS gates; no dedicated madge run |
-| **Total** | **88** | **100** | |
+---
 
-## Checklist results
+## Strengths
 
-| Area | Status | Evidence |
-|------|--------|----------|
-| TypeScript errors | **Clean** | `pnpm typecheck` 29/29; Nest/Next builds |
-| ESLint issues | **Clean** | `pnpm lint` 29/29 |
-| Build failures | **None** | `pnpm build` 23/23 |
-| Runtime errors (compile-time / test) | **None observed** | Test suite green |
-| Circular dependencies | **No build-time cycles** | Turbo/build graph resolves; Nest modules compile |
-| Broken imports | **None** | Typecheck + build |
-| Unused imports / variables | **None flagged** | ESLint pass |
-| Dead code | **No gate failures** | Lint/TS; no unused-export sweep tool in CI |
-| Dependency conflicts | **None** | Frozen lockfile install OK |
-| Database migrations / Prisma | **Schema valid** | `prisma validate` OK; no migrate apply in this pass |
-| API contract mismatches | **No compile/test breaks** | SDK + service builds/tests green |
-| Frontend compilation | **Pass** | web, admin, docs |
-| Backend compilation | **Pass** | All Nest services |
-| Security warnings | **Accepted residual** | OTEL-related highs in `pnpm audit --prod` |
-| Performance regressions | **None detected** | No perf suite regression in this pass; builds succeed |
-| Failing unit tests | **None** | All packages PASS |
-| Failing integration tests | **None** | Blockchain Alchemy mocks PASS |
-| Broken routes / links / UI regressions | **No build-time evidence** | Next static generation completed for web/admin |
+- Consistent Nest hexagonal layout and shared packages  
+- Prisma migrations present (21)  
+- CI/CD + Vercel monorepo configs committed  
+- Preview/prod Next hygiene scripts  
 
-## Architecture health notes (Phase 17)
+## Deductions
 
-- Wallet / apps still have **zero** Alchemy imports — correct isolation.
-- Live providers override simulator entries only when `ALCHEMY_*` env resolves.
-- Provider health endpoints are additive; public APIs not broken.
+| Points | Reason |
+|-------:|--------|
+| −4 | Security residuals (CSP, JWT localStorage, rate-limit HA) |
+| −2 | `pnpm audit` high OTEL advisories |
+| −2 | Large uncommitted working tree outside last deploy commit |
+| −1 | Thin web/admin unit tests |
 
-## Remaining issues (non-blocking)
+---
 
-1. Install `NODE_ENV=production` skips `devDependencies` — operators must not set production env for `pnpm install`.
-2. `docker compose build` / `kubectl kustomize` need CLI tooling on the host.
-3. Prod audit OTEL advisories remain until a dedicated upgrade.
-4. Live Alchemy RPC health needs Postgres + Redis + configured `ALCHEMY_*`.
-5. Simulator-ledger check on withdrawals vs live Alchemy balances (documented Phase 17 known issue).
+## Safe remediation done
 
-## Recommendation
+- Env gitignore hardening  
+- CD deploy cancellation policy  
+- Prisma schema format + `validate` script  
 
-Repository is **clean for quality gates**. Safe to proceed to the next planned phase once operators restore local Postgres/Redis (and optional Alchemy keys) for runtime verification. Do not treat OTEL audit items or Docker CLI absence as code defects in this tree.
+## Do not auto-change
+
+- Enforce CSP without observe data  
+- Cookie session migration (product/security design)  
+- Broad OTEL major upgrade without soak  
+
+---
+
+## Related
+
+- [`FINAL_PRE_DEPLOYMENT_AUDIT.md`](./FINAL_PRE_DEPLOYMENT_AUDIT.md)  
+- [`KNOWN_PRODUCTION_LIMITATIONS.md`](./KNOWN_PRODUCTION_LIMITATIONS.md)  

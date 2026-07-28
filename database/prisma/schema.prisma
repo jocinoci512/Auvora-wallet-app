@@ -55,26 +55,26 @@ model SchemaMeta {
 }
 
 model User {
-  id                 String     @id @default(uuid()) @db.Uuid
-  email              String     @unique @db.Citext
-  username           String     @unique @db.Citext
-  passwordHash       String     @map("password_hash")
-  firstName          String?    @map("first_name")
-  lastName           String?    @map("last_name")
-  phoneNumber        String?    @map("phone_number")
-  avatarUrl          String?    @map("avatar_url")
-  preferredLanguage  String     @default("en") @map("preferred_language")
-  timeZone           String     @default("UTC") @map("time_zone")
-  country            String?
-  status             UserStatus @default(PENDING_VERIFICATION)
-  emailVerified      Boolean    @default(false) @map("email_verified")
-  mfaEnabled         Boolean    @default(false) @map("mfa_enabled")
-  failedLoginCount   Int        @default(0) @map("failed_login_count")
-  lockedUntil        DateTime?  @map("locked_until")
-  lastLoginAt        DateTime?  @map("last_login_at")
-  createdAt          DateTime   @default(now()) @map("created_at")
-  updatedAt          DateTime   @updatedAt @map("updated_at")
-  deletedAt          DateTime?  @map("deleted_at")
+  id                String     @id @default(uuid()) @db.Uuid
+  email             String     @unique @db.Citext
+  username          String     @unique @db.Citext
+  passwordHash      String     @map("password_hash")
+  firstName         String?    @map("first_name")
+  lastName          String?    @map("last_name")
+  phoneNumber       String?    @map("phone_number")
+  avatarUrl         String?    @map("avatar_url")
+  preferredLanguage String     @default("en") @map("preferred_language")
+  timeZone          String     @default("UTC") @map("time_zone")
+  country           String?
+  status            UserStatus @default(PENDING_VERIFICATION)
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  mfaEnabled        Boolean    @default(false) @map("mfa_enabled")
+  failedLoginCount  Int        @default(0) @map("failed_login_count")
+  lockedUntil       DateTime?  @map("locked_until")
+  lastLoginAt       DateTime?  @map("last_login_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  deletedAt         DateTime?  @map("deleted_at")
 
   roles                   UserRole[]
   sessions                Session[]
@@ -142,14 +142,14 @@ model RolePermission {
 }
 
 model Device {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
   fingerprint String
   name        String?
-  userAgent   String?  @map("user_agent")
-  trusted     Boolean  @default(false)
-  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  userAgent   String?   @map("user_agent")
+  trusted     Boolean   @default(false)
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
   revokedAt   DateTime? @map("revoked_at")
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -182,20 +182,20 @@ model Session {
 }
 
 model RefreshToken {
-  id              String    @id @default(uuid()) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  sessionId       String    @map("session_id") @db.Uuid
-  deviceId        String?   @map("device_id") @db.Uuid
-  tokenHash       String    @unique @map("token_hash")
-  familyId        String    @map("family_id") @db.Uuid
-  expiresAt       DateTime  @map("expires_at")
-  revokedAt       DateTime? @map("revoked_at")
-  replacedById    String?   @map("replaced_by_id") @db.Uuid
-  createdAt       DateTime  @default(now()) @map("created_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  sessionId    String    @map("session_id") @db.Uuid
+  deviceId     String?   @map("device_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  familyId     String    @map("family_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  device  Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  device  Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([familyId])
@@ -241,12 +241,12 @@ model SecurityAuditLog {
 }
 
 model EmailVerificationToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  tokenHash String    @unique @map("token_hash")
-  expiresAt DateTime  @map("expires_at")
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
   consumedAt DateTime? @map("consumed_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -326,25 +326,26 @@ enum TransactionStatus {
 }
 
 model Asset {
-  id        String        @id @default(uuid()) @db.Uuid
-  code      String        @unique
-  name      String
-  symbol    String
-  decimals  Int           @default(8)
-  chain     ChainNetwork
-  standard  AssetStandard @default(NATIVE)
-  contractAddress String? @map("contract_address")
-  isActive  Boolean       @default(true) @map("is_active")
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id              String        @id @default(uuid()) @db.Uuid
+  code            String        @unique
+  name            String
+  symbol          String
+  decimals        Int           @default(8)
+  chain           ChainNetwork
+  standard        AssetStandard @default(NATIVE)
+  contractAddress String?       @map("contract_address")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
   wallets          Wallet[]
   balances         WalletBalance[]
   ledgerEntries    LedgerEntry[]
-  transactionsFrom WalletTransaction[] @relation("TxFromAsset")
-  transactionsTo   WalletTransaction[] @relation("TxToAsset")
+  transactionsFrom WalletTransaction[]  @relation("TxFromAsset")
+  transactionsTo   WalletTransaction[]  @relation("TxToAsset")
   balanceSnapshots BalanceSnapshot[]
   balanceAudits    BalanceAudit[]
+  marketMetadata   AssetMarketMetadata?
 
   @@index([chain, standard])
   @@map("assets")
@@ -364,11 +365,11 @@ model Wallet {
   archivedAt  DateTime?    @map("archived_at")
   deletedAt   DateTime?    @map("deleted_at")
 
-  asset            Asset               @relation(fields: [assetId], references: [id])
+  asset            Asset                 @relation(fields: [assetId], references: [id])
   balances         WalletBalance[]
   ledgerEntries    LedgerEntry[]
-  transactionsFrom WalletTransaction[] @relation("TxFromWallet")
-  transactionsTo   WalletTransaction[] @relation("TxToWallet")
+  transactionsFrom WalletTransaction[]   @relation("TxFromWallet")
+  transactionsTo   WalletTransaction[]   @relation("TxToWallet")
   balanceSnapshots BalanceSnapshot[]
   balanceAudits    BalanceAudit[]
   statusHistory    WalletStatusHistory[]
@@ -381,17 +382,17 @@ model Wallet {
 }
 
 model WalletBalance {
-  id              String   @id @default(uuid()) @db.Uuid
-  walletId        String   @map("wallet_id") @db.Uuid
-  assetId         String   @map("asset_id") @db.Uuid
-  available       Decimal  @default(0) @db.Decimal(36, 18)
-  pending         Decimal  @default(0) @db.Decimal(36, 18)
-  locked          Decimal  @default(0) @db.Decimal(36, 18)
-  reserved        Decimal  @default(0) @db.Decimal(36, 18)
-  total           Decimal  @default(0) @db.Decimal(36, 18)
-  version         Int      @default(0)
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  walletId  String   @map("wallet_id") @db.Uuid
+  assetId   String   @map("asset_id") @db.Uuid
+  available Decimal  @default(0) @db.Decimal(36, 18)
+  pending   Decimal  @default(0) @db.Decimal(36, 18)
+  locked    Decimal  @default(0) @db.Decimal(36, 18)
+  reserved  Decimal  @default(0) @db.Decimal(36, 18)
+  total     Decimal  @default(0) @db.Decimal(36, 18)
+  version   Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
   asset  Asset  @relation(fields: [assetId], references: [id])
@@ -402,21 +403,21 @@ model WalletBalance {
 }
 
 model LedgerEntry {
-  id              String          @id @default(uuid()) @db.Uuid
-  walletId        String          @map("wallet_id") @db.Uuid
-  assetId         String          @map("asset_id") @db.Uuid
-  transactionId   String?         @map("transaction_id") @db.Uuid
-  entryType       LedgerEntryType @map("entry_type")
-  amount          Decimal         @db.Decimal(36, 18)
-  balanceAfterAvailable Decimal   @map("balance_after_available") @db.Decimal(36, 18)
-  balanceAfterPending   Decimal   @map("balance_after_pending") @db.Decimal(36, 18)
-  balanceAfterLocked    Decimal   @map("balance_after_locked") @db.Decimal(36, 18)
-  balanceAfterReserved  Decimal   @map("balance_after_reserved") @db.Decimal(36, 18)
-  balanceAfterTotal     Decimal   @map("balance_after_total") @db.Decimal(36, 18)
-  reference       String
-  description     String?
-  metadata        Json?
-  createdAt       DateTime        @default(now()) @map("created_at")
+  id                    String          @id @default(uuid()) @db.Uuid
+  walletId              String          @map("wallet_id") @db.Uuid
+  assetId               String          @map("asset_id") @db.Uuid
+  transactionId         String?         @map("transaction_id") @db.Uuid
+  entryType             LedgerEntryType @map("entry_type")
+  amount                Decimal         @db.Decimal(36, 18)
+  balanceAfterAvailable Decimal         @map("balance_after_available") @db.Decimal(36, 18)
+  balanceAfterPending   Decimal         @map("balance_after_pending") @db.Decimal(36, 18)
+  balanceAfterLocked    Decimal         @map("balance_after_locked") @db.Decimal(36, 18)
+  balanceAfterReserved  Decimal         @map("balance_after_reserved") @db.Decimal(36, 18)
+  balanceAfterTotal     Decimal         @map("balance_after_total") @db.Decimal(36, 18)
+  reference             String
+  description           String?
+  metadata              Json?
+  createdAt             DateTime        @default(now()) @map("created_at")
 
   wallet      Wallet             @relation(fields: [walletId], references: [id], onDelete: Restrict)
   asset       Asset              @relation(fields: [assetId], references: [id])
@@ -447,10 +448,10 @@ model WalletTransaction {
   updatedAt     DateTime          @updatedAt @map("updated_at")
   completedAt   DateTime?         @map("completed_at")
 
-  fromWallet Wallet? @relation("TxFromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
-  toWallet   Wallet? @relation("TxToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
-  asset      Asset   @relation("TxFromAsset", fields: [assetId], references: [id])
-  toAsset    Asset?  @relation("TxToAsset", fields: [toAssetId], references: [id])
+  fromWallet    Wallet?       @relation("TxFromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet      Wallet?       @relation("TxToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
+  asset         Asset         @relation("TxFromAsset", fields: [assetId], references: [id])
+  toAsset       Asset?        @relation("TxToAsset", fields: [toAssetId], references: [id])
   ledgerEntries LedgerEntry[]
 
   @@index([fromWalletId, createdAt])
@@ -497,13 +498,13 @@ model BalanceAudit {
 }
 
 model WalletStatusHistory {
-  id         String       @id @default(uuid()) @db.Uuid
-  walletId   String       @map("wallet_id") @db.Uuid
+  id         String        @id @default(uuid()) @db.Uuid
+  walletId   String        @map("wallet_id") @db.Uuid
   fromStatus WalletStatus? @map("from_status")
-  toStatus   WalletStatus @map("to_status")
+  toStatus   WalletStatus  @map("to_status")
   reason     String?
-  actorId    String?      @map("actor_id") @db.Uuid
-  createdAt  DateTime     @default(now()) @map("created_at")
+  actorId    String?       @map("actor_id") @db.Uuid
+  createdAt  DateTime      @default(now()) @map("created_at")
 
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
@@ -562,25 +563,25 @@ enum FeePriority {
 }
 
 model BlockchainNetworkConfig {
-  id                      String       @id @default(uuid()) @db.Uuid
-  chain                   ChainNetwork @unique
-  displayName             String       @map("display_name")
-  isEnabled               Boolean      @default(true) @map("is_enabled")
-  requiredConfirmations   Int          @map("required_confirmations")
-  blockTimeSeconds        Int          @default(15) @map("block_time_seconds")
-  nativeSymbol            String       @map("native_symbol")
-  explorerUrl             String?      @map("explorer_url")
-  rpcUrl                  String?      @map("rpc_url")
-  metadata                Json?
-  createdAt               DateTime     @default(now()) @map("created_at")
-  updatedAt               DateTime     @updatedAt @map("updated_at")
+  id                    String       @id @default(uuid()) @db.Uuid
+  chain                 ChainNetwork @unique
+  displayName           String       @map("display_name")
+  isEnabled             Boolean      @default(true) @map("is_enabled")
+  requiredConfirmations Int          @map("required_confirmations")
+  blockTimeSeconds      Int          @default(15) @map("block_time_seconds")
+  nativeSymbol          String       @map("native_symbol")
+  explorerUrl           String?      @map("explorer_url")
+  rpcUrl                String?      @map("rpc_url")
+  metadata              Json?
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
 
-  providers BlockchainProviderRecord[]
-  addresses ChainAddress[]
+  providers    BlockchainProviderRecord[]
+  addresses    ChainAddress[]
   transactions ChainTransaction[]
-  blocks    ChainBlock[]
-  syncJobs  SyncJob[]
-  health    ProviderHealthSnapshot[]
+  blocks       ChainBlock[]
+  syncJobs     SyncJob[]
+  health       ProviderHealthSnapshot[]
 
   @@map("blockchain_network_configs")
 }
@@ -599,7 +600,7 @@ model BlockchainProviderRecord {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  network BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  network BlockchainNetworkConfig  @relation(fields: [networkId], references: [id], onDelete: Cascade)
   health  ProviderHealthSnapshot[]
 
   @@unique([chain, code])
@@ -608,25 +609,25 @@ model BlockchainProviderRecord {
 }
 
 model ChainAddress {
-  id           String             @id @default(uuid()) @db.Uuid
-  chain        ChainNetwork
-  networkId    String             @map("network_id") @db.Uuid
-  walletId     String?            @map("wallet_id") @db.Uuid
-  ownerUserId  String             @map("owner_user_id") @db.Uuid
-  address      String
-  label        String?
-  isPrimary    Boolean            @default(false) @map("is_primary")
-  status       ChainAddressStatus @default(PENDING)
-  watched      Boolean            @default(true)
-  metadata     Json?
-  createdAt    DateTime           @default(now()) @map("created_at")
-  updatedAt    DateTime           @updatedAt @map("updated_at")
-  activatedAt  DateTime?          @map("activated_at")
-  archivedAt   DateTime?          @map("archived_at")
-  deletedAt    DateTime?          @map("deleted_at")
+  id          String             @id @default(uuid()) @db.Uuid
+  chain       ChainNetwork
+  networkId   String             @map("network_id") @db.Uuid
+  walletId    String?            @map("wallet_id") @db.Uuid
+  ownerUserId String             @map("owner_user_id") @db.Uuid
+  address     String
+  label       String?
+  isPrimary   Boolean            @default(false) @map("is_primary")
+  status      ChainAddressStatus @default(PENDING)
+  watched     Boolean            @default(true)
+  metadata    Json?
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  activatedAt DateTime?          @map("activated_at")
+  archivedAt  DateTime?          @map("archived_at")
+  deletedAt   DateTime?          @map("deleted_at")
 
-  network      BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Restrict)
-  transactions ChainTransaction[]
+  network       BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Restrict)
+  transactions  ChainTransaction[]
   confirmations ConfirmationRecord[]
 
   @@unique([chain, address])
@@ -637,31 +638,31 @@ model ChainAddress {
 }
 
 model ChainTransaction {
-  id              String           @id @default(uuid()) @db.Uuid
-  chain           ChainNetwork
-  networkId       String           @map("network_id") @db.Uuid
-  addressId       String?          @map("address_id") @db.Uuid
-  txHash          String           @map("tx_hash")
-  direction       ChainTxDirection
-  status          ChainTxStatus    @default(PENDING)
-  amount          Decimal          @db.Decimal(36, 18)
-  feeAmount       Decimal          @default(0) @map("fee_amount") @db.Decimal(36, 18)
-  fromAddress     String?          @map("from_address")
-  toAddress       String?          @map("to_address")
-  blockNumber     BigInt?          @map("block_number")
-  confirmations   Int              @default(0)
-  requiredConfirmations Int        @map("required_confirmations")
-  broadcastAt     DateTime?        @map("broadcast_at")
-  confirmedAt     DateTime?        @map("confirmed_at")
-  failedAt        DateTime?        @map("failed_at")
-  failureReason   String?          @map("failure_reason")
-  rawPayload      Json?            @map("raw_payload")
-  metadata        Json?
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  id                    String           @id @default(uuid()) @db.Uuid
+  chain                 ChainNetwork
+  networkId             String           @map("network_id") @db.Uuid
+  addressId             String?          @map("address_id") @db.Uuid
+  txHash                String           @map("tx_hash")
+  direction             ChainTxDirection
+  status                ChainTxStatus    @default(PENDING)
+  amount                Decimal          @db.Decimal(36, 18)
+  feeAmount             Decimal          @default(0) @map("fee_amount") @db.Decimal(36, 18)
+  fromAddress           String?          @map("from_address")
+  toAddress             String?          @map("to_address")
+  blockNumber           BigInt?          @map("block_number")
+  confirmations         Int              @default(0)
+  requiredConfirmations Int              @map("required_confirmations")
+  broadcastAt           DateTime?        @map("broadcast_at")
+  confirmedAt           DateTime?        @map("confirmed_at")
+  failedAt              DateTime?        @map("failed_at")
+  failureReason         String?          @map("failure_reason")
+  rawPayload            Json?            @map("raw_payload")
+  metadata              Json?
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
 
-  network            BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Restrict)
-  address            ChainAddress?           @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  network             BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Restrict)
+  address             ChainAddress?           @relation(fields: [addressId], references: [id], onDelete: SetNull)
   confirmationRecords ConfirmationRecord[]
 
   @@unique([chain, txHash])
@@ -672,14 +673,14 @@ model ChainTransaction {
 }
 
 model ConfirmationRecord {
-  id            String   @id @default(uuid()) @db.Uuid
-  transactionId String   @map("transaction_id") @db.Uuid
-  addressId     String?  @map("address_id") @db.Uuid
+  id            String       @id @default(uuid()) @db.Uuid
+  transactionId String       @map("transaction_id") @db.Uuid
+  addressId     String?      @map("address_id") @db.Uuid
   chain         ChainNetwork
   confirmations Int
-  blockNumber   BigInt?  @map("block_number")
-  isFinal       Boolean  @default(false) @map("is_final")
-  observedAt    DateTime @default(now()) @map("observed_at")
+  blockNumber   BigInt?      @map("block_number")
+  isFinal       Boolean      @default(false) @map("is_final")
+  observedAt    DateTime     @default(now()) @map("observed_at")
 
   transaction ChainTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   address     ChainAddress?    @relation(fields: [addressId], references: [id], onDelete: SetNull)
@@ -690,15 +691,15 @@ model ConfirmationRecord {
 }
 
 model ChainBlock {
-  id          String       @id @default(uuid()) @db.Uuid
-  chain       ChainNetwork
-  networkId   String       @map("network_id") @db.Uuid
-  height      BigInt
-  hash        String
-  parentHash  String?      @map("parent_hash")
-  timestamp   DateTime
-  isOrphan    Boolean      @default(false) @map("is_orphan")
-  syncedAt    DateTime     @default(now()) @map("synced_at")
+  id         String       @id @default(uuid()) @db.Uuid
+  chain      ChainNetwork
+  networkId  String       @map("network_id") @db.Uuid
+  height     BigInt
+  hash       String
+  parentHash String?      @map("parent_hash")
+  timestamp  DateTime
+  isOrphan   Boolean      @default(false) @map("is_orphan")
+  syncedAt   DateTime     @default(now()) @map("synced_at")
 
   network BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Cascade)
 
@@ -709,21 +710,21 @@ model ChainBlock {
 }
 
 model SyncJob {
-  id           String        @id @default(uuid()) @db.Uuid
-  chain        ChainNetwork
-  networkId    String        @map("network_id") @db.Uuid
-  type         SyncJobType
-  status       SyncJobStatus @default(QUEUED)
-  cursor       String?
-  attempts     Int           @default(0)
-  maxAttempts  Int           @default(5) @map("max_attempts")
-  lastError    String?       @map("last_error")
-  scheduledAt  DateTime      @default(now()) @map("scheduled_at")
-  startedAt    DateTime?     @map("started_at")
-  finishedAt   DateTime?     @map("finished_at")
-  metadata     Json?
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id          String        @id @default(uuid()) @db.Uuid
+  chain       ChainNetwork
+  networkId   String        @map("network_id") @db.Uuid
+  type        SyncJobType
+  status      SyncJobStatus @default(QUEUED)
+  cursor      String?
+  attempts    Int           @default(0)
+  maxAttempts Int           @default(5) @map("max_attempts")
+  lastError   String?       @map("last_error")
+  scheduledAt DateTime      @default(now()) @map("scheduled_at")
+  startedAt   DateTime?     @map("started_at")
+  finishedAt  DateTime?     @map("finished_at")
+  metadata    Json?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
   network BlockchainNetworkConfig @relation(fields: [networkId], references: [id], onDelete: Cascade)
 
@@ -733,17 +734,17 @@ model SyncJob {
 }
 
 model ProviderHealthSnapshot {
-  id              String       @id @default(uuid()) @db.Uuid
-  chain           ChainNetwork
-  networkId       String       @map("network_id") @db.Uuid
-  providerId      String?      @map("provider_id") @db.Uuid
-  status          String
-  latencyMs       Int?         @map("latency_ms")
-  blockHeight     BigInt?      @map("block_height")
-  errorMessage    String?      @map("error_message")
-  checkedAt       DateTime     @default(now()) @map("checked_at")
+  id           String       @id @default(uuid()) @db.Uuid
+  chain        ChainNetwork
+  networkId    String       @map("network_id") @db.Uuid
+  providerId   String?      @map("provider_id") @db.Uuid
+  status       String
+  latencyMs    Int?         @map("latency_ms")
+  blockHeight  BigInt?      @map("block_height")
+  errorMessage String?      @map("error_message")
+  checkedAt    DateTime     @default(now()) @map("checked_at")
 
-  network  BlockchainNetworkConfig  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  network  BlockchainNetworkConfig   @relation(fields: [networkId], references: [id], onDelete: Cascade)
   provider BlockchainProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([chain, checkedAt])
@@ -752,13 +753,13 @@ model ProviderHealthSnapshot {
 }
 
 model BlockchainEventLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  eventType   String   @map("event_type")
-  chain       ChainNetwork?
-  aggregateId String?  @map("aggregate_id")
-  payload     Json
-  correlationId String? @map("correlation_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String        @id @default(uuid()) @db.Uuid
+  eventType     String        @map("event_type")
+  chain         ChainNetwork?
+  aggregateId   String?       @map("aggregate_id")
+  payload       Json
+  correlationId String?       @map("correlation_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
   @@index([eventType, createdAt])
   @@index([chain, createdAt])
@@ -859,18 +860,18 @@ enum LimitWindow {
 }
 
 model PaymentProviderRecord {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
-  name        String
-  providerType String  @map("provider_type")
-  isPrimary   Boolean  @default(false) @map("is_primary")
-  isEnabled   Boolean  @default(true) @map("is_enabled")
-  priority    Int      @default(100)
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique
+  name         String
+  providerType String   @map("provider_type")
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  isEnabled    Boolean  @default(true) @map("is_enabled")
+  priority     Int      @default(100)
   capabilities Json?
-  endpointUrl String?  @map("endpoint_url")
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  endpointUrl  String?  @map("endpoint_url")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   payments Payment[]
   health   PaymentProviderHealthSnapshot[]
@@ -901,46 +902,46 @@ model PaymentMethod {
 }
 
 model Payment {
-  id                   String        @id @default(uuid()) @db.Uuid
-  reference            String        @unique
-  type                 PaymentType
-  status               PaymentStatus @default(CREATED)
-  ownerUserId          String        @map("owner_user_id") @db.Uuid
-  amount               Decimal       @db.Decimal(36, 18)
-  feeAmount            Decimal       @default(0) @map("fee_amount") @db.Decimal(36, 18)
-  currency             String
-  assetCode            String?       @map("asset_code")
-  fromWalletId         String?       @map("from_wallet_id") @db.Uuid
-  toWalletId           String?       @map("to_wallet_id") @db.Uuid
-  paymentMethodId      String?       @map("payment_method_id") @db.Uuid
-  providerId           String?       @map("provider_id") @db.Uuid
-  providerRef          String?       @map("provider_ref")
-  idempotencyKey       String?       @unique @map("idempotency_key")
-  correlationId        String?       @map("correlation_id")
-  walletTransactionId  String?       @map("wallet_transaction_id") @db.Uuid
-  chainTxId            String?       @map("chain_tx_id") @db.Uuid
-  country              String?
+  id                  String        @id @default(uuid()) @db.Uuid
+  reference           String        @unique
+  type                PaymentType
+  status              PaymentStatus @default(CREATED)
+  ownerUserId         String        @map("owner_user_id") @db.Uuid
+  amount              Decimal       @db.Decimal(36, 18)
+  feeAmount           Decimal       @default(0) @map("fee_amount") @db.Decimal(36, 18)
+  currency            String
+  assetCode           String?       @map("asset_code")
+  fromWalletId        String?       @map("from_wallet_id") @db.Uuid
+  toWalletId          String?       @map("to_wallet_id") @db.Uuid
+  paymentMethodId     String?       @map("payment_method_id") @db.Uuid
+  providerId          String?       @map("provider_id") @db.Uuid
+  providerRef         String?       @map("provider_ref")
+  idempotencyKey      String?       @unique @map("idempotency_key")
+  correlationId       String?       @map("correlation_id")
+  walletTransactionId String?       @map("wallet_transaction_id") @db.Uuid
+  chainTxId           String?       @map("chain_tx_id") @db.Uuid
+  country             String?
   accountTier         String?       @map("account_tier")
-  riskProfile          String?       @map("risk_profile")
-  riskFlags            String[]      @default([]) @map("risk_flags")
-  description          String?
-  failureReason        String?       @map("failure_reason")
-  scheduledAt          DateTime?     @map("scheduled_at")
-  authorizedAt         DateTime?     @map("authorized_at")
-  settledAt            DateTime?     @map("settled_at")
-  completedAt          DateTime?     @map("completed_at")
-  cancelledAt          DateTime?     @map("cancelled_at")
-  expiresAt            DateTime?     @map("expires_at")
-  metadata             Json?
-  createdAt            DateTime      @default(now()) @map("created_at")
-  updatedAt            DateTime      @updatedAt @map("updated_at")
+  riskProfile         String?       @map("risk_profile")
+  riskFlags           String[]      @default([]) @map("risk_flags")
+  description         String?
+  failureReason       String?       @map("failure_reason")
+  scheduledAt         DateTime?     @map("scheduled_at")
+  authorizedAt        DateTime?     @map("authorized_at")
+  settledAt           DateTime?     @map("settled_at")
+  completedAt         DateTime?     @map("completed_at")
+  cancelledAt         DateTime?     @map("cancelled_at")
+  expiresAt           DateTime?     @map("expires_at")
+  metadata            Json?
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
 
-  paymentMethod PaymentMethod?         @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
-  provider      PaymentProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  settlements   Settlement[]
-  refunds       Refund[]
-  disputes      Dispute[]
-  chargebacks   Chargeback[]
+  paymentMethod   PaymentMethod?         @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  provider        PaymentProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  settlements     Settlement[]
+  refunds         Refund[]
+  disputes        Dispute[]
+  chargebacks     Chargeback[]
   reconciliations ReconciliationRecord[]
 
   @@index([ownerUserId, status, createdAt])
@@ -952,22 +953,22 @@ model Payment {
 }
 
 model SettlementBatch {
-  id          String           @id @default(uuid()) @db.Uuid
-  reference   String           @unique
-  mode        SettlementMode
-  status      SettlementStatus @default(PENDING)
-  currency    String
-  totalAmount Decimal          @default(0) @map("total_amount") @db.Decimal(36, 18)
-  paymentCount Int             @default(0) @map("payment_count")
-  scheduledAt DateTime?        @map("scheduled_at")
-  startedAt   DateTime?        @map("started_at")
-  completedAt DateTime?        @map("completed_at")
-  failedAt    DateTime?        @map("failed_at")
-  failureReason String?        @map("failure_reason")
-  report      Json?
-  metadata    Json?
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
+  id            String           @id @default(uuid()) @db.Uuid
+  reference     String           @unique
+  mode          SettlementMode
+  status        SettlementStatus @default(PENDING)
+  currency      String
+  totalAmount   Decimal          @default(0) @map("total_amount") @db.Decimal(36, 18)
+  paymentCount  Int              @default(0) @map("payment_count")
+  scheduledAt   DateTime?        @map("scheduled_at")
+  startedAt     DateTime?        @map("started_at")
+  completedAt   DateTime?        @map("completed_at")
+  failedAt      DateTime?        @map("failed_at")
+  failureReason String?          @map("failure_reason")
+  report        Json?
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   settlements Settlement[]
 
@@ -977,22 +978,22 @@ model SettlementBatch {
 }
 
 model Settlement {
-  id          String           @id @default(uuid()) @db.Uuid
-  batchId     String?          @map("batch_id") @db.Uuid
-  paymentId   String           @map("payment_id") @db.Uuid
-  mode        SettlementMode
-  status      SettlementStatus @default(PENDING)
-  amount      Decimal          @db.Decimal(36, 18)
-  currency    String
-  reference   String           @unique
-  auditTrail  Json?            @map("audit_trail")
-  startedAt   DateTime?        @map("started_at")
-  completedAt DateTime?        @map("completed_at")
-  failedAt    DateTime?        @map("failed_at")
-  failureReason String?        @map("failure_reason")
-  metadata    Json?
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
+  id            String           @id @default(uuid()) @db.Uuid
+  batchId       String?          @map("batch_id") @db.Uuid
+  paymentId     String           @map("payment_id") @db.Uuid
+  mode          SettlementMode
+  status        SettlementStatus @default(PENDING)
+  amount        Decimal          @db.Decimal(36, 18)
+  currency      String
+  reference     String           @unique
+  auditTrail    Json?            @map("audit_trail")
+  startedAt     DateTime?        @map("started_at")
+  completedAt   DateTime?        @map("completed_at")
+  failedAt      DateTime?        @map("failed_at")
+  failureReason String?          @map("failure_reason")
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   batch   SettlementBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
   payment Payment          @relation(fields: [paymentId], references: [id], onDelete: Restrict)
@@ -1004,19 +1005,19 @@ model Settlement {
 }
 
 model PaymentLimit {
-  id            String      @id @default(uuid()) @db.Uuid
-  window        LimitWindow
-  amount        Decimal     @db.Decimal(36, 18)
-  currency      String?
-  assetCode     String?     @map("asset_code")
-  ownerUserId   String?     @map("owner_user_id") @db.Uuid
-  accountTier  String?     @map("account_tier")
-  country       String?
-  riskProfile   String?     @map("risk_profile")
-  isEnabled     Boolean     @default(true) @map("is_enabled")
-  metadata      Json?
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  id          String      @id @default(uuid()) @db.Uuid
+  window      LimitWindow
+  amount      Decimal     @db.Decimal(36, 18)
+  currency    String?
+  assetCode   String?     @map("asset_code")
+  ownerUserId String?     @map("owner_user_id") @db.Uuid
+  accountTier String?     @map("account_tier")
+  country     String?
+  riskProfile String?     @map("risk_profile")
+  isEnabled   Boolean     @default(true) @map("is_enabled")
+  metadata    Json?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
 
   @@index([ownerUserId, window, isEnabled])
   @@index([accountTier, window])
@@ -1026,21 +1027,21 @@ model PaymentLimit {
 }
 
 model ReconciliationRecord {
-  id              String               @id @default(uuid()) @db.Uuid
-  paymentId       String?              @map("payment_id") @db.Uuid
-  settlementId    String?              @map("settlement_id") @db.Uuid
-  status          ReconciliationStatus @default(PENDING)
-  source          String
-  expectedAmount  Decimal?             @map("expected_amount") @db.Decimal(36, 18)
-  actualAmount    Decimal?             @map("actual_amount") @db.Decimal(36, 18)
-  currency        String?
-  mismatchReason  String?              @map("mismatch_reason")
-  requiresManualReview Boolean         @default(false) @map("requires_manual_review")
-  resolvedAt      DateTime?            @map("resolved_at")
-  resolvedBy      String?              @map("resolved_by") @db.Uuid
-  metadata        Json?
-  createdAt       DateTime             @default(now()) @map("created_at")
-  updatedAt       DateTime             @updatedAt @map("updated_at")
+  id                   String               @id @default(uuid()) @db.Uuid
+  paymentId            String?              @map("payment_id") @db.Uuid
+  settlementId         String?              @map("settlement_id") @db.Uuid
+  status               ReconciliationStatus @default(PENDING)
+  source               String
+  expectedAmount       Decimal?             @map("expected_amount") @db.Decimal(36, 18)
+  actualAmount         Decimal?             @map("actual_amount") @db.Decimal(36, 18)
+  currency             String?
+  mismatchReason       String?              @map("mismatch_reason")
+  requiresManualReview Boolean              @default(false) @map("requires_manual_review")
+  resolvedAt           DateTime?            @map("resolved_at")
+  resolvedBy           String?              @map("resolved_by") @db.Uuid
+  metadata             Json?
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
 
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
@@ -1071,16 +1072,16 @@ model Refund {
 }
 
 model Dispute {
-  id          String        @id @default(uuid()) @db.Uuid
-  paymentId   String        @map("payment_id") @db.Uuid
-  status      DisputeStatus @default(OPEN)
-  reason      String?
-  amount      Decimal?      @db.Decimal(36, 18)
-  currency    String?
-  metadata    Json?
-  openedAt    DateTime      @default(now()) @map("opened_at")
-  closedAt    DateTime?     @map("closed_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id        String        @id @default(uuid()) @db.Uuid
+  paymentId String        @map("payment_id") @db.Uuid
+  status    DisputeStatus @default(OPEN)
+  reason    String?
+  amount    Decimal?      @db.Decimal(36, 18)
+  currency  String?
+  metadata  Json?
+  openedAt  DateTime      @default(now()) @map("opened_at")
+  closedAt  DateTime?     @map("closed_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
 
@@ -1292,24 +1293,24 @@ model ComplianceProviderHealthSnapshot {
 }
 
 model KycProfile {
-  id                 String         @id @default(uuid()) @db.Uuid
-  ownerUserId        String         @unique @map("owner_user_id") @db.Uuid
-  subjectType        KycSubjectType @default(INDIVIDUAL) @map("subject_type")
-  level              KycLevel       @default(NONE)
-  status             VerificationStatus @default(DRAFT)
-  country            String?
-  nationality        String?
-  legalNameEncrypted String?        @map("legal_name_encrypted")
-  dateOfBirthEncrypted String?      @map("date_of_birth_encrypted")
-  businessNameEncrypted String?     @map("business_name_encrypted")
-  riskBand           RiskBand       @default(LOW) @map("risk_band")
-  riskScore          Decimal        @default(0) @map("risk_score") @db.Decimal(10, 4)
-  verifiedAt         DateTime?      @map("verified_at")
-  expiresAt          DateTime?      @map("expires_at")
-  lastScreenedAt     DateTime?      @map("last_screened_at")
-  metadata           Json?
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
+  id                    String             @id @default(uuid()) @db.Uuid
+  ownerUserId           String             @unique @map("owner_user_id") @db.Uuid
+  subjectType           KycSubjectType     @default(INDIVIDUAL) @map("subject_type")
+  level                 KycLevel           @default(NONE)
+  status                VerificationStatus @default(DRAFT)
+  country               String?
+  nationality           String?
+  legalNameEncrypted    String?            @map("legal_name_encrypted")
+  dateOfBirthEncrypted  String?            @map("date_of_birth_encrypted")
+  businessNameEncrypted String?            @map("business_name_encrypted")
+  riskBand              RiskBand           @default(LOW) @map("risk_band")
+  riskScore             Decimal            @default(0) @map("risk_score") @db.Decimal(10, 4)
+  verifiedAt            DateTime?          @map("verified_at")
+  expiresAt             DateTime?          @map("expires_at")
+  lastScreenedAt        DateTime?          @map("last_screened_at")
+  metadata              Json?
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
 
   verificationRequests VerificationRequest[]
   documents            ComplianceDocument[]
@@ -1351,23 +1352,23 @@ model VerificationRequest {
 }
 
 model ComplianceDocument {
-  id                   String         @id @default(uuid()) @db.Uuid
-  profileId            String         @map("profile_id") @db.Uuid
-  verificationRequestId String?       @map("verification_request_id") @db.Uuid
-  ownerUserId          String         @map("owner_user_id") @db.Uuid
-  documentType         DocumentType   @map("document_type")
-  status               DocumentStatus @default(UPLOADED)
-  storageKeyEncrypted  String         @map("storage_key_encrypted")
-  contentType          String?        @map("content_type")
-  fileName             String?        @map("file_name")
-  checksumSha256       String?        @map("checksum_sha256")
-  providerRef          String?        @map("provider_ref")
-  rejectionReason      String?        @map("rejection_reason")
-  verifiedAt           DateTime?      @map("verified_at")
-  expiresAt            DateTime?      @map("expires_at")
-  metadata             Json?
-  createdAt            DateTime       @default(now()) @map("created_at")
-  updatedAt            DateTime       @updatedAt @map("updated_at")
+  id                    String         @id @default(uuid()) @db.Uuid
+  profileId             String         @map("profile_id") @db.Uuid
+  verificationRequestId String?        @map("verification_request_id") @db.Uuid
+  ownerUserId           String         @map("owner_user_id") @db.Uuid
+  documentType          DocumentType   @map("document_type")
+  status                DocumentStatus @default(UPLOADED)
+  storageKeyEncrypted   String         @map("storage_key_encrypted")
+  contentType           String?        @map("content_type")
+  fileName              String?        @map("file_name")
+  checksumSha256        String?        @map("checksum_sha256")
+  providerRef           String?        @map("provider_ref")
+  rejectionReason       String?        @map("rejection_reason")
+  verifiedAt            DateTime?      @map("verified_at")
+  expiresAt             DateTime?      @map("expires_at")
+  metadata              Json?
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
 
   profile             KycProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
   verificationRequest VerificationRequest? @relation(fields: [verificationRequestId], references: [id], onDelete: SetNull)
@@ -1379,15 +1380,15 @@ model ComplianceDocument {
 }
 
 model RiskScoreRecord {
-  id          String   @id @default(uuid()) @db.Uuid
-  profileId   String?  @map("profile_id") @db.Uuid
-  ownerUserId String   @map("owner_user_id") @db.Uuid
-  score       Decimal  @db.Decimal(10, 4)
-  band        RiskBand
-  factors     Json
-  providerCode String? @map("provider_code")
-  correlationId String? @map("correlation_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid()) @db.Uuid
+  profileId     String?  @map("profile_id") @db.Uuid
+  ownerUserId   String   @map("owner_user_id") @db.Uuid
+  score         Decimal  @db.Decimal(10, 4)
+  band          RiskBand
+  factors       Json
+  providerCode  String?  @map("provider_code")
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
 
@@ -1397,24 +1398,24 @@ model RiskScoreRecord {
 }
 
 model AmlAlert {
-  id            String           @id @default(uuid()) @db.Uuid
-  ownerUserId   String?          @map("owner_user_id") @db.Uuid
-  paymentId     String?          @map("payment_id") @db.Uuid
-  walletId      String?          @map("wallet_id") @db.Uuid
-  ruleCode      String           @map("rule_code")
-  severity      AmlAlertSeverity
-  status        AmlAlertStatus   @default(OPEN)
-  title         String
-  description   String?
-  amount        Decimal?         @db.Decimal(36, 18)
-  currency      String?
-  evidence      Json?
-  caseId        String?          @map("case_id") @db.Uuid
-  resolvedAt    DateTime?        @map("resolved_at")
-  resolvedBy    String?          @map("resolved_by") @db.Uuid
-  metadata      Json?
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
+  id          String           @id @default(uuid()) @db.Uuid
+  ownerUserId String?          @map("owner_user_id") @db.Uuid
+  paymentId   String?          @map("payment_id") @db.Uuid
+  walletId    String?          @map("wallet_id") @db.Uuid
+  ruleCode    String           @map("rule_code")
+  severity    AmlAlertSeverity
+  status      AmlAlertStatus   @default(OPEN)
+  title       String
+  description String?
+  amount      Decimal?         @db.Decimal(36, 18)
+  currency    String?
+  evidence    Json?
+  caseId      String?          @map("case_id") @db.Uuid
+  resolvedAt  DateTime?        @map("resolved_at")
+  resolvedBy  String?          @map("resolved_by") @db.Uuid
+  metadata    Json?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
 
   case ComplianceCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
 
@@ -1426,21 +1427,21 @@ model AmlAlert {
 }
 
 model ComplianceCase {
-  id              String       @id @default(uuid()) @db.Uuid
-  reference       String       @unique
-  ownerUserId     String?      @map("owner_user_id") @db.Uuid
-  title           String
-  description     String?
-  status          CaseStatus   @default(OPEN)
-  priority        CasePriority @default(MEDIUM)
-  assignedToUserId String?     @map("assigned_to_user_id") @db.Uuid
-  openedByUserId  String?      @map("opened_by_user_id") @db.Uuid
-  resolution      String?
-  resolvedAt      DateTime?    @map("resolved_at")
-  closedAt        DateTime?    @map("closed_at")
-  metadata        Json?
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  id               String       @id @default(uuid()) @db.Uuid
+  reference        String       @unique
+  ownerUserId      String?      @map("owner_user_id") @db.Uuid
+  title            String
+  description      String?
+  status           CaseStatus   @default(OPEN)
+  priority         CasePriority @default(MEDIUM)
+  assignedToUserId String?      @map("assigned_to_user_id") @db.Uuid
+  openedByUserId   String?      @map("opened_by_user_id") @db.Uuid
+  resolution       String?
+  resolvedAt       DateTime?    @map("resolved_at")
+  closedAt         DateTime?    @map("closed_at")
+  metadata         Json?
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
   alerts      AmlAlert[]
   notes       ComplianceCaseNote[]
@@ -1454,11 +1455,11 @@ model ComplianceCase {
 }
 
 model ComplianceCaseNote {
-  id        String   @id @default(uuid()) @db.Uuid
-  caseId    String   @map("case_id") @db.Uuid
-  authorUserId String @map("author_user_id") @db.Uuid
-  body      String
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  caseId       String   @map("case_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at")
 
   case ComplianceCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
@@ -1496,18 +1497,18 @@ model ComplianceCaseAudit {
 }
 
 model SanctionsScreeningResult {
-  id           String                @id @default(uuid()) @db.Uuid
-  profileId    String?               @map("profile_id") @db.Uuid
-  ownerUserId  String                @map("owner_user_id") @db.Uuid
-  listSource   String                @map("list_source")
-  matchStatus  ScreeningMatchStatus  @default(PENDING) @map("match_status")
-  matchScore   Decimal?              @map("match_score") @db.Decimal(10, 4)
-  matchedName  String?               @map("matched_name")
-  providerCode String?               @map("provider_code")
-  providerRef  String?               @map("provider_ref")
-  rawResult    Json?                 @map("raw_result")
-  screenedAt   DateTime              @default(now()) @map("screened_at")
-  createdAt    DateTime              @default(now()) @map("created_at")
+  id           String               @id @default(uuid()) @db.Uuid
+  profileId    String?              @map("profile_id") @db.Uuid
+  ownerUserId  String               @map("owner_user_id") @db.Uuid
+  listSource   String               @map("list_source")
+  matchStatus  ScreeningMatchStatus @default(PENDING) @map("match_status")
+  matchScore   Decimal?             @map("match_score") @db.Decimal(10, 4)
+  matchedName  String?              @map("matched_name")
+  providerCode String?              @map("provider_code")
+  providerRef  String?              @map("provider_ref")
+  rawResult    Json?                @map("raw_result")
+  screenedAt   DateTime             @default(now()) @map("screened_at")
+  createdAt    DateTime             @default(now()) @map("created_at")
 
   profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
 
@@ -1538,19 +1539,19 @@ model PepScreeningResult {
 }
 
 model TravelRuleRecord {
-  id              String   @id @default(uuid()) @db.Uuid
-  profileId       String?  @map("profile_id") @db.Uuid
-  ownerUserId     String   @map("owner_user_id") @db.Uuid
-  paymentId       String?  @map("payment_id") @db.Uuid
-  direction       String
-  counterpartyVasp String? @map("counterparty_vasp")
-  status          String   @default("PENDING")
-  payloadEncrypted String? @map("payload_encrypted")
-  providerCode    String?  @map("provider_code")
-  providerRef     String?  @map("provider_ref")
-  metadata        Json?
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid()) @db.Uuid
+  profileId        String?  @map("profile_id") @db.Uuid
+  ownerUserId      String   @map("owner_user_id") @db.Uuid
+  paymentId        String?  @map("payment_id") @db.Uuid
+  direction        String
+  counterpartyVasp String?  @map("counterparty_vasp")
+  status           String   @default("PENDING")
+  payloadEncrypted String?  @map("payload_encrypted")
+  providerCode     String?  @map("provider_code")
+  providerRef      String?  @map("provider_ref")
+  metadata         Json?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   profile KycProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
 
@@ -1561,17 +1562,17 @@ model TravelRuleRecord {
 }
 
 model ComplianceRule {
-  id          String                @id @default(uuid()) @db.Uuid
-  code        String                @unique
+  id          String               @id @default(uuid()) @db.Uuid
+  code        String               @unique
   name        String
   description String?
-  isEnabled   Boolean               @default(true) @map("is_enabled")
-  priority    Int                   @default(100)
+  isEnabled   Boolean              @default(true) @map("is_enabled")
+  priority    Int                  @default(100)
   action      ComplianceRuleAction
   expression  Json
   metadata    Json?
-  createdAt   DateTime              @default(now()) @map("created_at")
-  updatedAt   DateTime              @updatedAt @map("updated_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
 
   @@index([isEnabled, priority])
   @@map("compliance_rules")
@@ -1695,18 +1696,18 @@ enum CustodyPolicyAction {
 }
 
 model CustodyProviderRecord {
-  id           String       @id @default(uuid()) @db.Uuid
-  code         String       @unique
-  name         String
-  custodyModel CustodyModel @map("custody_model")
-  isEnabled    Boolean      @default(true) @map("is_enabled")
-  priority     Int          @default(100)
-  config       Json?
-  healthStatus String       @default("UNKNOWN") @map("health_status")
-  lastCheckedAt DateTime?   @map("last_checked_at")
-  metadata     Json?
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id            String       @id @default(uuid()) @db.Uuid
+  code          String       @unique
+  name          String
+  custodyModel  CustodyModel @map("custody_model")
+  isEnabled     Boolean      @default(true) @map("is_enabled")
+  priority      Int          @default(100)
+  config        Json?
+  healthStatus  String       @default("UNKNOWN") @map("health_status")
+  lastCheckedAt DateTime?    @map("last_checked_at")
+  metadata      Json?
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
   keys CryptographicKey[]
 
@@ -1716,25 +1717,25 @@ model CustodyProviderRecord {
 }
 
 model CryptographicKey {
-  id              String       @id @default(uuid()) @db.Uuid
-  ownerUserId     String       @map("owner_user_id") @db.Uuid
-  walletId        String?      @map("wallet_id") @db.Uuid
-  providerId      String?      @map("provider_id") @db.Uuid
-  label           String?
-  algorithm       KeyAlgorithm
-  custodyModel    CustodyModel @map("custody_model")
-  status          KeyStatus    @default(PENDING)
-  publicKey       String       @map("public_key")
+  id                String       @id @default(uuid()) @db.Uuid
+  ownerUserId       String       @map("owner_user_id") @db.Uuid
+  walletId          String?      @map("wallet_id") @db.Uuid
+  providerId        String?      @map("provider_id") @db.Uuid
+  label             String?
+  algorithm         KeyAlgorithm
+  custodyModel      CustodyModel @map("custody_model")
+  status            KeyStatus    @default(PENDING)
+  publicKey         String       @map("public_key")
   /// Encrypted private key material or provider handle — never returned via API.
-  materialEncrypted String?    @map("material_encrypted")
-  providerRef     String?      @map("provider_ref")
-  currentVersion  Int          @default(1) @map("current_version")
-  exportAllowed   Boolean      @default(false) @map("export_allowed")
-  metadata        Json?
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  revokedAt       DateTime?    @map("revoked_at")
-  destroyedAt     DateTime?    @map("destroyed_at")
+  materialEncrypted String?      @map("material_encrypted")
+  providerRef       String?      @map("provider_ref")
+  currentVersion    Int          @default(1) @map("current_version")
+  exportAllowed     Boolean      @default(false) @map("export_allowed")
+  metadata          Json?
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  revokedAt         DateTime?    @map("revoked_at")
+  destroyedAt       DateTime?    @map("destroyed_at")
 
   provider         CustodyProviderRecord? @relation(fields: [providerId], references: [id], onDelete: SetNull)
   versions         KeyVersion[]
@@ -1750,14 +1751,14 @@ model CryptographicKey {
 }
 
 model KeyVersion {
-  id                String   @id @default(uuid()) @db.Uuid
-  keyId             String   @map("key_id") @db.Uuid
-  version           Int
-  publicKey         String   @map("public_key")
-  materialEncrypted String?  @map("material_encrypted")
-  providerRef       String?  @map("provider_ref")
-  createdAt         DateTime @default(now()) @map("created_at")
-  rotatedFromVersion Int?    @map("rotated_from_version")
+  id                 String   @id @default(uuid()) @db.Uuid
+  keyId              String   @map("key_id") @db.Uuid
+  version            Int
+  publicKey          String   @map("public_key")
+  materialEncrypted  String?  @map("material_encrypted")
+  providerRef        String?  @map("provider_ref")
+  createdAt          DateTime @default(now()) @map("created_at")
+  rotatedFromVersion Int?     @map("rotated_from_version")
 
   key CryptographicKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
 
@@ -1767,14 +1768,14 @@ model KeyVersion {
 }
 
 model KeyAuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  keyId     String?  @map("key_id") @db.Uuid
-  action    String
-  actorUserId String? @map("actor_user_id") @db.Uuid
-  details   Json?
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  keyId       String?  @map("key_id") @db.Uuid
+  action      String
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  details     Json?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   key CryptographicKey? @relation(fields: [keyId], references: [id], onDelete: SetNull)
 
@@ -1785,16 +1786,16 @@ model KeyAuditLog {
 }
 
 model SignerGroup {
-  id          String   @id @default(uuid()) @db.Uuid
-  ownerUserId String?  @map("owner_user_id") @db.Uuid
-  name        String
-  description String?
-  threshold   Int      @default(1)
-  totalSigners Int     @default(1) @map("total_signers")
-  isEnabled   Boolean  @default(true) @map("is_enabled")
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  ownerUserId  String?  @map("owner_user_id") @db.Uuid
+  name         String
+  description  String?
+  threshold    Int      @default(1)
+  totalSigners Int      @default(1) @map("total_signers")
+  isEnabled    Boolean  @default(true) @map("is_enabled")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   members          SignerGroupMember[]
   approvalPolicies ApprovalPolicy[]
@@ -1821,24 +1822,24 @@ model SignerGroupMember {
 }
 
 model ApprovalPolicy {
-  id           String             @id @default(uuid()) @db.Uuid
-  code         String             @unique
-  name         String
-  description  String?
-  kind         ApprovalPolicyKind
-  isEnabled    Boolean            @default(true) @map("is_enabled")
-  threshold    Int                @default(1)
-  amountThreshold String?         @map("amount_threshold")
-  riskThreshold Int?              @map("risk_threshold")
-  requiredRoles Json?             @map("required_roles")
-  signerGroupId String?           @map("signer_group_id") @db.Uuid
-  expression   Json?
-  metadata     Json?
-  createdAt    DateTime           @default(now()) @map("created_at")
-  updatedAt    DateTime           @updatedAt @map("updated_at")
+  id              String             @id @default(uuid()) @db.Uuid
+  code            String             @unique
+  name            String
+  description     String?
+  kind            ApprovalPolicyKind
+  isEnabled       Boolean            @default(true) @map("is_enabled")
+  threshold       Int                @default(1)
+  amountThreshold String?            @map("amount_threshold")
+  riskThreshold   Int?               @map("risk_threshold")
+  requiredRoles   Json?              @map("required_roles")
+  signerGroupId   String?            @map("signer_group_id") @db.Uuid
+  expression      Json?
+  metadata        Json?
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
-  signerGroup     SignerGroup?      @relation(fields: [signerGroupId], references: [id], onDelete: SetNull)
-  signingRequests SigningRequest[]
+  signerGroup      SignerGroup?      @relation(fields: [signerGroupId], references: [id], onDelete: SetNull)
+  signingRequests  SigningRequest[]
   approvalRequests ApprovalRequest[]
 
   @@index([isEnabled, kind])
@@ -1846,35 +1847,35 @@ model ApprovalPolicy {
 }
 
 model RecoveryPolicy {
-  id                 String   @id @default(uuid()) @db.Uuid
-  ownerUserId        String?  @map("owner_user_id") @db.Uuid
-  code               String   @unique
-  name               String
-  description        String?
-  requiredApprovals  Int      @default(1) @map("required_approvals")
-  timeoutHours       Int      @default(72) @map("timeout_hours")
-  isEnabled          Boolean  @default(true) @map("is_enabled")
-  metadata           Json?
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid()) @db.Uuid
+  ownerUserId       String?  @map("owner_user_id") @db.Uuid
+  code              String   @unique
+  name              String
+  description       String?
+  requiredApprovals Int      @default(1) @map("required_approvals")
+  timeoutHours      Int      @default(72) @map("timeout_hours")
+  isEnabled         Boolean  @default(true) @map("is_enabled")
+  metadata          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  contacts  RecoveryContact[]
-  requests  RecoveryRequest[]
+  contacts RecoveryContact[]
+  requests RecoveryRequest[]
 
   @@index([ownerUserId, isEnabled])
   @@map("recovery_policies")
 }
 
 model RecoveryContact {
-  id         String   @id @default(uuid()) @db.Uuid
-  policyId   String   @map("policy_id") @db.Uuid
-  ownerUserId String  @map("owner_user_id") @db.Uuid
-  label      String
-  emailEncrypted String? @map("email_encrypted")
-  phoneEncrypted String? @map("phone_encrypted")
-  userId     String?  @map("user_id") @db.Uuid
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  policyId       String   @map("policy_id") @db.Uuid
+  ownerUserId    String   @map("owner_user_id") @db.Uuid
+  label          String
+  emailEncrypted String?  @map("email_encrypted")
+  phoneEncrypted String?  @map("phone_encrypted")
+  userId         String?  @map("user_id") @db.Uuid
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   policy RecoveryPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
@@ -1884,20 +1885,20 @@ model RecoveryContact {
 }
 
 model RecoveryRequest {
-  id          String                @id @default(uuid()) @db.Uuid
-  policyId    String                @map("policy_id") @db.Uuid
-  keyId       String?               @map("key_id") @db.Uuid
-  ownerUserId String                @map("owner_user_id") @db.Uuid
-  status      RecoveryRequestStatus @default(PENDING)
-  reason      String?
-  approvalsCount Int                @default(0) @map("approvals_count")
-  expiresAt   DateTime?             @map("expires_at")
-  completedAt DateTime?             @map("completed_at")
-  metadata    Json?
-  createdAt   DateTime              @default(now()) @map("created_at")
-  updatedAt   DateTime              @updatedAt @map("updated_at")
+  id             String                @id @default(uuid()) @db.Uuid
+  policyId       String                @map("policy_id") @db.Uuid
+  keyId          String?               @map("key_id") @db.Uuid
+  ownerUserId    String                @map("owner_user_id") @db.Uuid
+  status         RecoveryRequestStatus @default(PENDING)
+  reason         String?
+  approvalsCount Int                   @default(0) @map("approvals_count")
+  expiresAt      DateTime?             @map("expires_at")
+  completedAt    DateTime?             @map("completed_at")
+  metadata       Json?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
 
-  policy RecoveryPolicy   @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  policy RecoveryPolicy    @relation(fields: [policyId], references: [id], onDelete: Restrict)
   key    CryptographicKey? @relation(fields: [keyId], references: [id], onDelete: SetNull)
 
   @@index([ownerUserId, status])
@@ -1923,32 +1924,32 @@ model TransactionPolicy {
 }
 
 model SigningRequest {
-  id              String               @id @default(uuid()) @db.Uuid
-  keyId           String               @map("key_id") @db.Uuid
-  ownerUserId     String               @map("owner_user_id") @db.Uuid
-  requestType     SigningRequestType   @map("request_type")
-  status          SigningRequestStatus @default(PENDING)
-  payloadHash     String               @map("payload_hash")
-  payloadEncrypted String?             @map("payload_encrypted")
-  amount          String?
-  asset           String?
-  destination     String?
-  riskScore       Int?                 @map("risk_score")
-  approvalPolicyId String?             @map("approval_policy_id") @db.Uuid
-  requiredApprovals Int                @default(0) @map("required_approvals")
-  receivedApprovals Int                @default(0) @map("received_approvals")
-  scheduledAt     DateTime?            @map("scheduled_at")
-  delayUntil      DateTime?            @map("delay_until")
-  signature       String?
-  signatureAlg    String?              @map("signature_alg")
-  failureReason   String?              @map("failure_reason")
-  metadata        Json?
-  createdAt       DateTime             @default(now()) @map("created_at")
-  updatedAt       DateTime             @updatedAt @map("updated_at")
-  completedAt     DateTime?            @map("completed_at")
+  id                String               @id @default(uuid()) @db.Uuid
+  keyId             String               @map("key_id") @db.Uuid
+  ownerUserId       String               @map("owner_user_id") @db.Uuid
+  requestType       SigningRequestType   @map("request_type")
+  status            SigningRequestStatus @default(PENDING)
+  payloadHash       String               @map("payload_hash")
+  payloadEncrypted  String?              @map("payload_encrypted")
+  amount            String?
+  asset             String?
+  destination       String?
+  riskScore         Int?                 @map("risk_score")
+  approvalPolicyId  String?              @map("approval_policy_id") @db.Uuid
+  requiredApprovals Int                  @default(0) @map("required_approvals")
+  receivedApprovals Int                  @default(0) @map("received_approvals")
+  scheduledAt       DateTime?            @map("scheduled_at")
+  delayUntil        DateTime?            @map("delay_until")
+  signature         String?
+  signatureAlg      String?              @map("signature_alg")
+  failureReason     String?              @map("failure_reason")
+  metadata          Json?
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  completedAt       DateTime?            @map("completed_at")
 
-  key            CryptographicKey @relation(fields: [keyId], references: [id], onDelete: Restrict)
-  approvalPolicy ApprovalPolicy?  @relation(fields: [approvalPolicyId], references: [id], onDelete: SetNull)
+  key            CryptographicKey  @relation(fields: [keyId], references: [id], onDelete: Restrict)
+  approvalPolicy ApprovalPolicy?   @relation(fields: [approvalPolicyId], references: [id], onDelete: SetNull)
   sessions       SigningSession[]
   approvals      ApprovalRequest[]
 
@@ -1960,14 +1961,14 @@ model SigningRequest {
 }
 
 model SigningSession {
-  id               String   @id @default(uuid()) @db.Uuid
-  signingRequestId String   @map("signing_request_id") @db.Uuid
-  providerCode     String?  @map("provider_code")
-  startedAt        DateTime @default(now()) @map("started_at")
+  id               String    @id @default(uuid()) @db.Uuid
+  signingRequestId String    @map("signing_request_id") @db.Uuid
+  providerCode     String?   @map("provider_code")
+  startedAt        DateTime  @default(now()) @map("started_at")
   finishedAt       DateTime? @map("finished_at")
-  latencyMs        Int?     @map("latency_ms")
-  success          Boolean  @default(false)
-  errorMessage     String?  @map("error_message")
+  latencyMs        Int?      @map("latency_ms")
+  success          Boolean   @default(false)
+  errorMessage     String?   @map("error_message")
   metadata         Json?
 
   request SigningRequest @relation(fields: [signingRequestId], references: [id], onDelete: Cascade)
@@ -2027,13 +2028,13 @@ model CustodyEventLog {
 }
 
 model CustodyPolicyViolation {
-  id        String   @id @default(uuid()) @db.Uuid
-  policyCode String  @map("policy_code")
-  ownerUserId String? @map("owner_user_id") @db.Uuid
-  signingRequestId String? @map("signing_request_id") @db.Uuid
-  action    CustodyPolicyAction
-  details   Json?
-  createdAt DateTime @default(now()) @map("created_at")
+  id               String              @id @default(uuid()) @db.Uuid
+  policyCode       String              @map("policy_code")
+  ownerUserId      String?             @map("owner_user_id") @db.Uuid
+  signingRequestId String?             @map("signing_request_id") @db.Uuid
+  action           CustodyPolicyAction
+  details          Json?
+  createdAt        DateTime            @default(now()) @map("created_at")
 
   @@index([policyCode, createdAt])
   @@index([ownerUserId, createdAt])
@@ -2068,6 +2069,7 @@ enum NotificationCategory {
   SYSTEM
   MARKETING
   ADMIN
+  MARKET
 }
 
 enum NotificationPriority {
@@ -2106,18 +2108,18 @@ enum WebhookDeliveryStatus {
 }
 
 model NotificationChannelProvider {
-  id           String              @id @default(uuid()) @db.Uuid
-  code         String              @unique
-  name         String
-  channel      NotificationChannel
-  isEnabled    Boolean             @default(true) @map("is_enabled")
-  priority     Int                 @default(100)
-  configEncrypted String?          @map("config_encrypted")
-  healthStatus String              @default("UNKNOWN") @map("health_status")
-  lastCheckedAt DateTime?          @map("last_checked_at")
-  metadata     Json?
-  createdAt    DateTime            @default(now()) @map("created_at")
-  updatedAt    DateTime            @updatedAt @map("updated_at")
+  id              String              @id @default(uuid()) @db.Uuid
+  code            String              @unique
+  name            String
+  channel         NotificationChannel
+  isEnabled       Boolean             @default(true) @map("is_enabled")
+  priority        Int                 @default(100)
+  configEncrypted String?             @map("config_encrypted")
+  healthStatus    String              @default("UNKNOWN") @map("health_status")
+  lastCheckedAt   DateTime?           @map("last_checked_at")
+  metadata        Json?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
 
   @@index([channel, isEnabled])
   @@index([isEnabled, priority])
@@ -2125,24 +2127,24 @@ model NotificationChannelProvider {
 }
 
 model NotificationTemplate {
-  id          String              @id @default(uuid()) @db.Uuid
-  code        String
-  name        String
-  description String?
-  category    NotificationCategory
-  channel     NotificationChannel
-  format      TemplateFormat      @default(HTML)
-  locale      String              @default("en")
-  subject     String?
-  body        String
-  variables   Json?
-  isEnabled   Boolean             @default(true) @map("is_enabled")
-  currentVersion Int              @default(1) @map("current_version")
-  metadata    Json?
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  id             String               @id @default(uuid()) @db.Uuid
+  code           String
+  name           String
+  description    String?
+  category       NotificationCategory
+  channel        NotificationChannel
+  format         TemplateFormat       @default(HTML)
+  locale         String               @default("en")
+  subject        String?
+  body           String
+  variables      Json?
+  isEnabled      Boolean              @default(true) @map("is_enabled")
+  currentVersion Int                  @default(1) @map("current_version")
+  metadata       Json?
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
 
-  versions NotificationTemplateVersion[]
+  versions      NotificationTemplateVersion[]
   notifications NotificationMessage[]
 
   @@unique([code, channel, locale])
@@ -2188,36 +2190,36 @@ model NotificationPreference {
 }
 
 model NotificationMessage {
-  id              String                @id @default(uuid()) @db.Uuid
-  ownerUserId     String?               @map("owner_user_id") @db.Uuid
-  templateId      String?               @map("template_id") @db.Uuid
+  id              String               @id @default(uuid()) @db.Uuid
+  ownerUserId     String?              @map("owner_user_id") @db.Uuid
+  templateId      String?              @map("template_id") @db.Uuid
   category        NotificationCategory
   channel         NotificationChannel
-  priority        NotificationPriority  @default(NORMAL)
-  status          NotificationStatus    @default(PENDING)
+  priority        NotificationPriority @default(NORMAL)
+  status          NotificationStatus   @default(PENDING)
   subject         String?
   body            String
   payload         Json?
-  dedupeKey       String?               @map("dedupe_key")
-  correlationId   String?               @map("correlation_id")
-  sourceEventType String?               @map("source_event_type")
-  sourceEventId   String?               @map("source_event_id")
-  scheduledAt     DateTime?             @map("scheduled_at")
-  delayUntil      DateTime?             @map("delay_until")
-  sentAt          DateTime?             @map("sent_at")
-  deliveredAt     DateTime?             @map("delivered_at")
-  failedAt        DateTime?             @map("failed_at")
-  failureReason   String?               @map("failure_reason")
-  attemptCount    Int                   @default(0) @map("attempt_count")
-  maxAttempts     Int                   @default(5) @map("max_attempts")
-  providerCode    String?               @map("provider_code")
-  providerRef     String?               @map("provider_ref")
+  dedupeKey       String?              @map("dedupe_key")
+  correlationId   String?              @map("correlation_id")
+  sourceEventType String?              @map("source_event_type")
+  sourceEventId   String?              @map("source_event_id")
+  scheduledAt     DateTime?            @map("scheduled_at")
+  delayUntil      DateTime?            @map("delay_until")
+  sentAt          DateTime?            @map("sent_at")
+  deliveredAt     DateTime?            @map("delivered_at")
+  failedAt        DateTime?            @map("failed_at")
+  failureReason   String?              @map("failure_reason")
+  attemptCount    Int                  @default(0) @map("attempt_count")
+  maxAttempts     Int                  @default(5) @map("max_attempts")
+  providerCode    String?              @map("provider_code")
+  providerRef     String?              @map("provider_ref")
   metadata        Json?
-  createdAt       DateTime              @default(now()) @map("created_at")
-  updatedAt       DateTime              @updatedAt @map("updated_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
 
-  template NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  queueItems NotificationQueueItem[]
+  template     NotificationTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  queueItems   NotificationQueueItem[]
   deliveryLogs NotificationDeliveryLog[]
 
   @@unique([dedupeKey])
@@ -2232,18 +2234,18 @@ model NotificationMessage {
 }
 
 model NotificationQueueItem {
-  id             String             @id @default(uuid()) @db.Uuid
-  notificationId String             @map("notification_id") @db.Uuid
+  id             String               @id @default(uuid()) @db.Uuid
+  notificationId String               @map("notification_id") @db.Uuid
   priority       NotificationPriority @default(NORMAL)
-  status         NotificationStatus @default(QUEUED)
-  availableAt    DateTime           @default(now()) @map("available_at")
-  lockedAt       DateTime?          @map("locked_at")
-  lockedBy       String?            @map("locked_by")
-  attemptCount   Int                @default(0) @map("attempt_count")
-  nextAttemptAt  DateTime?          @map("next_attempt_at")
-  deadLetteredAt DateTime?          @map("dead_lettered_at")
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  status         NotificationStatus   @default(QUEUED)
+  availableAt    DateTime             @default(now()) @map("available_at")
+  lockedAt       DateTime?            @map("locked_at")
+  lockedBy       String?              @map("locked_by")
+  attemptCount   Int                  @default(0) @map("attempt_count")
+  nextAttemptAt  DateTime?            @map("next_attempt_at")
+  deadLetteredAt DateTime?            @map("dead_lettered_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
 
   notification NotificationMessage @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
@@ -2254,15 +2256,15 @@ model NotificationQueueItem {
 }
 
 model NotificationDeliveryLog {
-  id             String   @id @default(uuid()) @db.Uuid
-  notificationId String   @map("notification_id") @db.Uuid
+  id             String              @id @default(uuid()) @db.Uuid
+  notificationId String              @map("notification_id") @db.Uuid
   channel        NotificationChannel
-  providerCode   String?  @map("provider_code")
+  providerCode   String?             @map("provider_code")
   success        Boolean
-  latencyMs      Int?     @map("latency_ms")
-  errorMessage   String?  @map("error_message")
-  responseMeta   Json?    @map("response_meta")
-  createdAt      DateTime @default(now()) @map("created_at")
+  latencyMs      Int?                @map("latency_ms")
+  errorMessage   String?             @map("error_message")
+  responseMeta   Json?               @map("response_meta")
+  createdAt      DateTime            @default(now()) @map("created_at")
 
   notification NotificationMessage @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
@@ -2292,19 +2294,19 @@ model WebhookEndpoint {
 }
 
 model WebhookDelivery {
-  id           String                @id @default(uuid()) @db.Uuid
-  endpointId   String                @map("endpoint_id") @db.Uuid
-  eventType    String                @map("event_type")
-  payload      Json
-  status       WebhookDeliveryStatus @default(PENDING)
-  attemptCount Int                   @default(0) @map("attempt_count")
-  responseCode Int?                  @map("response_code")
-  responseBody String?               @map("response_body")
-  signature    String?
-  nextAttemptAt DateTime?            @map("next_attempt_at")
-  deliveredAt  DateTime?             @map("delivered_at")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
+  id            String                @id @default(uuid()) @db.Uuid
+  endpointId    String                @map("endpoint_id") @db.Uuid
+  eventType     String                @map("event_type")
+  payload       Json
+  status        WebhookDeliveryStatus @default(PENDING)
+  attemptCount  Int                   @default(0) @map("attempt_count")
+  responseCode  Int?                  @map("response_code")
+  responseBody  String?               @map("response_body")
+  signature     String?
+  nextAttemptAt DateTime?             @map("next_attempt_at")
+  deliveredAt   DateTime?             @map("delivered_at")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
 
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
@@ -2481,18 +2483,18 @@ model AiPromptTemplate {
 }
 
 model AiPromptVersion {
-  id            String   @id @default(uuid()) @db.Uuid
-  templateId    String   @map("template_id") @db.Uuid
-  version       Int
-  systemPrompt  String?  @map("system_prompt")
-  userPrompt    String   @map("user_prompt")
-  variables     Json?
-  modelHint     String?  @map("model_hint")
-  temperature   Float?   @default(0.2)
-  maxTokens     Int?     @map("max_tokens")
-  changeNotes   String?  @map("change_notes")
-  createdBy     String?  @map("created_by") @db.Uuid
-  createdAt     DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  templateId   String   @map("template_id") @db.Uuid
+  version      Int
+  systemPrompt String?  @map("system_prompt")
+  userPrompt   String   @map("user_prompt")
+  variables    Json?
+  modelHint    String?  @map("model_hint")
+  temperature  Float?   @default(0.2)
+  maxTokens    Int?     @map("max_tokens")
+  changeNotes  String?  @map("change_notes")
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
 
   template AiPromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
@@ -2502,17 +2504,17 @@ model AiPromptVersion {
 }
 
 model AiConversation {
-  id            String                @id @default(uuid()) @db.Uuid
-  ownerUserId   String                @map("owner_user_id") @db.Uuid
-  assistantType AiAssistantType       @default(CUSTOMER_SUPPORT) @map("assistant_type")
+  id            String               @id @default(uuid()) @db.Uuid
+  ownerUserId   String               @map("owner_user_id") @db.Uuid
+  assistantType AiAssistantType      @default(CUSTOMER_SUPPORT) @map("assistant_type")
   title         String?
-  status        AiConversationStatus  @default(ACTIVE)
-  locale        String                @default("en")
+  status        AiConversationStatus @default(ACTIVE)
+  locale        String               @default("en")
   metadata      Json?
-  lastMessageAt DateTime?             @map("last_message_at")
-  expiresAt     DateTime?             @map("expires_at")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
+  lastMessageAt DateTime?            @map("last_message_at")
+  expiresAt     DateTime?            @map("expires_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
 
   messages AiMessage[]
   requests AiRequest[]
@@ -2544,32 +2546,32 @@ model AiMessage {
 }
 
 model AiRequest {
-  id               String          @id @default(uuid()) @db.Uuid
-  ownerUserId      String?         @map("owner_user_id") @db.Uuid
-  conversationId   String?         @map("conversation_id") @db.Uuid
-  promptTemplateId String?         @map("prompt_template_id") @db.Uuid
-  providerId       String?         @map("provider_id") @db.Uuid
+  id               String           @id @default(uuid()) @db.Uuid
+  ownerUserId      String?          @map("owner_user_id") @db.Uuid
+  conversationId   String?          @map("conversation_id") @db.Uuid
+  promptTemplateId String?          @map("prompt_template_id") @db.Uuid
+  providerId       String?          @map("provider_id") @db.Uuid
   assistantType    AiAssistantType? @map("assistant_type")
-  status           AiRequestStatus @default(PENDING)
+  status           AiRequestStatus  @default(PENDING)
   model            String?
-  inputText        String          @map("input_text")
-  outputText       String?         @map("output_text")
-  inputTokens      Int             @default(0) @map("input_tokens")
-  outputTokens     Int             @default(0) @map("output_tokens")
-  latencyMs        Int?            @map("latency_ms")
-  costUsdMicros    Int             @default(0) @map("cost_usd_micros")
-  cacheHit         Boolean         @default(false) @map("cache_hit")
-  correlationId    String?         @map("correlation_id")
-  sourceEventType  String?         @map("source_event_type")
-  sourceEventId    String?         @map("source_event_id")
-  errorMessage     String?         @map("error_message")
+  inputText        String           @map("input_text")
+  outputText       String?          @map("output_text")
+  inputTokens      Int              @default(0) @map("input_tokens")
+  outputTokens     Int              @default(0) @map("output_tokens")
+  latencyMs        Int?             @map("latency_ms")
+  costUsdMicros    Int              @default(0) @map("cost_usd_micros")
+  cacheHit         Boolean          @default(false) @map("cache_hit")
+  correlationId    String?          @map("correlation_id")
+  sourceEventType  String?          @map("source_event_type")
+  sourceEventId    String?          @map("source_event_id")
+  errorMessage     String?          @map("error_message")
   metadata         Json?
-  createdAt        DateTime        @default(now()) @map("created_at")
-  completedAt      DateTime?       @map("completed_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  completedAt      DateTime?        @map("completed_at")
 
-  conversation   AiConversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  conversation   AiConversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   promptTemplate AiPromptTemplate? @relation(fields: [promptTemplateId], references: [id], onDelete: SetNull)
-  provider       AiProvider?      @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider       AiProvider?       @relation(fields: [providerId], references: [id], onDelete: SetNull)
   usage          AiTokenUsage?
 
   @@index([ownerUserId, createdAt])
@@ -2600,18 +2602,18 @@ model AiTokenUsage {
 }
 
 model AiProviderMetric {
-  id             String   @id @default(uuid()) @db.Uuid
-  providerId     String   @map("provider_id") @db.Uuid
-  windowStart    DateTime @map("window_start")
-  requestCount   Int      @default(0) @map("request_count")
-  successCount   Int      @default(0) @map("success_count")
-  failureCount   Int      @default(0) @map("failure_count")
-  cacheHitCount  Int      @default(0) @map("cache_hit_count")
-  totalLatencyMs BigInt   @default(0) @map("total_latency_ms")
-  totalTokens    BigInt   @default(0) @map("total_tokens")
-  totalCostMicros BigInt  @default(0) @map("total_cost_micros")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  providerId      String   @map("provider_id") @db.Uuid
+  windowStart     DateTime @map("window_start")
+  requestCount    Int      @default(0) @map("request_count")
+  successCount    Int      @default(0) @map("success_count")
+  failureCount    Int      @default(0) @map("failure_count")
+  cacheHitCount   Int      @default(0) @map("cache_hit_count")
+  totalLatencyMs  BigInt   @default(0) @map("total_latency_ms")
+  totalTokens     BigInt   @default(0) @map("total_tokens")
+  totalCostMicros BigInt   @default(0) @map("total_cost_micros")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   provider AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
@@ -2639,19 +2641,19 @@ model AiKnowledgeSource {
 }
 
 model AiDocument {
-  id             String           @id @default(uuid()) @db.Uuid
-  sourceId       String           @map("source_id") @db.Uuid
-  title          String
-  contentType    String           @default("text/plain") @map("content_type")
-  content        String
-  status         AiDocumentStatus @default(PENDING)
-  version        Int              @default(1)
-  checksum       String?
-  errorMessage   String?          @map("error_message")
-  indexedAt      DateTime?        @map("indexed_at")
-  metadata       Json?
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id           String           @id @default(uuid()) @db.Uuid
+  sourceId     String           @map("source_id") @db.Uuid
+  title        String
+  contentType  String           @default("text/plain") @map("content_type")
+  content      String
+  status       AiDocumentStatus @default(PENDING)
+  version      Int              @default(1)
+  checksum     String?
+  errorMessage String?          @map("error_message")
+  indexedAt    DateTime?        @map("indexed_at")
+  metadata     Json?
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
 
   source AiKnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   chunks AiDocumentChunk[]
@@ -2679,13 +2681,13 @@ model AiDocumentChunk {
 }
 
 model AiEmbedding {
-  id          String   @id @default(uuid()) @db.Uuid
-  chunkId     String   @unique @map("chunk_id") @db.Uuid
-  model       String
-  dimensions  Int
-  vector      Json
-  providerCode String  @map("provider_code")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  chunkId      String   @unique @map("chunk_id") @db.Uuid
+  model        String
+  dimensions   Int
+  vector       Json
+  providerCode String   @map("provider_code")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   chunk AiDocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 
@@ -2694,17 +2696,17 @@ model AiEmbedding {
 }
 
 model AiVectorIndexMeta {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
-  name        String
-  model       String
-  dimensions  Int
-  documentCount Int    @default(0) @map("document_count")
-  chunkCount  Int      @default(0) @map("chunk_count")
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  model         String
+  dimensions    Int
+  documentCount Int       @default(0) @map("document_count")
+  chunkCount    Int       @default(0) @map("chunk_count")
   lastRefreshAt DateTime? @map("last_refresh_at")
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   @@map("ai_vector_index_meta")
 }
@@ -2760,6 +2762,7 @@ enum AnalyticsDomain {
   SYSTEM
   CUSTOMER
   ADMIN
+  MARKET
 }
 
 enum MetricValueType {
@@ -2875,14 +2878,14 @@ model MetricDefinition {
 }
 
 model MetricValue {
-  id           String            @id @default(uuid()) @db.Uuid
-  metricId     String            @map("metric_id") @db.Uuid
-  window       AggregationWindow
-  bucketStart  DateTime          @map("bucket_start")
-  value        Float
-  dimensions   Json?
-  sampleCount  Int               @default(1) @map("sample_count")
-  createdAt    DateTime          @default(now()) @map("created_at")
+  id          String            @id @default(uuid()) @db.Uuid
+  metricId    String            @map("metric_id") @db.Uuid
+  window      AggregationWindow
+  bucketStart DateTime          @map("bucket_start")
+  value       Float
+  dimensions  Json?
+  sampleCount Int               @default(1) @map("sample_count")
+  createdAt   DateTime          @default(now()) @map("created_at")
 
   metric MetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
 
@@ -2893,39 +2896,39 @@ model MetricValue {
 }
 
 model KpiDefinition {
-  id          String          @id @default(uuid()) @db.Uuid
-  code        String          @unique
-  name        String
-  description String?
-  domain      AnalyticsDomain
-  metricCode  String          @map("metric_code")
-  targetValue Float?          @map("target_value")
-  warningThreshold Float?     @map("warning_threshold")
-  criticalThreshold Float?    @map("critical_threshold")
-  higherIsBetter Boolean      @default(true) @map("higher_is_better")
-  isEnabled   Boolean         @default(true) @map("is_enabled")
-  metadata    Json?
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+  id                String          @id @default(uuid()) @db.Uuid
+  code              String          @unique
+  name              String
+  description       String?
+  domain            AnalyticsDomain
+  metricCode        String          @map("metric_code")
+  targetValue       Float?          @map("target_value")
+  warningThreshold  Float?          @map("warning_threshold")
+  criticalThreshold Float?          @map("critical_threshold")
+  higherIsBetter    Boolean         @default(true) @map("higher_is_better")
+  isEnabled         Boolean         @default(true) @map("is_enabled")
+  metadata          Json?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
 
   @@index([domain, isEnabled])
   @@map("kpi_definitions")
 }
 
 model AnalyticsDashboard {
-  id          String               @id @default(uuid()) @db.Uuid
-  code        String               @unique
+  id          String              @id @default(uuid()) @db.Uuid
+  code        String              @unique
   name        String
   description String?
   domain      AnalyticsDomain?
-  visibility  DashboardVisibility  @default(PRIVATE)
-  ownerUserId String?              @map("owner_user_id") @db.Uuid
+  visibility  DashboardVisibility @default(PRIVATE)
+  ownerUserId String?             @map("owner_user_id") @db.Uuid
   layout      Json?
-  isSystem    Boolean              @default(false) @map("is_system")
-  isEnabled   Boolean              @default(true) @map("is_enabled")
+  isSystem    Boolean             @default(false) @map("is_system")
+  isEnabled   Boolean             @default(true) @map("is_enabled")
   metadata    Json?
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
 
   widgets DashboardWidget[]
 
@@ -2956,18 +2959,18 @@ model DashboardWidget {
 }
 
 model ReportTemplate {
-  id          String          @id @default(uuid()) @db.Uuid
-  code        String          @unique
-  name        String
-  description String?
-  domain      AnalyticsDomain
-  querySpec   Json            @map("query_spec")
-  defaultFormat ReportFormat  @default(JSON) @map("default_format")
-  isEnabled   Boolean         @default(true) @map("is_enabled")
-  version     Int             @default(1)
-  metadata    Json?
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+  id            String          @id @default(uuid()) @db.Uuid
+  code          String          @unique
+  name          String
+  description   String?
+  domain        AnalyticsDomain
+  querySpec     Json            @map("query_spec")
+  defaultFormat ReportFormat    @default(JSON) @map("default_format")
+  isEnabled     Boolean         @default(true) @map("is_enabled")
+  version       Int             @default(1)
+  metadata      Json?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
 
   reports          AnalyticsReport[]
   scheduledReports ScheduledReport[]
@@ -3003,23 +3006,23 @@ model AnalyticsReport {
 }
 
 model ScheduledReport {
-  id              String                @id @default(uuid()) @db.Uuid
-  templateId      String                @map("template_id") @db.Uuid
-  ownerUserId     String?               @map("owner_user_id") @db.Uuid
-  name            String
-  cronExpression  String                @map("cron_expression")
-  format          ReportFormat          @default(JSON)
-  parameters      Json?
-  status          ScheduledReportStatus @default(ACTIVE)
-  nextRunAt       DateTime?             @map("next_run_at")
-  lastRunAt       DateTime?             @map("last_run_at")
-  attemptCount    Int                   @default(0) @map("attempt_count")
-  maxAttempts     Int                   @default(5) @map("max_attempts")
-  lastError       String?               @map("last_error")
-  nextAttemptAt   DateTime?             @map("next_attempt_at")
-  metadata        Json?
-  createdAt       DateTime              @default(now()) @map("created_at")
-  updatedAt       DateTime              @updatedAt @map("updated_at")
+  id             String                @id @default(uuid()) @db.Uuid
+  templateId     String                @map("template_id") @db.Uuid
+  ownerUserId    String?               @map("owner_user_id") @db.Uuid
+  name           String
+  cronExpression String                @map("cron_expression")
+  format         ReportFormat          @default(JSON)
+  parameters     Json?
+  status         ScheduledReportStatus @default(ACTIVE)
+  nextRunAt      DateTime?             @map("next_run_at")
+  lastRunAt      DateTime?             @map("last_run_at")
+  attemptCount   Int                   @default(0) @map("attempt_count")
+  maxAttempts    Int                   @default(5) @map("max_attempts")
+  lastError      String?               @map("last_error")
+  nextAttemptAt  DateTime?             @map("next_attempt_at")
+  metadata       Json?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
 
   template ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
@@ -3050,17 +3053,17 @@ model ForecastModel {
 }
 
 model ForecastResult {
-  id            String         @id @default(uuid()) @db.Uuid
-  modelId       String         @map("model_id") @db.Uuid
-  status        ForecastStatus @default(DRAFT)
-  horizonStart  DateTime       @map("horizon_start")
-  horizonEnd    DateTime       @map("horizon_end")
-  points        Json
-  confidence    Float?
-  generatedAt   DateTime?      @map("generated_at")
-  errorMessage  String?        @map("error_message")
-  metadata      Json?
-  createdAt     DateTime       @default(now()) @map("created_at")
+  id           String         @id @default(uuid()) @db.Uuid
+  modelId      String         @map("model_id") @db.Uuid
+  status       ForecastStatus @default(DRAFT)
+  horizonStart DateTime       @map("horizon_start")
+  horizonEnd   DateTime       @map("horizon_end")
+  points       Json
+  confidence   Float?
+  generatedAt  DateTime?      @map("generated_at")
+  errorMessage String?        @map("error_message")
+  metadata     Json?
+  createdAt    DateTime       @default(now()) @map("created_at")
 
   model ForecastModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
@@ -3070,20 +3073,20 @@ model ForecastResult {
 }
 
 model AggregationJob {
-  id            String               @id @default(uuid()) @db.Uuid
-  jobType       String               @map("job_type")
-  window        AggregationWindow
-  status        AggregationJobStatus @default(PENDING)
-  domain        AnalyticsDomain?
-  bucketStart   DateTime?            @map("bucket_start")
-  bucketEnd     DateTime?            @map("bucket_end")
-  processedCount Int                 @default(0) @map("processed_count")
-  errorMessage  String?              @map("error_message")
-  startedAt     DateTime?            @map("started_at")
-  completedAt   DateTime?            @map("completed_at")
-  metadata      Json?
-  createdAt     DateTime             @default(now()) @map("created_at")
-  updatedAt     DateTime             @updatedAt @map("updated_at")
+  id             String               @id @default(uuid()) @db.Uuid
+  jobType        String               @map("job_type")
+  window         AggregationWindow
+  status         AggregationJobStatus @default(PENDING)
+  domain         AnalyticsDomain?
+  bucketStart    DateTime?            @map("bucket_start")
+  bucketEnd      DateTime?            @map("bucket_end")
+  processedCount Int                  @default(0) @map("processed_count")
+  errorMessage   String?              @map("error_message")
+  startedAt      DateTime?            @map("started_at")
+  completedAt    DateTime?            @map("completed_at")
+  metadata       Json?
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
 
   @@index([status, createdAt])
   @@index([window, bucketStart])
@@ -3124,6 +3127,7 @@ enum ObsServiceDomain {
   DATABASE
   REDIS
   SYSTEM
+  MARKET_DATA
 }
 
 enum ObsMetricKind {
@@ -3198,14 +3202,14 @@ model ObsMetricDefinition {
 }
 
 model ObsMetricSample {
-  id           String   @id @default(uuid()) @db.Uuid
-  metricId     String   @map("metric_id") @db.Uuid
-  serviceName  String   @map("service_name")
-  value        Float
-  labels       Json?
-  correlationId String? @map("correlation_id")
-  observedAt   DateTime @default(now()) @map("observed_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid()) @db.Uuid
+  metricId      String   @map("metric_id") @db.Uuid
+  serviceName   String   @map("service_name")
+  value         Float
+  labels        Json?
+  correlationId String?  @map("correlation_id")
+  observedAt    DateTime @default(now()) @map("observed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   metric ObsMetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
 
@@ -3216,17 +3220,17 @@ model ObsMetricSample {
 }
 
 model ObsTrace {
-  id            String   @id @default(uuid()) @db.Uuid
-  traceId       String   @unique @map("trace_id")
-  rootService   String?  @map("root_service")
-  rootOperation String?  @map("root_operation")
-  correlationId String?  @map("correlation_id")
-  statusCode    String?  @map("status_code")
-  durationMs    Float?   @map("duration_ms")
-  startedAt     DateTime @map("started_at")
+  id            String    @id @default(uuid()) @db.Uuid
+  traceId       String    @unique @map("trace_id")
+  rootService   String?   @map("root_service")
+  rootOperation String?   @map("root_operation")
+  correlationId String?   @map("correlation_id")
+  statusCode    String?   @map("status_code")
+  durationMs    Float?    @map("duration_ms")
+  startedAt     DateTime  @map("started_at")
   endedAt       DateTime? @map("ended_at")
   metadata      Json?
-  createdAt     DateTime @default(now()) @map("created_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   spans ObsSpan[]
 
@@ -3237,18 +3241,18 @@ model ObsTrace {
 }
 
 model ObsSpan {
-  id            String   @id @default(uuid()) @db.Uuid
-  traceRecordId String   @map("trace_record_id") @db.Uuid
-  spanId        String   @map("span_id")
-  parentSpanId  String?  @map("parent_span_id")
-  serviceName   String   @map("service_name")
-  operationName String   @map("operation_name")
-  statusCode    String?  @map("status_code")
-  durationMs    Float?   @map("duration_ms")
-  startedAt     DateTime @map("started_at")
+  id            String    @id @default(uuid()) @db.Uuid
+  traceRecordId String    @map("trace_record_id") @db.Uuid
+  spanId        String    @map("span_id")
+  parentSpanId  String?   @map("parent_span_id")
+  serviceName   String    @map("service_name")
+  operationName String    @map("operation_name")
+  statusCode    String?   @map("status_code")
+  durationMs    Float?    @map("duration_ms")
+  startedAt     DateTime  @map("started_at")
   endedAt       DateTime? @map("ended_at")
   attributes    Json?
-  createdAt     DateTime @default(now()) @map("created_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   trace ObsTrace @relation(fields: [traceRecordId], references: [id], onDelete: Cascade)
 
@@ -3282,14 +3286,14 @@ model ObsLogEntry {
 }
 
 model ObsHealthCheck {
-  id            String          @id @default(uuid()) @db.Uuid
-  serviceName   String          @map("service_name")
-  checkName     String          @map("check_name")
-  status        ObsHealthStatus @default(UNKNOWN)
-  latencyMs     Float?          @map("latency_ms")
-  details       Json?
-  checkedAt     DateTime        @default(now()) @map("checked_at")
-  createdAt     DateTime        @default(now()) @map("created_at")
+  id          String          @id @default(uuid()) @db.Uuid
+  serviceName String          @map("service_name")
+  checkName   String          @map("check_name")
+  status      ObsHealthStatus @default(UNKNOWN)
+  latencyMs   Float?          @map("latency_ms")
+  details     Json?
+  checkedAt   DateTime        @default(now()) @map("checked_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
 
   @@index([serviceName, checkName, checkedAt])
   @@index([status, checkedAt])
@@ -3314,21 +3318,21 @@ model ObsServiceDependency {
 }
 
 model ObsAlertRule {
-  id             String           @id @default(uuid()) @db.Uuid
-  code           String           @unique
-  name           String
-  description    String?
-  domain         ObsServiceDomain
-  metricCode     String?          @map("metric_code")
-  ruleType       String           @default("threshold") @map("rule_type")
-  severity       ObsAlertSeverity @default(WARNING)
-  threshold      Float?
-  comparison     String?          @default("gt")
-  windowSeconds  Int              @default(300) @map("window_seconds")
-  isEnabled      Boolean          @default(true) @map("is_enabled")
-  metadata       Json?
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id            String           @id @default(uuid()) @db.Uuid
+  code          String           @unique
+  name          String
+  description   String?
+  domain        ObsServiceDomain
+  metricCode    String?          @map("metric_code")
+  ruleType      String           @default("threshold") @map("rule_type")
+  severity      ObsAlertSeverity @default(WARNING)
+  threshold     Float?
+  comparison    String?          @default("gt")
+  windowSeconds Int              @default(300) @map("window_seconds")
+  isEnabled     Boolean          @default(true) @map("is_enabled")
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   alerts ObsAlert[]
 
@@ -3337,23 +3341,23 @@ model ObsAlertRule {
 }
 
 model ObsAlert {
-  id            String           @id @default(uuid()) @db.Uuid
-  ruleId        String?          @map("rule_id") @db.Uuid
-  code          String
-  title         String
-  message       String
-  severity      ObsAlertSeverity
-  status        ObsAlertStatus   @default(OPEN)
-  serviceName   String?          @map("service_name")
-  correlationId String?          @map("correlation_id")
-  firedAt       DateTime         @default(now()) @map("fired_at")
-  acknowledgedAt DateTime?       @map("acknowledged_at")
-  acknowledgedBy String?         @map("acknowledged_by") @db.Uuid
-  resolvedAt    DateTime?        @map("resolved_at")
-  resolvedBy    String?          @map("resolved_by") @db.Uuid
-  metadata      Json?
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
+  id             String           @id @default(uuid()) @db.Uuid
+  ruleId         String?          @map("rule_id") @db.Uuid
+  code           String
+  title          String
+  message        String
+  severity       ObsAlertSeverity
+  status         ObsAlertStatus   @default(OPEN)
+  serviceName    String?          @map("service_name")
+  correlationId  String?          @map("correlation_id")
+  firedAt        DateTime         @default(now()) @map("fired_at")
+  acknowledgedAt DateTime?        @map("acknowledged_at")
+  acknowledgedBy String?          @map("acknowledged_by") @db.Uuid
+  resolvedAt     DateTime?        @map("resolved_at")
+  resolvedBy     String?          @map("resolved_by") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
 
   rule ObsAlertRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
 
@@ -3393,14 +3397,14 @@ model ObsIncident {
 }
 
 model ObsIncidentEvent {
-  id            String   @id @default(uuid()) @db.Uuid
-  incidentId    String   @map("incident_id") @db.Uuid
-  eventType     String   @map("event_type")
-  message       String
-  actorUserId   String?  @map("actor_user_id") @db.Uuid
-  metadata      Json?
-  occurredAt    DateTime @default(now()) @map("occurred_at")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  incidentId  String   @map("incident_id") @db.Uuid
+  eventType   String   @map("event_type")
+  message     String
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  metadata    Json?
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   incident ObsIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
 
@@ -3409,20 +3413,20 @@ model ObsIncidentEvent {
 }
 
 model ObsSloDefinition {
-  id               String              @id @default(uuid()) @db.Uuid
-  code             String              @unique
-  name             String
-  description      String?
-  serviceName      String              @map("service_name")
-  domain           ObsServiceDomain
-  indicatorType    ObsSloIndicatorType @map("indicator_type")
-  targetPercent    Float               @map("target_percent")
-  latencyMsTarget  Float?              @map("latency_ms_target")
-  windowDays       Int                 @default(30) @map("window_days")
-  isEnabled        Boolean             @default(true) @map("is_enabled")
-  metadata         Json?
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
+  id              String              @id @default(uuid()) @db.Uuid
+  code            String              @unique
+  name            String
+  description     String?
+  serviceName     String              @map("service_name")
+  domain          ObsServiceDomain
+  indicatorType   ObsSloIndicatorType @map("indicator_type")
+  targetPercent   Float               @map("target_percent")
+  latencyMsTarget Float?              @map("latency_ms_target")
+  windowDays      Int                 @default(30) @map("window_days")
+  isEnabled       Boolean             @default(true) @map("is_enabled")
+  metadata        Json?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
 
   measurements ObsSliMeasurement[]
 
@@ -3432,16 +3436,16 @@ model ObsSloDefinition {
 }
 
 model ObsSliMeasurement {
-  id              String   @id @default(uuid()) @db.Uuid
-  sloId           String   @map("slo_id") @db.Uuid
-  windowStart     DateTime @map("window_start")
-  windowEnd       DateTime @map("window_end")
-  goodEvents      Float    @map("good_events")
-  totalEvents     Float    @map("total_events")
-  sliPercent      Float    @map("sli_percent")
-  errorBudgetRemaining Float @map("error_budget_remaining")
-  reliabilityScore Float?  @map("reliability_score")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id                   String   @id @default(uuid()) @db.Uuid
+  sloId                String   @map("slo_id") @db.Uuid
+  windowStart          DateTime @map("window_start")
+  windowEnd            DateTime @map("window_end")
+  goodEvents           Float    @map("good_events")
+  totalEvents          Float    @map("total_events")
+  sliPercent           Float    @map("sli_percent")
+  errorBudgetRemaining Float    @map("error_budget_remaining")
+  reliabilityScore     Float?   @map("reliability_score")
+  createdAt            DateTime @default(now()) @map("created_at")
 
   slo ObsSloDefinition @relation(fields: [sloId], references: [id], onDelete: Cascade)
 
@@ -3451,21 +3455,21 @@ model ObsSliMeasurement {
 }
 
 model ObsCapacitySample {
-  id            String           @id @default(uuid()) @db.Uuid
-  serviceName   String           @map("service_name")
-  domain        ObsServiceDomain @default(INFRASTRUCTURE)
-  cpuPercent    Float?           @map("cpu_percent")
-  memoryPercent Float?           @map("memory_percent")
-  diskPercent   Float?           @map("disk_percent")
-  networkMbps   Float?           @map("network_mbps")
-  dbGrowthMb    Float?           @map("db_growth_mb")
-  storageGrowthMb Float?         @map("storage_growth_mb")
-  txThroughput  Float?           @map("tx_throughput")
-  queueDepth    Float?           @map("queue_depth")
-  forecastLoad  Float?           @map("forecast_load")
-  labels        Json?
-  observedAt    DateTime         @default(now()) @map("observed_at")
-  createdAt     DateTime         @default(now()) @map("created_at")
+  id              String           @id @default(uuid()) @db.Uuid
+  serviceName     String           @map("service_name")
+  domain          ObsServiceDomain @default(INFRASTRUCTURE)
+  cpuPercent      Float?           @map("cpu_percent")
+  memoryPercent   Float?           @map("memory_percent")
+  diskPercent     Float?           @map("disk_percent")
+  networkMbps     Float?           @map("network_mbps")
+  dbGrowthMb      Float?           @map("db_growth_mb")
+  storageGrowthMb Float?           @map("storage_growth_mb")
+  txThroughput    Float?           @map("tx_throughput")
+  queueDepth      Float?           @map("queue_depth")
+  forecastLoad    Float?           @map("forecast_load")
+  labels          Json?
+  observedAt      DateTime         @default(now()) @map("observed_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
 
   @@index([serviceName, observedAt])
   @@index([domain, observedAt])
@@ -3473,15 +3477,15 @@ model ObsCapacitySample {
 }
 
 model ObsMaintenanceNotice {
-  id          String    @id @default(uuid()) @db.Uuid
-  title       String
-  message     String
-  severity    String    @default("info")
-  isActive    Boolean   @default(true) @map("is_active")
-  startsAt    DateTime  @map("starts_at")
-  endsAt      DateTime? @map("ends_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @db.Uuid
+  title     String
+  message   String
+  severity  String    @default("info")
+  isActive  Boolean   @default(true) @map("is_active")
+  startsAt  DateTime  @map("starts_at")
+  endsAt    DateTime? @map("ends_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([isActive, startsAt])
   @@map("obs_maintenance_notices")
@@ -3577,18 +3581,18 @@ model InfraDeployment {
 
 model InfraBackupJob {
   id              String               @id @default(uuid()) @db.Uuid
-  environmentCode InfraEnvironmentCode   @map("environment_code")
-  componentKind   InfraComponentKind     @map("component_kind")
-  componentName   String                 @map("component_name")
+  environmentCode InfraEnvironmentCode @map("environment_code")
+  componentKind   InfraComponentKind   @map("component_kind")
+  componentName   String               @map("component_name")
   status          InfraBackupStatus
-  startedAt       DateTime               @default(now()) @map("started_at")
-  completedAt     DateTime?              @map("completed_at")
+  startedAt       DateTime             @default(now()) @map("started_at")
+  completedAt     DateTime?            @map("completed_at")
   location        String?
   checksum        String?
-  verifiedAt      DateTime?              @map("verified_at")
+  verifiedAt      DateTime?            @map("verified_at")
   metadata        Json?
-  createdAt       DateTime               @default(now()) @map("created_at")
-  updatedAt       DateTime               @updatedAt @map("updated_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
 
   @@index([environmentCode, startedAt])
   @@index([status, startedAt])
@@ -3596,18 +3600,18 @@ model InfraBackupJob {
 }
 
 model InfraRecoveryDrill {
-  id              String                 @id @default(uuid()) @db.Uuid
-  environmentCode InfraEnvironmentCode   @map("environment_code")
+  id              String                @id @default(uuid()) @db.Uuid
+  environmentCode InfraEnvironmentCode  @map("environment_code")
   name            String
   status          InfraDeploymentStatus
-  startedAt       DateTime               @default(now()) @map("started_at")
-  completedAt     DateTime?              @map("completed_at")
-  rtoMinutes      Int?                   @map("rto_minutes")
-  rpoMinutes      Int?                   @map("rpo_minutes")
+  startedAt       DateTime              @default(now()) @map("started_at")
+  completedAt     DateTime?             @map("completed_at")
+  rtoMinutes      Int?                  @map("rto_minutes")
+  rpoMinutes      Int?                  @map("rpo_minutes")
   notes           String?
   metadata        Json?
-  createdAt       DateTime               @default(now()) @map("created_at")
-  updatedAt       DateTime               @updatedAt @map("updated_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
 
   @@index([environmentCode, startedAt])
   @@index([status, startedAt])
@@ -3638,4 +3642,1240 @@ model InfraAuditRecord {
   @@index([action, createdAt])
   @@index([actorUserId, createdAt])
   @@map("infra_audit_records")
+}
+
+// ─── Phase 19: Market Data & Portfolio Intelligence ──────────────────────────
+
+enum MarketTokenVerification {
+  UNVERIFIED
+  VERIFIED
+  SUSPICIOUS
+}
+
+enum OhlcInterval {
+  MINUTE
+  HOUR
+  DAY
+}
+
+enum PriceAlertCondition {
+  ABOVE_PRICE
+  BELOW_PRICE
+  PERCENTAGE_MOVEMENT
+  DAILY_MOVEMENT
+  LARGE_VOLUME_MOVEMENT
+}
+
+enum PriceAlertStatus {
+  ACTIVE
+  TRIGGERED
+  DISABLED
+  CANCELLED
+}
+
+model AssetMarketMetadata {
+  id                       String                  @id @default(uuid()) @db.Uuid
+  assetId                  String?                 @unique @map("asset_id") @db.Uuid
+  network                  ChainNetwork
+  symbol                   String
+  name                     String
+  logoUrl                  String?                 @map("logo_url")
+  decimals                 Int                     @default(8)
+  contractAddress          String                  @default("") @map("contract_address")
+  tokenType                AssetStandard           @default(NATIVE) @map("token_type")
+  verificationStatus       MarketTokenVerification @default(UNVERIFIED) @map("verification_status")
+  circulatingSupply        Decimal?                @map("circulating_supply") @db.Decimal(36, 18)
+  totalSupply              Decimal?                @map("total_supply") @db.Decimal(36, 18)
+  maxSupply                Decimal?                @map("max_supply") @db.Decimal(36, 18)
+  marketCapUsd             Decimal?                @map("market_cap_usd") @db.Decimal(36, 8)
+  fullyDilutedValuationUsd Decimal?                @map("fully_diluted_valuation_usd") @db.Decimal(36, 8)
+  volume24hUsd             Decimal?                @map("volume_24h_usd") @db.Decimal(36, 8)
+  externalIds              Json?                   @map("external_ids")
+  metadata                 Json?
+  syncedAt                 DateTime?               @map("synced_at")
+  createdAt                DateTime                @default(now()) @map("created_at")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+
+  asset          Asset?                @relation(fields: [assetId], references: [id])
+  quotes         PriceQuote[]
+  candles        OhlcCandle[]
+  watchlistItems MarketWatchlistItem[]
+  priceAlerts    PriceAlert[]
+
+  @@unique([network, symbol, contractAddress])
+  @@index([symbol, network])
+  @@index([verificationStatus])
+  @@map("asset_market_metadata")
+}
+
+model PriceQuote {
+  id            String   @id @default(uuid()) @db.Uuid
+  metadataId    String   @map("metadata_id") @db.Uuid
+  quoteCurrency String   @default("USD") @map("quote_currency")
+  price         Decimal  @db.Decimal(36, 18)
+  change24hPct  Decimal? @map("change_24h_pct") @db.Decimal(18, 8)
+  change7dPct   Decimal? @map("change_7d_pct") @db.Decimal(18, 8)
+  marketCapUsd  Decimal? @map("market_cap_usd") @db.Decimal(36, 8)
+  volume24hUsd  Decimal? @map("volume_24h_usd") @db.Decimal(36, 8)
+  source        String
+  asOf          DateTime @map("as_of")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  metadata AssetMarketMetadata @relation(fields: [metadataId], references: [id], onDelete: Cascade)
+
+  @@index([metadataId, asOf])
+  @@index([asOf])
+  @@map("price_quotes")
+}
+
+model OhlcCandle {
+  id          String       @id @default(uuid()) @db.Uuid
+  metadataId  String       @map("metadata_id") @db.Uuid
+  interval    OhlcInterval
+  bucketStart DateTime     @map("bucket_start")
+  open        Decimal      @db.Decimal(36, 18)
+  high        Decimal      @db.Decimal(36, 18)
+  low         Decimal      @db.Decimal(36, 18)
+  close       Decimal      @db.Decimal(36, 18)
+  volume      Decimal?     @db.Decimal(36, 18)
+  source      String
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  metadata AssetMarketMetadata @relation(fields: [metadataId], references: [id], onDelete: Cascade)
+
+  @@unique([metadataId, interval, bucketStart])
+  @@index([metadataId, interval, bucketStart])
+  @@map("ohlc_candles")
+}
+
+model MarketWatchlist {
+  id          String   @id @default(uuid()) @db.Uuid
+  ownerUserId String   @map("owner_user_id") @db.Uuid
+  name        String   @default("Default")
+  isDefault   Boolean  @default(true) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items MarketWatchlistItem[]
+
+  @@index([ownerUserId])
+  @@map("market_watchlists")
+}
+
+model MarketWatchlistItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  watchlistId String   @map("watchlist_id") @db.Uuid
+  metadataId  String   @map("metadata_id") @db.Uuid
+  isFavorite  Boolean  @default(false) @map("is_favorite")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  watchlist MarketWatchlist     @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  metadata  AssetMarketMetadata @relation(fields: [metadataId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, metadataId])
+  @@index([watchlistId, sortOrder])
+  @@map("market_watchlist_items")
+}
+
+model PriceAlert {
+  id                   String              @id @default(uuid()) @db.Uuid
+  ownerUserId          String              @map("owner_user_id") @db.Uuid
+  metadataId           String              @map("metadata_id") @db.Uuid
+  condition            PriceAlertCondition
+  threshold            Decimal             @db.Decimal(36, 18)
+  quoteCurrency        String              @default("USD") @map("quote_currency")
+  status               PriceAlertStatus    @default(ACTIVE)
+  lastTriggeredAt      DateTime?           @map("last_triggered_at")
+  cooldownSeconds      Int                 @default(3600) @map("cooldown_seconds")
+  notificationChannels Json?               @map("notification_channels")
+  metadata             Json?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  assetMetadata AssetMarketMetadata @relation(fields: [metadataId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId, status])
+  @@index([metadataId, status])
+  @@map("price_alerts")
+}
+
+model PortfolioValueSnapshot {
+  id               String   @id @default(uuid()) @db.Uuid
+  ownerUserId      String   @map("owner_user_id") @db.Uuid
+  totalValueUsd    Decimal  @map("total_value_usd") @db.Decimal(36, 8)
+  networkBreakdown Json     @map("network_breakdown")
+  tokenAllocation  Json     @map("token_allocation")
+  asOf             DateTime @map("as_of")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([ownerUserId, asOf])
+  @@map("portfolio_value_snapshots")
+}
+
+model MarketProviderHealth {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  failureCount  Int       @default(0) @map("failure_count")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("market_provider_health")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 20 — Swap Aggregation & DEX Platform
+// ---------------------------------------------------------------------------
+
+enum SwapExecutionStatus {
+  PENDING
+  PREPARING
+  AWAITING_SIGNATURE
+  SUBMITTED
+  CONFIRMING
+  COMPLETED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum SwapRetryJobStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model SwapQuoteRecord {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String       @map("user_id") @db.Uuid
+  network            ChainNetwork
+  providerCode       String       @map("provider_code")
+  providerQuoteId    String       @map("provider_quote_id")
+  sellToken          String       @map("sell_token")
+  buyToken           String       @map("buy_token")
+  sellAmount         Decimal      @map("sell_amount") @db.Decimal(36, 18)
+  amountOut          Decimal      @map("amount_out") @db.Decimal(36, 18)
+  minAmountOut       Decimal      @map("min_amount_out") @db.Decimal(36, 18)
+  slippageBps        Int          @map("slippage_bps")
+  priceImpactBps     Int          @map("price_impact_bps")
+  estimatedGas       String       @map("estimated_gas")
+  estimatedFeeNative String       @map("estimated_fee_native")
+  feeAmount          String       @map("fee_amount")
+  feeAsset           String       @map("fee_asset")
+  routeSummary       String       @map("route_summary")
+  expiresAt          DateTime     @map("expires_at")
+  latencyMs          Int?         @map("latency_ms")
+  rawQuote           Json?        @map("raw_quote")
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  routes     SwapRouteSnapshot[]
+  executions SwapExecution[]
+
+  @@index([userId, createdAt])
+  @@index([network, createdAt])
+  @@map("swap_quote_records")
+}
+
+model SwapRouteSnapshot {
+  id             String   @id @default(uuid()) @db.Uuid
+  quoteId        String   @map("quote_id") @db.Uuid
+  providerCode   String   @map("provider_code")
+  routeId        String   @map("route_id")
+  amountOut      Decimal  @map("amount_out") @db.Decimal(36, 18)
+  priceImpactBps Int      @map("price_impact_bps")
+  hops           Json
+  isBest         Boolean  @default(false) @map("is_best")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  quote SwapQuoteRecord @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([providerCode, createdAt])
+  @@map("swap_route_snapshots")
+}
+
+model SwapExecution {
+  id                String              @id @default(uuid()) @db.Uuid
+  userId            String              @map("user_id") @db.Uuid
+  quoteId           String              @map("quote_id") @db.Uuid
+  network           ChainNetwork
+  providerCode      String              @map("provider_code")
+  providerRef       String              @map("provider_ref")
+  status            SwapExecutionStatus @default(PENDING)
+  sellToken         String              @map("sell_token")
+  buyToken          String              @map("buy_token")
+  sellAmount        Decimal             @map("sell_amount") @db.Decimal(36, 18)
+  expectedAmountOut Decimal             @map("expected_amount_out") @db.Decimal(36, 18)
+  minAmountOut      Decimal             @map("min_amount_out") @db.Decimal(36, 18)
+  actualAmountOut   Decimal?            @map("actual_amount_out") @db.Decimal(36, 18)
+  priceImpactBps    Int?                @map("price_impact_bps")
+  feePaid           String?             @map("fee_paid")
+  userAddress       String?             @map("user_address")
+  preparedTx        Json?               @map("prepared_tx")
+  txHash            String?             @map("tx_hash")
+  confirmations     Int?                @default(0)
+  errorMessage      String?             @map("error_message")
+  submittedAt       DateTime?           @map("submitted_at")
+  completedAt       DateTime?           @map("completed_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  quote   SwapQuoteRecord @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  receipt SwapReceipt?
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([txHash])
+  @@map("swap_executions")
+}
+
+model SwapReceipt {
+  id           String       @id @default(uuid()) @db.Uuid
+  executionId  String       @unique @map("execution_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  network      ChainNetwork
+  txHash       String       @map("tx_hash")
+  sellToken    String       @map("sell_token")
+  buyToken     String       @map("buy_token")
+  sellAmount   Decimal      @map("sell_amount") @db.Decimal(36, 18)
+  amountOut    Decimal      @map("amount_out") @db.Decimal(36, 18)
+  providerCode String       @map("provider_code")
+  feePaid      String?      @map("fee_paid")
+  metadata     Json?
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  execution SwapExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("swap_receipts")
+}
+
+model SwapProviderHealth {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  failureCount  Int       @default(0) @map("failure_count")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("swap_provider_health")
+}
+
+model SwapRetryJob {
+  id           String             @id @default(uuid()) @db.Uuid
+  executionId  String?            @map("execution_id") @db.Uuid
+  jobType      String             @map("job_type")
+  status       SwapRetryJobStatus @default(PENDING)
+  payload      Json?
+  errorMessage String?            @map("error_message")
+  processedAt  DateTime?          @map("processed_at")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("swap_retry_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 21 — NFT & Digital Asset Management
+// ---------------------------------------------------------------------------
+
+enum NftMediaKind {
+  IMAGE
+  ANIMATION
+  VIDEO
+}
+
+enum NftMediaCacheStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum NftSyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum NftRetryJobStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model NftCollection {
+  id              String       @id @default(uuid()) @db.Uuid
+  network         ChainNetwork
+  slug            String
+  name            String
+  description     String       @default("")
+  logoUrl         String?      @map("logo_url")
+  contractAddress String       @map("contract_address")
+  standard        String
+  verified        Boolean      @default(false)
+  creatorAddress  String?      @map("creator_address")
+  totalSupply     Int          @default(0) @map("total_supply")
+  ownersCount     Int          @default(0) @map("owners_count")
+  floorPriceUsd   Decimal?     @map("floor_price_usd") @db.Decimal(36, 8)
+  lastSyncedAt    DateTime?    @map("last_synced_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  assets NftAsset[]
+
+  @@unique([network, slug])
+  @@index([network, verified])
+  @@map("nft_collections")
+}
+
+model NftAsset {
+  id                 String       @id @default(uuid()) @db.Uuid
+  network            ChainNetwork
+  standard           String
+  contractAddress    String       @map("contract_address")
+  tokenId            String       @map("token_id")
+  ownerAddress       String       @map("owner_address")
+  name               String
+  description        String       @default("")
+  imageUrl           String?      @map("image_url")
+  animationUrl       String?      @map("animation_url")
+  videoUrl           String?      @map("video_url")
+  collectionId       String       @map("collection_id") @db.Uuid
+  traits             Json
+  balance            String       @default("1")
+  verifiedCollection Boolean      @default(false) @map("verified_collection")
+  creatorAddress     String?      @map("creator_address")
+  rawMetadata        Json?        @map("raw_metadata")
+  lastSyncedAt       DateTime?    @map("last_synced_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  collection NftCollection   @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  ownerships NftOwnership[]
+  mediaCache NftMediaCache[]
+
+  @@unique([network, contractAddress, tokenId])
+  @@index([ownerAddress])
+  @@index([collectionId])
+  @@map("nft_assets")
+}
+
+model NftOwnership {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  assetId      String    @map("asset_id") @db.Uuid
+  ownerAddress String    @map("owner_address")
+  isFavorite   Boolean   @default(false) @map("is_favorite")
+  isHidden     Boolean   @default(false) @map("is_hidden")
+  verifiedAt   DateTime? @map("verified_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  asset NftAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetId])
+  @@index([userId, isFavorite])
+  @@index([userId, isHidden])
+  @@map("nft_ownerships")
+}
+
+model NftMediaCache {
+  id            String              @id @default(uuid()) @db.Uuid
+  assetId       String              @map("asset_id") @db.Uuid
+  kind          NftMediaKind
+  sourceUrl     String              @map("source_url")
+  cachedUrl     String?             @map("cached_url")
+  contentType   String?             @map("content_type")
+  bytes         Int                 @default(0)
+  status        NftMediaCacheStatus @default(PENDING)
+  lastFetchedAt DateTime?           @map("last_fetched_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  asset NftAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, kind])
+  @@index([status])
+  @@map("nft_media_cache")
+}
+
+model NftProviderHealth {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  failureCount  Int       @default(0) @map("failure_count")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("nft_provider_health")
+}
+
+model NftSyncJob {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String?          @map("user_id") @db.Uuid
+  network      ChainNetwork?
+  jobType      String           @map("job_type")
+  status       NftSyncJobStatus @default(PENDING)
+  durationMs   Int?             @map("duration_ms")
+  errorMessage String?          @map("error_message")
+  payload      Json?
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("nft_sync_jobs")
+}
+
+model NftRetryJob {
+  id           String            @id @default(uuid()) @db.Uuid
+  assetId      String?           @map("asset_id") @db.Uuid
+  jobType      String            @map("job_type")
+  status       NftRetryJobStatus @default(PENDING)
+  payload      Json?
+  errorMessage String?           @map("error_message")
+  processedAt  DateTime?         @map("processed_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("nft_retry_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 22 — Staking & Yield Platform
+// ---------------------------------------------------------------------------
+
+enum StakingPositionStatus {
+  ACTIVE
+  UNSTAKING
+  CLOSED
+}
+
+enum StakingOperationType {
+  STAKE
+  UNSTAKE
+  CLAIM
+}
+
+enum StakingOperationStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMING
+  COMPLETED
+  FAILED
+}
+
+enum StakingRewardStatus {
+  PENDING
+  CLAIMABLE
+  CLAIMED
+}
+
+enum StakingSyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum StakingRetryJobStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model StakingValidator {
+  id                String       @id @default(uuid()) @db.Uuid
+  network           ChainNetwork
+  validatorId       String       @map("validator_id")
+  name              String
+  address           String
+  status            String
+  commissionPercent Float        @map("commission_percent")
+  apyPercent        Float        @map("apy_percent")
+  uptimePercent     Float        @map("uptime_percent")
+  totalDelegated    String       @map("total_delegated")
+  delegatorCount    Int          @map("delegator_count")
+  performanceScore  Float        @map("performance_score")
+  lastSyncedAt      DateTime?    @map("last_synced_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  @@unique([network, validatorId])
+  @@index([network, performanceScore])
+  @@map("staking_validators")
+}
+
+model StakingPosition {
+  id                 String                @id @default(uuid()) @db.Uuid
+  userId             String                @map("user_id") @db.Uuid
+  network            ChainNetwork
+  assetSymbol        String                @map("asset_symbol")
+  validatorId        String                @map("validator_id")
+  stakedAmount       String                @map("staked_amount")
+  pendingRewards     String                @default("0") @map("pending_rewards")
+  accumulatedRewards String                @default("0") @map("accumulated_rewards")
+  apyPercent         Float                 @map("apy_percent")
+  status             StakingPositionStatus @default(ACTIVE)
+  userAddress        String                @map("user_address")
+  lastSyncedAt       DateTime?             @map("last_synced_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  rewards    StakingReward[]
+  operations StakingOperation[]
+
+  @@index([userId, status])
+  @@index([network, validatorId])
+  @@map("staking_positions")
+}
+
+model StakingOperation {
+  id                         String                 @id @default(uuid()) @db.Uuid
+  userId                     String                 @map("user_id") @db.Uuid
+  network                    ChainNetwork
+  operationType              StakingOperationType   @map("operation_type")
+  status                     StakingOperationStatus @default(PENDING)
+  assetSymbol                String                 @map("asset_symbol")
+  amount                     String
+  validatorId                String                 @map("validator_id")
+  userAddress                String                 @map("user_address")
+  positionId                 String?                @map("position_id") @db.Uuid
+  providerCode               String                 @map("provider_code")
+  providerRef                String?                @map("provider_ref")
+  preparedTx                 Json?                  @map("prepared_tx")
+  estimatedCompletionSeconds Int                    @default(0) @map("estimated_completion_seconds")
+  confirmed                  Boolean                @default(false)
+  confirmedAt                DateTime?              @map("confirmed_at")
+  completedAt                DateTime?              @map("completed_at")
+  txHash                     String?                @map("tx_hash")
+  errorMessage               String?                @map("error_message")
+  createdAt                  DateTime               @default(now()) @map("created_at")
+  updatedAt                  DateTime               @updatedAt @map("updated_at")
+
+  position StakingPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("staking_operations")
+}
+
+model StakingReward {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  positionId  String              @map("position_id") @db.Uuid
+  network     ChainNetwork
+  assetSymbol String              @map("asset_symbol")
+  amount      String
+  status      StakingRewardStatus @default(PENDING)
+  claimedAt   DateTime?           @map("claimed_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  position StakingPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([positionId, status])
+  @@map("staking_rewards")
+}
+
+model StakingProviderHealth {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  failureCount  Int       @default(0) @map("failure_count")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("staking_provider_health")
+}
+
+model StakingSyncJob {
+  id           String               @id @default(uuid()) @db.Uuid
+  jobType      String               @map("job_type")
+  status       StakingSyncJobStatus @default(PENDING)
+  durationMs   Int?                 @map("duration_ms")
+  errorMessage String?              @map("error_message")
+  payload      Json?
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("staking_sync_jobs")
+}
+
+model StakingRetryJob {
+  id           String                @id @default(uuid()) @db.Uuid
+  operationId  String?               @map("operation_id") @db.Uuid
+  jobType      String                @map("job_type")
+  status       StakingRetryJobStatus @default(PENDING)
+  payload      Json?
+  errorMessage String?               @map("error_message")
+  processedAt  DateTime?             @map("processed_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("staking_retry_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 23 — Hardware Wallet & External Wallet Connectivity
+// ---------------------------------------------------------------------------
+
+enum HardwareDeviceStatus {
+  AVAILABLE
+  LOCKED
+  BUSY
+  DISCONNECTED
+  PAIRED
+  CONNECTED
+  ERROR
+  FIRMWARE_INCOMPATIBLE
+}
+
+enum WalletConnectSessionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ACTIVE
+  TERMINATED
+  EXPIRED
+}
+
+enum ExternalWalletKind {
+  HARDWARE
+  WALLETCONNECT
+  BROWSER
+  READONLY
+}
+
+enum ExternalWalletConnectionStatus {
+  PENDING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  REVOKED
+}
+
+enum WatchAddressStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum ExternalSigningRequestStatus {
+  PENDING_CONFIRMATION
+  COMPLETED
+  FAILED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum ConnectionSyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ConnectionRetryJobStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  CANCELLED
+}
+
+model HardwareDevice {
+  id                 String               @id @default(uuid()) @db.Uuid
+  userId             String               @map("user_id") @db.Uuid
+  deviceId           String               @unique @map("device_id")
+  vendor             String
+  model              String
+  transport          String
+  firmwareVersion    String?              @map("firmware_version")
+  firmwareCompatible Boolean              @default(true) @map("firmware_compatible")
+  status             HardwareDeviceStatus @default(AVAILABLE)
+  accounts           Json?
+  pairedAt           DateTime?            @map("paired_at")
+  lastSeenAt         DateTime?            @map("last_seen_at")
+  metadata           Json?
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@map("hardware_devices")
+}
+
+model WalletConnectSession {
+  id             String                     @id @default(uuid()) @db.Uuid
+  userId         String                     @map("user_id") @db.Uuid
+  proposalId     String?                    @unique @map("proposal_id")
+  topic          String?
+  sessionKey     String?                    @unique @map("session_key")
+  status         WalletConnectSessionStatus @default(PENDING)
+  peerName       String?                    @map("peer_name")
+  peerUrl        String?                    @map("peer_url")
+  networks       Json?
+  permissions    Json?
+  accounts       Json?
+  encryptedUri   String?                    @map("encrypted_uri")
+  qrPayload      String?                    @map("qr_payload")
+  deepLink       String?                    @map("deep_link")
+  approvedAt     DateTime?                  @map("approved_at")
+  rejectedAt     DateTime?                  @map("rejected_at")
+  terminatedAt   DateTime?                  @map("terminated_at")
+  lastRestoredAt DateTime?                  @map("last_restored_at")
+  expiresAt      DateTime?                  @map("expires_at")
+  metadata       Json?
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  updatedAt      DateTime                   @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@map("walletconnect_sessions")
+}
+
+model WatchAddress {
+  id        String             @id @default(uuid()) @db.Uuid
+  userId    String             @map("user_id") @db.Uuid
+  network   ChainNetwork
+  address   String
+  label     String?
+  status    WatchAddressStatus @default(ACTIVE)
+  metadata  Json?
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@unique([userId, network, address])
+  @@index([userId, status])
+  @@map("watch_addresses")
+}
+
+model ExternalWalletConnection {
+  id             String                         @id @default(uuid()) @db.Uuid
+  userId         String                         @map("user_id") @db.Uuid
+  kind           ExternalWalletKind
+  status         ExternalWalletConnectionStatus @default(PENDING)
+  providerCode   String                         @map("provider_code")
+  label          String?
+  externalRef    String?                        @map("external_ref")
+  canSign        Boolean                        @default(false) @map("can_sign")
+  metadata       Json?
+  connectedAt    DateTime?                      @map("connected_at")
+  disconnectedAt DateTime?                      @map("disconnected_at")
+  createdAt      DateTime                       @default(now()) @map("created_at")
+  updatedAt      DateTime                       @updatedAt @map("updated_at")
+
+  @@index([userId, kind, status])
+  @@index([providerCode])
+  @@index([externalRef])
+  @@map("external_wallet_connections")
+}
+
+model ExternalSigningRequest {
+  id                   String                       @id @default(uuid()) @db.Uuid
+  userId               String                       @map("user_id") @db.Uuid
+  kind                 ExternalWalletKind
+  connectionRef        String                       @map("connection_ref")
+  network              ChainNetwork
+  payloadType          String                       @map("payload_type")
+  payloadHash          String                       @map("payload_hash")
+  preview              String
+  feeEstimate          String?                      @map("fee_estimate")
+  providerRequestId    String?                      @map("provider_request_id")
+  status               ExternalSigningRequestStatus @default(PENDING_CONFIRMATION)
+  requiresConfirmation Boolean                      @default(true) @map("requires_confirmation")
+  signature            String?
+  txHash               String?                      @map("tx_hash")
+  errorMessage         String?                      @map("error_message")
+  confirmedAt          DateTime?                    @map("confirmed_at")
+  completedAt          DateTime?                    @map("completed_at")
+  metadata             Json?
+  createdAt            DateTime                     @default(now()) @map("created_at")
+  updatedAt            DateTime                     @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([connectionRef])
+  @@map("external_signing_requests")
+}
+
+model ConnectionProviderHealth {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  failureCount  Int       @default(0) @map("failure_count")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("connection_provider_health")
+}
+
+model ConnectionSyncJob {
+  id           String                  @id @default(uuid()) @db.Uuid
+  jobType      String                  @map("job_type")
+  status       ConnectionSyncJobStatus @default(PENDING)
+  durationMs   Int?                    @map("duration_ms")
+  errorMessage String?                 @map("error_message")
+  payload      Json?
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("connection_sync_jobs")
+}
+
+model ConnectionRetryJob {
+  id           String                   @id @default(uuid()) @db.Uuid
+  operationId  String?                  @map("operation_id") @db.Uuid
+  jobType      String                   @map("job_type")
+  status       ConnectionRetryJobStatus @default(PENDING)
+  payload      Json?
+  errorMessage String?                  @map("error_message")
+  processedAt  DateTime?                @map("processed_at")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("connection_retry_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 24 — Cross-Chain Bridge & Asset Transfer
+// ---------------------------------------------------------------------------
+
+enum BridgeTransferStatus {
+  PENDING_CONFIRMATION
+  SUBMITTED
+  BRIDGING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum BridgeSyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum BridgeRetryJobStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  CANCELLED
+}
+
+model BridgeQuote {
+  id                         String       @id @default(uuid()) @db.Uuid
+  userId                     String       @map("user_id") @db.Uuid
+  providerCode               String       @map("provider_code")
+  providerQuoteId            String       @map("provider_quote_id")
+  sourceNetwork              ChainNetwork @map("source_network")
+  destinationNetwork         ChainNetwork @map("destination_network")
+  assetSymbol                String       @map("asset_symbol")
+  amountIn                   String       @map("amount_in")
+  amountOut                  String       @map("amount_out")
+  minAmountOut               String       @map("min_amount_out")
+  feeAmount                  String       @map("fee_amount")
+  feeAsset                   String       @map("fee_asset")
+  estimatedFeeNative         String       @map("estimated_fee_native")
+  estimatedCompletionSeconds Int          @map("estimated_completion_seconds")
+  routeSummary               String       @map("route_summary")
+  routeJson                  Json         @map("route_json")
+  replayNonce                String       @unique @map("replay_nonce")
+  expiresAt                  DateTime     @map("expires_at")
+  metadata                   Json?
+  createdAt                  DateTime     @default(now()) @map("created_at")
+  updatedAt                  DateTime     @updatedAt @map("updated_at")
+
+  transfers BridgeTransfer[]
+
+  @@index([userId, createdAt])
+  @@map("bridge_quotes")
+}
+
+model BridgeTransfer {
+  id                         String               @id @default(uuid()) @db.Uuid
+  userId                     String               @map("user_id") @db.Uuid
+  quoteId                    String?              @map("quote_id") @db.Uuid
+  providerCode               String               @map("provider_code")
+  providerQuoteId            String               @map("provider_quote_id")
+  providerRef                String?              @map("provider_ref")
+  status                     BridgeTransferStatus @default(PENDING_CONFIRMATION)
+  sourceNetwork              ChainNetwork         @map("source_network")
+  destinationNetwork         ChainNetwork         @map("destination_network")
+  assetSymbol                String               @map("asset_symbol")
+  amountIn                   String               @map("amount_in")
+  amountOutExpected          String               @map("amount_out_expected")
+  amountOutActual            String?              @map("amount_out_actual")
+  feeAmount                  String               @map("fee_amount")
+  feeAsset                   String               @map("fee_asset")
+  estimatedCompletionSeconds Int                  @map("estimated_completion_seconds")
+  routeSummary               String               @map("route_summary")
+  preparedTx                 Json?                @map("prepared_tx")
+  requiresConfirmation       Boolean              @default(true) @map("requires_confirmation")
+  replayNonce                String               @map("replay_nonce")
+  sourceAddress              String?              @map("source_address")
+  destinationAddress         String?              @map("destination_address")
+  sourceTxHash               String?              @map("source_tx_hash")
+  destinationTxHash          String?              @map("destination_tx_hash")
+  errorMessage               String?              @map("error_message")
+  confirmedAt                DateTime?            @map("confirmed_at")
+  executedAt                 DateTime?            @map("executed_at")
+  completedAt                DateTime?            @map("completed_at")
+  metadata                   Json?
+  createdAt                  DateTime             @default(now()) @map("created_at")
+  updatedAt                  DateTime             @updatedAt @map("updated_at")
+
+  quote   BridgeQuote?   @relation(fields: [quoteId], references: [id])
+  receipt BridgeReceipt?
+
+  @@index([userId, status])
+  @@index([providerRef])
+  @@map("bridge_transfers")
+}
+
+model BridgeReceipt {
+  id                 String       @id @default(uuid()) @db.Uuid
+  transferId         String       @unique @map("transfer_id") @db.Uuid
+  userId             String       @map("user_id") @db.Uuid
+  providerCode       String       @map("provider_code")
+  sourceNetwork      ChainNetwork @map("source_network")
+  destinationNetwork ChainNetwork @map("destination_network")
+  assetSymbol        String       @map("asset_symbol")
+  amountIn           String       @map("amount_in")
+  amountOut          String       @map("amount_out")
+  sourceTxHash       String?      @map("source_tx_hash")
+  destinationTxHash  String?      @map("destination_tx_hash")
+  status             String
+  payloadEncrypted   String?      @map("payload_encrypted")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  transfer BridgeTransfer @relation(fields: [transferId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("bridge_receipts")
+}
+
+model BridgeRouteCatalog {
+  id                         String       @id @default(uuid()) @db.Uuid
+  providerCode               String       @map("provider_code")
+  routeId                    String       @map("route_id")
+  sourceNetwork              ChainNetwork @map("source_network")
+  destinationNetwork         ChainNetwork @map("destination_network")
+  assetSymbol                String       @map("asset_symbol")
+  supported                  Boolean      @default(true)
+  reason                     String?
+  estimatedFeeNative         String       @map("estimated_fee_native")
+  estimatedCompletionSeconds Int          @map("estimated_completion_seconds")
+  hops                       Json?
+  lastSyncedAt               DateTime?    @map("last_synced_at")
+  createdAt                  DateTime     @default(now()) @map("created_at")
+  updatedAt                  DateTime     @updatedAt @map("updated_at")
+
+  @@unique([providerCode, routeId])
+  @@index([sourceNetwork, destinationNetwork])
+  @@map("bridge_route_catalog")
+}
+
+model BridgeProviderHealth {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  failureCount  Int       @default(0) @map("failure_count")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("bridge_provider_health")
+}
+
+model BridgeSyncJob {
+  id           String              @id @default(uuid()) @db.Uuid
+  jobType      String              @map("job_type")
+  status       BridgeSyncJobStatus @default(PENDING)
+  durationMs   Int?                @map("duration_ms")
+  errorMessage String?             @map("error_message")
+  payload      Json?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("bridge_sync_jobs")
+}
+
+model BridgeRetryJob {
+  id           String               @id @default(uuid()) @db.Uuid
+  transferId   String?              @map("transfer_id") @db.Uuid
+  jobType      String               @map("job_type")
+  status       BridgeRetryJobStatus @default(PENDING)
+  payload      Json?
+  errorMessage String?              @map("error_message")
+  processedAt  DateTime?            @map("processed_at")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("bridge_retry_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 26 — Enterprise Web3 Connectivity & dApp Platform
+// ---------------------------------------------------------------------------
+
+enum DappConnectionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum TrustedDappStatus {
+  TRUSTED
+  REVOKED
+}
+
+enum DappPermissionCode {
+  VIEW_ADDRESSES
+  VIEW_BALANCES
+  REQUEST_SIGNATURES
+  REQUEST_TRANSACTIONS
+  NETWORK_SWITCH
+  SESSION_MANAGE
+}
+
+model TrustedDapp {
+  id                 String            @id @default(uuid()) @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  origin             String
+  name               String
+  iconUrl            String?           @map("icon_url")
+  networks           Json
+  defaultPermissions Json              @map("default_permissions")
+  status             TrustedDappStatus @default(TRUSTED)
+  trustedAt          DateTime          @default(now()) @map("trusted_at")
+  revokedAt          DateTime?         @map("revoked_at")
+  lastConnectedAt    DateTime?         @map("last_connected_at")
+  metadata           Json?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  @@unique([userId, origin])
+  @@index([userId, status])
+  @@map("trusted_dapps")
+}
+
+model DappConnectionRequest {
+  id                   String                      @id @default(uuid()) @db.Uuid
+  userId               String                      @map("user_id") @db.Uuid
+  origin               String
+  name                 String
+  iconUrl              String?                     @map("icon_url")
+  requestedNetworks    Json                        @map("requested_networks")
+  requestedPermissions Json                        @map("requested_permissions")
+  status               DappConnectionRequestStatus @default(PENDING)
+  proposalNonce        String                      @unique @map("proposal_nonce")
+  sessionId            String?                     @map("session_id") @db.Uuid
+  expiresAt            DateTime                    @map("expires_at")
+  decidedAt            DateTime?                   @map("decided_at")
+  metadata             Json?
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([origin, status])
+  @@index([expiresAt])
+  @@map("dapp_connection_requests")
+}
+
+model DappPermissionGrant {
+  id            String             @id @default(uuid()) @db.Uuid
+  userId        String             @map("user_id") @db.Uuid
+  origin        String
+  sessionId     String?            @map("session_id") @db.Uuid
+  trustedDappId String?            @map("trusted_dapp_id") @db.Uuid
+  permission    DappPermissionCode
+  allowed       Boolean            @default(true)
+  expiresAt     DateTime?          @map("expires_at")
+  revokedAt     DateTime?          @map("revoked_at")
+  metadata      Json?
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@unique([userId, origin, permission])
+  @@index([userId, origin])
+  @@index([sessionId])
+  @@map("dapp_permission_grants")
+}
+
+model DappBrowserBookmark {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  url           String
+  title         String
+  origin        String
+  faviconUrl    String?   @map("favicon_url")
+  lastVisitedAt DateTime? @map("last_visited_at")
+  visitCount    Int       @default(0) @map("visit_count")
+  isTrusted     Boolean   @default(false) @map("is_trusted")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userId, url])
+  @@index([userId, lastVisitedAt])
+  @@map("dapp_browser_bookmarks")
+}
+
+model DappActivityEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  origin    String?
+  sessionId String?  @map("session_id") @db.Uuid
+  eventType String   @map("event_type")
+  summary   String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([origin, createdAt])
+  @@map("dapp_activity_events")
 }

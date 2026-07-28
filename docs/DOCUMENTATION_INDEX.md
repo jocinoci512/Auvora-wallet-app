@@ -98,6 +98,10 @@
 | Operational readiness (Task 038) | [`../OPERATIONAL_READINESS.md`](../OPERATIONAL_READINESS.md) |
 | Known production limitations (Task 038) | [`../KNOWN_PRODUCTION_LIMITATIONS.md`](../KNOWN_PRODUCTION_LIMITATIONS.md) |
 | Automatic deployment setup | [`../DEPLOYMENT.md`](../DEPLOYMENT.md) |
+| Final pre-deployment audit | [`../FINAL_PRE_DEPLOYMENT_AUDIT.md`](../FINAL_PRE_DEPLOYMENT_AUDIT.md) |
+| Build report (pre-deploy audit) | [`../BUILD_REPORT.md`](../BUILD_REPORT.md) |
+| Security report (pre-deploy audit) | [`../SECURITY_REPORT.md`](../SECURITY_REPORT.md) |
+| Deployment readiness (pre-deploy audit) | [`../DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.md) |
 | Portfolio engine (Phase 18) | [`PORTFOLIO_ENGINE.md`](./PORTFOLIO_ENGINE.md) |
 | Background workers (Phase 18) | [`BACKGROUND_WORKERS.md`](./BACKGROUND_WORKERS.md) |
 | Sync architecture (Phase 18) | [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) |

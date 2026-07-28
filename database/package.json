@@ -22,8 +22,9 @@
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
+    "validate": "prisma validate",
     "seed": "tsx seed/index.ts",
-    "build": "node ../scripts/ensure-prisma-client.mjs"
+    "build": "prisma generate && node ../scripts/ensure-prisma-client.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.5.0",
