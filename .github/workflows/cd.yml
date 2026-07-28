@@ -1,0 +1,317 @@
+name: Continuous Deployment
+
+# Auto-deploys after every push to main/master once GitHub secrets & environments are configured.
+# Frontend → Vercel (when VERCEL_* secrets present)
+# Backend  → GHCR images + Helm staging (when KUBE_CONFIG_DATA present)
+# Production Helm remains gated (see Deploy / Promote Release workflows).
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      skip_frontend:
+        description: Skip Vercel frontend deploy
+        type: boolean
+        default: false
+      skip_backend:
+        description: Skip container build / Helm staging deploy
+        type: boolean
+        default: false
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+  NODE_VERSION: '22'
+
+jobs:
+  quality:
+    name: Production gates (lint, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Production build
+        run: pnpm build
+        env:
+          NODE_ENV: production
+
+  deploy-frontend:
+    name: Deploy frontends to Vercel
+    needs: quality
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_frontend != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: web
+            secret_project: VERCEL_PROJECT_ID_WEB
+          - app: admin
+            secret_project: VERCEL_PROJECT_ID_ADMIN
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Vercel credentials
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets[matrix.secret_project] }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Vercel deploy for ${{ matrix.app }} — set VERCEL_TOKEN, VERCEL_ORG_ID, and ${{ matrix.secret_project }} (or use Vercel GitHub integration)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.vercel.outputs.configured == 'true'
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        if: steps.vercel.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install monorepo deps
+        if: steps.vercel.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Pull Vercel env & deploy
+        if: steps.vercel.outputs.configured == 'true'
+        working-directory: apps/${{ matrix.app }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets[matrix.secret_project] }}
+        run: |
+          npx vercel@39 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx vercel@39 build --prod --token="$VERCEL_TOKEN"
+          url="$(npx vercel@39 deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "Deployed ${{ matrix.app }} → $url"
+          echo "### ${{ matrix.app }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- $url" >> "$GITHUB_STEP_SUMMARY"
+
+  build-images:
+    name: Build & push GHCR images
+    needs: quality
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_backend != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: service
+            name: gateway
+            port: '4000'
+          - kind: service
+            name: auth
+            port: '4001'
+          - kind: service
+            name: wallet
+            port: '3002'
+          - kind: service
+            name: blockchain
+            port: '3003'
+          - kind: service
+            name: payments
+            port: '3004'
+          - kind: service
+            name: compliance
+            port: '3005'
+          - kind: service
+            name: notifications
+            port: '3006'
+          - kind: service
+            name: analytics
+            port: '3007'
+          - kind: service
+            name: ai
+            port: '3008'
+          - kind: service
+            name: custody
+            port: '3009'
+          - kind: service
+            name: observability
+            port: '3010'
+          - kind: service
+            name: market-data
+            port: '3012'
+          - kind: service
+            name: swap
+            port: '3013'
+          - kind: service
+            name: nft
+            port: '3014'
+          - kind: service
+            name: staking
+            port: '3015'
+          - kind: service
+            name: connections
+            port: '3016'
+          - kind: service
+            name: bridge
+            port: '3017'
+          - kind: app
+            name: web
+            port: '3000'
+          - kind: app
+            name: admin
+            port: '3001'
+          - kind: app
+            name: docs
+            port: '3011'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push service
+        if: matrix.kind == 'service'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.service
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.name }}-service:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.name }}-service:${{ github.sha }}
+          build-args: |
+            SERVICE=${{ matrix.name }}
+            PORT=${{ matrix.port }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build and push Next app
+        if: matrix.kind == 'app'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.next
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.name }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.name }}:${{ github.sha }}
+          build-args: |
+            APP=${{ matrix.name }}
+            PORT=${{ matrix.port }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-backend-staging:
+    name: Helm deploy staging
+    needs: build-images
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Configure kubeconfig
+        id: kube
+        run: |
+          if [ -z "${{ secrets.KUBE_CONFIG_DATA }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Helm staging deploy — set KUBE_CONFIG_DATA secret on the staging environment."
+          else
+            mkdir -p ~/.kube
+            echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > ~/.kube/config
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.kube.outputs.configured == 'true'
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        if: steps.kube.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Optional migrations
+        if: steps.kube.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL not set — skipping prisma migrate deploy"
+            exit 0
+          fi
+          pnpm install --frozen-lockfile
+          pnpm --filter @auvora/database-schema exec prisma migrate deploy
+      - name: Helm upgrade staging
+        if: steps.kube.outputs.configured == 'true'
+        run: |
+          helm upgrade --install auvora-staging infrastructure/helm/auvora-wallet \
+            -f infrastructure/helm/auvora-wallet/values-staging.yaml \
+            --namespace auvora-staging \
+            --create-namespace \
+            --set "global.imageTag=${{ github.sha }}" \
+            --set "global.imageRegistry=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}" \
+            --wait --timeout 15m
+      - name: Smoke health
+        if: steps.kube.outputs.configured == 'true'
+        env:
+          GATEWAY_URL: ${{ secrets.STAGING_GATEWAY_URL }}
+        run: |
+          if [ -n "$GATEWAY_URL" ]; then
+            bash infrastructure/scripts/smoke-health.sh
+          else
+            echo "::notice::Set STAGING_GATEWAY_URL for post-deploy smoke checks."
+          fi
+      - name: Dry-run note
+        if: steps.kube.outputs.configured != 'true'
+        run: |
+          helm template auvora-staging infrastructure/helm/auvora-wallet \
+            -f infrastructure/helm/auvora-wallet/values-staging.yaml \
+            --set "global.imageTag=${{ github.sha }}" \
+            > /dev/null
+          echo "Helm template render succeeded. Add KUBE_CONFIG_DATA to enable live auto-deploy."
+
+  summarize:
+    name: CD summary
+    needs: [quality, deploy-frontend, build-images, deploy-backend-staging]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write summary
+        run: |
+          {
+            echo "## Continuous Deployment"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Quality: \`${{ needs.quality.result }}\`"
+            echo "- Frontend (Vercel): \`${{ needs.deploy-frontend.result }}\`"
+            echo "- Images (GHCR): \`${{ needs.build-images.result }}\`"
+            echo "- Backend staging (Helm): \`${{ needs.deploy-backend-staging.result }}\`"
+            echo ""
+            echo "Production Helm remains manual via **Deploy** workflow (\`confirm_production=deploy-production\`)."
+            echo "See \`DEPLOYMENT.md\` for secret setup."
+          } >> "$GITHUB_STEP_SUMMARY"

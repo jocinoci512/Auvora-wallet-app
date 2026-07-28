@@ -13,6 +13,7 @@ Enterprise cryptocurrency wallet platform monorepo. This repository contains sha
 | [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) | Maintainability audit findings |
 | [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md) | Tracked debt and deferred upgrades |
 | [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md) | Pre-GA gate checklist |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | GitHub → Vercel + backend auto-deploy setup |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture overview |
 | [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md) | ADR index (0001–0010) |
 

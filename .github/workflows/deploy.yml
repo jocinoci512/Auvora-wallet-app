@@ -27,14 +27,44 @@ on:
         description: Container image tag (git sha or semver)
         required: true
         type: string
+      confirm_production:
+        description: Type "deploy-production" to allow production / DR deploys
+        required: false
+        type: string
+        default: ""
+      run_migrations:
+        description: Run prisma migrate deploy before Helm upgrade (requires migrate job secret)
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Pre-deploy validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard production confirmation
+        if: inputs.environment == 'production' || inputs.environment == 'disaster-recovery'
+        run: |
+          if [ "${{ inputs.confirm_production }}" != "deploy-production" ]; then
+            echo "Production/DR deploy requires confirm_production=deploy-production"
+            exit 1
+          fi
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Artifact validation
+        run: bash infrastructure/scripts/validate-deployment-artifacts.sh
+
   deploy:
     name: Deploy ${{ inputs.environment }}
+    needs: validate
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     timeout-minutes: 45
@@ -43,11 +73,6 @@ jobs:
       - uses: azure/setup-helm@v4
         with:
           version: v3.16.3
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-      - name: Pre-release artifact validation
-        run: bash infrastructure/scripts/validate-deployment-artifacts.sh
       - name: Configure kubeconfig
         run: |
           if [ -z "${{ secrets.KUBE_CONFIG_DATA }}" ]; then
@@ -58,6 +83,18 @@ jobs:
             echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > ~/.kube/config
             echo "DRY_RUN=false" >> "$GITHUB_ENV"
           fi
+      - name: Database migrate deploy (optional)
+        if: inputs.run_migrations == true && env.DRY_RUN == 'false'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret required when run_migrations=true"
+            exit 1
+          fi
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm --filter @auvora/database-schema exec prisma migrate deploy
       - name: Helm upgrade
         run: |
           VALUES="infrastructure/helm/auvora-wallet/values-${{ inputs.environment }}.yaml"
@@ -83,6 +120,10 @@ jobs:
       - name: Smoke health
         if: env.DRY_RUN == 'false'
         run: bash infrastructure/scripts/smoke-health.sh "${{ inputs.environment }}"
+      - name: Record rollback revision
+        if: always()
+        run: |
+          helm history auvora-${{ inputs.environment }} --namespace auvora-${{ inputs.environment }} --max 5 || true
       - name: Rollback on failure
         if: failure() && env.DRY_RUN == 'false'
         run: |

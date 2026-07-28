@@ -1,0 +1,13 @@
+# Keep Vercel builds lean when the Git repo root is the workspace.
+# Prefer setting Vercel "Root Directory" to apps/web (or admin/docs).
+services
+database
+infrastructure
+.local-data
+**/.next
+**/dist
+**/coverage
+**/.turbo
+docs
+*.md
+!apps/**/README.md

@@ -28,6 +28,9 @@
     "perf:benchmark": "node scripts/perf/benchmark-compare.mjs",
     "perf:journeys": "node scripts/perf/journey-smoke.mjs",
     "perf:resilience": "node scripts/perf/resilience-sim.mjs",
+    "preview:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-previews.ps1",
+    "preview:ui:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-previews.ps1 -Clean",
+    "preview:health": "node scripts/preview-health.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

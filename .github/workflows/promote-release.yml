@@ -1,0 +1,41 @@
+name: Promote Release
+
+# Production promotion path after staging soak.
+# Does not auto-deploy — opens Deploy workflow inputs documentation via release notes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag already built/signed (git sha or semver)
+        required: true
+        type: string
+      staging_verified:
+        description: Confirm staging soak complete (type "staging-verified")
+        required: true
+        type: string
+
+jobs:
+  promote:
+    name: Gate production promotion
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require staging verification acknowledgement
+        run: |
+          if [ "${{ inputs.staging_verified }}" != "staging-verified" ]; then
+            echo "Set staging_verified=staging-verified after soak + PUBLIC_LAUNCH_CHECKLIST items."
+            exit 1
+          fi
+          echo "Promotion gate passed for tag ${{ inputs.image_tag }}"
+          echo "Next: run Deploy workflow with environment=production, image_tag=${{ inputs.image_tag }}, confirm_production=deploy-production"
+      - name: Summarize
+        run: |
+          {
+            echo "## Production promotion gate"
+            echo "- Image tag: \`${{ inputs.image_tag }}\`"
+            echo "- Staging verified: yes"
+            echo "- Next action: workflow_dispatch **Deploy** → production"
+            echo "- Checklist: docs/PUBLIC_LAUNCH_CHECKLIST.md"
+          } >> "$GITHUB_STEP_SUMMARY"

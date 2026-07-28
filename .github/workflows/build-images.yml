@@ -3,7 +3,7 @@ name: Build Images
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, master]
     paths:
       - 'services/**'
       - 'apps/**'
@@ -42,6 +42,12 @@ jobs:
           - ai
           - custody
           - observability
+          - market-data
+          - swap
+          - nft
+          - staking
+          - connections
+          - bridge
         include:
           - service: gateway
             port: '4000'
@@ -65,6 +71,18 @@ jobs:
             port: '3009'
           - service: observability
             port: '3010'
+          - service: market-data
+            port: '3012'
+          - service: swap
+            port: '3013'
+          - service: nft
+            port: '3014'
+          - service: staking
+            port: '3015'
+          - service: connections
+            port: '3016'
+          - service: bridge
+            port: '3017'
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -104,6 +122,8 @@ jobs:
             port: '3000'
           - app: admin
             port: '3001'
+          - app: docs
+            port: '3011'
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
