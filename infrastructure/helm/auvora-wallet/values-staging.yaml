@@ -6,14 +6,111 @@ global:
   hpa:
     minReplicas: 2
     maxReplicas: 8
+  resources:
+    requests:
+      cpu: 150m
+      memory: 384Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
 
 ingress:
-  host: staging.wallet.example.com
+  host: app.staging.auvorawallet.com
+  hosts:
+    - host: staging.auvorawallet.com
+      backend: web
+      port: 3000
+      path: /
+    - host: app.staging.auvorawallet.com
+      backend: web
+      port: 3000
+      path: /
+    - host: api.staging.auvorawallet.com
+      backend: gateway
+      port: 4000
+      path: /
+    - host: admin.staging.auvorawallet.com
+      backend: admin
+      port: 3001
+      path: /
+    - host: docs.staging.auvorawallet.com
+      backend: docs
+      port: 3011
+      path: /
+    - host: status.staging.auvorawallet.com
+      backend: web
+      port: 3000
+      path: /
+    - host: status.staging.auvorawallet.com
+      backend: web
+      port: 3000
+      path: /status
+  tls:
+    enabled: true
+    secretName: auvora-wallet-staging-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/limit-rps: "60"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
 
 config:
   NODE_ENV: production
   LOG_LEVEL: info
   OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+  APP_PUBLIC_URL: "https://app.staging.auvorawallet.com"
+  NEXT_PUBLIC_API_URL: "https://api.staging.auvorawallet.com"
+  NEXT_PUBLIC_APP_URL: "https://app.staging.auvorawallet.com"
+  NEXT_PUBLIC_ADMIN_URL: "https://admin.staging.auvorawallet.com"
+  NEXT_PUBLIC_DOCS_URL: "https://docs.staging.auvorawallet.com"
+  NEXT_PUBLIC_STATUS_URL: "https://status.staging.auvorawallet.com"
+  NEXT_PUBLIC_MARKETING_URL: "https://staging.auvorawallet.com"
+  CORS_ORIGINS: "https://staging.auvorawallet.com,https://app.staging.auvorawallet.com,https://admin.staging.auvorawallet.com,https://docs.staging.auvorawallet.com,https://status.staging.auvorawallet.com"
+  COOKIE_SECURE: "true"
+  COOKIE_DOMAIN: ".staging.auvorawallet.com"
+  CDN_ASSET_BASE_URL: "https://cdn.staging.auvorawallet.com"
+  OBJECT_STORAGE_BUCKET: "auvora-wallet-staging-assets"
+  OBJECT_STORAGE_REGION: "us-east-1"
+  # In-cluster service mesh (Kubernetes DNS)
+  AUTH_SERVICE_URL: "http://auth:4001"
+  WALLET_SERVICE_URL: "http://wallet:3002"
+  BLOCKCHAIN_SERVICE_URL: "http://blockchain:3003"
+  PAYMENTS_SERVICE_URL: "http://payments:3004"
+  COMPLIANCE_SERVICE_URL: "http://compliance:3005"
+  NOTIFICATIONS_SERVICE_URL: "http://notifications:3006"
+  ANALYTICS_SERVICE_URL: "http://analytics:3007"
+  AI_SERVICE_URL: "http://ai:3008"
+  CUSTODY_SERVICE_URL: "http://custody:3009"
+  OBSERVABILITY_SERVICE_URL: "http://observability:3010"
+  MARKET_DATA_SERVICE_URL: "http://market-data:3012"
+  SWAP_SERVICE_URL: "http://swap:3013"
+  NFT_SERVICE_URL: "http://nft:3014"
+  STAKING_SERVICE_URL: "http://staking:3015"
+  CONNECTIONS_SERVICE_URL: "http://connections:3016"
+  BRIDGE_SERVICE_URL: "http://bridge:3017"
+  # Live providers preferred in staging (secrets supply keys)
+  BLOCKCHAIN_SIMULATOR_ENABLED: "false"
+  BLOCKCHAIN_PRIMARY_PROVIDER: "alchemy"
+  WALLET_WORKERS_ENABLED: "true"
+  MARKET_DATA_WORKERS_ENABLED: "true"
+  SWAP_WORKERS_ENABLED: "true"
+  NFT_WORKERS_ENABLED: "true"
+  STAKING_WORKERS_ENABLED: "true"
+  BRIDGE_WORKERS_ENABLED: "true"
+  CONNECTIONS_WORKERS_ENABLED: "true"
+  NOTIFICATIONS_QUEUE_WORKER_ENABLED: "true"
+  GATEWAY_RATE_LIMIT_MAX: "400"
+  GATEWAY_RATE_LIMIT_WINDOW_SECONDS: "60"
+
+postgres:
+  enabled: false
+
+redis:
+  enabled: false
 
 backup:
   cronJob:

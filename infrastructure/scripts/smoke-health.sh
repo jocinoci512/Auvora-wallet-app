@@ -38,7 +38,8 @@ check "gateway /ready" "${GATEWAY_URL}/ready" || failures=$((failures + 1))
 if [[ "${IN_CLUSTER}" == true ]]; then
   NAMESPACE="${NAMESPACE:-auvora-wallet}"
   services=(auth:4001 wallet:3002 blockchain:3003 payments:3004 compliance:3005 \
-            notifications:3006 analytics:3007 ai:3008 custody:3009 observability:3010)
+            notifications:3006 analytics:3007 ai:3008 custody:3009 observability:3010 \
+            market-data:3012 swap:3013 nft:3014 staking:3015 connections:3016 bridge:3017)
   for entry in "${services[@]}"; do
     name="${entry%%:*}"
     port="${entry##*:}"
