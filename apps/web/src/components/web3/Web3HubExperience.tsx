@@ -15,8 +15,8 @@ import {
   type DappCategory,
 } from '../../lib/web3/demo';
 import { listFavorites, toggleFavorite } from '../../lib/web3/prefs';
+import { PlatformShell } from '../platform/PlatformShell';
 import { Web3SectionNav } from './Web3SectionNav';
-import '../../app/web3-experience.css';
 
 type HubTab = 'featured' | 'recent' | 'favorites' | 'trending' | 'categories';
 
@@ -119,72 +119,65 @@ export function Web3HubExperience(): ReactElement {
   }
 
   return (
-    <div className="w3">
-      <header className="w3__header">
-        <div>
-          <p className="w3__eyebrow">
-            <Link href="/">Dashboard</Link>
-          </p>
-          <h1>Web3 Hub</h1>
-          <p className="w3__sub">
-            Discover, connect, and manage dApps with clear permissions, signing, and security cues.
-          </p>
-        </div>
-        <div className="w3-actions">
-          <Link href="/web3/browser">
-            <Button type="button">Open browser</Button>
+    <PlatformShell
+      title="Web3 Hub"
+      subtitle="Discover, connect, and manage dApps with clear permissions, signing, and security cues."
+      reassure="Review every permission before you approve — you stay in control of what each origin can request."
+      backHref="/dashboard"
+      backLabel="Wallet"
+      nav={<Web3SectionNav current="/web3" />}
+      actions={
+        <>
+          <Link href="/web3/browser" className="cx-btn cx-btn--primary">
+            Open browser
           </Link>
-          <Link href="/web3/permissions">
-            <Button type="button" variant="secondary">
-              Permissions
-            </Button>
+          <Link href="/web3/permissions" className="cx-btn cx-btn--ghost">
+            Permissions
           </Link>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       {ready && !live ? (
         <Alert tone="warn" title="Preview Web3 data">
           Live connections service unavailable — showing curated hub data.
         </Alert>
       ) : null}
 
-      <div className="w3-kpi" aria-label="Connection status">
-        <div className="w3-kpi__card">
+      <div className="cx-kpi" aria-label="Connection status">
+        <div className="cx-kpi__card">
           <span>Active sessions</span>
           <strong>{status.connected}</strong>
         </div>
-        <div className="w3-kpi__card">
+        <div className="cx-kpi__card">
           <span>Pending requests</span>
           <strong>{status.pending}</strong>
         </div>
-        <div className="w3-kpi__card">
+        <div className="cx-kpi__card">
           <span>Favorites</span>
           <strong>{favorites.length}</strong>
         </div>
-        <div className="w3-kpi__card">
+        <div className="cx-kpi__card">
           <span>Catalog</span>
           <strong>{catalog.length}</strong>
         </div>
       </div>
 
-      <Web3SectionNav current="/web3" />
-
       {requests.some((r) => r.status === 'pending') ? (
-        <section className="w3-panel">
+        <section className="cx-panel">
           <h2>Connection requests</h2>
-          <ul className="w3-list">
+          <ul className="cx-list">
             {requests
               .filter((r) => r.status === 'pending')
               .map((r) => (
                 <li key={r.id}>
                   <div>
                     <strong>{r.name}</strong>
-                    <p className="w3-meta">
+                    <p className="cx-meta">
                       {r.origin} · {r.networks.join(', ')}
                     </p>
-                    <p className="w3-meta">Permissions: {r.permissions.join(', ')}</p>
+                    <p className="cx-meta">Permissions: {r.permissions.join(', ')}</p>
                   </div>
-                  <div className="w3-actions">
+                  <div className="cx-platform__actions">
                     <Button
                       type="button"
                       size="sm"
@@ -214,9 +207,9 @@ export function Web3HubExperience(): ReactElement {
         </section>
       ) : null}
 
-      <section className="w3-panel">
-        <div className="w3-toolbar">
-          <label className="w3-field">
+      <section className="cx-panel">
+        <div className="cx-toolbar">
+          <label className="cx-field cx-field--grow">
             <span>Search</span>
             <input
               value={q}
@@ -225,7 +218,7 @@ export function Web3HubExperience(): ReactElement {
               aria-label="Search dApps"
             />
           </label>
-          <label className="w3-field">
+          <label className="cx-field">
             <span>Network</span>
             <select
               value={network}
@@ -238,7 +231,7 @@ export function Web3HubExperience(): ReactElement {
               <option value="SOLANA">Solana</option>
             </select>
           </label>
-          <label className="w3-field">
+          <label className="cx-field">
             <span>Category</span>
             <select
               value={category}
@@ -260,12 +253,12 @@ export function Web3HubExperience(): ReactElement {
           </label>
         </div>
 
-        <div className="w3__tabs" role="group" aria-label="Discovery views">
+        <div className="cx-chips" role="group" aria-label="Discovery views">
           {(['featured', 'recent', 'favorites', 'trending', 'categories'] as HubTab[]).map((t) => (
             <button
               key={t}
               type="button"
-              className={`w3__tab ${tab === t ? 'w3__tab--on' : ''}`}
+              className={`cx-chip${tab === t ? ' is-on' : ''}`}
               aria-pressed={tab === t}
               onClick={() => setTab(t)}
             >
@@ -275,19 +268,19 @@ export function Web3HubExperience(): ReactElement {
         </div>
 
         {tab === 'categories' ? (
-          <div className="w3-grid" style={{ marginTop: '0.85rem' }}>
+          <div className="cx-card-grid">
             {DEMO_CATEGORIES.map((c) => (
               <button
                 key={c}
                 type="button"
-                className="w3-card"
+                className="cx-card-link"
                 onClick={() => {
                   setCategory(c);
                   setTab('featured');
                 }}
               >
                 <strong>{c}</strong>
-                <p className="w3-meta">Editorial placeholder · curated soon</p>
+                <span>Editorial placeholder · curated soon</span>
               </button>
             ))}
           </div>
@@ -297,10 +290,17 @@ export function Web3HubExperience(): ReactElement {
             description="Try another network, clear search, or browse categories."
           />
         ) : (
-          <div className="w3-grid" style={{ marginTop: '0.85rem' }}>
+          <div className="cx-card-grid">
             {filtered.map((d) => (
-              <article key={d.id} className="w3-card">
-                <div className="w3-card__top">
+              <article key={d.id} className="cx-card-link" style={{ cursor: 'default' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    alignItems: 'flex-start',
+                  }}
+                >
                   <div>
                     <strong>
                       {d.name}{' '}
@@ -310,13 +310,13 @@ export function Web3HubExperience(): ReactElement {
                         <ShieldAlert size={14} aria-label="Unverified" />
                       )}
                     </strong>
-                    <p className="w3-meta">
+                    <p className="cx-meta">
                       {d.category} · {d.network}
                     </p>
                   </div>
                   <button
                     type="button"
-                    className="w3__tab"
+                    className={`cx-chip${favorites.includes(d.id) ? ' is-on' : ''}`}
                     aria-pressed={favorites.includes(d.id)}
                     aria-label={favorites.includes(d.id) ? 'Remove favorite' : 'Favorite'}
                     onClick={() => onFav(d)}
@@ -328,9 +328,9 @@ export function Web3HubExperience(): ReactElement {
                     />
                   </button>
                 </div>
-                <p className="w3-meta">{d.description}</p>
-                <span className={`w3-risk w3-risk--${d.risk}`}>{riskLabel(d.risk)}</span>
-                <div className="w3-actions">
+                <span>{d.description}</span>
+                <span className="cx-badge">{riskLabel(d.risk)}</span>
+                <div className="cx-platform__actions">
                   <Link href={`/web3/browser?url=${encodeURIComponent(d.url)}`}>
                     <Button type="button" size="sm">
                       Open
@@ -348,19 +348,25 @@ export function Web3HubExperience(): ReactElement {
         )}
       </section>
 
-      <section className="w3-panel">
+      <section className="cx-panel">
         <h2>Security cues</h2>
         <Alert tone="info" title="Domain verification architecture">
           Verified badges and phishing warnings are placeholders wired for future domain
           attestation. Unknown contracts and elevated permissions surface risk chips before
           approval.
         </Alert>
-        <div className="w3-actions" style={{ marginTop: '0.75rem' }}>
-          <Link href="/web3/activity">Activity & alerts</Link>
-          <Link href="/notifications">Notifications</Link>
-          <Link href="/security">Wallet security</Link>
+        <div className="cx-platform__actions" style={{ marginTop: '0.75rem' }}>
+          <Link href="/web3/activity" className="cx-link">
+            Activity & alerts
+          </Link>
+          <Link href="/notifications" className="cx-link">
+            Notifications
+          </Link>
+          <Link href="/security" className="cx-link">
+            Wallet security
+          </Link>
         </div>
       </section>
-    </div>
+    </PlatformShell>
   );
 }

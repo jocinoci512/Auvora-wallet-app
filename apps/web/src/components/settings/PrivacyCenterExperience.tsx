@@ -1,12 +1,11 @@
 'use client';
 
 import { Alert, Button, Switch } from '@auvora/ui';
-import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { getPrivacyPrefs, setPrivacyPrefs, type PrivacyPrefs } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 export function PrivacyCenterExperience(): ReactElement {
   const [prefs, setPrefs] = useState<PrivacyPrefs>(() => getPrivacyPrefs());
@@ -24,31 +23,26 @@ export function PrivacyCenterExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Privacy Center</h1>
-          <p className="sc__sub">
-            Analytics, crash reporting, cookies, personalization, and data controls.
-          </p>
-        </div>
-      </header>
-      <SettingsSectionNav current="/settings/privacy" />
+    <PlatformShell
+      title="Privacy Center"
+      subtitle="Analytics, crash reporting, cookies, personalization, and data controls."
+      reassure="Privacy choices are local first — share only what you intend to share."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/privacy" />}
+    >
       {toast ? (
         <Alert tone="success" title="Saved">
           {toast}
         </Alert>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Data preferences</h2>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Analytics</strong>
-            <p className="sc-meta">Help improve Auvora with anonymous usage metrics.</p>
+            <p className="cx-meta">Help improve Auvora with anonymous usage metrics.</p>
           </div>
           <Switch
             checked={prefs.analytics}
@@ -56,10 +50,10 @@ export function PrivacyCenterExperience(): ReactElement {
             aria-label="Analytics preferences"
           />
         </div>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Crash reporting</strong>
-            <p className="sc-meta">Send diagnostic stacks when the app fails unexpectedly.</p>
+            <p className="cx-meta">Send diagnostic stacks when the app fails unexpectedly.</p>
           </div>
           <Switch
             checked={prefs.crashReporting}
@@ -67,10 +61,10 @@ export function PrivacyCenterExperience(): ReactElement {
             aria-label="Crash reporting preferences"
           />
         </div>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Personalization</strong>
-            <p className="sc-meta">Tailor discovery and recommendations to your activity.</p>
+            <p className="cx-meta">Tailor discovery and recommendations to your activity.</p>
           </div>
           <Switch
             checked={prefs.personalization}
@@ -80,19 +74,19 @@ export function PrivacyCenterExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Cookies (web)</h2>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Essential cookies</strong>
-            <p className="sc-meta">Required for session and security — always on.</p>
+            <p className="cx-meta">Required for session and security — always on.</p>
           </div>
           <Switch checked={prefs.cookiesEssential} disabled aria-label="Essential cookies" />
         </div>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Analytics cookies</strong>
-            <p className="sc-meta">Optional measurement cookies for the web app.</p>
+            <p className="cx-meta">Optional measurement cookies for the web app.</p>
           </div>
           <Switch
             checked={prefs.cookiesAnalytics}
@@ -102,9 +96,9 @@ export function PrivacyCenterExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Policy & data</h2>
-        <div className="sc-actions">
+        <div className="cx-platform__actions">
           <a href="https://auvora.example/privacy" target="_blank" rel="noopener noreferrer">
             <Button type="button" variant="secondary">
               Privacy policy
@@ -127,7 +121,7 @@ export function PrivacyCenterExperience(): ReactElement {
           <Alert tone="warn" title="Confirm deletion placeholder">
             Account deletion is not enabled in this environment. Contact support to proceed when
             available.
-            <div className="sc-actions" style={{ marginTop: '0.75rem' }}>
+            <div className="cx-platform__actions" style={{ marginTop: '0.75rem' }}>
               <Button
                 type="button"
                 size="sm"
@@ -140,6 +134,6 @@ export function PrivacyCenterExperience(): ReactElement {
           </Alert>
         ) : null}
       </section>
-    </div>
+    </PlatformShell>
   );
 }

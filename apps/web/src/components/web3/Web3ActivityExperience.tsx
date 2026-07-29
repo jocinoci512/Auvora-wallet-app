@@ -1,13 +1,13 @@
 'use client';
 
-import { Alert, Button, EmptyState, StatusBadge } from '@auvora/ui';
+import { Alert, EmptyState, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
 import { mapActivityItems, web3Fetch } from '../../lib/web3/api';
 import { DEMO_ACTIVITY, type Web3ActivityItem } from '../../lib/web3/demo';
+import { PlatformShell } from '../platform/PlatformShell';
 import { Web3SectionNav } from './Web3SectionNav';
-import '../../app/web3-experience.css';
 
 type Filter = 'all' | Web3ActivityItem['kind'];
 
@@ -56,27 +56,19 @@ export function Web3ActivityExperience(): ReactElement {
   );
 
   return (
-    <div className="w3">
-      <header className="w3__header">
-        <div>
-          <p className="w3__eyebrow">
-            <Link href="/web3">Web3 Hub</Link>
-          </p>
-          <h1>Web3 activity</h1>
-          <p className="w3__sub">
-            Connections, signatures, approvals, permission changes, network switches, and security
-            alerts.
-          </p>
-        </div>
-        <Link href="/notifications">
-          <Button type="button" variant="secondary">
-            Notifications
-          </Button>
+    <PlatformShell
+      title="Activity"
+      subtitle="Connections, signatures, approvals, permission changes, network switches, and security alerts."
+      reassure="Your Web3 history stays visible here so you can spot unusual requests early."
+      backHref="/web3"
+      backLabel="Web3 Hub"
+      nav={<Web3SectionNav current="/web3/activity" />}
+      actions={
+        <Link href="/notifications" className="cx-btn cx-btn--ghost">
+          Notifications
         </Link>
-      </header>
-
-      <Web3SectionNav current="/web3/activity" />
-
+      }
+    >
       {offline ? (
         <Alert tone="warn" title="Offline">
           Showing cached preview activity. Reconnect to sync live events.
@@ -87,12 +79,12 @@ export function Web3ActivityExperience(): ReactElement {
         </Alert>
       ) : null}
 
-      <div className="w3__tabs" role="group" aria-label="Activity filters">
+      <div className="cx-chips" role="group" aria-label="Activity filters">
         {FILTERS.map((f) => (
           <button
             key={f.id}
             type="button"
-            className={`w3__tab ${filter === f.id ? 'w3__tab--on' : ''}`}
+            className={`cx-chip${filter === f.id ? ' is-on' : ''}`}
             aria-pressed={filter === f.id}
             onClick={() => setFilter(f.id)}
           >
@@ -101,23 +93,23 @@ export function Web3ActivityExperience(): ReactElement {
         ))}
       </div>
 
-      <section className="w3-panel">
+      <section className="cx-panel">
         {filtered.length === 0 ? (
           <EmptyState
             title="No history"
             description="Web3 events for this filter will appear here."
           />
         ) : (
-          <ul className="w3-list">
+          <ul className="cx-list">
             {filtered.map((item) => (
               <li key={item.id}>
                 <div>
                   <strong>{item.title}</strong>
-                  <p className="w3-meta">
+                  <p className="cx-meta">
                     {item.detail}
                     {item.origin ? ` · ${item.origin}` : ''}
                   </p>
-                  <p className="w3-meta">{new Date(item.timestamp).toLocaleString()}</p>
+                  <p className="cx-meta">{new Date(item.timestamp).toLocaleString()}</p>
                 </div>
                 <StatusBadge
                   status={
@@ -134,6 +126,6 @@ export function Web3ActivityExperience(): ReactElement {
           </ul>
         )}
       </section>
-    </div>
+    </PlatformShell>
   );
 }

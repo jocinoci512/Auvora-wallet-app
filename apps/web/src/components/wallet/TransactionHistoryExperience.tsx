@@ -1,25 +1,18 @@
 'use client';
 
-import { Button, EmptyState, StatusBadge } from '@auvora/ui';
 import { Download, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { DEMO_ACTIVITY as DEMO_NFT_ACTIVITY } from '../../lib/nft/demo';
+import { tradingAsActivityTx } from '../../lib/trading/activity';
 import {
   DEMO_ACTIVITY,
   exportActivityCsv,
   groupActivityByDay,
 } from '../../lib/wallet-experience/demo-activity';
-import { tradingAsActivityTx } from '../../lib/trading/activity';
-import { DEMO_ACTIVITY as DEMO_NFT_ACTIVITY } from '../../lib/nft/demo';
 import type { ActivityTx, TxDirection, TxStatus } from '../../lib/wallet-experience/types';
-import '../../app/wallet-experience.css';
-
-const STATUS_BADGE: Record<TxStatus, string> = {
-  confirmed: 'active',
-  pending: 'pending',
-  failed: 'suspended',
-  dropped: 'archived',
-};
+import { TransactionShell } from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 function slugId(value: string): string {
   return (
@@ -53,6 +46,10 @@ function nftActivityAsTx(): ActivityTx[] {
   }));
 }
 
+function badgeClass(status: TxStatus): string {
+  return `cx-badge cx-badge--${status}`;
+}
+
 export function TransactionHistoryExperience({
   initial,
 }: {
@@ -62,6 +59,7 @@ export function TransactionHistoryExperience({
   const deferredQuery = useDeferredValue(query);
   const [status, setStatus] = useState<'all' | TxStatus>('all');
   const [direction, setDirection] = useState<'all' | TxDirection>('all');
+  const [network, setNetwork] = useState<'all' | ActivityTx['network']>('all');
   const [selected, setSelected] = useState<ActivityTx | null>(null);
   const [trading, setTrading] = useState<ActivityTx[]>([]);
   const [nftRows, setNftRows] = useState<ActivityTx[]>([]);
@@ -95,6 +93,7 @@ export function TransactionHistoryExperience({
     return source.filter((tx) => {
       if (status !== 'all' && tx.status !== status) return false;
       if (direction !== 'all' && tx.direction !== direction) return false;
+      if (network !== 'all' && tx.network !== network) return false;
       if (!q) return true;
       return (
         tx.hash.toLowerCase().includes(q) ||
@@ -102,10 +101,11 @@ export function TransactionHistoryExperience({
         tx.from.toLowerCase().includes(q) ||
         tx.to.toLowerCase().includes(q) ||
         (tx.note ?? '').toLowerCase().includes(q) ||
-        tx.network.includes(q)
+        tx.network.includes(q) ||
+        tx.direction.includes(q)
       );
     });
-  }, [source, deferredQuery, status, direction]);
+  }, [source, deferredQuery, status, direction, network]);
 
   const groups = useMemo(() => groupActivityByDay(filtered), [filtered]);
 
@@ -121,164 +121,174 @@ export function TransactionHistoryExperience({
   }
 
   return (
-    <div className="wx" role="main">
-      <header className="wx__header">
-        <div>
-          <p className="wx__eyebrow">
-            <Link href="/wallets">Wallets</Link>
-          </p>
-          <h1>Activity</h1>
-          <p className="wx__sub">
-            Search, filter, and inspect transfers with fees, hashes, and explorer links.
-          </p>
-        </div>
-        <Button type="button" variant="secondary" onClick={downloadCsv}>
-          <Download size={16} aria-hidden /> Export CSV
-        </Button>
-      </header>
-
-      <div className="wx-toolbar" role="search">
-        <label className="wx-field wx-field--grow">
-          <span className="wx-sr-only">Search transactions</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search hash, asset, address…"
-          />
-        </label>
-        <label className="wx-field">
-          <span className="wx-sr-only">Status</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-            <option value="all">All statuses</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-            <option value="dropped">Dropped</option>
-          </select>
-        </label>
-        <label className="wx-field">
-          <span className="wx-sr-only">Type</span>
-          <select
-            value={direction}
-            onChange={(e) => setDirection(e.target.value as typeof direction)}
-          >
-            <option value="all">All types</option>
-            <option value="send">Send</option>
-            <option value="receive">Receive</option>
-            <option value="swap">Swap</option>
-            <option value="stake">Stake</option>
-            <option value="bridge">Bridge</option>
-            <option value="contract">Contract</option>
-          </select>
-        </label>
-      </div>
-
-      {!filtered.length ? (
-        <EmptyState
-          title="No transactions"
-          description="Try clearing filters or make your first send."
-          action={
-            <Link href="/send">
-              <Button>Send</Button>
-            </Link>
-          }
-        />
-      ) : (
-        groups.map((g) => (
-          <section key={g.label} className="wx-panel" aria-labelledby={`day-${slugId(g.label)}`}>
-            <h2 id={`day-${slugId(g.label)}`}>{g.label}</h2>
-            <ul className="wx-tx-list">
-              {g.items.map((tx) => (
-                <li key={tx.id}>
-                  <button type="button" className="wx-tx-row" onClick={() => setSelected(tx)}>
-                    <div>
-                      <strong>
-                        {tx.direction} · {tx.asset}
-                      </strong>
-                      <p className="wx-meta">
-                        {tx.network}
-                        {tx.note ? ` · ${tx.note}` : ''} ·{' '}
-                        {new Date(tx.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    <div className="wx-tx-right">
-                      <span>
-                        {tx.direction === 'receive' ? '+' : '-'}
-                        {tx.amount} {tx.asset}
-                      </span>
-                      <StatusBadge status={STATUS_BADGE[tx.status]} label={tx.status} />
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
-      )}
-
-      {selected ? (
-        <section className="wx-panel wx-tx-detail" aria-label="Transaction detail">
-          <header className="wx-tx-detail__head">
-            <h2>Transaction detail</h2>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(null)}>
-              Close
-            </Button>
-          </header>
-          <dl className="wx-kv">
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <StatusBadge status={STATUS_BADGE[selected.status]} label={selected.status} />
-              </dd>
-            </div>
-            <div>
-              <dt>Hash</dt>
-              <dd>
-                <code>{selected.hash}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>Amount</dt>
-              <dd>
-                {selected.amount} {selected.asset} (${selected.amountUsd.toLocaleString()})
-              </dd>
-            </div>
-            <div>
-              <dt>Fee</dt>
-              <dd>
-                {selected.fee ?? '—'}
-                {selected.feeUsd != null ? ` ($${selected.feeUsd})` : ''}
-              </dd>
-            </div>
-            <div>
-              <dt>From</dt>
-              <dd>
-                <code>{selected.from}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>To</dt>
-              <dd>
-                <code>{selected.to}</code>
-              </dd>
-            </div>
-          </dl>
-          {selected.explorerUrl.startsWith('http') ? (
-            <a
-              className="wx-text-link"
-              href={selected.explorerUrl}
-              target="_blank"
-              rel="noreferrer"
+    <TransactionShell
+      title="Activity"
+      subtitle="Grouped history with status, fees, hashes, and explorer links."
+      reassure="Pending and confirming transfers stay visible until they settle."
+      backHref="/dashboard"
+      backLabel="Wallet"
+    >
+      <div className="cx-wide">
+        <div className="cx-toolbar" role="search">
+          <label className="cx-field cx-field--grow">
+            <span>Search</span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Hash, asset, address, note…"
+            />
+          </label>
+          <label className="cx-field">
+            <span>Status</span>
+            <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="failed">Failed</option>
+              <option value="dropped">Dropped</option>
+            </select>
+          </label>
+          <label className="cx-field">
+            <span>Type</span>
+            <select
+              value={direction}
+              onChange={(e) => setDirection(e.target.value as typeof direction)}
             >
-              <ExternalLink size={14} aria-hidden /> Open in explorer
-            </a>
-          ) : (
-            <Link className="wx-text-link" href={selected.explorerUrl}>
-              View in app
+              <option value="all">All types</option>
+              <option value="send">Send</option>
+              <option value="receive">Receive</option>
+              <option value="swap">Swap</option>
+              <option value="stake">Stake</option>
+              <option value="bridge">Bridge</option>
+              <option value="contract">Contract</option>
+            </select>
+          </label>
+          <label className="cx-field">
+            <span>Network</span>
+            <select value={network} onChange={(e) => setNetwork(e.target.value as typeof network)}>
+              <option value="all">All networks</option>
+              <option value="ethereum">Ethereum</option>
+              <option value="polygon">Polygon</option>
+              <option value="bnb">BNB</option>
+              <option value="solana">Solana</option>
+              <option value="bitcoin">Bitcoin</option>
+              <option value="tron">Tron</option>
+            </select>
+          </label>
+          <button type="button" className="cx-btn cx-btn--ghost" onClick={downloadCsv}>
+            <Download size={16} aria-hidden /> Export CSV
+          </button>
+        </div>
+
+        {!filtered.length ? (
+          <div className="cx-empty">
+            <h2>No transactions</h2>
+            <p>Try clearing filters, or make your first send.</p>
+            <Link className="cx-btn cx-btn--primary" href="/send">
+              Send
             </Link>
-          )}
-        </section>
-      ) : null}
-    </div>
+          </div>
+        ) : (
+          groups.map((g) => (
+            <section key={g.label} className="cx-panel" aria-labelledby={`day-${slugId(g.label)}`}>
+              <h2 id={`day-${slugId(g.label)}`}>{g.label}</h2>
+              <ul className="cx-tx-list">
+                {g.items.map((tx) => (
+                  <li key={tx.id}>
+                    <button type="button" className="cx-tx-row" onClick={() => setSelected(tx)}>
+                      <div>
+                        <strong>
+                          {tx.direction} · {tx.asset}
+                        </strong>
+                        <p className="cx-meta">
+                          {tx.network}
+                          {tx.note ? ` · ${tx.note}` : ''} ·{' '}
+                          {new Date(tx.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <div className="cx-tx-right">
+                        <span>
+                          {tx.direction === 'receive' ? '+' : '-'}
+                          {tx.amount} {tx.asset}
+                        </span>
+                        <span className={badgeClass(tx.status)}>{tx.status}</span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+
+        {selected ? (
+          <section className="cx-panel cx-tx-detail" aria-label="Transaction detail">
+            <header className="cx-tx-detail__head">
+              <h2>Transaction detail</h2>
+              <button
+                type="button"
+                className="cx-btn cx-btn--ghost"
+                onClick={() => setSelected(null)}
+              >
+                Close
+              </button>
+            </header>
+            <dl className="cx-confirm">
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <span className={badgeClass(selected.status)}>{selected.status}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Hash</dt>
+                <dd>
+                  <code>{selected.hash}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Amount</dt>
+                <dd>
+                  {selected.amount} {selected.asset} ($
+                  {selected.amountUsd.toLocaleString()})
+                </dd>
+              </div>
+              <div>
+                <dt>Fee</dt>
+                <dd>
+                  {selected.fee ?? '—'}
+                  {selected.feeUsd != null ? ` ($${selected.feeUsd})` : ''}
+                </dd>
+              </div>
+              <div>
+                <dt>Network</dt>
+                <dd>{selected.network}</dd>
+              </div>
+              <div>
+                <dt>From</dt>
+                <dd>
+                  <code>{selected.from}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>To</dt>
+                <dd>
+                  <code>{selected.to}</code>
+                </dd>
+              </div>
+            </dl>
+            {selected.explorerUrl.startsWith('http') ? (
+              <a className="cx-link" href={selected.explorerUrl} target="_blank" rel="noreferrer">
+                <ExternalLink size={14} aria-hidden /> Open in explorer
+              </a>
+            ) : (
+              <Link className="cx-link" href={selected.explorerUrl}>
+                View in app
+              </Link>
+            )}
+          </section>
+        ) : null}
+      </div>
+    </TransactionShell>
   );
 }

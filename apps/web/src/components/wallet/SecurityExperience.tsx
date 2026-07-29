@@ -107,7 +107,7 @@ export function SecurityExperience(): ReactElement {
       <header className="wx__header">
         <div>
           <p className="wx__eyebrow">
-            <Link href="/settings">Security Center</Link>
+            <Link href="/settings/security">Security Center</Link>
             {' · '}
             <Link href="/wallets">Wallets</Link>
           </p>
@@ -116,7 +116,7 @@ export function SecurityExperience(): ReactElement {
             PIN, biometric placeholders, auto-lock, backup reminders, and risk warnings.
           </p>
         </div>
-        <Link href="/settings">
+        <Link href="/settings/security">
           <Button type="button" variant="secondary">
             Open Security Center
           </Button>

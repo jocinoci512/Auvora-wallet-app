@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
 import { mapPermissionGrants, web3Fetch } from '../../lib/web3/api';
 import { DEMO_PERMISSIONS, riskLabel, type PermissionGrant } from '../../lib/web3/demo';
+import { PlatformShell } from '../platform/PlatformShell';
 import { Web3SectionNav } from './Web3SectionNav';
-import '../../app/web3-experience.css';
 
 export function PermissionCenterExperience(): ReactElement {
   const [grants, setGrants] = useState<PermissionGrant[]>(DEMO_PERMISSIONS);
@@ -69,26 +69,19 @@ export function PermissionCenterExperience(): ReactElement {
   const accounts = Array.from(new Set(grants.map((g) => g.account)));
 
   return (
-    <div className="w3">
-      <header className="w3__header">
-        <div>
-          <p className="w3__eyebrow">
-            <Link href="/web3">Web3 Hub</Link>
-          </p>
-          <h1>Permission center</h1>
-          <p className="w3__sub">
-            Review connected accounts, network and signature grants, and revoke access in one place.
-          </p>
-        </div>
-        <Link href="/connections">
-          <Button type="button" variant="secondary">
-            Advanced lab
-          </Button>
+    <PlatformShell
+      title="Permissions"
+      subtitle="Review connected accounts, network and signature grants, and revoke access in one place."
+      reassure="Revoke anything you no longer trust — elevated signature and transaction grants deserve a second look."
+      backHref="/web3"
+      backLabel="Web3 Hub"
+      nav={<Web3SectionNav current="/web3/permissions" />}
+      actions={
+        <Link href="/connections" className="cx-btn cx-btn--ghost">
+          Advanced lab
         </Link>
-      </header>
-
-      <Web3SectionNav current="/web3/permissions" />
-
+      }
+    >
       {ready && !live ? (
         <Alert tone="warn" title="Preview permissions">
           Showing curated grants while the connections service is offline.
@@ -105,22 +98,22 @@ export function PermissionCenterExperience(): ReactElement {
         </Alert>
       ) : null}
 
-      <div className="w3-kpi">
-        <div className="w3-kpi__card">
+      <div className="cx-kpi">
+        <div className="cx-kpi__card">
           <span>Connected accounts</span>
           <strong>{accounts.length}</strong>
         </div>
-        <div className="w3-kpi__card">
+        <div className="cx-kpi__card">
           <span>Active grants</span>
           <strong>{grants.length}</strong>
         </div>
-        <div className="w3-kpi__card">
+        <div className="cx-kpi__card">
           <span>Elevated</span>
           <strong>{grants.filter((g) => g.risk === 'elevated').length}</strong>
         </div>
       </div>
 
-      <section className="w3-panel">
+      <section className="cx-panel">
         <h2>Granted permissions</h2>
         {grants.length === 0 ? (
           <EmptyState
@@ -128,20 +121,20 @@ export function PermissionCenterExperience(): ReactElement {
             description="Approve a dApp from the hub to see account and network permissions here."
           />
         ) : (
-          <ul className="w3-list">
+          <ul className="cx-list">
             {grants.map((g) => (
               <li key={g.id}>
                 <div>
                   <strong>{g.origin}</strong>
-                  <p className="w3-meta">
+                  <p className="cx-meta">
                     {g.account} · {g.network} · {g.permission}
                   </p>
-                  <p className="w3-meta">
+                  <p className="cx-meta">
                     Last activity {new Date(g.lastActivity).toLocaleString()}
                   </p>
-                  <span className={`w3-risk w3-risk--${g.risk}`}>{riskLabel(g.risk)}</span>
+                  <span className="cx-badge">{riskLabel(g.risk)}</span>
                 </div>
-                <div className="w3-actions">
+                <div className="cx-platform__actions">
                   <StatusBadge
                     status={
                       g.risk === 'elevated' ? 'failed' : g.risk === 'medium' ? 'pending' : 'active'
@@ -174,6 +167,6 @@ export function PermissionCenterExperience(): ReactElement {
         out before approval. Session persistence follows trusted-dApp rules from the connections
         service.
       </Alert>
-    </div>
+    </PlatformShell>
   );
 }

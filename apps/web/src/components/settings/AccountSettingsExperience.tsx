@@ -7,8 +7,8 @@ import { settingsFetch } from '../../lib/settings/api';
 import { OFFLINE_CACHE_NS, withOfflineCache } from '../../lib/offline/cache';
 import { getAccountPrefs, setAccountPrefs, type AccountPrefs } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 type MeProfile = {
   firstName?: string | null;
@@ -78,29 +78,24 @@ export function AccountSettingsExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Account</h1>
-          <p className="sc__sub">
-            Profile, wallet nicknames, locale, currency, and appearance defaults.
-          </p>
-        </div>
-      </header>
-      <SettingsSectionNav current="/settings/account" />
+    <PlatformShell
+      title="Account"
+      subtitle="Profile, wallet nicknames, locale, currency, and appearance defaults."
+      reassure="Profile changes stay on this device until your account sync is available."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/account" />}
+    >
       {toast ? (
         <Alert tone="success" title="Saved">
           {toast}
         </Alert>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Profile</h2>
-        <div className="sc-toolbar">
-          <label className="sc-field">
+        <div className="cx-toolbar">
+          <label className="cx-field">
             <span>Display name</span>
             <input
               value={prefs.displayName}
@@ -109,7 +104,7 @@ export function AccountSettingsExperience(): ReactElement {
               aria-label="Display name"
             />
           </label>
-          <label className="sc-field">
+          <label className="cx-field">
             <span>Wallet nickname</span>
             <input
               value={prefs.walletNickname}
@@ -118,7 +113,7 @@ export function AccountSettingsExperience(): ReactElement {
               aria-label="Wallet nickname"
             />
           </label>
-          <label className="sc-field">
+          <label className="cx-field">
             <span>Default wallet</span>
             <select
               value={prefs.defaultWalletId}
@@ -133,10 +128,10 @@ export function AccountSettingsExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Locale & currency</h2>
-        <div className="sc-toolbar">
-          <label className="sc-field">
+        <div className="cx-toolbar">
+          <label className="cx-field">
             <span>Language</span>
             <select
               value={prefs.language}
@@ -149,7 +144,7 @@ export function AccountSettingsExperience(): ReactElement {
               <option value="de">German</option>
             </select>
           </label>
-          <label className="sc-field">
+          <label className="cx-field">
             <span>Region</span>
             <select
               value={prefs.region}
@@ -162,7 +157,7 @@ export function AccountSettingsExperience(): ReactElement {
               <option value="SG">Singapore</option>
             </select>
           </label>
-          <label className="sc-field">
+          <label className="cx-field">
             <span>Currency</span>
             <select
               value={prefs.currency}
@@ -174,7 +169,7 @@ export function AccountSettingsExperience(): ReactElement {
               <option value="GBP">GBP</option>
             </select>
           </label>
-          <label className="sc-field">
+          <label className="cx-field">
             <span>Time zone</span>
             <input
               value={prefs.timeZone}
@@ -186,13 +181,13 @@ export function AccountSettingsExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Theme & appearance</h2>
-        <p className="sc-meta">
+        <p className="cx-meta">
           Theme is controlled from the navigation Theme toggle (system / light / dark). Open
           preferences for accessibility options.
         </p>
-        <div className="sc-actions">
+        <div className="cx-platform__actions">
           <Link href="/settings/preferences">
             <Button type="button">Open preferences</Button>
           </Link>
@@ -203,6 +198,6 @@ export function AccountSettingsExperience(): ReactElement {
           </Link>
         </div>
       </section>
-    </div>
+    </PlatformShell>
   );
 }

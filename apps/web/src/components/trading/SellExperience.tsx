@@ -1,10 +1,10 @@
 'use client';
 
-import { Alert, Button, SuccessState } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { pushTradingActivity } from '../../lib/trading/activity';
-import '../../app/trading-experience.css';
+import { CxActions, CxProgressTrack, TransactionShell } from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 type Screen = 'form' | 'confirm' | 'progress' | 'success' | 'history';
 
@@ -12,6 +12,13 @@ const ASSETS = [
   { id: 'BTC', balance: '0.42', price: 68420 },
   { id: 'ETH', balance: '8.15', price: 3420 },
   { id: 'SOL', balance: '126', price: 148 },
+] as const;
+
+const STEPS = [
+  { id: 'form', label: 'Details' },
+  { id: 'confirm', label: 'Review' },
+  { id: 'progress', label: 'Sell' },
+  { id: 'success', label: 'Done' },
 ] as const;
 
 export function SellExperience(): ReactElement {
@@ -72,53 +79,51 @@ export function SellExperience(): ReactElement {
     }, 260);
   }
 
+  const stepId = tab === 'sell' && screen !== 'history' ? screen : undefined;
+
   return (
-    <div className="tx" role="main">
-      <header className="tx__header">
-        <div>
-          <p className="tx__eyebrow">
-            <Link href="/">Dashboard</Link>
-          </p>
-          <h1>Sell crypto</h1>
-          <p className="tx__sub">
-            Choose an asset, destination, and review settlement before confirming.
-          </p>
-        </div>
-        <div className="tx__tabs" role="tablist" aria-label="Sell sections">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'sell'}
-            className={`tx__tab ${tab === 'sell' ? 'tx__tab--on' : ''}`}
-            onClick={() => {
-              setTab('sell');
-              setScreen('form');
-            }}
-          >
-            Sell
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'history'}
-            className={`tx__tab ${tab === 'history' ? 'tx__tab--on' : ''}`}
-            onClick={() => setTab('history')}
-          >
-            History
-          </button>
-        </div>
-      </header>
+    <TransactionShell
+      title="Sell"
+      subtitle="Choose an asset, destination, and review settlement before confirming."
+      reassure="Double-check destination details before you confirm."
+      steps={tab === 'sell' ? [...STEPS] : undefined}
+      currentStepId={stepId}
+      backHref="/dashboard"
+    >
+      <div className="cx-tabs" role="tablist" aria-label="Sell sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'sell'}
+          className={tab === 'sell' ? 'is-active' : undefined}
+          onClick={() => {
+            setTab('sell');
+            setScreen('form');
+          }}
+        >
+          Sell
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'history'}
+          className={tab === 'history' ? 'is-active' : undefined}
+          onClick={() => setTab('history')}
+        >
+          History
+        </button>
+      </div>
 
       {tab === 'history' ? (
-        <section className="tx-panel">
+        <section className="cx-panel">
           <h2>Sell history</h2>
-          <ul className="tx-list">
+          <ul className="cx-list">
             <li>
               <div>
                 <strong>Sold 0.25 ETH</strong>
-                <p className="tx-meta">$848 → Bank · settled</p>
+                <p className="cx-meta">$848 → Bank · settled</p>
               </div>
-              <span className="tx-meta">5d ago</span>
+              <span className="cx-meta">5d ago</span>
             </li>
           </ul>
         </section>
@@ -126,14 +131,14 @@ export function SellExperience(): ReactElement {
 
       {tab === 'sell' && screen === 'form' ? (
         <>
-          <section className="tx-panel">
+          <section className="cx-panel">
             <h2>Asset</h2>
-            <div className="tx-choice-grid" role="radiogroup" aria-label="Asset">
+            <div className="cx-choice-grid" role="radiogroup" aria-label="Asset">
               {ASSETS.map((a) => (
                 <button
                   key={a.id}
                   type="button"
-                  className={`tx-choice ${assetId === a.id ? 'tx-choice--on' : ''}`}
+                  className={`cx-choice ${assetId === a.id ? 'cx-choice--on' : ''}`}
                   aria-pressed={assetId === a.id}
                   onClick={() => setAssetId(a.id)}
                 >
@@ -142,7 +147,7 @@ export function SellExperience(): ReactElement {
                 </button>
               ))}
             </div>
-            <label className="tx-field">
+            <label className="cx-field">
               <span>Amount ({asset.id})</span>
               <input
                 value={amount}
@@ -152,9 +157,9 @@ export function SellExperience(): ReactElement {
             </label>
           </section>
 
-          <section className="tx-panel">
+          <section className="cx-panel">
             <h2>Destination account</h2>
-            <div className="tx-choice-grid" role="radiogroup" aria-label="Destination">
+            <div className="cx-choice-grid" role="radiogroup" aria-label="Destination">
               {(
                 [
                   ['bank', 'Bank account'],
@@ -165,7 +170,7 @@ export function SellExperience(): ReactElement {
                 <button
                   key={id}
                   type="button"
-                  className={`tx-choice ${destination === id ? 'tx-choice--on' : ''}`}
+                  className={`cx-choice ${destination === id ? 'cx-choice--on' : ''}`}
                   aria-pressed={destination === id}
                   onClick={() => setDestination(id)}
                 >
@@ -173,99 +178,88 @@ export function SellExperience(): ReactElement {
                 </button>
               ))}
             </div>
-            <dl className="tx-quote">
-              <div className="tx-quote__row">
-                <dt>You receive</dt>
-                <dd>≈ ${fiat}</dd>
-              </div>
-              <div className="tx-quote__row">
-                <dt>Fee breakdown</dt>
-                <dd>≈ ${fee} (0.9%)</dd>
-              </div>
-              <div className="tx-quote__row">
-                <dt>Settlement estimate</dt>
-                <dd>{settleEta}</dd>
-              </div>
-            </dl>
-            <Alert tone="warn" title="Irreversible once settled">
-              Double-check destination details. Off-ramp partners may require KYC for larger
-              amounts.
-            </Alert>
-            <div className="tx-actions">
-              <Button type="button" onClick={() => setScreen('confirm')}>
-                Continue
-              </Button>
+            <div className="cx-confirm">
+              <dl>
+                <div>
+                  <dt>You receive</dt>
+                  <dd>≈ ${fiat}</dd>
+                </div>
+                <div>
+                  <dt>Fee breakdown</dt>
+                  <dd>≈ ${fee} (0.9%)</dd>
+                </div>
+                <div>
+                  <dt>Settlement estimate</dt>
+                  <dd>{settleEta}</dd>
+                </div>
+              </dl>
             </div>
+            <div className="cx-warn">
+              <strong>Irreversible once settled</strong>
+              <p>
+                Double-check destination details. Off-ramp partners may require KYC for larger
+                amounts.
+              </p>
+            </div>
+            <CxActions onNext={() => setScreen('confirm')} />
           </section>
         </>
       ) : null}
 
       {tab === 'sell' && screen === 'confirm' ? (
-        <section className="tx-panel">
+        <section className="cx-panel">
           <h2>Confirm sale</h2>
-          <dl className="tx-quote">
-            <div className="tx-quote__row">
-              <dt>Sell</dt>
-              <dd>
-                {amount} {asset.id}
-              </dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Receive</dt>
-              <dd>≈ ${fiat}</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Destination</dt>
-              <dd>{destination}</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Settlement</dt>
-              <dd>{settleEta}</dd>
-            </div>
-          </dl>
-          <div className="tx-actions">
-            <Button type="button" variant="ghost" onClick={() => setScreen('form')}>
-              Back
-            </Button>
-            <Button type="button" onClick={execute}>
-              Confirm sell
-            </Button>
+          <div className="cx-confirm">
+            <dl>
+              <div>
+                <dt>Sell</dt>
+                <dd>
+                  {amount} {asset.id}
+                </dd>
+              </div>
+              <div>
+                <dt>Receive</dt>
+                <dd>≈ ${fiat}</dd>
+              </div>
+              <div>
+                <dt>Destination</dt>
+                <dd>{destination}</dd>
+              </div>
+              <div>
+                <dt>Settlement</dt>
+                <dd>{settleEta}</dd>
+              </div>
+            </dl>
           </div>
+          <CxActions onBack={() => setScreen('form')} onNext={execute} nextLabel="Confirm sell" />
         </section>
       ) : null}
 
       {tab === 'sell' && screen === 'progress' ? (
-        <section className="tx-panel" aria-busy="true">
-          <h2>Submitting sale…</h2>
-          <div
-            className="tx-progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-            aria-label="Sell progress"
-          >
-            <div className="tx-progress__bar" style={{ width: `${progress}%` }} />
-          </div>
-        </section>
+        <CxProgressTrack
+          progress={progress}
+          label="Submitting sale…"
+          stages={['Submitted', 'Off-ramp', 'Settling', 'Complete']}
+        />
       ) : null}
 
       {tab === 'sell' && screen === 'success' ? (
-        <SuccessState
-          title="Sale submitted"
-          description={`Settlement estimate: ${settleEta}. Track progress in activity.`}
-          action={
-            <div className="tx-actions">
-              <Link href="/activity">
-                <Button>Activity</Button>
-              </Link>
-              <Link href="/portfolio">
-                <Button variant="secondary">Portfolio</Button>
-              </Link>
-            </div>
-          }
-        />
+        <div className="cx-success">
+          <div className="cx-success-burst" aria-hidden>
+            ✓
+          </div>
+          <h2>Sale submitted</h2>
+          <p>Settlement estimate: {settleEta}. Track progress in activity.</p>
+          <div className="cx-success__cta">
+            <Link href="/activity" className="cx-btn cx-btn--primary">
+              Activity
+            </Link>
+            <Link href="/portfolio" className="cx-btn cx-btn--ghost">
+              Portfolio
+            </Link>
+          </div>
+        </div>
       ) : null}
-    </div>
+    </TransactionShell>
   );
 }

@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useDeferredValue, useMemo, useState, type ReactElement } from 'react';
 import { DEMO_DAPPS, type ConnectedDappRow } from '../../lib/settings/demo';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 type SortKey = 'name' | 'activity' | 'permissions';
 
@@ -44,34 +44,31 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Connected dApps</h1>
-          <p className="sc__sub">
-            Search, filter, sort, disconnect, edit permissions, and review activity.
-          </p>
-        </div>
-        <Link href="/web3/permissions">
-          <Button type="button">Permission center</Button>
+    <PlatformShell
+      title="Connected dApps"
+      subtitle="Search, filter, sort, disconnect, edit permissions, and review activity."
+      reassure="Disconnecting here is local preview — use Permission center to revoke live grants."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/dapps" />}
+      actions={
+        <Link href="/web3/permissions" className="cx-btn cx-btn--primary">
+          Permission center
         </Link>
-      </header>
-      <SettingsSectionNav current="/settings/dapps" />
+      }
+    >
       {toast ? (
         <Alert tone="success" title="Updated">
           {toast}
         </Alert>
       ) : null}
 
-      <div className="sc-toolbar">
-        <label className="sc-field">
+      <div className="cx-toolbar">
+        <label className="cx-field">
           <span>Search</span>
           <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search dApps" />
         </label>
-        <label className="sc-field">
+        <label className="cx-field">
           <span>Network</span>
           <select
             value={network}
@@ -83,7 +80,7 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
             <option value="POLYGON">Polygon</option>
           </select>
         </label>
-        <label className="sc-field">
+        <label className="cx-field">
           <span>Sort</span>
           <select
             value={sort}
@@ -100,26 +97,26 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
         </label>
       </div>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         {filtered.length === 0 ? (
           <EmptyState
             title="No connected dApps"
             description="Approve a connection from the Web3 Hub."
           />
         ) : (
-          <ul className="sc-list">
+          <ul className="cx-list">
             {filtered.map((r) => (
               <li key={r.id}>
                 <div>
                   <strong>{r.name}</strong>
-                  <p className="sc-meta">
+                  <p className="cx-meta">
                     {r.origin} · {r.network}
                   </p>
-                  <p className="sc-meta">
+                  <p className="cx-meta">
                     {r.permissions} permissions · Last {new Date(r.lastActivity).toLocaleString()}
                   </p>
                 </div>
-                <div className="sc-actions">
+                <div className="cx-platform__actions">
                   <StatusBadge status="active" label="Connected" />
                   <Link href={`/web3/sign?origin=${encodeURIComponent(r.origin)}`}>
                     <Button type="button" size="sm" variant="secondary">
@@ -140,6 +137,6 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
           </ul>
         )}
       </section>
-    </div>
+    </PlatformShell>
   );
 }

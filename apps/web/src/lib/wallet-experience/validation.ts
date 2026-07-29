@@ -5,6 +5,68 @@ const BTC_BECH32 = /^(bc1|tb1)[a-z0-9]{25,90}$/i;
 const BTC_LEGACY = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
 const SOL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const TRON = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
+const NAME_LIKE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+const UD_TLDS = new Set([
+  'crypto',
+  'nft',
+  'wallet',
+  'x',
+  'dao',
+  'blockchain',
+  'bitcoin',
+  'polygon',
+]);
+
+/** ENS / Unstoppable Domains style names (not raw chain addresses). */
+export function isNameLikeRecipient(value: string): boolean {
+  const a = value.trim();
+  if (!a || a.startsWith('0x') || !a.includes('.')) return false;
+  return NAME_LIKE.test(a);
+}
+
+/**
+ * Client-side name preview for UX. Production should call a resolver API;
+ * this keeps Send / Address Book usable offline with a deterministic preview.
+ */
+export function resolveNamePreview(name: string): {
+  ok: boolean;
+  address?: string;
+  provider?: 'ENS' | 'Unstoppable Domains';
+  message?: string;
+} {
+  const n = name.trim().toLowerCase();
+  if (!isNameLikeRecipient(n)) {
+    return { ok: false, message: 'Enter a valid ENS or domain name' };
+  }
+  const tld = n.split('.').pop() ?? '';
+  const provider: 'ENS' | 'Unstoppable Domains' = UD_TLDS.has(tld) ? 'Unstoppable Domains' : 'ENS';
+  // Deterministic demo address so review screens stay stable
+  let h = 0;
+  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+  const hex = (h.toString(16) + 'a1b2c3d4e5f67890abcdef0123456789').slice(0, 40);
+  return { ok: true, address: `0x${hex}`, provider };
+}
+
+export function explorerUrlFor(network: WalletNetwork, hash: string): string {
+  const h = hash.startsWith('0x') ? hash : hash;
+  switch (network) {
+    case 'ethereum':
+      return `https://etherscan.io/tx/${h}`;
+    case 'polygon':
+      return `https://polygonscan.com/tx/${h}`;
+    case 'bnb':
+      return `https://bscscan.com/tx/${h}`;
+    case 'bitcoin':
+      return `https://mempool.space/tx/${h}`;
+    case 'solana':
+      return `https://solscan.io/tx/${h}`;
+    case 'tron':
+      return `https://tronscan.org/#/transaction/${h}`;
+    default:
+      return `https://etherscan.io/tx/${h}`;
+  }
+}
 
 export function validateAddressFormat(
   address: string,
@@ -12,6 +74,19 @@ export function validateAddressFormat(
 ): { ok: boolean; message?: string } {
   const a = address.trim();
   if (!a) return { ok: false, message: 'Enter a destination address' };
+
+  // Names are validated separately via resolveNamePreview on EVM-family nets
+  if (isNameLikeRecipient(a)) {
+    if (network === 'ethereum' || network === 'polygon' || network === 'bnb') {
+      return resolveNamePreview(a).ok
+        ? { ok: true }
+        : { ok: false, message: 'That name could not be resolved' };
+    }
+    return {
+      ok: false,
+      message: 'Domain names are supported on Ethereum, Polygon, and BNB for now',
+    };
+  }
 
   switch (network) {
     case 'ethereum':

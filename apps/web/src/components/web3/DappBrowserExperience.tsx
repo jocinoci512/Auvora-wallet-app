@@ -2,9 +2,16 @@
 
 import { Alert, Button, EmptyState } from '@auvora/ui';
 import { Bookmark, ExternalLink, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type ReactElement,
+} from 'react';
 import { isSecureDappUrl, originFromUrl, web3Fetch } from '../../lib/web3/api';
 import {
   listBrowserHistory,
@@ -15,8 +22,43 @@ import {
   type BrowserHistoryEntry,
   type LocalBookmark,
 } from '../../lib/web3/prefs';
+import { PlatformShell } from '../platform/PlatformShell';
 import { Web3SectionNav } from './Web3SectionNav';
-import '../../app/web3-experience.css';
+
+const chromeFormStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '0.45rem',
+  alignItems: 'center',
+  padding: '0.65rem 0.75rem',
+  borderBottom: '1px solid var(--cx-line, var(--auvora-color-border))',
+  background: 'color-mix(in srgb, var(--cx-line, var(--auvora-color-border)) 28%, transparent)',
+};
+
+const addressInputStyle: CSSProperties = {
+  flex: 1,
+  minWidth: '12rem',
+  font: 'inherit',
+  padding: '0.45rem 0.65rem',
+  borderRadius: 999,
+  border: '1px solid var(--cx-line, var(--auvora-color-border))',
+  background: 'var(--cx-solid, var(--auvora-color-surface))',
+  color: 'inherit',
+};
+
+const stageStyle: CSSProperties = {
+  minHeight: 320,
+  display: 'grid',
+  placeItems: 'center',
+  padding: '1.5rem',
+};
+
+const iframeStyle: CSSProperties = {
+  width: '100%',
+  minHeight: 420,
+  border: 0,
+  background: 'var(--cx-solid, var(--auvora-color-surface))',
+};
 
 export function DappBrowserExperience(): ReactElement {
   const params = useSearchParams();
@@ -114,26 +156,17 @@ export function DappBrowserExperience(): ReactElement {
   const bookmarked = Boolean(activeUrl && bookmarks.some((b) => b.url === activeUrl));
 
   return (
-    <div className="w3">
-      <header className="w3__header">
-        <div>
-          <p className="w3__eyebrow">
-            <Link href="/web3">Web3 Hub</Link>
-          </p>
-          <h1>dApp browser</h1>
-          <p className="w3__sub">
-            HTTPS-only browsing with bookmarks, history, and secure open controls.
-          </p>
-        </div>
-        <p className="w3-meta" aria-live="polite">
-          {tabNote}
-        </p>
-      </header>
-
-      <Web3SectionNav current="/web3/browser" />
-
-      <div className="w3-browser">
-        <form className="w3-browser__chrome" onSubmit={onSubmit} aria-label="Browser chrome">
+    <PlatformShell
+      title="Browser"
+      subtitle="HTTPS-only browsing with bookmarks, history, and secure open controls."
+      reassure="Only secure origins load here — review connect and sign prompts before you approve."
+      backHref="/web3"
+      backLabel="Web3 Hub"
+      nav={<Web3SectionNav current="/web3/browser" />}
+      actions={<p className="cx-meta">{tabNote}</p>}
+    >
+      <section className="cx-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <form style={chromeFormStyle} onSubmit={onSubmit} aria-label="Browser chrome">
           <Button
             type="button"
             size="sm"
@@ -169,6 +202,7 @@ export function DappBrowserExperience(): ReactElement {
             placeholder="https://"
             autoComplete="url"
             inputMode="url"
+            style={addressInputStyle}
           />
           <Button type="submit" size="sm">
             Go
@@ -194,11 +228,20 @@ export function DappBrowserExperience(): ReactElement {
         </form>
 
         {loading ? (
-          <div className="w3-browser__stage" aria-busy="true" aria-label="Loading page">
-            <div className="w3-skeleton" style={{ width: '100%', minHeight: 280 }} />
+          <div style={stageStyle} aria-busy="true" aria-label="Loading page">
+            <div
+              className="cx-meta"
+              style={{
+                width: '100%',
+                minHeight: 280,
+                borderRadius: 12,
+                background:
+                  'color-mix(in srgb, var(--cx-line, var(--auvora-color-border)) 40%, transparent)',
+              }}
+            />
           </div>
         ) : error ? (
-          <div className="w3-browser__stage" role="alert">
+          <div style={stageStyle} role="alert">
             <EmptyState title="Cannot open page" description={error} />
             <Alert tone="warn" title="Suspicious / insecure URL">
               Auvora blocks non-HTTPS and malformed origins. Phishing lookalikes use domain
@@ -206,30 +249,30 @@ export function DappBrowserExperience(): ReactElement {
             </Alert>
           </div>
         ) : activeUrl ? (
-          <div className="w3-browser__stage">
+          <div style={stageStyle}>
             <iframe
-              className="w3-browser__iframe"
               title={`dApp frame · ${originFromUrl(activeUrl)}`}
               src={activeUrl}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               referrerPolicy="no-referrer"
+              style={iframeStyle}
             />
-            <p className="w3-meta" style={{ marginTop: '0.75rem' }}>
+            <p className="cx-meta" style={{ marginTop: '0.75rem' }}>
               Sandboxed preview · {originFromUrl(activeUrl)} · Unknown contract warnings appear on
               sign
             </p>
           </div>
         ) : (
-          <div className="w3-browser__stage">
+          <div style={stageStyle}>
             <EmptyState
               title="Enter a secure URL"
               description="Only HTTPS public domains are allowed."
             />
           </div>
         )}
-      </div>
+      </section>
 
-      <section className="w3-panel">
+      <section className="cx-panel">
         <h2>Bookmarks</h2>
         {bookmarks.length === 0 ? (
           <EmptyState
@@ -237,10 +280,10 @@ export function DappBrowserExperience(): ReactElement {
             description="Star a page from the address bar to save it."
           />
         ) : (
-          <ul className="w3-list">
+          <ul className="cx-list">
             {bookmarks.map((b) => (
               <li key={b.id}>
-                <button type="button" className="w3__tab" onClick={() => navigateTo(b.url, true)}>
+                <button type="button" className="cx-chip" onClick={() => navigateTo(b.url, true)}>
                   {b.title}
                 </button>
                 <Button
@@ -257,17 +300,17 @@ export function DappBrowserExperience(): ReactElement {
         )}
       </section>
 
-      <section className="w3-panel">
+      <section className="cx-panel">
         <h2>History</h2>
         {history.length === 0 ? (
           <EmptyState title="No history" description="Visited HTTPS pages appear here." />
         ) : (
-          <ul className="w3-list">
+          <ul className="cx-list">
             {history.slice(0, 12).map((h) => (
               <li key={h.id}>
                 <div>
                   <strong>{h.title}</strong>
-                  <p className="w3-meta">
+                  <p className="cx-meta">
                     {h.url} · {new Date(h.visitedAt).toLocaleString()}
                   </p>
                 </div>
@@ -284,6 +327,6 @@ export function DappBrowserExperience(): ReactElement {
           </ul>
         )}
       </section>
-    </div>
+    </PlatformShell>
   );
 }

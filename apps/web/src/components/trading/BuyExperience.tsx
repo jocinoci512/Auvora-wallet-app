@@ -1,14 +1,21 @@
 'use client';
 
-import { Alert, Button, SuccessState } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { DEMO_BUY_PROVIDERS, pushTradingActivity } from '../../lib/trading/activity';
-import '../../app/trading-experience.css';
+import { CxActions, CxProgressTrack, TransactionShell } from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 type Screen = 'form' | 'confirm' | 'progress' | 'success' | 'history';
 
 const ASSETS = ['BTC', 'ETH', 'SOL', 'USDC'] as const;
+
+const STEPS = [
+  { id: 'form', label: 'Details' },
+  { id: 'confirm', label: 'Review' },
+  { id: 'progress', label: 'Pay' },
+  { id: 'success', label: 'Done' },
+] as const;
 
 export function BuyExperience(): ReactElement {
   const [tab, setTab] = useState<'buy' | 'history'>('buy');
@@ -63,76 +70,76 @@ export function BuyExperience(): ReactElement {
     }, 240);
   }
 
+  const stepId = tab === 'history' ? undefined : screen === 'history' ? undefined : screen;
+
   return (
-    <div className="tx" role="main">
-      <header className="tx__header">
-        <div>
-          <p className="tx__eyebrow">
-            <Link href="/">Dashboard</Link>
-          </p>
-          <h1>Buy crypto</h1>
-          <p className="tx__sub">
-            Card, bank, or third-party providers — with fee transparency and compliance messaging.
-          </p>
-        </div>
-        <div className="tx__tabs" role="tablist" aria-label="Buy sections">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'buy'}
-            className={`tx__tab ${tab === 'buy' ? 'tx__tab--on' : ''}`}
-            onClick={() => {
-              setTab('buy');
-              setScreen('form');
-            }}
-          >
-            Buy
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'history'}
-            className={`tx__tab ${tab === 'history' ? 'tx__tab--on' : ''}`}
-            onClick={() => setTab('history')}
-          >
-            History
-          </button>
-        </div>
-      </header>
+    <TransactionShell
+      title="Buy"
+      subtitle="Card, bank, or third-party providers — with fee transparency and compliance messaging."
+      reassure="Purchases may require identity verification depending on amount and jurisdiction."
+      steps={tab === 'buy' ? [...STEPS] : undefined}
+      currentStepId={stepId}
+      backHref="/dashboard"
+    >
+      <div className="cx-tabs" role="tablist" aria-label="Buy sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'buy'}
+          className={tab === 'buy' ? 'is-active' : undefined}
+          onClick={() => {
+            setTab('buy');
+            setScreen('form');
+          }}
+        >
+          Buy
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'history'}
+          className={tab === 'history' ? 'is-active' : undefined}
+          onClick={() => setTab('history')}
+        >
+          History
+        </button>
+      </div>
 
       {tab === 'history' ? (
-        <section className="tx-panel">
+        <section className="cx-panel">
           <h2>Purchase history</h2>
-          <ul className="tx-list">
+          <ul className="cx-list">
             <li>
               <div>
                 <strong>ETH purchase</strong>
-                <p className="tx-meta">$250 card · MoonPay</p>
+                <p className="cx-meta">$250 card · MoonPay</p>
               </div>
-              <span className="tx-meta">Yesterday</span>
+              <span className="cx-meta">Yesterday</span>
             </li>
             <li>
               <div>
                 <strong>BTC purchase</strong>
-                <p className="tx-meta">$500 ACH · Bank</p>
+                <p className="cx-meta">$500 ACH · Bank</p>
               </div>
-              <span className="tx-meta">Last week</span>
+              <span className="cx-meta">Last week</span>
             </li>
           </ul>
-          <Link href="/payments">Open payments ledger</Link>
+          <Link href="/payments" className="cx-link">
+            Open payments ledger
+          </Link>
         </section>
       ) : null}
 
       {tab === 'buy' && screen === 'form' ? (
         <>
-          <section className="tx-panel">
+          <section className="cx-panel">
             <h2>Asset</h2>
-            <div className="tx-choice-grid" role="radiogroup" aria-label="Asset">
+            <div className="cx-choice-grid" role="radiogroup" aria-label="Asset">
               {ASSETS.map((a) => (
                 <button
                   key={a}
                   type="button"
-                  className={`tx-choice ${asset === a ? 'tx-choice--on' : ''}`}
+                  className={`cx-choice ${asset === a ? 'cx-choice--on' : ''}`}
                   aria-pressed={asset === a}
                   onClick={() => setAsset(a)}
                 >
@@ -140,7 +147,7 @@ export function BuyExperience(): ReactElement {
                 </button>
               ))}
             </div>
-            <label className="tx-field">
+            <label className="cx-field">
               <span>Amount (USD)</span>
               <input
                 value={fiatAmount}
@@ -148,14 +155,14 @@ export function BuyExperience(): ReactElement {
                 inputMode="decimal"
               />
             </label>
-            <p className="tx-meta">
+            <p className="cx-meta">
               Est. receive ≈ {cryptoEst} {asset}
             </p>
           </section>
 
-          <section className="tx-panel">
+          <section className="cx-panel">
             <h2>Payment method</h2>
-            <div className="tx-choice-grid" role="radiogroup" aria-label="Method">
+            <div className="cx-choice-grid" role="radiogroup" aria-label="Method">
               {(
                 [
                   ['card', 'Card purchase'],
@@ -166,7 +173,7 @@ export function BuyExperience(): ReactElement {
                 <button
                   key={id}
                   type="button"
-                  className={`tx-choice ${method === id ? 'tx-choice--on' : ''}`}
+                  className={`cx-choice ${method === id ? 'cx-choice--on' : ''}`}
                   aria-pressed={method === id}
                   onClick={() => setMethod(id)}
                 >
@@ -175,12 +182,12 @@ export function BuyExperience(): ReactElement {
               ))}
             </div>
             {method === 'provider' ? (
-              <div className="tx-choice-grid" role="radiogroup" aria-label="Provider">
+              <div className="cx-choice-grid" role="radiogroup" aria-label="Provider">
                 {DEMO_BUY_PROVIDERS.map((p) => (
                   <button
                     key={p.id}
                     type="button"
-                    className={`tx-choice ${providerId === p.id ? 'tx-choice--on' : ''}`}
+                    className={`cx-choice ${providerId === p.id ? 'cx-choice--on' : ''}`}
                     aria-pressed={providerId === p.id}
                     onClick={() => setProviderId(p.id)}
                   >
@@ -192,101 +199,92 @@ export function BuyExperience(): ReactElement {
                 ))}
               </div>
             ) : null}
-            <dl className="tx-quote">
-              <div className="tx-quote__row">
-                <dt>Provider fee</dt>
-                <dd>{feeLabel}</dd>
-              </div>
-              <div className="tx-quote__row">
-                <dt>Network fee</dt>
-                <dd>Included in quote</dd>
-              </div>
-            </dl>
-            <Alert tone="info" title="Compliance">
-              <p className="tx-compliance">
+            <div className="cx-confirm">
+              <dl>
+                <div>
+                  <dt>Provider fee</dt>
+                  <dd>{feeLabel}</dd>
+                </div>
+                <div>
+                  <dt>Network fee</dt>
+                  <dd>Included in quote</dd>
+                </div>
+              </dl>
+            </div>
+            <div className="cx-alert cx-alert--info">
+              <strong>Compliance</strong>
+              <p>
                 Purchases may require identity verification (KYC) depending on amount and
                 jurisdiction. Auvora partners only with licensed on-ramps. You are buying digital
                 assets which can lose value.
               </p>
-            </Alert>
-            <div className="tx-actions">
-              <Button type="button" onClick={() => setScreen('confirm')}>
-                Continue
-              </Button>
             </div>
+            <CxActions onNext={() => setScreen('confirm')} />
           </section>
         </>
       ) : null}
 
       {tab === 'buy' && screen === 'confirm' ? (
-        <section className="tx-panel">
+        <section className="cx-panel">
           <h2>Confirm purchase</h2>
-          <dl className="tx-quote">
-            <div className="tx-quote__row">
-              <dt>You pay</dt>
-              <dd>${fiatAmount} USD</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>You receive</dt>
-              <dd>
-                ≈ {cryptoEst} {asset}
-              </dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Method</dt>
-              <dd>
-                {method}
-                {method === 'provider' ? ` · ${provider.label}` : ''}
-              </dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Fees</dt>
-              <dd>{feeLabel}</dd>
-            </div>
-          </dl>
-          <div className="tx-actions">
-            <Button type="button" variant="ghost" onClick={() => setScreen('form')}>
-              Back
-            </Button>
-            <Button type="button" onClick={execute}>
-              Confirm payment
-            </Button>
+          <div className="cx-confirm">
+            <dl>
+              <div>
+                <dt>You pay</dt>
+                <dd>${fiatAmount} USD</dd>
+              </div>
+              <div>
+                <dt>You receive</dt>
+                <dd>
+                  ≈ {cryptoEst} {asset}
+                </dd>
+              </div>
+              <div>
+                <dt>Method</dt>
+                <dd>
+                  {method}
+                  {method === 'provider' ? ` · ${provider.label}` : ''}
+                </dd>
+              </div>
+              <div>
+                <dt>Fees</dt>
+                <dd>{feeLabel}</dd>
+              </div>
+            </dl>
           </div>
+          <CxActions
+            onBack={() => setScreen('form')}
+            onNext={execute}
+            nextLabel="Confirm payment"
+          />
         </section>
       ) : null}
 
       {tab === 'buy' && screen === 'progress' ? (
-        <section className="tx-panel" aria-busy="true">
-          <h2>Processing payment…</h2>
-          <div
-            className="tx-progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-            aria-label="Buy progress"
-          >
-            <div className="tx-progress__bar" style={{ width: `${progress}%` }} />
-          </div>
-        </section>
+        <CxProgressTrack
+          progress={progress}
+          label="Processing payment…"
+          stages={['Submitted', 'Provider', 'Settling', 'Complete']}
+        />
       ) : null}
 
       {tab === 'buy' && screen === 'success' ? (
-        <SuccessState
-          title="Purchase submitted"
-          description="Funds typically arrive after provider settlement. Track in activity and portfolio."
-          action={
-            <div className="tx-actions">
-              <Link href="/activity">
-                <Button>Activity</Button>
-              </Link>
-              <Link href="/portfolio">
-                <Button variant="secondary">Portfolio</Button>
-              </Link>
-            </div>
-          }
-        />
+        <div className="cx-success">
+          <div className="cx-success-burst" aria-hidden>
+            ✓
+          </div>
+          <h2>Purchase submitted</h2>
+          <p>Funds typically arrive after provider settlement. Track in activity and portfolio.</p>
+          <div className="cx-success__cta">
+            <Link href="/activity" className="cx-btn cx-btn--primary">
+              Activity
+            </Link>
+            <Link href="/portfolio" className="cx-btn cx-btn--ghost">
+              Portfolio
+            </Link>
+          </div>
+        </div>
       ) : null}
-    </div>
+    </TransactionShell>
   );
 }

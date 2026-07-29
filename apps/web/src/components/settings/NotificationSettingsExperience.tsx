@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Switch } from '@auvora/ui';
+import { Alert, Switch } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import {
@@ -9,8 +9,8 @@ import {
   type NotificationPrefsLocal,
 } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 const LABELS: { key: keyof NotificationPrefsLocal; title: string; detail: string }[] = [
   { key: 'transactions', title: 'Transactions', detail: 'Sends, receives, and confirmations' },
@@ -19,6 +19,11 @@ const LABELS: { key: keyof NotificationPrefsLocal; title: string; detail: string
     key: 'securityAlerts',
     title: 'Security alerts',
     detail: 'New devices, sessions, phishing cues',
+  },
+  {
+    key: 'stakingRewards',
+    title: 'Staking rewards',
+    detail: 'Reward credits and staking status updates',
   },
   {
     key: 'marketing',
@@ -48,36 +53,36 @@ export function NotificationSettingsExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Notification preferences</h1>
-          <p className="sc__sub">
-            Centralize alerts for transactions, prices, security, product, and Web3.
-          </p>
-        </div>
-        <Link href="/notifications/preferences">
-          <Button type="button" variant="secondary">
+    <PlatformShell
+      title="Notification preferences"
+      subtitle="Centralize alerts for transactions, prices, security, staking, product, and Web3."
+      reassure="Local toggles apply immediately on this device; server prefs sync when signed in."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/notifications" />}
+      actions={
+        <>
+          <Link href="/notifications" className="cx-btn cx-btn--ghost">
+            Notification center
+          </Link>
+          <Link href="/notifications/preferences" className="cx-btn cx-btn--primary">
             Server preferences
-          </Button>
-        </Link>
-      </header>
-      <SettingsSectionNav current="/settings/notifications" />
+          </Link>
+        </>
+      }
+    >
       {toast ? (
         <Alert tone="success" title="Saved">
           {toast}
         </Alert>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         {LABELS.map((row) => (
-          <div className="sc-row" key={row.key}>
+          <div className="cx-row" key={row.key}>
             <div>
               <strong>{row.title}</strong>
-              <p className="sc-meta">{row.detail}</p>
+              <p className="cx-meta">{row.detail}</p>
             </div>
             <Switch
               checked={prefs[row.key]}
@@ -87,6 +92,6 @@ export function NotificationSettingsExperience(): ReactElement {
           </div>
         ))}
       </section>
-    </div>
+    </PlatformShell>
   );
 }

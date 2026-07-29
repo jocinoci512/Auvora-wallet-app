@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { Button, IconButton } from '@auvora/ui';
 import { Check, Copy, Share2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 
 export interface QrPanelProps {
   value: string;
@@ -59,7 +58,7 @@ export function QrPanel({ value, label = 'QR code', size = 200 }: QrPanelProps):
       if (copyTimer.current != null) window.clearTimeout(copyTimer.current);
       copyTimer.current = window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      setError('Clipboard unavailable');
+      setError('Clipboard unavailable — select the address and copy manually.');
     }
   }
 
@@ -76,33 +75,38 @@ export function QrPanel({ value, label = 'QR code', size = 200 }: QrPanelProps):
   }
 
   return (
-    <div className="wx-qr">
-      <div className="wx-qr__frame" style={{ width: size, height: size }}>
+    <div className="cx-qr">
+      <div className="cx-qr__frame" style={{ width: size, height: size }}>
         {dataUrl ? (
           <img src={dataUrl} alt={label} width={size} height={size} />
         ) : (
-          <div className="wx-qr__skel" aria-busy={!error} aria-label="Generating QR">
+          <div className="cx-qr__skel" aria-busy={!error} aria-label="Generating QR">
             {error ?? 'Generating…'}
           </div>
         )}
       </div>
       {error && dataUrl ? (
-        <p className="wx-meta" role="alert">
+        <p className="cx-meta" role="alert">
           {error}
         </p>
       ) : null}
-      <p className="wx-qr__value">
+      <p className="cx-qr__value">
         <code>{value}</code>
       </p>
-      <div className="wx-qr__actions">
-        <Button type="button" variant="secondary" onClick={() => void copy()}>
+      <div className="cx-qr__actions">
+        <button type="button" className="cx-btn cx-btn--ghost" onClick={() => void copy()}>
           <Copy size={16} aria-hidden /> {copied ? 'Copied' : 'Copy'}
-        </Button>
-        <IconButton label="Share address" onClick={() => void share()}>
-          <Share2 size={16} />
-        </IconButton>
+        </button>
+        <button
+          type="button"
+          className="cx-btn cx-btn--ghost"
+          onClick={() => void share()}
+          aria-label="Share address"
+        >
+          <Share2 size={16} aria-hidden /> Share
+        </button>
         {copied ? (
-          <span className="wx-inline-ok" role="status">
+          <span className="cx-inline-ok" role="status">
             <Check size={14} aria-hidden /> Copied to clipboard
           </span>
         ) : null}

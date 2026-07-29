@@ -1,6 +1,5 @@
-import type { ReactElement } from 'react';
-import { DigitalAssetsHub } from '../../components/nft/DigitalAssetsHub';
+import { redirect } from 'next/navigation';
 
-export default function DigitalAssetsPage(): ReactElement {
-  return <DigitalAssetsHub />;
+export default function DigitalAssetsPage() {
+  redirect('/nfts');
 }

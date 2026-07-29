@@ -1,6 +1,5 @@
 'use client';
 
-import { Alert, Button, EmptyState, StatusBadge, SuccessState } from '@auvora/ui';
 import { ArrowDownUp } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -8,7 +7,13 @@ import { LineChart } from '../charts/Charts';
 import { formatApiError } from '../../lib/api-client';
 import { DEMO_SWAP_HISTORY, pushTradingActivity } from '../../lib/trading/activity';
 import { formatSeconds, impactPct, tradingFetch } from '../../lib/trading/api';
-import '../../app/trading-experience.css';
+import {
+  CxActions,
+  CxProgressTrack,
+  humanizeError,
+  TransactionShell,
+} from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 type NetworkCap = { network: string; swapSupported: boolean; reason?: string };
 type Asset = { symbol: string; name: string; standard: string; verified: boolean };
@@ -27,6 +32,13 @@ type Quote = {
 };
 
 type Screen = 'form' | 'confirm' | 'progress' | 'success' | 'failure' | 'history';
+
+const SWAP_STEPS = [
+  { id: 'form', label: 'Quote' },
+  { id: 'confirm', label: 'Review' },
+  { id: 'progress', label: 'Swap' },
+  { id: 'success', label: 'Done' },
+];
 
 const DEMO_NETWORKS: NetworkCap[] = [
   { network: 'ETHEREUM', swapSupported: true },
@@ -170,6 +182,7 @@ export function SwapExperience(): ReactElement {
   async function execute(): Promise<void> {
     setScreen('progress');
     setProgress(10);
+    let failedMessage: string | null = null;
     try {
       if (live && quote) {
         await tradingFetch('/api/v1/swaps/prepare', {
@@ -192,8 +205,12 @@ export function SwapExperience(): ReactElement {
       } else {
         setExecutionId(`preview-${crypto.randomUUID().slice(0, 8)}`);
       }
-    } catch {
-      setExecutionId(`preview-${crypto.randomUUID().slice(0, 8)}`);
+    } catch (err) {
+      failedMessage =
+        err instanceof Error ? err.message : 'The trade could not complete. Try a fresh quote.';
+      setError(failedMessage);
+      setScreen('failure');
+      return;
     }
 
     if (timer.current != null) window.clearInterval(timer.current);
@@ -228,83 +245,88 @@ export function SwapExperience(): ReactElement {
     [],
   );
 
+  const multiStep = tab === 'swap' && screen !== 'form' && screen !== 'history';
+  const stepId = screen === 'failure' ? 'form' : screen === 'history' ? 'form' : (screen as string);
+
   return (
-    <div className="tx" role="main">
-      <header className="tx__header">
-        <div>
-          <p className="tx__eyebrow">
-            <Link href="/">Dashboard</Link>
-          </p>
-          <h1>Swap</h1>
-          <p className="tx__sub">
-            Instant quotes, route clarity, and calm confirmation — built for confident trading.
-          </p>
-        </div>
-        <div className="tx__tabs" role="tablist" aria-label="Swap views">
-          <button
-            type="button"
-            className={`tx__tab ${tab === 'swap' ? 'tx__tab--on' : ''}`}
-            role="tab"
-            aria-selected={tab === 'swap'}
-            onClick={() => {
-              setTab('swap');
-              setScreen('form');
-            }}
-          >
-            Swap
-          </button>
-          <button
-            type="button"
-            className={`tx__tab ${tab === 'history' ? 'tx__tab--on' : ''}`}
-            role="tab"
-            aria-selected={tab === 'history'}
-            onClick={() => setTab('history')}
-          >
-            History
-          </button>
-        </div>
-      </header>
+    <TransactionShell
+      title="Swap"
+      subtitle="Instant quotes, route clarity, and calm confirmation — built for confident trading."
+      reassure="Quotes refresh automatically. Nothing broadcasts until you confirm."
+      steps={multiStep ? SWAP_STEPS : undefined}
+      currentStepId={multiStep ? stepId : undefined}
+      backHref="/"
+      backLabel="Dashboard"
+    >
+      <div className="cx-tabs" role="tablist" aria-label="Swap views">
+        <button
+          type="button"
+          role="tab"
+          className={tab === 'swap' ? 'is-active' : undefined}
+          aria-selected={tab === 'swap'}
+          onClick={() => {
+            setTab('swap');
+            setScreen('form');
+          }}
+        >
+          Swap
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={tab === 'history' ? 'is-active' : undefined}
+          aria-selected={tab === 'history'}
+          onClick={() => setTab('history')}
+        >
+          History
+        </button>
+      </div>
 
       {tab === 'history' ? (
-        <section className="tx-panel" aria-label="Swap history">
+        <section className="cx-panel" aria-label="Swap history">
           <h2>Recent swaps</h2>
+          <p>Your completed swaps appear here.</p>
           {!DEMO_SWAP_HISTORY.length ? (
-            <EmptyState title="No swaps yet" description="Your completed swaps will appear here." />
+            <p className="cx-meta">No swaps yet.</p>
           ) : (
-            <ul className="tx-list">
+            <ul className="cx-list">
               {DEMO_SWAP_HISTORY.map((row) => (
                 <li key={row.id}>
                   <div>
                     <strong>{row.pair}</strong>
-                    <p className="tx-meta">
+                    <p className="cx-meta" style={{ margin: '0.25rem 0 0' }}>
                       {row.amountIn} → {row.amountOut} · impact {row.impact}
                     </p>
                   </div>
-                  <div>
-                    <StatusBadge
-                      status={row.status === 'confirmed' ? 'active' : 'suspended'}
-                      label={row.status}
-                    />
-                    <p className="tx-meta">{row.when}</p>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className="cx-chip" style={{ pointerEvents: 'none' }}>
+                      {row.status}
+                    </span>
+                    <p className="cx-meta" style={{ margin: '0.25rem 0 0' }}>
+                      {row.when}
+                    </p>
                   </div>
                 </li>
               ))}
             </ul>
           )}
-          <Link href="/activity">View full activity</Link>
+          <Link href="/activity" className="cx-link">
+            View full activity
+          </Link>
         </section>
       ) : null}
 
       {tab === 'swap' && screen === 'form' ? (
         <>
-          <section className="tx-panel">
+          <section className="cx-panel">
             <h2>Network</h2>
-            <div className="tx-choice-grid" role="radiogroup" aria-label="Network">
+            <p>Choose where the swap will execute.</p>
+            <div className="cx-choice-grid" role="radiogroup" aria-label="Network">
               {networks.map((n) => (
                 <button
                   key={n.network}
                   type="button"
-                  className={`tx-choice ${network === n.network ? 'tx-choice--on' : ''}`}
+                  className={`cx-choice ${network === n.network ? 'cx-choice--on' : ''}`}
                   aria-pressed={network === n.network}
                   disabled={n.swapSupported === false}
                   onClick={() => setNetwork(n.network)}
@@ -316,20 +338,13 @@ export function SwapExperience(): ReactElement {
             </div>
           </section>
 
-          <section className="tx-panel">
-            <div className="tx-pair">
-              <div className="tx-token-box">
-                <div className="tx-token-box__row">
-                  <span className="tx-meta">You pay</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setPicking('sell')}
-                  >
-                    {sellToken}
-                  </Button>
-                </div>
+          <section className="cx-panel">
+            <h2>Tokens</h2>
+            <p>Set what you pay and what you receive.</p>
+
+            <div className="cx-field-row">
+              <label className="cx-field cx-field--grow">
+                <span>You pay</span>
                 <input
                   type="number"
                   min={0}
@@ -338,53 +353,72 @@ export function SwapExperience(): ReactElement {
                   onChange={(e) => setSellAmount(e.target.value)}
                   aria-label="Sell amount"
                 />
-              </div>
-              <div className="tx-pair__swap">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={flip}
-                  aria-label="Flip tokens"
+              </label>
+              <button
+                type="button"
+                className="cx-btn cx-btn--ghost"
+                onClick={() => setPicking('sell')}
+              >
+                {sellToken}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '0.25rem 0 0.75rem' }}>
+              <button
+                type="button"
+                className="cx-btn cx-btn--ghost"
+                onClick={flip}
+                aria-label="Flip tokens"
+                style={{ minHeight: 40, padding: '0 0.85rem' }}
+              >
+                <ArrowDownUp size={16} />
+              </button>
+            </div>
+
+            <div className="cx-field-row">
+              <div className="cx-field cx-field--grow">
+                <span>You receive</span>
+                <strong
+                  style={{
+                    fontSize: '1.45rem',
+                    minHeight: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
                 >
-                  <ArrowDownUp size={16} />
-                </Button>
+                  {quote?.amountOut ?? '—'}
+                </strong>
               </div>
-              <div className="tx-token-box">
-                <div className="tx-token-box__row">
-                  <span className="tx-meta">You receive</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setPicking('buy')}
-                  >
-                    {buyToken}
-                  </Button>
-                </div>
-                <strong style={{ fontSize: '1.45rem' }}>{quote?.amountOut ?? '—'}</strong>
-              </div>
+              <button
+                type="button"
+                className="cx-btn cx-btn--ghost"
+                onClick={() => setPicking('buy')}
+              >
+                {buyToken}
+              </button>
             </div>
 
             {picking ? (
-              <div className="tx-adv" role="dialog" aria-modal="true" aria-label="Token selector">
-                <input
-                  className="tx-token-search"
-                  placeholder="Search token"
-                  aria-label="Search token"
-                  value={tokenSearch}
-                  onChange={(e) => setTokenSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setPicking(null);
-                  }}
-                  autoFocus
-                />
-                <div className="tx-choice-grid">
+              <div role="dialog" aria-modal="true" aria-label="Token selector">
+                <label className="cx-field">
+                  <span>Search token</span>
+                  <input
+                    placeholder="Search token"
+                    aria-label="Search token"
+                    value={tokenSearch}
+                    onChange={(e) => setTokenSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setPicking(null);
+                    }}
+                    autoFocus
+                  />
+                </label>
+                <div className="cx-choice-grid">
                   {filtered.map((a) => (
                     <button
                       key={a.symbol}
                       type="button"
-                      className="tx-choice"
+                      className="cx-choice"
                       onClick={() => {
                         if (picking === 'sell') setSellToken(a.symbol);
                         else setBuyToken(a.symbol);
@@ -400,192 +434,200 @@ export function SwapExperience(): ReactElement {
                     </button>
                   ))}
                 </div>
-                <Button type="button" variant="ghost" onClick={() => setPicking(null)}>
+                <button
+                  type="button"
+                  className="cx-btn cx-btn--ghost"
+                  onClick={() => setPicking(null)}
+                >
                   Close
-                </Button>
+                </button>
               </div>
             ) : null}
 
             {quote ? (
-              <dl className="tx-quote">
-                <div className="tx-quote__row">
-                  <dt>Min received</dt>
-                  <dd>
-                    {quote.minAmountOut} {buyToken}
-                  </dd>
-                </div>
-                <div className="tx-quote__row">
-                  <dt>Price impact</dt>
-                  <dd>{impactPct(quote.priceImpactBps)}</dd>
-                </div>
-                <div className="tx-quote__row">
-                  <dt>Network fee</dt>
-                  <dd>{quote.estimatedFeeNative}</dd>
-                </div>
-                <div className="tx-quote__row">
-                  <dt>ETA</dt>
-                  <dd>{formatSeconds(quote.estimatedCompletionSeconds)}</dd>
-                </div>
-                <div className="tx-quote__row">
-                  <dt>Provider</dt>
-                  <dd>{quote.providerCode}</dd>
-                </div>
-              </dl>
+              <div className="cx-confirm">
+                <dl>
+                  <div>
+                    <dt>Min received</dt>
+                    <dd>
+                      {quote.minAmountOut} {buyToken}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Price impact</dt>
+                    <dd>{impactPct(quote.priceImpactBps)}</dd>
+                  </div>
+                  <div>
+                    <dt>Network fee</dt>
+                    <dd>{quote.estimatedFeeNative}</dd>
+                  </div>
+                  <div>
+                    <dt>ETA</dt>
+                    <dd>{formatSeconds(quote.estimatedCompletionSeconds)}</dd>
+                  </div>
+                  <div>
+                    <dt>Provider</dt>
+                    <dd>{quote.providerCode}</dd>
+                  </div>
+                </dl>
+              </div>
             ) : null}
 
-            <div className="tx-route" aria-label="Route visualization">
+            <div className="cx-chips" aria-label="Route visualization">
               {(quote?.routeSummary ?? `${sellToken} → ${buyToken}`)
                 .split('→')
                 .map((hop, i, arr) => (
                   <span key={`${hop}-${i}`} style={{ display: 'contents' }}>
-                    <span className="tx-route__hop">{hop.trim()}</span>
-                    {i < arr.length - 1 ? <span className="tx-route__arrow">→</span> : null}
+                    <span className="cx-chip" style={{ pointerEvents: 'none' }}>
+                      {hop.trim()}
+                    </span>
+                    {i < arr.length - 1 ? (
+                      <span className="cx-meta" style={{ margin: 0, alignSelf: 'center' }}>
+                        →
+                      </span>
+                    ) : null}
                   </span>
                 ))}
             </div>
 
-            <div className="tx-adv">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAdvanced((v) => !v)}
-              >
-                {showAdvanced ? 'Hide' : 'Advanced'} settings
-              </Button>
-              {showAdvanced ? (
-                <div className="tx-grid-2" style={{ marginTop: '0.75rem' }}>
-                  <label className="tx-field">
-                    <span>Slippage (bps)</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={500}
-                      value={slippageBps}
-                      onChange={(e) => setSlippageBps(Number(e.target.value) || 50)}
-                    />
-                  </label>
-                  <label className="tx-field">
-                    <span>Deadline (minutes)</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={60}
-                      value={deadlineMin}
-                      onChange={(e) => setDeadlineMin(Number(e.target.value) || 20)}
-                    />
-                  </label>
-                </div>
-              ) : null}
-            </div>
-
-            {!live && error ? (
-              <Alert tone="warn" title="Using preview quote">
-                Live aggregator unavailable — showing simulator quote so you can continue.
-              </Alert>
+            <button
+              type="button"
+              className="cx-btn cx-btn--ghost"
+              style={{ minHeight: 40, marginBottom: '0.75rem' }}
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced ? 'Hide' : 'Advanced'} settings
+            </button>
+            {showAdvanced ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <label className="cx-field">
+                  <span>Slippage (bps)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={slippageBps}
+                    onChange={(e) => setSlippageBps(Number(e.target.value) || 50)}
+                  />
+                </label>
+                <label className="cx-field">
+                  <span>Deadline (minutes)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={deadlineMin}
+                    onChange={(e) => setDeadlineMin(Number(e.target.value) || 20)}
+                  />
+                </label>
+              </div>
             ) : null}
 
-            <div className="tx-actions">
-              <Button type="button" variant="secondary" onClick={() => void refreshQuote()}>
-                Refresh quote
-              </Button>
-              <Button type="button" disabled={!quote} onClick={() => void confirmSwap()}>
-                Review swap
-              </Button>
-            </div>
+            {!live && error ? (
+              <div className="cx-warn">
+                <strong>Using preview quote</strong>
+                <p>
+                  Live aggregator unavailable — showing simulator quote so you can continue.{' '}
+                  {humanizeError(error, 'Preview mode is active.')}
+                </p>
+              </div>
+            ) : null}
+
+            <CxActions
+              onBack={() => void refreshQuote()}
+              backLabel="Refresh quote"
+              onNext={() => void confirmSwap()}
+              nextLabel="Review swap"
+              nextDisabled={!quote}
+            />
           </section>
 
-          <section className="tx-panel" aria-label="Price context">
+          <section className="cx-panel" aria-label="Price context">
             <h2>Market context</h2>
+            <p>Recent price movement for orientation.</p>
             <LineChart data={spark} height={96} ariaLabel={`${sellToken} recent price`} />
           </section>
         </>
       ) : null}
 
       {tab === 'swap' && screen === 'confirm' && quote ? (
-        <section className="tx-panel">
+        <section className="cx-panel">
           <h2>Confirm swap</h2>
-          <dl className="tx-quote">
-            <div className="tx-quote__row">
-              <dt>You pay</dt>
-              <dd>
-                {sellAmount} {sellToken}
-              </dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>You receive</dt>
-              <dd>
-                {quote.amountOut} {buyToken}
-              </dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Slippage</dt>
-              <dd>{impactPct(slippageBps)}</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Deadline</dt>
-              <dd>{deadlineMin} min</dd>
-            </div>
-          </dl>
-          <div className="tx-actions">
-            <Button type="button" variant="ghost" onClick={() => setScreen('form')}>
-              Back
-            </Button>
-            <Button type="button" onClick={() => void execute()}>
-              Confirm & swap
-            </Button>
+          <p>Review every detail before broadcasting.</p>
+          <div className="cx-confirm">
+            <dl>
+              <div>
+                <dt>You pay</dt>
+                <dd>
+                  {sellAmount} {sellToken}
+                </dd>
+              </div>
+              <div>
+                <dt>You receive</dt>
+                <dd>
+                  {quote.amountOut} {buyToken}
+                </dd>
+              </div>
+              <div>
+                <dt>Slippage</dt>
+                <dd>{impactPct(slippageBps)}</dd>
+              </div>
+              <div>
+                <dt>Deadline</dt>
+                <dd>{deadlineMin} min</dd>
+              </div>
+            </dl>
           </div>
+          <CxActions
+            onBack={() => setScreen('form')}
+            onNext={() => void execute()}
+            nextLabel="Confirm & swap"
+          />
         </section>
       ) : null}
 
       {tab === 'swap' && screen === 'progress' ? (
-        <section className="tx-panel" aria-busy="true" aria-live="polite">
-          <h2>Swapping…</h2>
-          <div
-            className="tx-progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-            aria-label="Swap progress"
-          >
-            <div className="tx-progress__bar" style={{ width: `${progress}%` }} />
-          </div>
-          <p className="tx-meta">Broadcasting and waiting for confirmation.</p>
-        </section>
+        <CxProgressTrack
+          progress={progress}
+          label="Swapping…"
+          stages={['Pending', 'Broadcast', 'Confirming', 'Completed']}
+        />
       ) : null}
 
       {tab === 'swap' && screen === 'success' ? (
-        <SuccessState
-          title="Swap submitted"
-          description={`Execution ${executionId ?? 'complete'}. Portfolio and activity will refresh shortly.`}
-          action={
-            <div className="tx-actions">
-              <Link href="/activity">
-                <Button>Activity</Button>
-              </Link>
-              <Link href="/portfolio">
-                <Button variant="secondary">Portfolio</Button>
-              </Link>
-              <Button type="button" variant="ghost" onClick={() => setScreen('form')}>
-                Swap again
-              </Button>
-            </div>
-          }
-        />
+        <div className="cx-success">
+          <div className="cx-success-burst" aria-hidden>
+            ✓
+          </div>
+          <h2>Swap submitted</h2>
+          <p>Execution {executionId ?? 'complete'}. Portfolio and activity will refresh shortly.</p>
+          <div className="cx-success__cta">
+            <Link href="/activity" className="cx-btn cx-btn--primary">
+              Activity
+            </Link>
+            <Link href="/portfolio" className="cx-btn cx-btn--ghost">
+              Portfolio
+            </Link>
+            <button
+              type="button"
+              className="cx-btn cx-btn--ghost"
+              onClick={() => setScreen('form')}
+            >
+              Swap again
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {tab === 'swap' && screen === 'failure' ? (
-        <EmptyState
-          title="Swap failed"
-          description={error ?? 'The trade could not complete. Try again with a fresh quote.'}
-          action={
-            <Button type="button" onClick={() => setScreen('form')}>
-              Back to form
-            </Button>
-          }
-        />
+        <section className="cx-panel">
+          <h2>Swap failed</h2>
+          <div className="cx-alert cx-alert--error">
+            {humanizeError(error, 'The trade could not complete. Try again with a fresh quote.')}
+          </div>
+          <CxActions onNext={() => setScreen('form')} nextLabel="Back to form" />
+        </section>
       ) : null}
-    </div>
+    </TransactionShell>
   );
 }

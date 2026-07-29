@@ -1,83 +1,121 @@
 'use client';
 
-import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import type { ReactElement } from 'react';
+import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
+
+const FAQ = [
+  {
+    q: 'How do I recover my wallet?',
+    a: 'Use your recovery phrase on Restore or Recovery. Never share it — Auvora support will never ask for it.',
+  },
+  {
+    q: 'I sent funds to the wrong network. What now?',
+    a: 'Wrong-network sends can be irreversible. Check Activity for the hash, then contact the destination exchange if applicable. Prevention: always confirm network on Receive and Send.',
+  },
+  {
+    q: 'How do I revoke a dApp?',
+    a: 'Open Web3 → Permissions, or Settings → Connected apps, then revoke the grant. Also disconnect WalletConnect sessions you no longer use.',
+  },
+  {
+    q: 'What is a security score?',
+    a: 'A simple health check across PIN, backup, biometrics, devices, and dApp hygiene. Improve each item from Security Center recommendations.',
+  },
+  {
+    q: 'How do I spot a scam?',
+    a: 'Auvora never DMs first asking for seed phrases or remote access. Bookmark official URLs. Use address risk warnings on Send.',
+  },
+] as const;
 
 const LINKS = [
-  { href: '/status', title: 'FAQ / Status', detail: 'Platform status and common questions entry' },
+  {
+    href: '/status',
+    title: 'Knowledge base / status',
+    detail: 'Platform status and common questions',
+  },
   {
     href: 'mailto:support@auvora.example',
     title: 'Contact support',
-    detail: 'Email support (placeholder)',
+    detail: 'Human help — never share your recovery phrase',
   },
-  { href: '/design-system', title: 'Documentation', detail: 'In-app design system & docs gallery' },
   {
     href: 'mailto:security@auvora.example?subject=Issue%20report',
-    title: 'Report issue',
-    detail: 'File a product or security issue',
+    title: 'Report a problem',
+    detail: 'Product or security issue',
   },
   {
-    href: '/settings',
-    title: 'Security resources',
-    detail: 'Return to Security Center recommendations',
+    href: '/settings/security',
+    title: 'Security tips',
+    detail: 'Score, checklist, and recommendations',
+  },
+  {
+    href: '/wallets/recovery',
+    title: 'Recovery assistance',
+    detail: 'Guided recovery phrase help',
+  },
+  {
+    href: '/design-system',
+    title: 'Product documentation',
+    detail: 'In-app design system gallery',
   },
 ] as const;
 
 export function HelpSupportExperience(): ReactElement {
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Help & support</h1>
-          <p className="sc__sub">
-            FAQ entry, contact, documentation, issue reporting, and security resources.
-          </p>
+    <PlatformShell
+      title="Help & support"
+      subtitle="Clear answers, recovery help, and scam awareness — in human language."
+      reassure="We will never ask for your recovery phrase or private keys."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/help" />}
+    >
+      <section className="cx-panel">
+        <h2>FAQ</h2>
+        <div className="cx-faq">
+          {FAQ.map((item) => (
+            <details key={item.q}>
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
         </div>
-      </header>
-      <SettingsSectionNav current="/settings/help" />
+      </section>
 
-      <div className="sc-grid">
-        {LINKS.map((l) =>
-          l.href.startsWith('mailto:') ? (
-            <a key={l.title} className="sc-card" href={l.href}>
-              <strong>{l.title}</strong>
-              <p className="sc-meta">{l.detail}</p>
-            </a>
-          ) : (
-            <Link key={l.title} className="sc-card" href={l.href}>
-              <strong>{l.title}</strong>
-              <p className="sc-meta">{l.detail}</p>
-            </Link>
-          ),
-        )}
-      </div>
+      <section className="cx-panel">
+        <h2>Support & education</h2>
+        <div className="cx-card-grid">
+          {LINKS.map((l) => (
+            <PlatformCardLink
+              key={l.title}
+              href={l.href}
+              title={l.title}
+              detail={l.detail}
+              external={l.href.startsWith('mailto:')}
+            />
+          ))}
+        </div>
+      </section>
 
-      <section className="sc-panel">
-        <h2>Quick links</h2>
-        <div className="sc-actions">
-          <Link href="/wallets/recovery">
-            <Button type="button" variant="secondary">
-              Recovery help
-            </Button>
+      <section className="cx-panel">
+        <h2>Legal</h2>
+        <p className="cx-meta">
+          Terms, privacy policy, and disclosures ship with your distribution. Placeholders live
+          under Advanced until legal URLs are finalized.
+        </p>
+        <div className="cx-platform__actions">
+          <Link href="/settings/advanced" className="cx-btn cx-btn--ghost">
+            Advanced & legal placeholders
           </Link>
-          <Link href="/web3">
-            <Button type="button" variant="secondary">
-              Web3 Hub
-            </Button>
+          <Link href="/web3" className="cx-btn cx-btn--ghost">
+            Web3 Hub
           </Link>
-          <Link href="/notifications">
-            <Button type="button" variant="secondary">
-              Notifications inbox
-            </Button>
+          <Link href="/notifications" className="cx-btn cx-btn--ghost">
+            Notification center
           </Link>
         </div>
       </section>
-    </div>
+    </PlatformShell>
   );
 }

@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  Alert,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  SuccessState,
-} from '@auvora/ui';
-import { ScanLine } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import {
@@ -27,23 +18,50 @@ import {
 } from '../../lib/wallet-experience/types';
 import {
   estimateFeeDisplay,
+  explorerUrlFor,
+  isNameLikeRecipient,
   parseAmount,
+  resolveNamePreview,
   validateAddressFormat,
 } from '../../lib/wallet-experience/validation';
-import { WizardActions, WizardShell } from './WizardShell';
-import '../../app/wallet-experience.css';
+import {
+  CxActions,
+  CxProgressTrack,
+  humanizeError,
+  TransactionShell,
+} from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 const STEPS = [
   { id: 'asset', label: 'Asset' },
-  { id: 'to', label: 'Address' },
+  { id: 'to', label: 'To' },
   { id: 'amount', label: 'Amount' },
-  { id: 'fee', label: 'Fees' },
-  { id: 'preview', label: 'Preview' },
-  { id: 'progress', label: 'Sending' },
-  { id: 'receipt', label: 'Receipt' },
+  { id: 'fee', label: 'Fee' },
+  { id: 'preview', label: 'Review' },
+  { id: 'progress', label: 'Send' },
+  { id: 'receipt', label: 'Done' },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
+
+const PCTS = [
+  { label: '25%', ratio: 0.25 },
+  { label: '50%', ratio: 0.5 },
+  { label: '75%', ratio: 0.75 },
+  { label: 'Max', ratio: 1 },
+] as const;
+
+/** Demo available balances for keypad Max — presentation layer only. */
+const DEMO_BALANCES: Partial<Record<WalletAsset, number>> = {
+  ETH: 8.15,
+  BTC: 0.42,
+  SOL: 126,
+  USDC: 2400,
+  USDT: 900,
+  MATIC: 420,
+  BNB: 3.2,
+  TRX: 12000,
+};
 
 export function SendExperience(): ReactElement {
   const [step, setStep] = useState<StepId>('asset');
@@ -57,6 +75,11 @@ export function SendExperience(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [assetQuery, setAssetQuery] = useState('');
+  const [resolvedTo, setResolvedTo] = useState<{
+    address: string;
+    provider: string;
+  } | null>(null);
   const progressTimer = useRef<number | null>(null);
 
   useEffect(
@@ -71,24 +94,78 @@ export function SendExperience(): ReactElement {
   const fee = estimateFeeDisplay(network, speed, customGwei);
   const risk = assessAddressRisk(to);
   const tokens = TOKENS.filter((t) => t.networks.includes(network));
+  const balance = DEMO_BALANCES[asset] ?? 1;
+  const amountNum = parseAmount(amount) ?? 0;
+  const fiatApprox = amountNum * (asset === 'BTC' ? 68420 : asset === 'ETH' ? 3420 : 1);
+
+  const filteredNetworks = useMemo(() => {
+    const q = assetQuery.trim().toLowerCase();
+    if (!q) return NETWORKS;
+    return NETWORKS.filter(
+      (n) => n.label.toLowerCase().includes(q) || n.asset.toLowerCase().includes(q),
+    );
+  }, [assetQuery]);
+
+  function pasteAddress(): void {
+    void navigator.clipboard
+      ?.readText?.()
+      .then((text) => {
+        if (text) {
+          setTo(text.trim());
+          setResolvedTo(null);
+          setError(null);
+        }
+      })
+      .catch(() => {
+        setError('Clipboard access was blocked. Paste the address manually.');
+      });
+  }
 
   function goAmount(): void {
-    const v = validateAddressFormat(to, network);
-    if (!v.ok) {
-      setError(v.message ?? 'Invalid address');
+    const trimmed = to.trim();
+    if (isNameLikeRecipient(trimmed)) {
+      const resolved = resolveNamePreview(trimmed);
+      if (!resolved.ok || !resolved.address) {
+        setError(
+          humanizeError(resolved.message, 'That name could not be resolved for this network.'),
+        );
+        return;
+      }
+      setResolvedTo({ address: resolved.address, provider: resolved.provider ?? 'ENS' });
+      setError(null);
+      setStep('amount');
       return;
     }
+    const v = validateAddressFormat(trimmed, network);
+    if (!v.ok) {
+      setError(humanizeError(v.message, 'That address does not look right for this network.'));
+      return;
+    }
+    setResolvedTo(null);
     setError(null);
     setStep('amount');
   }
 
   function goFee(): void {
     if (parseAmount(amount) == null) {
-      setError('Enter a valid amount greater than zero');
+      setError('Enter an amount greater than zero.');
+      return;
+    }
+    if (amountNum > balance) {
+      setError('There is not enough balance for this amount.');
       return;
     }
     setError(null);
     setStep('fee');
+  }
+
+  function appendKey(k: string): void {
+    if (k === '⌫') {
+      setAmount((a) => a.slice(0, -1));
+      return;
+    }
+    if (k === '.' && amount.includes('.')) return;
+    setAmount((a) => (a === '0' && k !== '.' ? k : `${a}${k}`));
   }
 
   function submit(): void {
@@ -113,23 +190,32 @@ export function SendExperience(): ReactElement {
   }
 
   return (
-    <WizardShell
+    <TransactionShell
       title="Send"
-      subtitle="Address validation, fees, preview, and a clear receipt — built for confidence."
+      subtitle="Clear steps. Clear fees. Nothing leaves until you confirm."
+      reassure="We check the address and network before you continue."
       steps={[...STEPS]}
       currentStepId={step}
-      backHref="/wallets"
-      backLabel="Wallets"
     >
       {step === 'asset' ? (
-        <section className="wx-panel">
-          <h2>Network & token</h2>
-          <div className="wx-choice-grid" role="radiogroup" aria-label="Network">
-            {NETWORKS.map((n) => (
+        <section className="cx-panel">
+          <h2>Choose asset</h2>
+          <p>Pick the network and token you want to send.</p>
+          <label className="cx-field">
+            <span>Search</span>
+            <input
+              value={assetQuery}
+              onChange={(e) => setAssetQuery(e.target.value)}
+              placeholder="Bitcoin, Ethereum, SOL…"
+              autoComplete="off"
+            />
+          </label>
+          <div className="cx-choice-grid" role="radiogroup" aria-label="Network">
+            {filteredNetworks.map((n) => (
               <button
                 key={n.id}
                 type="button"
-                className={`wx-choice ${network === n.id ? 'wx-choice--on' : ''}`}
+                className={`cx-choice ${network === n.id ? 'cx-choice--on' : ''}`}
                 aria-pressed={network === n.id}
                 onClick={() => {
                   setNetwork(n.id);
@@ -138,11 +224,13 @@ export function SendExperience(): ReactElement {
                 }}
               >
                 <strong>{n.label}</strong>
-                <span>{n.asset}</span>
+                <span>
+                  {n.asset} · bal {(DEMO_BALANCES[n.asset] ?? 0).toString()}
+                </span>
               </button>
             ))}
           </div>
-          <label className="wx-field">
+          <label className="cx-field">
             <span>Token</span>
             <select value={asset} onChange={(e) => setAsset(e.target.value as WalletAsset)}>
               {tokens.map((t) => (
@@ -152,47 +240,65 @@ export function SendExperience(): ReactElement {
               ))}
             </select>
           </label>
-          <WizardActions onNext={() => setStep('to')} />
+          <CxActions onNext={() => setStep('to')} />
         </section>
       ) : null}
 
       {step === 'to' ? (
-        <section className="wx-panel">
-          <div className="wx-field-row">
-            <label className="wx-field wx-field--grow">
-              <span>Destination address</span>
+        <section className="cx-panel">
+          <h2>Recipient</h2>
+          <p>Address, ENS-style name, address book, or paste from clipboard.</p>
+          <div className="cx-field-row">
+            <label className="cx-field cx-field--grow">
+              <span>To</span>
               <input
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
-                placeholder="Paste address"
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  setResolvedTo(null);
+                }}
+                placeholder="0x… / name.eth / paste"
                 autoComplete="off"
                 spellCheck={false}
               />
             </label>
-            <Button type="button" variant="secondary" onClick={() => setQrOpen(true)}>
-              <ScanLine size={16} aria-hidden /> Scan
-            </Button>
+            <button type="button" className="cx-btn cx-btn--ghost" onClick={pasteAddress}>
+              Paste
+            </button>
+            <button type="button" className="cx-btn cx-btn--ghost" onClick={() => setQrOpen(true)}>
+              QR
+            </button>
           </div>
-
-          {risk.level !== 'ok' && to.trim() ? (
-            <Alert tone={risk.level === 'high' ? 'error' : 'warn'} title="Address risk warning">
+          {isNameLikeRecipient(to) ? (
+            <div className="cx-alert cx-alert--info">
+              <strong>Name recipient</strong>
+              <p>
+                We will resolve this via ENS or Unstoppable Domains and show the destination address
+                on the review step before anything is sent.
+              </p>
+            </div>
+          ) : null}
+          {risk.level !== 'ok' && to.trim() && !isNameLikeRecipient(to) ? (
+            <div className={`cx-alert ${risk.level === 'high' ? 'cx-alert--error' : 'cx-warn'}`}>
+              <strong>
+                {risk.level === 'high' ? 'Stop and check' : 'Double-check this address'}
+              </strong>
               <ul>
                 {risk.reasons.map((r) => (
                   <li key={r}>{r}</li>
                 ))}
               </ul>
-            </Alert>
+            </div>
           ) : null}
-
           {recent.length ? (
-            <div className="wx-chip-block">
-              <h3>Recent</h3>
-              <div className="wx-chips">
+            <>
+              <h3 style={{ fontSize: '0.8125rem', color: 'var(--cx-muted)' }}>Recent</h3>
+              <div className="cx-chips">
                 {recent.map((c) => (
                   <button
                     key={c.id}
                     type="button"
-                    className="wx-chip"
+                    className="cx-chip"
                     onClick={() => {
                       setNetwork(c.network);
                       setTo(c.address);
@@ -202,18 +308,17 @@ export function SendExperience(): ReactElement {
                   </button>
                 ))}
               </div>
-            </div>
+            </>
           ) : null}
-
           {contacts.length ? (
-            <div className="wx-chip-block">
-              <h3>Address book</h3>
-              <div className="wx-chips">
+            <>
+              <h3 style={{ fontSize: '0.8125rem', color: 'var(--cx-muted)' }}>Address book</h3>
+              <div className="cx-chips">
                 {contacts.slice(0, 8).map((c) => (
                   <button
                     key={c.id}
                     type="button"
-                    className="wx-chip"
+                    className="cx-chip"
                     onClick={() => setTo(c.address)}
                   >
                     {c.favorite ? '★ ' : ''}
@@ -221,81 +326,88 @@ export function SendExperience(): ReactElement {
                   </button>
                 ))}
               </div>
-              <Link href="/address-book" className="wx-text-link">
+              <Link href="/address-book" className="cx-link">
                 Manage contacts
               </Link>
-            </div>
+            </>
           ) : null}
-
-          {error ? (
-            <Alert tone="error" title="Validation">
-              {error}
-            </Alert>
-          ) : null}
-
-          <WizardActions onBack={() => setStep('asset')} onNext={goAmount} />
-
+          {error ? <div className="cx-alert cx-alert--error">{error}</div> : null}
+          <CxActions onBack={() => setStep('asset')} onNext={goAmount} />
           <Dialog open={qrOpen} onOpenChange={setQrOpen}>
             <DialogContent>
               <DialogTitle>Scan QR</DialogTitle>
               <DialogDescription>
-                Camera scanning hooks into the device media stream in production builds. For this
-                preview, paste an address or pick from your address book.
+                Camera scanning hooks in production. For now, paste the scanned value below.
               </DialogDescription>
-              <label className="wx-field">
-                <span>Paste scanned value</span>
+              <label className="cx-field">
+                <span>Scanned value</span>
                 <input
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
-                  placeholder="0x… / bc1… / …"
+                  placeholder="0x… / bc1…"
                 />
               </label>
-              <Button type="button" onClick={() => setQrOpen(false)}>
+              <button
+                type="button"
+                className="cx-btn cx-btn--primary"
+                onClick={() => setQrOpen(false)}
+              >
                 Use address
-              </Button>
+              </button>
             </DialogContent>
           </Dialog>
         </section>
       ) : null}
 
       {step === 'amount' ? (
-        <section className="wx-panel">
-          <label className="wx-field">
-            <span>Amount ({asset})</span>
-            <input
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-            />
-          </label>
-          <div className="wx-chips">
-            {['0.01', '0.1', '0.5', '1'].map((v) => (
-              <button key={v} type="button" className="wx-chip" onClick={() => setAmount(v)}>
-                {v}
+        <section className="cx-panel">
+          <h2>Amount</h2>
+          <p>
+            Available {balance} {asset}
+          </p>
+          <p className="cx-amount-display">
+            {amount || '0'}{' '}
+            <span style={{ fontSize: '1rem', color: 'var(--cx-muted)' }}>{asset}</span>
+          </p>
+          <p className="cx-meta" style={{ textAlign: 'center' }}>
+            ≈ ${fiatApprox.toFixed(2)} · Remaining {(balance - amountNum).toFixed(6)} {asset}
+          </p>
+          <div className="cx-chips" style={{ justifyContent: 'center' }}>
+            {PCTS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                className="cx-chip"
+                onClick={() => setAmount(String(Number((balance * p.ratio).toFixed(8))))}
+              >
+                {p.label}
               </button>
             ))}
           </div>
-          {error ? (
-            <Alert tone="error" title="Amount">
-              {error}
-            </Alert>
-          ) : null}
-          <WizardActions onBack={() => setStep('to')} onNext={goFee} />
+          <div className="cx-keypad" aria-label="Amount keypad">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'].map((k) => (
+              <button key={k} type="button" onClick={() => appendKey(k)}>
+                {k}
+              </button>
+            ))}
+          </div>
+          {error ? <div className="cx-alert cx-alert--error">{error}</div> : null}
+          <CxActions onBack={() => setStep('to')} onNext={goFee} />
         </section>
       ) : null}
 
       {step === 'fee' ? (
-        <section className="wx-panel">
+        <section className="cx-panel">
           <h2>Network fee</h2>
-          <div className="wx-choice-grid" role="radiogroup" aria-label="Fee speed">
+          <p>Choose speed. Fees update with network conditions.</p>
+          <div className="cx-choice-grid" role="radiogroup" aria-label="Fee speed">
             {(['slow', 'standard', 'fast', 'custom'] as FeeSpeed[]).map((s) => {
               const est = estimateFeeDisplay(network, s, customGwei);
               return (
                 <button
                   key={s}
                   type="button"
-                  className={`wx-choice ${speed === s ? 'wx-choice--on' : ''}`}
+                  className={`cx-choice ${speed === s ? 'cx-choice--on' : ''}`}
                   aria-pressed={speed === s}
                   onClick={() => setSpeed(s)}
                 >
@@ -308,7 +420,7 @@ export function SendExperience(): ReactElement {
             })}
           </div>
           {speed === 'custom' ? (
-            <label className="wx-field">
+            <label className="cx-field">
               <span>Custom gwei</span>
               <input
                 type="number"
@@ -318,91 +430,131 @@ export function SendExperience(): ReactElement {
               />
             </label>
           ) : null}
-          <p className="wx-meta">
+          <p className="cx-meta">
             Est. fee {fee.feeNative} ({fee.feeUsd}) · ETA {fee.eta}
           </p>
-          <WizardActions onBack={() => setStep('amount')} onNext={() => setStep('preview')} />
+          <CxActions onBack={() => setStep('amount')} onNext={() => setStep('preview')} />
         </section>
       ) : null}
 
       {step === 'preview' ? (
-        <section className="wx-panel">
-          <h2>Transaction preview</h2>
-          <dl className="wx-kv">
-            <div>
-              <dt>You send</dt>
-              <dd>
-                {amount} {asset}
-              </dd>
-            </div>
-            <div>
-              <dt>To</dt>
-              <dd>
-                <code>{to}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>Network</dt>
-              <dd>{network}</dd>
-            </div>
-            <div>
-              <dt>Fee</dt>
-              <dd>
-                {fee.feeNative} · {fee.eta}
-              </dd>
-            </div>
-          </dl>
+        <section className="cx-panel">
+          <h2>Review send</h2>
+          <p>Confirm every detail. This cannot be undone on-chain.</p>
+          <div className="cx-confirm">
+            <dl>
+              <div>
+                <dt>You send</dt>
+                <dd>
+                  {amount} {asset}
+                </dd>
+              </div>
+              <div>
+                <dt>≈ Fiat</dt>
+                <dd>${fiatApprox.toFixed(2)}</dd>
+              </div>
+              <div>
+                <dt>To</dt>
+                <dd>
+                  <code>{to}</code>
+                </dd>
+              </div>
+              {resolvedTo ? (
+                <div>
+                  <dt>Resolves to ({resolvedTo.provider})</dt>
+                  <dd>
+                    <code>{resolvedTo.address}</code>
+                  </dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Network</dt>
+                <dd>{network}</dd>
+              </div>
+              <div>
+                <dt>Fee</dt>
+                <dd>
+                  {fee.feeNative} · {fee.eta}
+                </dd>
+              </div>
+              <div>
+                <dt>Arrival</dt>
+                <dd>{fee.eta}</dd>
+              </div>
+            </dl>
+          </div>
           {risk.level !== 'ok' ? (
-            <Alert tone="warn" title="Proceed carefully">
-              Risk signals are still active for this destination.
-            </Alert>
+            <div className="cx-warn">
+              <strong>Proceed carefully</strong>
+              <p>Risk signals are still active for this destination.</p>
+            </div>
           ) : null}
-          <WizardActions onBack={() => setStep('fee')} onNext={submit} nextLabel="Confirm & send" />
+          <CxActions
+            onBack={() => setStep('fee')}
+            onNext={submit}
+            nextLabel={`Send ${amount} ${asset}`}
+          />
         </section>
       ) : null}
 
       {step === 'progress' ? (
-        <section className="wx-panel" aria-busy="true" aria-live="polite">
-          <h2>Sending…</h2>
-          <div className="wx__progress" aria-hidden="true">
-            <div className="wx__progress-bar" style={{ width: `${progress}%` }} />
-          </div>
-          <p className="wx-meta">Broadcasting and waiting for first confirmation.</p>
-        </section>
+        <CxProgressTrack
+          progress={progress}
+          label="Sending your transfer…"
+          stages={['Pending', 'Broadcast', 'Confirming', 'Confirmed']}
+        />
       ) : null}
 
       {step === 'receipt' ? (
-        <SuccessState
-          title="Sent"
-          description={`Your ${amount} ${asset} transfer was submitted.`}
-          action={
-            <div className="wx-receipt">
-              <dl className="wx-kv">
-                <div>
-                  <dt>Hash</dt>
-                  <dd>
-                    <code>{txHash}</code>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Fee</dt>
-                  <dd>{fee.feeNative}</dd>
-                </div>
-              </dl>
-              <div className="wx__actions">
-                <Link href="/activity">
-                  <Button>View activity</Button>
-                </Link>
-                <Link href="/send">
-                  <Button variant="secondary" onClick={() => setStep('asset')}>
-                    Send again
-                  </Button>
-                </Link>
+        <div className="cx-success">
+          <div className="cx-success-burst" aria-hidden>
+            ✓
+          </div>
+          <h2>Sent</h2>
+          <p>
+            {amount} {asset} is on its way.
+          </p>
+          <div className="cx-confirm" style={{ textAlign: 'left' }}>
+            <dl>
+              <div>
+                <dt>Hash</dt>
+                <dd>
+                  <code>{txHash}</code>
+                </dd>
               </div>
-            </div>
-          }
-        />
+              <div>
+                <dt>Fee</dt>
+                <dd>{fee.feeNative}</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="cx-success__cta">
+            <Link href="/activity" className="cx-btn cx-btn--primary">
+              View activity
+            </Link>
+            <a
+              className="cx-btn cx-btn--ghost"
+              href={txHash ? explorerUrlFor(network, txHash) : '#'}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Explorer
+            </a>
+            <button
+              type="button"
+              className="cx-btn cx-btn--ghost"
+              onClick={() => {
+                setStep('asset');
+                setAmount('');
+                setTo('');
+                setTxHash(null);
+              }}
+            >
+              Send again
+            </button>
+          </div>
+        </div>
       ) : null}
-    </WizardShell>
+    </TransactionShell>
   );
 }

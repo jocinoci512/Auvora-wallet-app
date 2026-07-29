@@ -1,7 +1,6 @@
 'use client';
 
 import { Alert, Button, EmptyState, StatusBadge } from '@auvora/ui';
-import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { mapDevices, mapSessions, settingsFetch } from '../../lib/settings/api';
@@ -12,8 +11,8 @@ import {
   type DemoSession,
 } from '../../lib/settings/demo';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 function clamp(n: number, min: number, max: number): number {
   if (Number.isNaN(n)) return min;
@@ -103,50 +102,46 @@ export function DeviceManagementExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Devices & sessions</h1>
-          <p className="sc__sub">
-            Current device, trusted devices, last login, platform, browser, approximate location,
-            and remote logout.
-          </p>
-        </div>
-        <Button
+    <PlatformShell
+      title="Devices & sessions"
+      subtitle="Current device, trusted devices, last login, platform, browser, approximate location, and remote logout."
+      reassure="Revoking a session signs that device out without touching this one."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/devices" />}
+      actions={
+        <button
           type="button"
-          variant="danger"
+          className="cx-btn cx-btn--ghost"
           disabled={busyId === 'all'}
           onClick={() => void logoutAll()}
         >
           Logout all other devices
-        </Button>
-      </header>
-      <SettingsSectionNav current="/settings/devices" />
+        </button>
+      }
+    >
       {toast ? (
         <Alert tone={toast.startsWith('Could') ? 'error' : 'success'} title="Updated">
           {toast}
         </Alert>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Devices</h2>
         {devices.length === 0 ? (
           <EmptyState title="No devices" description="Signed-in devices will appear here." />
         ) : (
-          <ul className="sc-list">
+          <ul className="cx-list">
             {devices.map((d) => (
               <li key={d.id}>
                 <div>
                   <strong>
                     {d.label} {d.current ? '(current)' : ''}
                   </strong>
-                  <p className="sc-meta">
+                  <p className="cx-meta">
                     {d.platform} · {d.browser} · {d.location}
                   </p>
-                  <p className="sc-meta">Last login {new Date(d.lastLogin).toLocaleString()}</p>
+                  <p className="cx-meta">Last login {new Date(d.lastLogin).toLocaleString()}</p>
                 </div>
                 <StatusBadge
                   status={d.trusted ? 'active' : 'pending'}
@@ -158,22 +153,22 @@ export function DeviceManagementExperience(): ReactElement {
         )}
       </section>
 
-      <section className="sc-panel" id="sessions">
+      <section className="cx-panel" id="sessions">
         <h2>Sessions</h2>
         {sessions.length === 0 ? (
           <EmptyState title="No sessions" description="Active sessions will appear here." />
         ) : (
-          <ul className="sc-list">
+          <ul className="cx-list">
             {sessions.map((s) => (
               <li key={s.id}>
                 <div>
                   <strong>
                     {s.deviceLabel} {s.current ? '(this session)' : ''}
                   </strong>
-                  <p className="sc-meta">
+                  <p className="cx-meta">
                     {s.platform} · {s.browser} · {s.location}
                   </p>
-                  <p className="sc-meta">
+                  <p className="cx-meta">
                     Last active {new Date(s.lastActive).toLocaleString()} · Expires{' '}
                     {new Date(s.expiresAt).toLocaleString()}
                   </p>
@@ -197,10 +192,10 @@ export function DeviceManagementExperience(): ReactElement {
         )}
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Automatic timeouts</h2>
-        <div className="sc-toolbar">
-          <label className="sc-field">
+        <div className="cx-toolbar">
+          <label className="cx-field">
             <span>Auto-lock (minutes)</span>
             <input
               type="number"
@@ -211,7 +206,7 @@ export function DeviceManagementExperience(): ReactElement {
               aria-label="Auto-lock minutes"
             />
           </label>
-          <label className="sc-field">
+          <label className="cx-field">
             <span>Idle / session timeout (minutes)</span>
             <input
               type="number"
@@ -226,10 +221,10 @@ export function DeviceManagementExperience(): ReactElement {
             Save
           </Button>
         </div>
-        <p className="sc-meta">
+        <p className="cx-meta">
           Use the header action to log out all other devices while keeping this session.
         </p>
       </section>
-    </div>
+    </PlatformShell>
   );
 }

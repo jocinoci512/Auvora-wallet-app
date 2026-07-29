@@ -26,6 +26,7 @@ export type NotificationPrefsLocal = {
   transactions: boolean;
   priceAlerts: boolean;
   securityAlerts: boolean;
+  stakingRewards: boolean;
   marketing: boolean;
   productUpdates: boolean;
   web3Activity: boolean;
@@ -92,6 +93,7 @@ const NOTIF_DEFAULTS: NotificationPrefsLocal = {
   transactions: true,
   priceAlerts: true,
   securityAlerts: true,
+  stakingRewards: true,
   marketing: false,
   productUpdates: true,
   web3Activity: true,

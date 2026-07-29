@@ -1,9 +1,7 @@
 'use client';
 
-import { Alert, Button, EmptyState, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
-import { getSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { settingsFetch } from '../../lib/settings/api';
 import {
   DEMO_ALERTS,
@@ -15,8 +13,18 @@ import {
   type SecurityScoreFactor,
 } from '../../lib/settings/demo';
 import { getBackupPrefs } from '../../lib/settings/prefs';
+import { getSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
+import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
+
+const WHY: Record<string, string> = {
+  pin: 'A PIN stops casual access if your device is unlocked nearby.',
+  backup: 'A verified recovery phrase is the only way to restore self-custody wallets.',
+  biometric: 'Biometrics speed unlock without weakening your PIN or phrase.',
+  devices: 'Unknown devices are a common path to account takeover.',
+  dapps: 'Open dApp permissions can move funds without another prompt.',
+  reminders: 'Gentle reminders keep recovery hygiene from drifting.',
+};
 
 export function SecurityCenterExperience(): ReactElement {
   const [ready, setReady] = useState(false);
@@ -90,11 +98,11 @@ export function SecurityCenterExperience(): ReactElement {
       },
       {
         id: 'biometric',
-        label: 'Biometrics configured (placeholder)',
+        label: 'Biometrics ready',
         ok: biometric,
         weight: 10,
         href: '/security',
-        action: 'Open security',
+        action: 'Open biometrics',
       },
       {
         id: 'devices',
@@ -109,8 +117,8 @@ export function SecurityCenterExperience(): ReactElement {
         label: 'dApp permissions reviewed',
         ok: dappCount === 0,
         weight: 15,
-        href: '/settings/dapps',
-        action: dappCount === 0 ? 'Browse dApps' : 'Review dApps',
+        href: '/web3/permissions',
+        action: dappCount === 0 ? 'Browse Web3' : 'Review permissions',
       },
       {
         id: 'reminders',
@@ -128,63 +136,58 @@ export function SecurityCenterExperience(): ReactElement {
   const recommended = factors.filter((f) => !f.ok);
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/">Dashboard</Link>
-          </p>
-          <h1>Security Center</h1>
-          <p className="sc__sub">
-            Stay in control of wallets, devices, sessions, permissions, and recovery — with clear
-            next actions.
-          </p>
-        </div>
-        <div className="sc-actions">
-          <Link href="/security">
-            <Button type="button" variant="secondary">
-              PIN & lock
-            </Button>
+    <PlatformShell
+      title="Security Center"
+      subtitle="One place for score, recovery, devices, sessions, and permissions."
+      reassure="Your assets stay under your control — we only recommend what improves protection."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/security" />}
+      actions={
+        <>
+          <Link href="/security" className="cx-btn cx-btn--ghost">
+            PIN & lock
           </Link>
-          <Link href="/settings/account">
-            <Button type="button">Account</Button>
+          <Link href="/notifications" className="cx-btn cx-btn--primary">
+            Alerts inbox
           </Link>
-        </div>
-      </header>
-
-      <SettingsSectionNav current="/settings" />
-
+        </>
+      }
+    >
       {ready && !live ? (
-        <Alert tone="info" title="Preview security data">
-          Auth / connections sessions unavailable — curated Security Center data shown.
-        </Alert>
+        <div className="cx-alert cx-alert--info">
+          Live sessions are unavailable — curated Security Center data is shown for preview.
+        </div>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Overall security score</h2>
-        <div className="sc-score" style={{ ['--sc-score' as string]: score }}>
-          <div className="sc-score__ring" aria-label={`Security score ${score} percent`}>
+        <div className="cx-score-row">
+          <div
+            className="cx-score-ring"
+            style={{ ['--cx-score' as string]: score }}
+            aria-label={`Security score ${score} percent`}
+          >
             <strong>{score}</strong>
           </div>
-          <div>
-            <p className="sc-meta">
-              Score reflects PIN, backup verification, biometrics architecture, devices, and dApp
-              hygiene.
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <p className="cx-meta">
+              Score reflects PIN, backup verification, biometrics, devices, and dApp hygiene.
             </p>
-            <div className="sc-kpi" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
-              <div className="sc-kpi__card">
+            <div className="cx-kpi" style={{ marginTop: '0.85rem' }}>
+              <div className="cx-kpi__card">
                 <span>Sessions</span>
                 <strong>{sessionCount}</strong>
               </div>
-              <div className="sc-kpi__card">
+              <div className="cx-kpi__card">
                 <span>Devices</span>
                 <strong>{deviceCount}</strong>
               </div>
-              <div className="sc-kpi__card">
-                <span>Connected dApps</span>
+              <div className="cx-kpi__card">
+                <span>dApps</span>
                 <strong>{dappCount}</strong>
               </div>
-              <div className="sc-kpi__card">
+              <div className="cx-kpi__card">
                 <span>Alerts</span>
                 <strong>{alerts.length}</strong>
               </div>
@@ -193,25 +196,47 @@ export function SecurityCenterExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
+        <h2>Health checklist</h2>
+        <p>Each item shows why it matters, your current level, and how to improve.</p>
+        <ul className="cx-list">
+          {factors.map((f) => (
+            <li key={f.id}>
+              <div>
+                <strong>
+                  {f.ok ? '✓ ' : '○ '}
+                  {f.label}
+                </strong>
+                <p className="cx-meta">{WHY[f.id]}</p>
+                <p className="cx-meta">
+                  Protection: {f.ok ? 'On' : 'Needs attention'} · Impact ~{f.weight} pts
+                </p>
+              </div>
+              <Link href={f.href} className="cx-btn cx-btn--ghost">
+                {f.action}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="cx-panel">
         <h2>Recommended actions</h2>
         {recommended.length === 0 ? (
-          <EmptyState
-            title="You are in good shape"
-            description="No critical security actions right now."
-          />
+          <div className="cx-empty">
+            <h2>You are in good shape</h2>
+            <p>No critical security actions right now.</p>
+          </div>
         ) : (
-          <ul className="sc-list">
+          <ul className="cx-list">
             {recommended.map((f) => (
               <li key={f.id}>
                 <div>
                   <strong>{f.label}</strong>
-                  <p className="sc-meta">Improves score by ~{f.weight} points</p>
+                  <p className="cx-meta">{WHY[f.id]}</p>
                 </div>
-                <Link href={f.href}>
-                  <Button type="button" size="sm">
-                    {f.action}
-                  </Button>
+                <Link href={f.href} className="cx-btn cx-btn--primary">
+                  {f.action}
                 </Link>
               </li>
             ))}
@@ -219,73 +244,89 @@ export function SecurityCenterExperience(): ReactElement {
         )}
       </section>
 
-      <div className="sc-grid">
-        <Link className="sc-card" href="/settings/devices">
-          <strong>Device management</strong>
-          <p className="sc-meta">Current & trusted devices · last login</p>
-        </Link>
-        <Link className="sc-card" href="/settings/devices#sessions">
-          <strong>Active sessions</strong>
-          <p className="sc-meta">Revoke · timeouts · logout all</p>
-        </Link>
-        <Link className="sc-card" href="/settings/dapps">
-          <strong>Connected dApps</strong>
-          <p className="sc-meta">Permissions overview · disconnect</p>
-        </Link>
-        <Link className="sc-card" href="/security">
-          <strong>Password / PIN</strong>
-          <p className="sc-meta">
-            {pinEnabled ? 'Enabled' : 'Not enabled'} · biometric architecture
-          </p>
-        </Link>
-        <Link className="sc-card" href="/settings/backup">
-          <strong>Backup & recovery</strong>
-          <p className="sc-meta">{backupOk ? 'Verified' : 'Needs verification'}</p>
-        </Link>
-        <Link className="sc-card" href="/web3/permissions">
-          <strong>Permission overview</strong>
-          <p className="sc-meta">Deep link to Web3 permission center</p>
-        </Link>
+      <div className="cx-card-grid">
+        <PlatformCardLink
+          href="/settings/devices"
+          title="Connected devices"
+          detail="Trusted devices · last login"
+        />
+        <PlatformCardLink
+          href="/settings/devices#sessions"
+          title="Active sessions"
+          detail="Revoke · timeouts · logout all"
+        />
+        <PlatformCardLink
+          href="/web3/permissions"
+          title="Connected dApps"
+          detail="Permissions · revoke · risk"
+        />
+        <PlatformCardLink
+          href="/security"
+          title="PIN · biometrics · lock"
+          detail={pinEnabled ? 'PIN enabled' : 'PIN not enabled'}
+        />
+        <PlatformCardLink
+          href="/settings/backup"
+          title="Recovery options"
+          detail={backupOk ? 'Phrase verified' : 'Needs verification'}
+        />
+        <PlatformCardLink
+          href="/wallets/hardware"
+          title="Hardware wallets"
+          detail="Ledger / future connectors"
+        />
+        <PlatformCardLink
+          href="/address-book"
+          title="Trusted contacts"
+          detail="Future-ready address book"
+        />
+        <PlatformCardLink
+          href="/activity"
+          title="Approval history"
+          detail="Sends, swaps, and signs"
+        />
       </div>
 
-      <section className="sc-panel">
-        <h2>Security alerts</h2>
+      <section className="cx-panel">
+        <h2>Risk alerts & suspicious activity</h2>
         {alerts.length === 0 ? (
-          <EmptyState title="No alerts" description="Security notifications will appear here." />
+          <div className="cx-empty">
+            <h2>No alerts</h2>
+            <p>Security notifications will appear here.</p>
+          </div>
         ) : (
-          <ul className="sc-list">
+          <ul className="cx-list">
             {alerts.map((a) => (
               <li key={a.id}>
                 <div>
                   <strong>{a.title}</strong>
-                  <p className="sc-meta">{a.detail}</p>
-                  <p className="sc-meta">{new Date(a.timestamp).toLocaleString()}</p>
+                  <p className="cx-meta">{a.detail}</p>
+                  <p className="cx-meta">{new Date(a.timestamp).toLocaleString()}</p>
                 </div>
-                <StatusBadge
-                  status={
+                <span
+                  className={`cx-badge ${
                     a.severity === 'critical'
-                      ? 'failed'
+                      ? 'cx-badge--failed'
                       : a.severity === 'warn'
-                        ? 'pending'
-                        : 'active'
-                  }
-                  label={a.severity}
-                />
+                        ? 'cx-badge--pending'
+                        : 'cx-badge--confirmed'
+                  }`}
+                >
+                  {a.severity}
+                </span>
               </li>
             ))}
           </ul>
         )}
-        <div className="sc-actions" style={{ marginTop: '0.75rem' }}>
-          <Button type="button" size="sm" variant="ghost" onClick={() => setAlerts([])}>
+        <div className="cx-platform__actions" style={{ marginTop: '0.85rem' }}>
+          <button type="button" className="cx-btn cx-btn--ghost" onClick={() => setAlerts([])}>
             Dismiss preview alerts
-          </Button>
-          <Link href="/settings/notifications">
-            <Button type="button" size="sm" variant="secondary">
-              Alert preferences
-            </Button>
+          </button>
+          <Link href="/settings/notifications" className="cx-btn cx-btn--ghost">
+            Alert preferences
           </Link>
         </div>
       </section>
-    </div>
+    </PlatformShell>
   );
 }

@@ -3,14 +3,33 @@
 import { Alert, Button, EmptyState, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
 import { web3Fetch } from '../../lib/web3/api';
 import { DEMO_SIGN, riskLabel, type SignPreview } from '../../lib/web3/demo';
+import { PlatformShell } from '../platform/PlatformShell';
+import { humanizeError } from '../transaction/TransactionShell';
 import { Web3SectionNav } from './Web3SectionNav';
-import '../../app/web3-experience.css';
 
 type SignKind = SignPreview['kind'];
+
+const preStyle: CSSProperties = {
+  margin: 0,
+  padding: '0.75rem',
+  borderRadius: 8,
+  border: '1px solid var(--cx-line, var(--auvora-color-border))',
+  background: 'color-mix(in srgb, var(--cx-line, var(--auvora-color-border)) 22%, transparent)',
+  fontSize: '0.78rem',
+  overflow: 'auto',
+  maxHeight: 240,
+};
+
+const signGridStyle: CSSProperties = {
+  display: 'grid',
+  gap: '0.85rem',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  alignItems: 'start',
+};
 
 export function SigningExperience(): ReactElement {
   const params = useSearchParams();
@@ -90,21 +109,14 @@ export function SigningExperience(): ReactElement {
   }
 
   return (
-    <div className="w3">
-      <header className="w3__header">
-        <div>
-          <p className="w3__eyebrow">
-            <Link href="/web3">Web3 Hub</Link>
-          </p>
-          <h1>Signing</h1>
-          <p className="w3__sub">
-            Premium approval for messages, typed data, and transactions with risk cues.
-          </p>
-        </div>
-      </header>
-
-      <Web3SectionNav current="/web3/sign" />
-
+    <PlatformShell
+      title="Signing"
+      subtitle="Premium approval for messages, typed data, and transactions with risk cues."
+      reassure="Take a moment to review permissions and the payload before you approve — nothing leaves without your say."
+      backHref="/web3"
+      backLabel="Web3 Hub"
+      nav={<Web3SectionNav current="/web3/sign" />}
+    >
       {status === 'approved' ? (
         <Alert tone="success" title="Approved">
           Request recorded. Session persistence applies for trusted origins.
@@ -122,15 +134,15 @@ export function SigningExperience(): ReactElement {
       ) : null}
       {error ? (
         <Alert tone="error" title="Signing failed">
-          {error}
+          {humanizeError(error, 'Something went wrong while signing. Try again.')}
         </Alert>
       ) : null}
 
-      <div className="w3-sign">
-        <section className="w3-panel">
+      <div style={signGridStyle}>
+        <section className="cx-panel">
           <h2>Request</h2>
-          <div className="w3-toolbar">
-            <label className="w3-field">
+          <div className="cx-toolbar">
+            <label className="cx-field">
               <span>Type</span>
               <select
                 value={kind}
@@ -142,7 +154,7 @@ export function SigningExperience(): ReactElement {
                 <option value="transaction">Transaction</option>
               </select>
             </label>
-            <label className="w3-field">
+            <label className="cx-field">
               <span>Wallet</span>
               <select
                 value={wallet}
@@ -153,7 +165,7 @@ export function SigningExperience(): ReactElement {
                 <option>Hardware · Ledger</option>
               </select>
             </label>
-            <label className="w3-field">
+            <label className="cx-field">
               <span>Network</span>
               <select
                 value={network}
@@ -167,16 +179,16 @@ export function SigningExperience(): ReactElement {
             </label>
           </div>
 
-          <p className="w3-meta">Origin · {origin}</p>
+          <p className="cx-meta">Origin · {origin}</p>
           <p>
             <strong>{preview.summary}</strong>
           </p>
-          <span className={`w3-risk w3-risk--${preview.risk}`}>{riskLabel(preview.risk)}</span>
+          <span className="cx-badge">{riskLabel(preview.risk)}</span>
 
           {kind === 'transaction' ? (
             <>
-              <p className="w3-meta">Gas estimate · {preview.gasEstimate}</p>
-              <p className="w3-meta">Fee breakdown · {preview.feeBreakdown}</p>
+              <p className="cx-meta">Gas estimate · {preview.gasEstimate}</p>
+              <p className="cx-meta">Fee breakdown · {preview.feeBreakdown}</p>
               <Alert tone="info" title="Simulation placeholder">
                 {preview.simulation}
               </Alert>
@@ -188,9 +200,9 @@ export function SigningExperience(): ReactElement {
             surface before approve.
           </Alert>
 
-          <pre className="w3-pre">{preview.payloadPreview}</pre>
+          <pre style={preStyle}>{preview.payloadPreview}</pre>
 
-          <div className="w3-actions">
+          <div className="cx-platform__actions">
             <Button
               type="button"
               disabled={busy || status !== 'idle'}
@@ -217,9 +229,9 @@ export function SigningExperience(): ReactElement {
           </div>
         </section>
 
-        <section className="w3-panel">
+        <section className="cx-panel">
           <h2>Permission summary</h2>
-          <ul className="w3-list">
+          <ul className="cx-list">
             <li>
               <span>View addresses</span>
               <StatusBadge status="active" label="Granted" />
@@ -247,13 +259,11 @@ export function SigningExperience(): ReactElement {
             title="Trusted dApps"
             description="Mark origins as trusted from the advanced connections lab after first approval."
           />
-          <Link href="/web3/permissions">
-            <Button type="button" variant="secondary">
-              Open permission center
-            </Button>
+          <Link href="/web3/permissions" className="cx-btn cx-btn--ghost">
+            Open permission center
           </Link>
         </section>
       </div>
-    </div>
+    </PlatformShell>
   );
 }

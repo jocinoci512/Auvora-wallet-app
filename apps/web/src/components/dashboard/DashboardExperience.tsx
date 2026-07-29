@@ -724,7 +724,7 @@ export function DashboardExperience(): ReactElement {
           <h2 className="wd-section__title" id="wd-sec-title">
             Security status
           </h2>
-          <Link className="wd-section__link" href="/security">
+          <Link className="wd-section__link" href="/settings/security">
             Security center
           </Link>
         </div>

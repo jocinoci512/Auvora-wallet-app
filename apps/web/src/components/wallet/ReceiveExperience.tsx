@@ -1,6 +1,5 @@
 'use client';
 
-import { Alert, Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useMemo, useState, type ReactElement } from 'react';
 import {
@@ -10,15 +9,25 @@ import {
   type WalletNetwork,
 } from '../../lib/wallet-experience/types';
 import { QrPanel } from './QrPanel';
-import '../../app/wallet-experience.css';
+import { TransactionShell } from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 const DEMO_ADDRESSES: Record<WalletNetwork, string> = {
   bitcoin: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
   ethereum: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-  solana: '7EqQdEULxWcra9C2wv2GMqW8t1iQ8W2xQqK8YqK8YqK8',
+  solana: '7EqQdEULxWcraVx1VfyQW9XbnAHKKfwdERJXNqTUHxN',
   polygon: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
   bnb: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
   tron: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
+};
+
+const ETA: Record<WalletNetwork, string> = {
+  bitcoin: '~10–60 min',
+  ethereum: '~15 sec – 2 min',
+  solana: '~400 ms – 2 sec',
+  polygon: '~2–30 sec',
+  bnb: '~3–30 sec',
+  tron: '~3–60 sec',
 };
 
 export function ReceiveExperience(): ReactElement {
@@ -28,28 +37,20 @@ export function ReceiveExperience(): ReactElement {
   const tokens = useMemo(() => TOKENS.filter((t) => t.networks.includes(network)), [network]);
 
   return (
-    <div className="wx" role="main">
-      <header className="wx__header">
-        <div>
-          <p className="wx__eyebrow">
-            <Link href="/wallets">Wallets</Link>
-          </p>
-          <h1>Receive</h1>
-          <p className="wx__sub">
-            Share a verified address with QR, copy, or system share — always double-check the
-            network.
-          </p>
-        </div>
-      </header>
-
-      <section className="wx-panel">
+    <TransactionShell
+      title="Receive"
+      subtitle="Share one clear address. Always match the network."
+      reassure="Assets sent on the wrong network may be unrecoverable."
+      backHref="/dashboard"
+    >
+      <section className="cx-panel">
         <h2>Network & token</h2>
-        <div className="wx-choice-grid" role="radiogroup" aria-label="Network">
+        <div className="cx-choice-grid" role="radiogroup" aria-label="Network">
           {NETWORKS.map((n) => (
             <button
               key={n.id}
               type="button"
-              className={`wx-choice ${network === n.id ? 'wx-choice--on' : ''}`}
+              className={`cx-choice ${network === n.id ? 'cx-choice--on' : ''}`}
               aria-pressed={network === n.id}
               onClick={() => {
                 setNetwork(n.id);
@@ -62,7 +63,7 @@ export function ReceiveExperience(): ReactElement {
             </button>
           ))}
         </div>
-        <label className="wx-field">
+        <label className="cx-field">
           <span>Token</span>
           <select value={asset} onChange={(e) => setAsset(e.target.value as WalletAsset)}>
             {tokens.map((t) => (
@@ -74,21 +75,24 @@ export function ReceiveExperience(): ReactElement {
         </label>
       </section>
 
-      <section className="wx-panel wx-panel--center" aria-label="Receive address">
-        <Alert tone="warn" title="Address verification">
-          Only send <strong>{asset}</strong> on <strong>{network}</strong> to this address. Assets
-          on the wrong network may be unrecoverable.
-        </Alert>
+      <section className="cx-panel cx-qr-stage" aria-label="Receive address">
+        <div className="cx-warn">
+          <strong>
+            Only send {asset} on {network}
+          </strong>
+          <p>Estimated confirmation time: {ETA[network]}. Verify the address before sharing.</p>
+        </div>
         <QrPanel value={address} label={`Receive ${asset} on ${network}`} />
-        <div className="wx__actions" style={{ justifyContent: 'center' }}>
-          <Link href="/address-book">
-            <Button variant="ghost">Address book</Button>
+        <p className="cx-meta">Address verified for {network}</p>
+        <div className="cx-success__cta">
+          <Link href="/address-book" className="cx-btn cx-btn--ghost">
+            Address book
           </Link>
-          <Link href="/send">
-            <Button variant="secondary">Send instead</Button>
+          <Link href="/send" className="cx-btn cx-btn--ghost">
+            Send instead
           </Link>
         </div>
       </section>
-    </div>
+    </TransactionShell>
   );
 }

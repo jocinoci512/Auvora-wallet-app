@@ -1,6 +1,5 @@
 'use client';
 
-import { Alert, Button, SuccessState } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { LineChart } from '../charts/Charts';
@@ -11,7 +10,13 @@ import {
   pushTradingActivity,
 } from '../../lib/trading/activity';
 import { tradingFetch } from '../../lib/trading/api';
-import '../../app/trading-experience.css';
+import {
+  CxActions,
+  CxProgressTrack,
+  humanizeError,
+  TransactionShell,
+} from '../transaction/TransactionShell';
+import '../../app/core-experience.css';
 
 type Screen =
   'dashboard' | 'stake' | 'unstake' | 'claim' | 'confirm' | 'progress' | 'success' | 'history';
@@ -43,6 +48,13 @@ const DEMO_POSITIONS: Position[] = [
     rewards: '1.12',
   },
 ];
+
+const STEPS = [
+  { id: 'form', label: 'Details' },
+  { id: 'confirm', label: 'Review' },
+  { id: 'progress', label: 'Submit' },
+  { id: 'success', label: 'Done' },
+] as const;
 
 export function StakingExperience(): ReactElement {
   const [screen, setScreen] = useState<Screen>('dashboard');
@@ -132,24 +144,38 @@ export function StakingExperience(): ReactElement {
     }, 250);
   }
 
+  const inFlow =
+    screen === 'stake' ||
+    screen === 'unstake' ||
+    screen === 'claim' ||
+    screen === 'confirm' ||
+    screen === 'progress' ||
+    screen === 'success';
+
+  const currentStepId = (() => {
+    if (screen === 'stake' || screen === 'unstake' || screen === 'claim') return 'form';
+    if (screen === 'confirm') return 'confirm';
+    if (screen === 'progress') return 'progress';
+    if (screen === 'success') return 'success';
+    return undefined;
+  })();
+
   return (
-    <div className="tx" role="main">
-      <header className="tx__header">
-        <div>
-          <p className="tx__eyebrow">
-            <Link href="/">Dashboard</Link>
-          </p>
-          <h1>Staking</h1>
-          <p className="tx__sub">
-            Browse validators, track rewards, and stake or unstake with clear confirmation.
-          </p>
-        </div>
-        <div className="tx__tabs" role="tablist" aria-label="Staking sections">
+    <TransactionShell
+      title="Staking"
+      subtitle="Browse validators, track rewards, and stake or unstake with clear confirmation."
+      reassure="Staking locks assets with a validator; unstaking may take a network-specific cooldown."
+      steps={inFlow ? [...STEPS] : undefined}
+      currentStepId={currentStepId}
+      backHref="/dashboard"
+    >
+      <div className="cx-wide">
+        <div className="cx-tabs" role="tablist" aria-label="Staking sections">
           <button
             type="button"
             role="tab"
             aria-selected={screen === 'dashboard' || screen === 'success'}
-            className={`tx__tab ${screen === 'dashboard' || screen === 'success' ? 'tx__tab--on' : ''}`}
+            className={screen === 'dashboard' || screen === 'success' ? 'is-active' : undefined}
             onClick={() => setScreen('dashboard')}
           >
             Overview
@@ -158,7 +184,11 @@ export function StakingExperience(): ReactElement {
             type="button"
             role="tab"
             aria-selected={screen === 'stake' || (screen === 'confirm' && action === 'stake')}
-            className={`tx__tab ${screen === 'stake' || (screen === 'confirm' && action === 'stake') ? 'tx__tab--on' : ''}`}
+            className={
+              screen === 'stake' || (screen === 'confirm' && action === 'stake')
+                ? 'is-active'
+                : undefined
+            }
             onClick={() => begin('stake')}
           >
             Stake
@@ -167,7 +197,11 @@ export function StakingExperience(): ReactElement {
             type="button"
             role="tab"
             aria-selected={screen === 'unstake' || (screen === 'confirm' && action === 'unstake')}
-            className={`tx__tab ${screen === 'unstake' || (screen === 'confirm' && action === 'unstake') ? 'tx__tab--on' : ''}`}
+            className={
+              screen === 'unstake' || (screen === 'confirm' && action === 'unstake')
+                ? 'is-active'
+                : undefined
+            }
             onClick={() => begin('unstake')}
           >
             Unstake
@@ -176,7 +210,11 @@ export function StakingExperience(): ReactElement {
             type="button"
             role="tab"
             aria-selected={screen === 'claim' || (screen === 'confirm' && action === 'claim')}
-            className={`tx__tab ${screen === 'claim' || (screen === 'confirm' && action === 'claim') ? 'tx__tab--on' : ''}`}
+            className={
+              screen === 'claim' || (screen === 'confirm' && action === 'claim')
+                ? 'is-active'
+                : undefined
+            }
             onClick={() => begin('claim')}
           >
             Claim
@@ -185,257 +223,258 @@ export function StakingExperience(): ReactElement {
             type="button"
             role="tab"
             aria-selected={screen === 'history'}
-            className={`tx__tab ${screen === 'history' ? 'tx__tab--on' : ''}`}
+            className={screen === 'history' ? 'is-active' : undefined}
             onClick={() => setScreen('history')}
           >
             History
           </button>
         </div>
-      </header>
 
-      {!live && error ? (
-        <Alert tone="warn" title="Preview staking data">
-          Live staking service unavailable — showing curated dashboard data.
-        </Alert>
-      ) : null}
-
-      {screen === 'dashboard' ? (
-        <>
-          <div className="tx-kpi">
-            <div className="tx-kpi__card">
-              <span>Total staked</span>
-              <strong>{totals.staked.toFixed(2)}</strong>
-            </div>
-            <div className="tx-kpi__card">
-              <span>Pending rewards</span>
-              <strong>{totals.rewards.toFixed(4)}</strong>
-            </div>
-            <div className="tx-kpi__card">
-              <span>Avg APY</span>
-              <strong>{totals.apy.toFixed(2)}%</strong>
-            </div>
+        {!live && error ? (
+          <div className="cx-warn">
+            <strong>Preview staking data</strong>
+            <p>
+              {humanizeError(
+                error,
+                'Live staking service unavailable — showing curated dashboard data.',
+              )}
+            </p>
           </div>
+        ) : null}
 
-          <section className="tx-panel" aria-label="Rewards chart">
-            <h2>Rewards (7d)</h2>
-            <LineChart data={DEMO_REWARD_SERIES} height={110} ariaLabel="Staking rewards" />
-          </section>
-
-          <section className="tx-panel">
-            <h2>Positions</h2>
-            <ul className="tx-list">
-              {positions.map((p) => (
-                <li key={p.id}>
+        {screen === 'dashboard' ? (
+          <>
+            <section className="cx-panel">
+              <h2>Totals</h2>
+              <div className="cx-confirm">
+                <dl>
                   <div>
-                    <strong>{p.validatorName}</strong>
-                    <p className="tx-meta">
-                      {p.network} · {p.amount} staked · APY {p.apy}%
-                    </p>
+                    <dt>Total staked</dt>
+                    <dd>{totals.staked.toFixed(2)}</dd>
                   </div>
                   <div>
-                    <p className="tx-meta">Rewards {p.rewards}</p>
-                    <Button
+                    <dt>Pending rewards</dt>
+                    <dd>{totals.rewards.toFixed(4)}</dd>
+                  </div>
+                  <div>
+                    <dt>Avg APY</dt>
+                    <dd>{totals.apy.toFixed(2)}%</dd>
+                  </div>
+                </dl>
+              </div>
+            </section>
+
+            <section className="cx-panel" aria-label="Rewards chart">
+              <h2>Rewards (7d)</h2>
+              <LineChart data={DEMO_REWARD_SERIES} height={110} ariaLabel="Staking rewards" />
+            </section>
+
+            <section className="cx-panel">
+              <h2>Positions</h2>
+              <ul className="cx-list">
+                {positions.map((p) => (
+                  <li key={p.id}>
+                    <div>
+                      <strong>{p.validatorName}</strong>
+                      <p className="cx-meta">
+                        {p.network} · {p.amount} staked · APY {p.apy}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="cx-meta">Rewards {p.rewards}</p>
+                      <button
+                        type="button"
+                        className="cx-btn cx-btn--ghost"
+                        onClick={() => {
+                          setSelectedPosition(p.id);
+                          begin('claim');
+                        }}
+                      >
+                        Details
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="cx-panel">
+              <h2>Validator browser</h2>
+              <ul className="cx-list">
+                {validators.map((v) => (
+                  <li key={v.id}>
+                    <button
                       type="button"
-                      size="sm"
-                      variant="secondary"
+                      className={`cx-choice ${selectedValidator === v.id ? 'cx-choice--on' : ''}`}
+                      style={{ textAlign: 'left', width: '100%' }}
+                      onClick={() => setSelectedValidator(v.id)}
+                    >
+                      <strong>{v.name}</strong>
+                      <span>
+                        {v.network} · APY {v.apy}% · commission {v.commission}% · {v.staked}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn--primary"
                       onClick={() => {
-                        setSelectedPosition(p.id);
-                        begin('claim');
+                        setSelectedValidator(v.id);
+                        begin('stake');
                       }}
                     >
-                      Details
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+                      Stake
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>
+        ) : null}
 
-          <section className="tx-panel">
-            <h2>Validator browser</h2>
-            <ul className="tx-list">
-              {validators.map((v) => (
-                <li
-                  key={v.id}
-                  className={`tx-validator ${selectedValidator === v.id ? 'tx-validator--on' : ''}`}
-                >
-                  <button
-                    type="button"
-                    className="tx-validator__select"
-                    onClick={() => setSelectedValidator(v.id)}
+        {(screen === 'stake' || screen === 'unstake' || screen === 'claim') && (
+          <section className="cx-panel">
+            <h2>
+              {screen === 'stake' ? 'Stake' : screen === 'unstake' ? 'Unstake' : 'Claim rewards'}
+            </h2>
+            {screen !== 'claim' ? (
+              <>
+                <label className="cx-field">
+                  <span>Validator</span>
+                  <select
+                    value={selectedValidator}
+                    onChange={(e) => setSelectedValidator(e.target.value)}
                   >
-                    <strong>{v.name}</strong>
-                    <p className="tx-meta">
-                      {v.network} · APY {v.apy}% · commission {v.commission}% · {v.staked}
-                    </p>
-                  </button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedValidator(v.id);
-                      begin('stake');
-                    }}
-                  >
-                    Stake
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </>
-      ) : null}
-
-      {(screen === 'stake' || screen === 'unstake' || screen === 'claim') && (
-        <section className="tx-panel">
-          <h2>
-            {screen === 'stake' ? 'Stake' : screen === 'unstake' ? 'Unstake' : 'Claim rewards'}
-          </h2>
-          {screen !== 'claim' ? (
-            <>
-              <label className="tx-field">
-                <span>Validator</span>
+                    {validators.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} ({v.apy}% APY)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="cx-field">
+                  <span>Amount</span>
+                  <input
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
+              </>
+            ) : (
+              <label className="cx-field">
+                <span>Position</span>
                 <select
-                  value={selectedValidator}
-                  onChange={(e) => setSelectedValidator(e.target.value)}
+                  value={selectedPosition ?? ''}
+                  onChange={(e) => setSelectedPosition(e.target.value)}
                 >
-                  {validators.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.apy}% APY)
+                  {positions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.validatorName} · rewards {p.rewards}
                     </option>
                   ))}
                 </select>
               </label>
-              <label className="tx-field">
-                <span>Amount</span>
-                <input
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  inputMode="decimal"
-                />
-              </label>
-            </>
-          ) : (
-            <label className="tx-field">
-              <span>Position</span>
-              <select
-                value={selectedPosition ?? ''}
-                onChange={(e) => setSelectedPosition(e.target.value)}
+            )}
+            <div className="cx-confirm">
+              <dl>
+                <div>
+                  <dt>Network</dt>
+                  <dd>{validator.network}</dd>
+                </div>
+                <div>
+                  <dt>Est. APY</dt>
+                  <dd>{validator.apy}%</dd>
+                </div>
+              </dl>
+            </div>
+            <CxActions
+              onBack={() => setScreen('dashboard')}
+              backLabel="Cancel"
+              onNext={goConfirm}
+            />
+          </section>
+        )}
+
+        {screen === 'confirm' ? (
+          <section className="cx-panel">
+            <h2>Confirm {action}</h2>
+            <div className="cx-confirm">
+              <dl>
+                <div>
+                  <dt>Action</dt>
+                  <dd>{action}</dd>
+                </div>
+                <div>
+                  <dt>Validator</dt>
+                  <dd>{validator.name}</dd>
+                </div>
+                <div>
+                  <dt>Amount</dt>
+                  <dd>{amount}</dd>
+                </div>
+              </dl>
+            </div>
+            <CxActions onBack={() => setScreen(action)} onNext={execute} nextLabel="Confirm" />
+          </section>
+        ) : null}
+
+        {screen === 'progress' ? (
+          <CxProgressTrack
+            progress={progress}
+            label="Submitting…"
+            stages={['Pending', 'Broadcast', 'Confirming', 'Confirmed']}
+          />
+        ) : null}
+
+        {screen === 'success' ? (
+          <div className="cx-success">
+            <div className="cx-success-burst" aria-hidden>
+              ✓
+            </div>
+            <h2>Staking action submitted</h2>
+            <p>
+              Position and rewards will update after confirmation. Check activity for the receipt.
+            </p>
+            <div className="cx-success__cta">
+              <button
+                type="button"
+                className="cx-btn cx-btn--primary"
+                onClick={() => setScreen('dashboard')}
               >
-                {positions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.validatorName} · rewards {p.rewards}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <dl className="tx-quote">
-            <div className="tx-quote__row">
-              <dt>Network</dt>
-              <dd>{validator.network}</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Est. APY</dt>
-              <dd>{validator.apy}%</dd>
-            </div>
-          </dl>
-          <div className="tx-actions">
-            <Button type="button" variant="ghost" onClick={() => setScreen('dashboard')}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={goConfirm}>
-              Continue
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {screen === 'confirm' ? (
-        <section className="tx-panel">
-          <h2>Confirm {action}</h2>
-          <dl className="tx-quote">
-            <div className="tx-quote__row">
-              <dt>Action</dt>
-              <dd>{action}</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Validator</dt>
-              <dd>{validator.name}</dd>
-            </div>
-            <div className="tx-quote__row">
-              <dt>Amount</dt>
-              <dd>{amount}</dd>
-            </div>
-          </dl>
-          <div className="tx-actions">
-            <Button type="button" variant="ghost" onClick={() => setScreen(action)}>
-              Back
-            </Button>
-            <Button type="button" onClick={execute}>
-              Confirm
-            </Button>
-          </div>
-        </section>
-      ) : null}
-
-      {screen === 'progress' ? (
-        <section className="tx-panel" aria-busy="true">
-          <h2>Submitting…</h2>
-          <div
-            className="tx-progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-            aria-label="Staking progress"
-          >
-            <div className="tx-progress__bar" style={{ width: `${progress}%` }} />
-          </div>
-        </section>
-      ) : null}
-
-      {screen === 'success' ? (
-        <SuccessState
-          title="Staking action submitted"
-          description="Position and rewards will update after confirmation. Check activity for the receipt."
-          action={
-            <div className="tx-actions">
-              <Button type="button" onClick={() => setScreen('dashboard')}>
                 Overview
-              </Button>
-              <Link href="/activity">
-                <Button variant="secondary">Activity</Button>
+              </button>
+              <Link href="/activity" className="cx-btn cx-btn--ghost">
+                Activity
               </Link>
-              <Link href="/portfolio">
-                <Button variant="ghost">Portfolio</Button>
+              <Link href="/portfolio" className="cx-btn cx-btn--ghost">
+                Portfolio
               </Link>
             </div>
-          }
-        />
-      ) : null}
+          </div>
+        ) : null}
 
-      {screen === 'history' ? (
-        <section className="tx-panel">
-          <h2>Staking history</h2>
-          <ul className="tx-list">
-            <li>
-              <div>
-                <strong>Stake 1.0 ETH</strong>
-                <p className="tx-meta">Auvora Cloud · confirmed</p>
-              </div>
-              <span className="tx-meta">2d ago</span>
-            </li>
-            <li>
-              <div>
-                <strong>Claim 0.012 ETH</strong>
-                <p className="tx-meta">Rewards · confirmed</p>
-              </div>
-              <span className="tx-meta">5d ago</span>
-            </li>
-          </ul>
-        </section>
-      ) : null}
-    </div>
+        {screen === 'history' ? (
+          <section className="cx-panel">
+            <h2>Staking history</h2>
+            <ul className="cx-list">
+              <li>
+                <div>
+                  <strong>Stake 1.0 ETH</strong>
+                  <p className="cx-meta">Auvora Cloud · confirmed</p>
+                </div>
+                <span className="cx-meta">2d ago</span>
+              </li>
+              <li>
+                <div>
+                  <strong>Claim 0.012 ETH</strong>
+                  <p className="cx-meta">Rewards · confirmed</p>
+                </div>
+                <span className="cx-meta">5d ago</span>
+              </li>
+            </ul>
+          </section>
+        ) : null}
+      </div>
+    </TransactionShell>
   );
 }

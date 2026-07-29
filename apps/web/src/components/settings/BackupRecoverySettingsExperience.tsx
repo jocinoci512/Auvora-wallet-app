@@ -6,8 +6,8 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { getBackupPrefs, setBackupPrefs, type BackupPrefs } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 export function BackupRecoverySettingsExperience(): ReactElement {
   const [prefs, setPrefs] = useState<BackupPrefs>(() => getBackupPrefs());
@@ -36,34 +36,31 @@ export function BackupRecoverySettingsExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Backup & recovery</h1>
-          <p className="sc__sub">
-            Recovery phrase status, reminders, verification, education, and guided recovery.
-          </p>
-        </div>
-        <Link href="/wallets/recovery">
-          <Button type="button">Open recovery rehearsal</Button>
+    <PlatformShell
+      title="Backup & recovery"
+      subtitle="Recovery phrase status, reminders, verification, education, and guided recovery."
+      reassure="Your phrase never leaves this device — practice recovery before you need it."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/backup" />}
+      actions={
+        <Link href="/wallets/recovery" className="cx-btn cx-btn--primary">
+          Open recovery rehearsal
         </Link>
-      </header>
-      <SettingsSectionNav current="/settings/backup" />
+      }
+    >
       {toast ? (
         <Alert tone="success" title="Saved">
           {toast}
         </Alert>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Recovery phrase status</h2>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Verification</strong>
-            <p className="sc-meta">
+            <p className="cx-meta">
               {prefs.phraseVerified
                 ? `Verified ${prefs.lastVerifiedAt ? new Date(prefs.lastVerifiedAt).toLocaleString() : ''}`
                 : 'Not verified — complete recovery rehearsal'}
@@ -74,10 +71,10 @@ export function BackupRecoverySettingsExperience(): ReactElement {
             label={prefs.phraseVerified ? 'Verified' : 'Action needed'}
           />
         </div>
-        <div className="sc-row">
+        <div className="cx-row">
           <div>
             <strong>Backup reminders</strong>
-            <p className="sc-meta">Periodic nudges until verification is complete.</p>
+            <p className="cx-meta">Periodic nudges until verification is complete.</p>
           </div>
           <Switch
             checked={reminderOn}
@@ -85,7 +82,7 @@ export function BackupRecoverySettingsExperience(): ReactElement {
             aria-label="Backup reminders"
           />
         </div>
-        <div className="sc-actions">
+        <div className="cx-platform__actions">
           <Button type="button" onClick={markVerified} disabled={prefs.phraseVerified}>
             Mark verified (local)
           </Button>
@@ -97,7 +94,7 @@ export function BackupRecoverySettingsExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <h2>Education</h2>
         <Alert tone="info" title="Never share your phrase">
           Auvora never asks for your recovery phrase in chat, email, or dApp popups. Store offline
@@ -108,6 +105,6 @@ export function BackupRecoverySettingsExperience(): ReactElement {
           order carefully — incorrect phrases unlock empty wallets.
         </Alert>
       </section>
-    </div>
+    </PlatformShell>
   );
 }

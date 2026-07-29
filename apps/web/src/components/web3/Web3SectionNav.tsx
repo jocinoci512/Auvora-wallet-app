@@ -15,11 +15,11 @@ const LINKS: NavLink[] = [
 
 export function Web3SectionNav({ current }: { current: string }): ReactElement {
   return (
-    <nav className="w3__tabs" aria-label="Web3 sections" style={{ marginBottom: '0.85rem' }}>
+    <nav className="cx-tabs" aria-label="Web3 sections">
       {LINKS.map((link) => {
         const on = link.exact ? current === link.href : current.startsWith(link.href);
         return (
-          <Link key={link.href} className={`w3__tab ${on ? 'w3__tab--on' : ''}`} href={link.href}>
+          <Link key={link.href} className={on ? 'is-active' : undefined} href={link.href}>
             {link.label}
           </Link>
         );

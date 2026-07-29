@@ -1,11 +1,10 @@
 'use client';
 
 import { Alert, Button, EmptyState } from '@auvora/ui';
-import Link from 'next/link';
 import { useState, type ReactElement } from 'react';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
+import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-import '../../app/settings-experience.css';
 
 const ADVANCED = [
   {
@@ -50,36 +49,31 @@ export function AdvancedSettingsExperience(): ReactElement {
   }
 
   return (
-    <div className="sc">
-      <header className="sc__header">
-        <div>
-          <p className="sc__eyebrow">
-            <Link href="/settings">Security Center</Link>
-          </p>
-          <h1>Advanced</h1>
-          <p className="sc__sub">
-            Developer, RPC, network, experimental, logs, and diagnostics placeholders.
-          </p>
-        </div>
-      </header>
-      <SettingsSectionNav current="/settings/advanced" />
+    <PlatformShell
+      title="Advanced"
+      subtitle="Developer, RPC, network, experimental, logs, and diagnostics placeholders."
+      reassure="These flags stay local — they do not change production RPC or network config yet."
+      backHref="/settings"
+      backLabel="Settings"
+      nav={<SettingsSectionNav current="/settings/advanced" />}
+    >
       {toast ? (
         <Alert tone="info" title="Placeholder">
           {toast}
         </Alert>
       ) : null}
 
-      <section className="sc-panel">
+      <section className="cx-panel">
         <Alert tone="warn" title="Use with care">
           Advanced settings can affect reliability. Placeholders do not mutate production RPC or
           network config yet.
         </Alert>
-        <ul className="sc-list" style={{ marginTop: '0.85rem' }}>
+        <ul className="cx-list" style={{ marginTop: '0.85rem' }}>
           {ADVANCED.map((item) => (
             <li key={item.id}>
               <div>
                 <strong>{item.title}</strong>
-                <p className="sc-meta">{item.detail}</p>
+                <p className="cx-meta">{item.detail}</p>
               </div>
               <Button
                 type="button"
@@ -98,6 +92,6 @@ export function AdvancedSettingsExperience(): ReactElement {
         title="Diagnostics coming soon"
         description="When enabled, diagnostics will surface gateway /health and RPC probe summaries."
       />
-    </div>
+    </PlatformShell>
   );
 }

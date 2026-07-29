@@ -22,6 +22,7 @@ import {
   type NftGalleryItem,
 } from '../../lib/nft/demo';
 import { listRecentlyViewed } from '../../lib/nft/prefs';
+import { PlatformShell } from '../platform/PlatformShell';
 import '../../app/nft-experience.css';
 
 type ViewMode = 'grid' | 'list' | 'compact' | 'large' | 'collection';
@@ -303,42 +304,37 @@ export function NftGalleryExperience(): ReactElement {
           : 'nx-gallery nx-gallery--grid';
 
   return (
-    <div className="nx" role="main">
-      <header className="nx__header">
-        <div>
-          <p className="nx__eyebrow">
-            <Link href="/digital-assets">Digital Assets</Link>
-          </p>
-          <h1>NFT Gallery</h1>
-          <p className="nx__sub">
-            Search, filter, and browse collectibles with grid, list, compact, and large preview
-            modes.
-          </p>
-        </div>
-        <div className="nx__tabs" role="group" aria-label="Gallery view">
+    <PlatformShell
+      title="Collectibles"
+      subtitle="Search, filter, and browse your gallery with grid, list, compact, and large preview modes."
+      reassure="Hide spam and favor verified collections — your gallery stays calm and under your control."
+      backHref="/dashboard"
+      backLabel="Wallet"
+      actions={
+        <div className="cx-chips" role="group" aria-label="Gallery view">
           {VIEW_MODES.map((mode) => (
             <button
               key={mode}
               type="button"
               aria-pressed={view === mode}
-              className={`nx__tab ${view === mode ? 'nx__tab--on' : ''}`}
+              className={`cx-chip${view === mode ? ' is-on' : ''}`}
               onClick={() => setView(mode)}
             >
               {mode[0]!.toUpperCase() + mode.slice(1)}
             </button>
           ))}
         </div>
-      </header>
-
+      }
+    >
       {!live && error ? (
         <Alert tone="warn" title="Preview gallery">
           Showing demo collectibles while the NFT service is offline.
         </Alert>
       ) : null}
 
-      <section className="nx-panel">
-        <div className="nx-toolbar">
-          <label className="nx-field">
+      <section className="cx-panel nx-panel">
+        <div className="cx-toolbar nx-toolbar">
+          <label className="cx-field nx-field">
             <span>Network</span>
             <select
               value={network}
@@ -353,7 +349,7 @@ export function NftGalleryExperience(): ReactElement {
               ))}
             </select>
           </label>
-          <label className="nx-field">
+          <label className="cx-field nx-field">
             <span>Collection</span>
             <select
               value={collectionSlug}
@@ -368,7 +364,7 @@ export function NftGalleryExperience(): ReactElement {
               ))}
             </select>
           </label>
-          <label className="nx-field">
+          <label className="cx-field nx-field cx-field--grow">
             <span>Search</span>
             <input
               value={q}
@@ -377,7 +373,7 @@ export function NftGalleryExperience(): ReactElement {
               aria-label="Search NFTs"
             />
           </label>
-          <label className="nx-field">
+          <label className="cx-field nx-field">
             <span>Traits</span>
             <input
               value={traitQ}
@@ -386,7 +382,7 @@ export function NftGalleryExperience(): ReactElement {
               aria-label="Search traits"
             />
           </label>
-          <label className="nx-field">
+          <label className="cx-field nx-field">
             <span>Sort</span>
             <select
               value={sort}
@@ -401,7 +397,7 @@ export function NftGalleryExperience(): ReactElement {
             </select>
           </label>
         </div>
-        <div className="nx-checks">
+        <div className="nx-checks cx-chips" style={{ alignItems: 'center' }}>
           <label>
             <input
               type="checkbox"
@@ -426,7 +422,7 @@ export function NftGalleryExperience(): ReactElement {
             />{' '}
             Recently viewed
           </label>
-          <label className="nx-field" style={{ margin: 0 }}>
+          <label className="cx-field nx-field" style={{ margin: 0 }}>
             <span>Discover owner</span>
             <input
               value={ownerAddress}
@@ -446,7 +442,7 @@ export function NftGalleryExperience(): ReactElement {
       </section>
 
       {view === 'collection' ? (
-        <section className="nx-panel">
+        <section className="cx-panel nx-panel">
           <h2>Collections overview</h2>
           {collections.length === 0 ? (
             <EmptyState
@@ -465,7 +461,7 @@ export function NftGalleryExperience(): ReactElement {
                       <strong>
                         {c.name} {c.verified ? '✓' : ''}
                       </strong>
-                      <p className="nx-meta">
+                      <p className="cx-meta nx-meta">
                         {c.totalSupply} items · Floor{' '}
                         {c.floorPriceUsd != null ? `$${c.floorPriceUsd}` : '—'}
                       </p>
@@ -479,14 +475,14 @@ export function NftGalleryExperience(): ReactElement {
       ) : null}
 
       {view !== 'collection' ? (
-        <section className="nx-panel" aria-busy={loading}>
+        <section className="cx-panel nx-panel" aria-busy={loading}>
           <h2>
             {kind === 'tokenized'
               ? 'Tokenized assets'
               : kind === 'collectibles'
                 ? 'Collectibles'
                 : 'Gallery'}{' '}
-            <span className="nx-meta">({filtered.length})</span>
+            <span className="cx-meta nx-meta">({filtered.length})</span>
           </h2>
           {loading ? (
             <div className="nx-gallery nx-gallery--grid" aria-hidden>
@@ -530,7 +526,7 @@ export function NftGalleryExperience(): ReactElement {
                     </div>
                     <div className="nx-card__body">
                       <strong>{item.asset.name}</strong>
-                      <p className="nx-meta">
+                      <p className="cx-meta nx-meta">
                         {item.asset.collection?.name ?? 'Uncollected'} · #{item.asset.tokenId}
                       </p>
                       {item.isHidden ? <StatusBadge status="archived" label="Hidden" /> : null}
@@ -542,6 +538,6 @@ export function NftGalleryExperience(): ReactElement {
           ) : null}
         </section>
       ) : null}
-    </div>
+    </PlatformShell>
   );
 }
