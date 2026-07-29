@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
-import { DashboardExperience } from '../components/dashboard/DashboardExperience';
+import { MarketingHome } from '../components/marketing/MarketingHome';
+import './marketing-home.css';
 
 export default function HomePage(): ReactElement {
-  return <DashboardExperience />;
+  return <MarketingHome />;
 }

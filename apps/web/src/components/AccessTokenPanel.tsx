@@ -1,19 +1,22 @@
 'use client';
 
 import { Button } from '@auvora/ui';
+import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { ACCESS_TOKEN_KEY, getStoredAccessToken, setStoredAccessToken } from '../lib/api-client';
 
-export function AccessTokenPanel(): ReactElement {
+export function AccessTokenPanel(): ReactElement | null {
+  const pathname = usePathname() || '/';
   const [token, setToken] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    if (pathname === '/') return;
     const stored = getStoredAccessToken();
     if (stored) {
       setToken(stored);
     }
-  }, []);
+  }, [pathname]);
 
   const save = useCallback(() => {
     const trimmed = token.trim();
@@ -26,6 +29,10 @@ export function AccessTokenPanel(): ReactElement {
     setToken('');
     setStoredAccessToken(null);
   }, []);
+
+  if (pathname === '/') {
+    return null;
+  }
 
   return (
     <section className="token-panel">

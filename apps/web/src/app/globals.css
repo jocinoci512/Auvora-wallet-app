@@ -10,6 +10,12 @@ body {
 body {
   color: var(--auvora-color-text, var(--auvora-ink));
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  font-family: var(--font-auvora-body), 'Segoe UI', sans-serif;
+}
+
+/* Bridge Aether body font into @auvora/ui --font-auvora-sans consumers */
+html {
+  --font-auvora-sans: var(--font-auvora-body);
 }
 
 main,

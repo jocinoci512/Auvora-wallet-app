@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { IBM_Plex_Mono, Manrope, Source_Serif_4, Syne } from 'next/font/google';
 import type { ReactElement, ReactNode } from 'react';
 import { AppShell } from '@auvora/ui';
 import { AccessTokenPanel } from '../components/AccessTokenPanel';
@@ -9,10 +9,26 @@ import { env } from '../env';
 import '@auvora/ui/styles.css';
 import './globals.css';
 
-const sans = IBM_Plex_Sans({
+const display = Syne({
+  subsets: ['latin'],
+  weight: ['700'],
+  variable: '--font-auvora-display',
+  display: 'swap',
+  preload: true,
+});
+
+const body = Manrope({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-auvora-sans',
+  variable: '--font-auvora-body',
+  display: 'swap',
+  preload: true,
+});
+
+const serif = Source_Serif_4({
+  subsets: ['latin'],
+  weight: ['600'],
+  variable: '--font-auvora-serif',
   display: 'swap',
   preload: true,
 });
@@ -25,9 +41,47 @@ const mono = IBM_Plex_Mono({
   preload: true,
 });
 
+const appName = env.NEXT_PUBLIC_APP_NAME;
+const appUrl = env.NEXT_PUBLIC_APP_URL;
+
 export const metadata: Metadata = {
-  title: env.NEXT_PUBLIC_APP_NAME,
-  description: 'Auvora Wallet platform',
+  title: {
+    default: `${appName} — The quiet operating system for digital value`,
+    template: `%s · ${appName}`,
+  },
+  description:
+    'Auvora is a premium self-custody cryptocurrency wallet — calm like Apple, precise like Stripe. Multi-chain, readable confirms, built for beginners and professionals.',
+  applicationName: appName,
+  keywords: [
+    'Auvora',
+    'crypto wallet',
+    'self-custody',
+    'multi-chain',
+    'Ethereum',
+    'Bitcoin',
+    'Solana',
+    'Web3 wallet',
+  ],
+  authors: [{ name: 'Auvora' }],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: appName,
+    title: `${appName} — Quiet operating system for digital value`,
+    description:
+      'Premium self-custody wallet with editorial clarity, institutional rigor, and zero crypto noise.',
+    ...(appUrl ? { url: appUrl } : {}),
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${appName} — Quiet operating system for digital value`,
+    description:
+      'Premium self-custody wallet with editorial clarity, institutional rigor, and zero crypto noise.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const viewport: Viewport = {
@@ -35,14 +89,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f7f6f3' },
-    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+    { media: '(prefers-color-scheme: light)', color: '#EEF1F4' },
+    { media: '(prefers-color-scheme: dark)', color: '#0A0C10' },
   ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${display.variable} ${body.variable} ${serif.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{

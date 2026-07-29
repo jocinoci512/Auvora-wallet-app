@@ -8,7 +8,7 @@ import { ThemeToggle } from '@auvora/ui';
 type NavLink = { href: string; label: string };
 
 const primaryLinks: NavLink[] = [
-  { href: '/', label: 'Dashboard' },
+  { href: '/dashboard', label: 'App' },
   { href: '/portfolio', label: 'Portfolio' },
   { href: '/wallets', label: 'Wallets' },
   { href: '/send', label: 'Send' },
@@ -61,6 +61,28 @@ function LinkItem({ link, pathname }: { link: NavLink; pathname: string }): Reac
   );
 }
 
+function MarketingNav(): ReactElement {
+  return (
+    <header className="mh-nav">
+      <Link href="/" className="mh-nav__brand">
+        Auvora
+      </Link>
+      <div className="mh-nav__actions">
+        <Link href="/security" className="mh-nav__link">
+          Security
+        </Link>
+        <Link href="/dashboard" className="mh-nav__link">
+          App
+        </Link>
+        <ThemeToggle />
+        <Link href="/wallets/onboarding" className="mh-btn mh-btn--primary mh-btn--sm">
+          Get started
+        </Link>
+      </div>
+    </header>
+  );
+}
+
 export function Nav(): ReactElement {
   const pathname = usePathname() || '/';
   const moreId = useId();
@@ -81,10 +103,20 @@ export function Nav(): ReactElement {
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  if (pathname === '/') {
+    return <MarketingNav />;
+  }
+
   return (
     <nav className="site-nav" aria-label="Primary">
       <div className="site-nav__top">
-        <div className="site-nav__brand">Auvora</div>
+        <Link
+          href="/"
+          className="site-nav__brand"
+          style={{ textDecoration: 'none', color: 'inherit' }}
+        >
+          Auvora
+        </Link>
         <div className="site-nav__actions">
           <ThemeToggle />
         </div>
