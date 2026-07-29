@@ -16,7 +16,15 @@
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "LOG_LEVEL",
         "SERVICE_NAME",
-        "NEXT_PUBLIC_API_URL"
+        "DOCKER_BUILD",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_APP_NAME",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_ADMIN_URL",
+        "NEXT_PUBLIC_DOCS_URL",
+        "NEXT_PUBLIC_STATUS_URL",
+        "NEXT_PUBLIC_MARKETING_URL",
+        "NEXT_PUBLIC_CDN_ASSET_BASE_URL"
       ]
     },
     "dev": {

@@ -31,7 +31,7 @@
     "preview:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-previews.ps1",
     "preview:ui:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-previews.ps1 -Clean",
     "preview:health": "node scripts/preview-health.mjs",
-    "prepare": "husky"
+    "prepare": "node -e \"if(process.env.CI||process.env.VERCEL)process.exit(0);require('child_process').execSync('husky',{stdio:'inherit'})\""
   },
   "devDependencies": {
     "@auvora/config": "workspace:*",
