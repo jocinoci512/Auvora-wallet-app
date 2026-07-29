@@ -190,3 +190,76 @@ export function formatPct(n: number, digits = 2): string {
   const sign = n > 0 ? '+' : '';
   return `${sign}${n.toFixed(digits)}%`;
 }
+
+/** Deterministic mini sparkline from a seed value (demo / offline). */
+export function sparklineFor(seed: number, points = 12): PerformancePoint[] {
+  const out: PerformancePoint[] = [];
+  let v = seed;
+  for (let i = 0; i < points; i++) {
+    v = v * (1 + ((Math.sin(seed + i) * 0.008 + (i % 3 === 0 ? 0.004 : -0.002)) as number));
+    out.push({ t: String(i), v });
+  }
+  return out;
+}
+
+export type ChartRange = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
+
+export function performanceForRange(
+  base: PerformancePoint[],
+  range: ChartRange,
+  totalValue: number,
+): PerformancePoint[] {
+  const multipliers: Record<ChartRange, number> = {
+    '1D': 0.985,
+    '1W': 0.96,
+    '1M': 0.91,
+    '3M': 0.84,
+    '1Y': 0.72,
+    ALL: 0.55,
+  };
+  const start = totalValue * multipliers[range];
+  const len =
+    range === '1D' ? 24 : range === '1W' ? 7 : range === '1M' ? 30 : range === '3M' ? 36 : 48;
+  if (base.length >= 5 && range === '1W') return base;
+  return Array.from({ length: len }, (_, i) => ({
+    t: String(i),
+    v:
+      start +
+      ((totalValue - start) * i) / Math.max(1, len - 1) +
+      Math.sin(i / 3) * totalValue * 0.004,
+  }));
+}
+
+export const DEMO_MARKET_SNAPSHOT = {
+  fearGreed: 62,
+  fearGreedLabel: 'Greed',
+  marketCapT: 2.48,
+  btcDominance: 52.4,
+  ethGasGwei: 18,
+};
+
+export const DEMO_NFT_PREVIEWS = [
+  { id: 'n1', name: 'Aura #1204', collection: 'Aether Forms', floorEth: 0.42 },
+  { id: 'n2', name: 'Ledger Study', collection: 'Quiet Blocks', floorEth: 0.18 },
+  { id: 'n3', name: 'Mist Gate', collection: 'Northern', floorEth: 0.91 },
+];
+
+export type DayGroup = { day: string; items: TxPreview[] };
+
+export function groupTxsByDay(txs: TxPreview[]): DayGroup[] {
+  const map = new Map<string, TxPreview[]>();
+  for (const tx of txs) {
+    const day = tx.at.includes('ago') || tx.at === 'Yesterday' ? tx.at : 'Earlier';
+    const bucket =
+      day.includes('h') || day === 'Just now'
+        ? 'Today'
+        : day === 'Yesterday'
+          ? 'Yesterday'
+          : 'Earlier';
+    const list = map.get(bucket) ?? [];
+    list.push(tx);
+    map.set(bucket, list);
+  }
+  const order = ['Today', 'Yesterday', 'Earlier'];
+  return order.filter((d) => map.has(d)).map((day) => ({ day, items: map.get(day)! }));
+}

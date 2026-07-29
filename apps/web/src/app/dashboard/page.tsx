@@ -3,8 +3,8 @@ import type { ReactElement } from 'react';
 import { DashboardExperience } from '../../components/dashboard/DashboardExperience';
 
 export const metadata: Metadata = {
-  title: 'App',
-  description: 'Auvora Wallet application dashboard',
+  title: 'Wallet',
+  description: 'Auvora Wallet dashboard — portfolio, assets, and activity',
   robots: { index: false, follow: true },
 };
 

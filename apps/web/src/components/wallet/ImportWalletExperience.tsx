@@ -1,42 +1,76 @@
 'use client';
 
-import { Alert, Button, SuccessState, Textarea } from '@auvora/ui';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState, type ReactElement } from 'react';
 import { normalizePhrase, pickChallengeIndexes } from '../../lib/wallet-experience/recovery-demo';
+import { setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { NETWORKS } from '../../lib/wallet-experience/types';
-import { WizardActions, WizardShell } from './WizardShell';
-import '../../app/wallet-experience.css';
+import { setOnboardingAuth, setUserPrefs } from '../../lib/wallet-experience/user-prefs';
+import { ObActions, OnboardingShell } from '../onboarding/OnboardingShell';
+import '../../app/onboarding.css';
 
 const STEPS = [
-  { id: 'intro', label: 'Intro' },
-  { id: 'phrase', label: 'Phrase' },
+  { id: 'method', label: 'Method' },
+  { id: 'auth', label: 'Sign in' },
+  { id: 'input', label: 'Import' },
   { id: 'verify', label: 'Verify' },
   { id: 'network', label: 'Network' },
-  { id: 'done', label: 'Done' },
+  { id: 'security', label: 'Security' },
+  { id: 'success', label: 'Done' },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
+type ImportMethod = 'phrase' | 'privateKey' | 'hardware' | 'walletconnect';
 
 export function ImportWalletExperience(): ReactElement {
-  const [step, setStep] = useState<StepId>('intro');
+  const router = useRouter();
+  const [step, setStep] = useState<StepId>('method');
+  const [method, setMethod] = useState<ImportMethod>('phrase');
   const [phraseText, setPhraseText] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
   const [networkId, setNetworkId] = useState<(typeof NETWORKS)[number]['id']>('ethereum');
   const [challenges, setChallenges] = useState<{ index: number; value: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [bio, setBio] = useState(true);
+  const [autoLock, setAutoLock] = useState(true);
+  const [email, setEmail] = useState('');
 
   const words = useMemo(() => normalizePhrase(phraseText), [phraseText]);
   const phraseOk = words.length === 12 || words.length === 24;
+  const keyOk = /^0x?[a-fA-F0-9]{64}$/.test(privateKey.trim()) || privateKey.trim().length >= 32;
+
+  function goInput(): void {
+    setOnboardingAuth({
+      method: email ? 'email' : 'skip',
+      email: email || undefined,
+      completedAt: new Date().toISOString(),
+    });
+    setStep('input');
+  }
 
   function goVerify(): void {
-    if (!phraseOk) {
-      setError('Enter a 12- or 24-word recovery phrase.');
+    setError(null);
+    if (method === 'phrase') {
+      if (!phraseOk) {
+        setError('Enter a 12- or 24-word recovery phrase.');
+        return;
+      }
+      const idxs = pickChallengeIndexes(words.length, 3);
+      setChallenges(idxs.map((index) => ({ index, value: '' })));
+      setStep('verify');
       return;
     }
-    setError(null);
-    const idxs = pickChallengeIndexes(words.length, 3);
-    setChallenges(idxs.map((index) => ({ index, value: '' })));
-    setStep('verify');
+    if (method === 'privateKey') {
+      if (!keyOk) {
+        setError('That private key does not look valid. Check the format and try again.');
+        return;
+      }
+      setStep('network');
+      return;
+    }
+    /* hardware / walletconnect — simulated continue */
+    setStep('network');
   }
 
   function checkVerify(): void {
@@ -49,62 +83,159 @@ export function ImportWalletExperience(): ReactElement {
     setStep('network');
   }
 
+  function finishSecurity(): void {
+    setSecurityPrefs({
+      biometricEnabled: bio,
+      autoLockMinutes: autoLock ? 5 : 0,
+      backupReminderEnabled: true,
+      lastBackupReminderAt: new Date().toISOString(),
+    });
+    setUserPrefs({ defaultNetwork: networkId });
+    setStep('success');
+  }
+
   return (
-    <WizardShell
+    <OnboardingShell
       title="Import wallet"
-      subtitle="Paste or type your recovery phrase. Words stay in this session only — never uploaded as plaintext by this UI."
+      subtitle="Bring an existing wallet into Auvora — carefully, and at your pace."
+      reassure="Your phrase and keys stay in this session only. We never ask for them in chat."
       steps={[...STEPS]}
       currentStepId={step}
     >
-      {step === 'intro' ? (
-        <section className="wx-panel">
-          <Alert tone="warn" title="Treat this screen as sensitive">
-            Make sure nobody can see your screen. Auvora support will never ask for your phrase.
-          </Alert>
-          <ul className="wx-bullets">
-            <li>Use an offline backup if possible</li>
-            <li>Prefer hardware import when available</li>
-            <li>After import, enable PIN + auto-lock under Security</li>
-          </ul>
-          <WizardActions onNext={() => setStep('phrase')} nextLabel="I understand" />
-        </section>
-      ) : null}
-
-      {step === 'phrase' ? (
-        <section className="wx-panel">
-          <label className="wx-field">
-            <span>Recovery phrase</span>
-            <Textarea
-              value={phraseText}
-              onChange={(e) => setPhraseText(e.target.value)}
-              rows={4}
-              placeholder="twelve or twenty four words…"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
-          <p className="wx-meta">{words.length} words detected</p>
-          {error ? (
-            <Alert tone="error" title="Invalid phrase">
-              {error}
-            </Alert>
-          ) : null}
-          <WizardActions
-            onBack={() => setStep('intro')}
-            onNext={goVerify}
-            nextDisabled={!phraseOk}
+      {step === 'method' ? (
+        <section className="ob-panel">
+          <h2>How do you want to import?</h2>
+          <p>Choose one path. More methods can be added later without changing this screen.</p>
+          <div className="ob-choice-grid" role="radiogroup" aria-label="Import method">
+            {(
+              [
+                ['phrase', 'Recovery phrase', '12 or 24 words'],
+                ['privateKey', 'Private key', 'Advanced'],
+                ['hardware', 'Hardware wallet', 'Ledger / Trezor'],
+                ['walletconnect', 'WalletConnect', 'Link a wallet'],
+              ] as const
+            ).map(([id, label, hint]) => (
+              <button
+                key={id}
+                type="button"
+                className={`ob-choice ${method === id ? 'ob-choice--on' : ''}`}
+                aria-pressed={method === id}
+                onClick={() => setMethod(id)}
+              >
+                <strong>{label}</strong>
+                <span>{hint}</span>
+              </button>
+            ))}
+          </div>
+          <div className="ob-warn">
+            <strong>Sensitive step ahead</strong>
+            <p>
+              Make sure nobody can see your screen. Auvora support will never ask for your phrase or
+              key.
+            </p>
+          </div>
+          <ObActions
+            onBack={() => router.push('/wallets/onboarding')}
+            onNext={() => setStep('auth')}
             nextLabel="Continue"
           />
         </section>
       ) : null}
 
+      {step === 'auth' ? (
+        <section className="ob-panel">
+          <h2>Optional account link</h2>
+          <p>Linking helps with recovery preferences — it is not required to import.</p>
+          <label className="ob-field">
+            <span>Email (optional)</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+              autoComplete="email"
+            />
+          </label>
+          <ObActions
+            onBack={() => setStep('method')}
+            onNext={goInput}
+            nextLabel="Continue"
+            secondary={
+              <button type="button" onClick={goInput}>
+                Skip
+              </button>
+            }
+          />
+        </section>
+      ) : null}
+
+      {step === 'input' ? (
+        <section className="ob-panel">
+          {method === 'phrase' ? (
+            <>
+              <h2>Enter recovery phrase</h2>
+              <p>Type or paste 12 or 24 words. Spaces are fine.</p>
+              <label className="ob-field">
+                <span>Recovery phrase</span>
+                <textarea
+                  value={phraseText}
+                  onChange={(e) => setPhraseText(e.target.value)}
+                  rows={4}
+                  placeholder="twelve or twenty four words…"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+              <p className="ob-meta">{words.length} words detected</p>
+            </>
+          ) : null}
+          {method === 'privateKey' ? (
+            <>
+              <h2>Enter private key</h2>
+              <p>Advanced. Prefer a hardware wallet when you can.</p>
+              <label className="ob-field">
+                <span>Private key</span>
+                <input
+                  type="password"
+                  value={privateKey}
+                  onChange={(e) => setPrivateKey(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+            </>
+          ) : null}
+          {method === 'hardware' ? (
+            <>
+              <h2>Connect hardware</h2>
+              <p>We will open a secure pairing flow. Have your device unlocked and nearby.</p>
+              <div className="ob-alert ob-alert--info">
+                Simulated pairing for this UI — Connections integration preserved for production
+                wiring.
+              </div>
+            </>
+          ) : null}
+          {method === 'walletconnect' ? (
+            <>
+              <h2>WalletConnect</h2>
+              <p>Scan or approve the session from your other wallet when prompted.</p>
+              <div className="ob-alert ob-alert--info">
+                Session UX is ready for WalletConnect wiring — presentation only in this pass.
+              </div>
+            </>
+          ) : null}
+          {error ? <div className="ob-alert ob-alert--error">{error}</div> : null}
+          <ObActions onBack={() => setStep('auth')} onNext={goVerify} nextLabel="Continue" />
+        </section>
+      ) : null}
+
       {step === 'verify' ? (
-        <section className="wx-panel">
+        <section className="ob-panel">
           <h2>Confirm selected words</h2>
-          <p className="wx__sub">Prove you recorded the phrase correctly.</p>
-          <div className="wx-challenge-grid">
+          <p>Prove the phrase was entered correctly.</p>
+          <div className="ob-challenge-grid">
             {challenges.map((c) => (
-              <label key={c.index} className="wx-field">
+              <label key={c.index} className="ob-field">
                 <span>Word #{c.index + 1}</span>
                 <input
                   value={c.value}
@@ -119,24 +250,21 @@ export function ImportWalletExperience(): ReactElement {
               </label>
             ))}
           </div>
-          {error ? (
-            <Alert tone="error" title="Verification failed">
-              {error}
-            </Alert>
-          ) : null}
-          <WizardActions onBack={() => setStep('phrase')} onNext={checkVerify} nextLabel="Verify" />
+          {error ? <div className="ob-alert ob-alert--error">{error}</div> : null}
+          <ObActions onBack={() => setStep('input')} onNext={checkVerify} nextLabel="Verify" />
         </section>
       ) : null}
 
       {step === 'network' ? (
-        <section className="wx-panel">
+        <section className="ob-panel">
           <h2>Primary network</h2>
-          <div className="wx-choice-grid" role="radiogroup" aria-label="Network">
+          <p>Choose the network you use most. You can add more later.</p>
+          <div className="ob-choice-grid" role="radiogroup" aria-label="Network">
             {NETWORKS.map((n) => (
               <button
                 key={n.id}
                 type="button"
-                className={`wx-choice ${networkId === n.id ? 'wx-choice--on' : ''}`}
+                className={`ob-choice ${networkId === n.id ? 'ob-choice--on' : ''}`}
                 aria-pressed={networkId === n.id}
                 onClick={() => setNetworkId(n.id)}
               >
@@ -145,34 +273,71 @@ export function ImportWalletExperience(): ReactElement {
               </button>
             ))}
           </div>
-          <WizardActions
-            onBack={() => setStep('verify')}
-            onNext={() => {
-              /* Clear phrase from memory before finishing */
-              setPhraseText('');
-              setStep('done');
-            }}
-            nextLabel="Finish import"
+          <ObActions
+            onBack={() => setStep(method === 'phrase' ? 'verify' : 'input')}
+            onNext={() => setStep('security')}
           />
         </section>
       ) : null}
 
-      {step === 'done' ? (
-        <SuccessState
-          title="Import flow complete"
-          description="In production, import submits to wallet-engine / custody — never logs the phrase. Enable Security next."
-          action={
-            <div className="wx__actions">
-              <Link href="/wallets">
-                <Button>View wallets</Button>
-              </Link>
-              <Link href="/security">
-                <Button variant="secondary">Security settings</Button>
-              </Link>
+      {step === 'security' ? (
+        <section className="ob-panel">
+          <h2>Lock it down</h2>
+          <p>Optional protections — recommended before you move funds.</p>
+          <div className="ob-toggle-row">
+            <div>
+              <strong>Biometrics</strong>
+              <span>Face ID / Touch ID</span>
             </div>
-          }
-        />
+            <input
+              type="checkbox"
+              checked={bio}
+              onChange={(e) => setBio(e.target.checked)}
+              aria-label="Biometrics"
+            />
+          </div>
+          <div className="ob-toggle-row">
+            <div>
+              <strong>Auto-lock</strong>
+              <span>After 5 minutes</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={autoLock}
+              onChange={(e) => setAutoLock(e.target.checked)}
+              aria-label="Auto-lock"
+            />
+          </div>
+          <ObActions
+            onBack={() => setStep('network')}
+            onNext={finishSecurity}
+            nextLabel="Finish import"
+            secondary={
+              <button type="button" onClick={finishSecurity}>
+                Skip for now
+              </button>
+            }
+          />
+        </section>
       ) : null}
-    </WizardShell>
+
+      {step === 'success' ? (
+        <div className="ob-success">
+          <div className="ob-success-burst" aria-hidden>
+            ✓
+          </div>
+          <h2>Import complete.</h2>
+          <p>Your wallet is ready to use in Auvora. Review security anytime from Settings.</p>
+          <div className="ob-success__cta">
+            <Link href="/dashboard" className="ob-btn ob-btn--primary ob-btn--lg">
+              Enter wallet
+            </Link>
+            <Link href="/security" className="ob-btn ob-btn--ghost ob-btn--lg">
+              Open Security
+            </Link>
+          </div>
+        </div>
+      ) : null}
+    </OnboardingShell>
   );
 }
