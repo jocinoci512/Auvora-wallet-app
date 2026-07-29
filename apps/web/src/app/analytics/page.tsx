@@ -53,7 +53,8 @@ export default function AnalyticsPage(): ReactElement {
       {error ? <div className="alert alert--error">{error}</div> : null}
       {summary ? (
         <p>
-          Period {summary.period} · Events {summary.totalEvents} · Active users {summary.activeUsers}
+          Period {summary.period} · Events {summary.totalEvents} · Active users{' '}
+          {summary.activeUsers}
         </p>
       ) : null}
       <section className="stack">

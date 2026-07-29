@@ -6,7 +6,9 @@ describe('prompt-engine', () => {
   });
 
   it('renders nested dot-path variables', () => {
-    expect(renderPrompt('Hi {{user.firstName}}', { user: { firstName: 'Grace' } })).toBe('Hi Grace');
+    expect(renderPrompt('Hi {{user.firstName}}', { user: { firstName: 'Grace' } })).toBe(
+      'Hi Grace',
+    );
   });
 
   it('replaces missing variables with an empty string', () => {

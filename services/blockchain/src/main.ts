@@ -7,9 +7,11 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { loadEnv } from './config/env.schema';
+import { loadRootEnvFile } from './config/load-root-env';
 import { shutdownOpenTelemetry, startOpenTelemetry } from './infrastructure/observability/otel';
 
 async function bootstrap(): Promise<void> {
+  loadRootEnvFile(process.cwd());
   const env = loadEnv();
   await startOpenTelemetry(env);
 
@@ -65,7 +67,7 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
   console.error(message);
   process.exit(1);
 });

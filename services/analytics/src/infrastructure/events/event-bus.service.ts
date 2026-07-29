@@ -12,10 +12,12 @@ export class EventBusService implements EventBusPort {
 
   async publish(input: DomainEvent): Promise<void> {
     try {
-      await this.redis.getClient().publish(
-        ANALYTICS_EVENTS_CHANNEL,
-        JSON.stringify({ ...input, publishedAt: new Date().toISOString() }),
-      );
+      await this.redis
+        .getClient()
+        .publish(
+          ANALYTICS_EVENTS_CHANNEL,
+          JSON.stringify({ ...input, publishedAt: new Date().toISOString() }),
+        );
     } catch (error) {
       this.logger.warn(
         `Failed to publish event ${input.type}: ${error instanceof Error ? error.message : String(error)}`,

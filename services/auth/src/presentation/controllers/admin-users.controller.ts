@@ -26,7 +26,7 @@ import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser, extractRequestContext } from '../decorators/current-user.decorator';
 import type { JwtAccessClaims } from '@auvora/types';
 import { Roles } from '../decorators/auth.decorators';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import {
   AdminAssignRolesDto,
   AdminSearchUsersQueryDto,

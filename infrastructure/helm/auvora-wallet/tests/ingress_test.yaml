@@ -8,11 +8,12 @@ tests:
         enabled: true
         className: nginx
         host: wallet.example.com
+        hosts: []
         tls:
           enabled: true
           secretName: auvora-wallet-tls
         annotations:
-          nginx.ingress.kubernetes.io/limit-rps: "50"
+          nginx.ingress.kubernetes.io/limit-rps: '50'
       apps:
         web:
           enabled: true
@@ -32,4 +33,46 @@ tests:
           value: auvora-wallet-tls
       - equal:
           path: metadata.annotations["nginx.ingress.kubernetes.io/limit-rps"]
-          value: "50"
+          value: '50'
+  - it: should render multi-host ingress when hosts are set
+    set:
+      ingress:
+        enabled: true
+        className: nginx
+        host: unused.example.com
+        hosts:
+          - host: api.example.com
+            backend: gateway
+            port: 4000
+            path: /
+          - host: app.example.com
+            backend: web
+            port: 3000
+            path: /
+        tls:
+          enabled: true
+          secretName: auvora-multi-tls
+        annotations:
+          nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+      apps:
+        web:
+          enabled: true
+          port: 3000
+        admin:
+          enabled: false
+      services:
+        gateway:
+          enabled: true
+          port: 4000
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.tls[0].secretName
+          value: auvora-multi-tls
+      - equal:
+          path: spec.rules[0].host
+          value: api.example.com
+      - equal:
+          path: spec.rules[1].host
+          value: app.example.com

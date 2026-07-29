@@ -121,7 +121,11 @@ export default function BlockchainAddressDetailPage(): ReactElement {
           <p className="page-subtitle">
             {address.chain.replace(/_/g, ' ')} ·{' '}
             <span className={statusClass(address.status)}>{address.status}</span>
-            {address.isPrimary ? <span className="tag" style={{ marginLeft: '0.5rem' }}>Primary</span> : null}
+            {address.isPrimary ? (
+              <span className="tag" style={{ marginLeft: '0.5rem' }}>
+                Primary
+              </span>
+            ) : null}
           </p>
         </div>
         <Link href="/blockchain/addresses">
@@ -190,12 +194,22 @@ export default function BlockchainAddressDetailPage(): ReactElement {
             </Button>
           ) : null}
           {address.status !== 'ARCHIVED' ? (
-            <Button type="button" variant="ghost" disabled={acting} onClick={() => void runAction('archive')}>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={acting}
+              onClick={() => void runAction('archive')}
+            >
               Archive
             </Button>
           ) : null}
           {!address.isPrimary && address.status === 'ACTIVE' ? (
-            <Button type="button" variant="secondary" disabled={acting} onClick={() => void runAction('set-primary')}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={acting}
+              onClick={() => void runAction('set-primary')}
+            >
               Set as primary
             </Button>
           ) : null}

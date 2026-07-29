@@ -1,13 +1,16 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import {
   BLOCKCHAIN_HTTP_CLIENT,
   type BlockchainHttpClientPort,
 } from '../../infrastructure/blockchain/blockchain-client.port';
-import {
-  WALLET_REPOSITORY,
-  type WalletRepositoryPort,
-} from '../ports/wallet-repository.port';
+import { WALLET_REPOSITORY, type WalletRepositoryPort } from '../ports/wallet-repository.port';
 import { PortfolioEngineService } from './portfolio-engine.service';
 import { WalletRetryQueue } from './wallet-retry.queue';
 import { WalletSyncService } from './wallet-sync.service';

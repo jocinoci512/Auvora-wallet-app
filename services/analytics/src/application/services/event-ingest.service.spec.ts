@@ -25,9 +25,11 @@ describe('EventIngestService', () => {
   it('ingests a batch in a transaction', async () => {
     const prisma = {
       analyticsEvent: {
-        create: jest.fn().mockImplementation(({ data }: { data: { eventType: string } }) =>
-          Promise.resolve({ id: `evt-${data.eventType}`, ...data }),
-        ),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }: { data: { eventType: string } }) =>
+            Promise.resolve({ id: `evt-${data.eventType}`, ...data }),
+          ),
       },
       $transaction: jest.fn().mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops)),
     };

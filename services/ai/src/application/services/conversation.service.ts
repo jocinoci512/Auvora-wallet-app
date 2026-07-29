@@ -1,7 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PrismaService, type AiAssistantType, type AiMessageRole, type Prisma } from '@auvora/database';
+import {
+  PrismaService,
+  type AiAssistantType,
+  type AiMessageRole,
+  type Prisma,
+} from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
-import { EVENT_BUS, AiEventType, ForbiddenError, NotFoundError, PERMISSION_AI_ADMIN, type EventBusPort } from '../../domain';
+import {
+  EVENT_BUS,
+  AiEventType,
+  ForbiddenError,
+  NotFoundError,
+  PERMISSION_AI_ADMIN,
+  type EventBusPort,
+} from '../../domain';
 
 export interface CreateConversationInput {
   ownerUserId: string;
@@ -63,7 +75,14 @@ export class ConversationService {
     return { items, total, skip, take };
   }
 
-  async listAdmin(filters: { ownerUserId?: string; assistantType?: AiAssistantType; skip?: number; take?: number } = {}) {
+  async listAdmin(
+    filters: {
+      ownerUserId?: string;
+      assistantType?: AiAssistantType;
+      skip?: number;
+      take?: number;
+    } = {},
+  ) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 200);
     const where: Prisma.AiConversationWhereInput = {
@@ -166,8 +185,15 @@ export class ConversationService {
 
   async archive(id: string) {
     await this.get(id);
-    const updated = await this.prisma.aiConversation.update({ where: { id }, data: { status: 'ARCHIVED' } });
-    await this.events.publish({ type: AiEventType.ConversationArchived, aggregateId: id, payload: {} });
+    const updated = await this.prisma.aiConversation.update({
+      where: { id },
+      data: { status: 'ARCHIVED' },
+    });
+    await this.events.publish({
+      type: AiEventType.ConversationArchived,
+      aggregateId: id,
+      payload: {},
+    });
     return updated;
   }
 

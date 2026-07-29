@@ -48,9 +48,11 @@ function makeService(options: MockOptions = {}) {
     kycProfile: {
       findUnique: jest.fn().mockResolvedValue(profile),
       create: jest.fn().mockResolvedValue(profile),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...profile, ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...profile, ...data }),
+        ),
     },
     verificationRequest: {
       create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
@@ -58,15 +60,21 @@ function makeService(options: MockOptions = {}) {
         verificationRequests.set('req-1', created);
         return Promise.resolve(created);
       }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const existing = verificationRequests.get(where.id) ?? {};
-        const updated = { ...existing, ...data };
-        verificationRequests.set(where.id, updated);
-        return Promise.resolve(updated);
-      }),
-      findUnique: jest.fn().mockImplementation(({ where }: { where: { id: string } }) =>
-        Promise.resolve(verificationRequests.get(where.id) ?? null),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+            const existing = verificationRequests.get(where.id) ?? {};
+            const updated = { ...existing, ...data };
+            verificationRequests.set(where.id, updated);
+            return Promise.resolve(updated);
+          },
+        ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where }: { where: { id: string } }) =>
+          Promise.resolve(verificationRequests.get(where.id) ?? null),
+        ),
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
     },
@@ -75,9 +83,11 @@ function makeService(options: MockOptions = {}) {
     riskScoreRecord: { create: jest.fn().mockResolvedValue({}) },
     complianceDocument: {
       create: jest.fn().mockResolvedValue({ id: 'doc-1' }),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'doc-1', ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'doc-1', ...data }),
+        ),
       findMany: jest.fn().mockResolvedValue([]),
     },
   };
@@ -94,29 +104,42 @@ function makeService(options: MockOptions = {}) {
     getCode: () => 'local-identity-simulator',
     verifyIdentity: jest.fn().mockResolvedValue(
       options.identityStatus === 'REJECTED'
-        ? { providerCode: 'local-identity-simulator', providerRef: 'ref', status: 'REJECTED', message: 'rejected' }
+        ? {
+            providerCode: 'local-identity-simulator',
+            providerRef: 'ref',
+            status: 'REJECTED',
+            message: 'rejected',
+          }
         : { providerCode: 'local-identity-simulator', providerRef: 'ref', status: 'APPROVED' },
     ),
   };
   const documents = {
     getCode: () => 'local-document-simulator',
-    verifyDocument: jest.fn().mockResolvedValue({ providerCode: 'local-document-simulator', providerRef: 'doc-ref', status: 'VERIFIED' }),
+    verifyDocument: jest.fn().mockResolvedValue({
+      providerCode: 'local-document-simulator',
+      providerRef: 'doc-ref',
+      status: 'VERIFIED',
+    }),
   };
   const sanctions = {
     getCode: () => 'local-sanctions-simulator',
-    screen: jest.fn().mockResolvedValue(
-      options.sanctionsHit
-        ? [{ providerCode: 'p', providerRef: 'r', matchStatus: 'POTENTIAL', listSource: 'OFAC' }]
-        : [{ providerCode: 'p', providerRef: 'r', matchStatus: 'CLEAR', listSource: 'OFAC' }],
-    ),
+    screen: jest
+      .fn()
+      .mockResolvedValue(
+        options.sanctionsHit
+          ? [{ providerCode: 'p', providerRef: 'r', matchStatus: 'POTENTIAL', listSource: 'OFAC' }]
+          : [{ providerCode: 'p', providerRef: 'r', matchStatus: 'CLEAR', listSource: 'OFAC' }],
+      ),
   };
   const pep = {
     getCode: () => 'local-pep-simulator',
-    screen: jest.fn().mockResolvedValue(
-      options.pepHit
-        ? { providerCode: 'p', providerRef: 'r', matchStatus: 'POTENTIAL' }
-        : { providerCode: 'p', providerRef: 'r', matchStatus: 'CLEAR' },
-    ),
+    screen: jest
+      .fn()
+      .mockResolvedValue(
+        options.pepHit
+          ? { providerCode: 'p', providerRef: 'r', matchStatus: 'POTENTIAL' }
+          : { providerCode: 'p', providerRef: 'r', matchStatus: 'CLEAR' },
+      ),
   };
   const riskProvider = {
     getCode: () => 'local-risk-simulator',
@@ -147,43 +170,62 @@ function makeService(options: MockOptions = {}) {
 describe('KycService', () => {
   it('rejects submission when requestedLevel is NONE', async () => {
     const { service } = makeService();
-    await expect(service.submitKyc('user-1', { requestedLevel: KycLevel.NONE })).rejects.toThrow(ValidationError);
+    await expect(service.submitKyc('user-1', { requestedLevel: KycLevel.NONE })).rejects.toThrow(
+      ValidationError,
+    );
   });
 
   it('auto-approves when identity, sanctions, and PEP are clear with low risk', async () => {
     const { service, events } = makeService();
-    const result = await service.submitKyc('user-1', { requestedLevel: KycLevel.BASIC, legalName: 'Jane Doe' });
+    const result = await service.submitKyc('user-1', {
+      requestedLevel: KycLevel.BASIC,
+      legalName: 'Jane Doe',
+    });
     expect(result.status).toBe(VerificationStatus.APPROVED);
-    expect(events.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'KYCCompleted' }),
-    );
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'KYCCompleted' }));
   });
 
   it('sends the request to review when a sanctions hit occurs', async () => {
     const { service } = makeService({ sanctionsHit: true });
-    const result = await service.submitKyc('user-1', { requestedLevel: KycLevel.BASIC, legalName: 'Sanction Case' });
+    const result = await service.submitKyc('user-1', {
+      requestedLevel: KycLevel.BASIC,
+      legalName: 'Sanction Case',
+    });
     expect(result.status).toBe(VerificationStatus.IN_REVIEW);
   });
 
   it('sends the request to review when a PEP hit occurs', async () => {
     const { service } = makeService({ pepHit: true });
-    const result = await service.submitKyc('user-1', { requestedLevel: KycLevel.BASIC, legalName: 'Pep Case' });
+    const result = await service.submitKyc('user-1', {
+      requestedLevel: KycLevel.BASIC,
+      legalName: 'Pep Case',
+    });
     expect(result.status).toBe(VerificationStatus.IN_REVIEW);
   });
 
   it('rejects the request immediately when identity verification fails', async () => {
     const { service, events } = makeService({ identityStatus: 'REJECTED' });
-    const result = await service.submitKyc('user-1', { requestedLevel: KycLevel.BASIC, legalName: 'Reject Me' });
+    const result = await service.submitKyc('user-1', {
+      requestedLevel: KycLevel.BASIC,
+      legalName: 'Reject Me',
+    });
     expect(result.status).toBe(VerificationStatus.REJECTED);
     expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'KYCRejected' }));
   });
 
   it('approves an in-review request when the reviewer has permission', async () => {
     const { service, prisma } = makeService({ sanctionsHit: true });
-    const submitted = await service.submitKyc('user-1', { requestedLevel: KycLevel.BASIC, legalName: 'Needs Review' });
-    prisma.verificationRequest.findUnique = jest
-      .fn()
-      .mockResolvedValue({ ...submitted, status: VerificationStatus.IN_REVIEW, profileId: 'profile-1', ownerUserId: 'user-1', requestedLevel: KycLevel.BASIC });
+    const submitted = await service.submitKyc('user-1', {
+      requestedLevel: KycLevel.BASIC,
+      legalName: 'Needs Review',
+    });
+    prisma.verificationRequest.findUnique = jest.fn().mockResolvedValue({
+      ...submitted,
+      status: VerificationStatus.IN_REVIEW,
+      profileId: 'profile-1',
+      ownerUserId: 'user-1',
+      requestedLevel: KycLevel.BASIC,
+    });
     const approved = await service.approve(submitted.id as string, REVIEWER_USER);
     expect(approved.status).toBe(VerificationStatus.APPROVED);
   });

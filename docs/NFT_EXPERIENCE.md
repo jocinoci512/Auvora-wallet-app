@@ -6,13 +6,13 @@
 
 ## Surfaces
 
-| Flow | Route | Component |
-|------|-------|-----------|
-| Digital Assets hub | `/digital-assets` | `DigitalAssetsHub` |
-| Gallery | `/nfts` | `NftGalleryExperience` |
-| Asset detail | `/nfts/assets/[assetId]` | `NftDetailExperience` |
-| Collection | `/nfts/collections/[network]/[slug]` | `NftCollectionExperience` |
-| NFT activity | `/nfts/activity` | `NftActivityExperience` |
+| Flow               | Route                                | Component                 |
+| ------------------ | ------------------------------------ | ------------------------- |
+| Digital Assets hub | `/digital-assets`                    | `DigitalAssetsHub`        |
+| Gallery            | `/nfts`                              | `NftGalleryExperience`    |
+| Asset detail       | `/nfts/assets/[assetId]`             | `NftDetailExperience`     |
+| Collection         | `/nfts/collections/[network]/[slug]` | `NftCollectionExperience` |
+| NFT activity       | `/nfts/activity`                     | `NftActivityExperience`   |
 
 ## Architecture
 

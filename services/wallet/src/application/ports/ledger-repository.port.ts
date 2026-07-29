@@ -71,9 +71,15 @@ export interface ApplyLedgerEntryInput {
 
 export interface LedgerRepositoryPort {
   getBalance(walletId: string): Promise<BalanceRecord | null>;
-  applyEntry(input: ApplyLedgerEntryInput): Promise<{ entry: LedgerEntryRecord; balance: BalanceRecord }>;
+  applyEntry(
+    input: ApplyLedgerEntryInput,
+  ): Promise<{ entry: LedgerEntryRecord; balance: BalanceRecord }>;
   getEntries(walletId: string, skip?: number, take?: number): Promise<LedgerEntryRecord[]>;
-  createSnapshot(walletId: string, reason?: string, actorId?: string): Promise<BalanceSnapshotRecord>;
+  createSnapshot(
+    walletId: string,
+    reason?: string,
+    actorId?: string,
+  ): Promise<BalanceSnapshotRecord>;
   getSnapshots(walletId: string, skip?: number, take?: number): Promise<BalanceSnapshotRecord[]>;
   getAudits(walletId: string, skip?: number, take?: number): Promise<BalanceAuditRecord[]>;
 }

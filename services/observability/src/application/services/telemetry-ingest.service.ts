@@ -178,7 +178,9 @@ export class TelemetryIngestService {
         domain: input.domain ?? 'SYSTEM',
         level: input.level,
         message: maskSensitiveString(input.message),
-        payload: (input.payload ? maskSensitiveValue(input.payload) : null) as Prisma.InputJsonValue,
+        payload: (input.payload
+          ? maskSensitiveValue(input.payload)
+          : null) as Prisma.InputJsonValue,
         correlationId: input.correlationId,
         traceId: input.traceId,
         spanId: input.spanId,

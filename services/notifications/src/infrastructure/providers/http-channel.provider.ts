@@ -36,7 +36,7 @@ export class HttpChannelProvider implements ChannelProviderPort {
   }
 
   private get fetchImpl(): FetchLike {
-    return globalThis.fetch as unknown as FetchLike;
+    return globalThis.fetch.bind(globalThis) as unknown as FetchLike;
   }
 
   getCode(): string {

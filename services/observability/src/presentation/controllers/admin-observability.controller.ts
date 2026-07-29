@@ -7,14 +7,7 @@ import type {
   ObsSloIndicatorType,
 } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
-import {
-  IsBoolean,
-  IsNumber,
-  IsObject,
-  IsOptional,
-  IsString,
-  MinLength,
-} from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 import { AlertingService } from '../../application/services/alerting.service';
 import { AuditService } from '../../application/services/audit.service';
 import { CapacityService } from '../../application/services/capacity.service';
@@ -35,7 +28,7 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -260,9 +253,7 @@ export class AdminObservabilityController {
   @Post('incidents')
   @Permissions(PERMISSION_OBSERVABILITY_INCIDENTS)
   async createIncident(@Body() dto: CreateIncidentDto, @CurrentUser() user: JwtAccessClaims) {
-    return successResponse(
-      await this.incidents.create({ ...dto, reporterUserId: user.sub }),
-    );
+    return successResponse(await this.incidents.create({ ...dto, reporterUserId: user.sub }));
   }
 
   @Get('incidents/:id')
@@ -304,9 +295,7 @@ export class AdminObservabilityController {
     @Body() dto: ResolveIncidentDto,
     @CurrentUser() user: JwtAccessClaims,
   ) {
-    return successResponse(
-      await this.incidents.resolve(id, { ...dto, actorUserId: user.sub }),
-    );
+    return successResponse(await this.incidents.resolve(id, { ...dto, actorUserId: user.sub }));
   }
 
   @Get('slos')

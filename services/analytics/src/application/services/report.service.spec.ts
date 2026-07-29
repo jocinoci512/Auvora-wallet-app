@@ -3,9 +3,11 @@ import { ReportService } from './report.service';
 
 describe('ReportService', () => {
   const metrics = {
-    getValues: jest.fn().mockResolvedValue([
-      { window: 'DAILY', bucketStart: new Date('2026-07-01'), value: 10, sampleCount: 1 },
-    ]),
+    getValues: jest
+      .fn()
+      .mockResolvedValue([
+        { window: 'DAILY', bucketStart: new Date('2026-07-01'), value: 10, sampleCount: 1 },
+      ]),
     recordDuration: jest.fn().mockResolvedValue(undefined),
   };
   const encryption = {

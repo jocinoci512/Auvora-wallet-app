@@ -26,9 +26,11 @@ export default function AdminBroadcastPage(): ReactElement {
       });
       setMessage(`Broadcast queued (${result.recipientCount} recipients).`);
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }
 

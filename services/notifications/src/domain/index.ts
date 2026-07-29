@@ -7,12 +7,7 @@ export {
   UnauthorizedError,
   ProviderUnavailableError,
 } from './errors';
-export {
-  NotificationEventType,
-  EVENT_BUS,
-  type DomainEvent,
-  type EventBusPort,
-} from './events';
+export { NotificationEventType, EVENT_BUS, type DomainEvent, type EventBusPort } from './events';
 export * from './permission-codes';
 export * from './provider-ports';
 export {

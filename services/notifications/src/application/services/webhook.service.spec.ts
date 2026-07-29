@@ -1,5 +1,8 @@
 import { ConflictError } from '../../domain';
-import { signWebhookPayload, WEBHOOK_SIGNATURE_HEADER } from '../../infrastructure/crypto/webhook-signer';
+import {
+  signWebhookPayload,
+  WEBHOOK_SIGNATURE_HEADER,
+} from '../../infrastructure/crypto/webhook-signer';
 import { WebhookService } from './webhook.service';
 
 function buildCryptoMock() {
@@ -10,7 +13,9 @@ function buildCryptoMock() {
       store.set(token, plaintext);
       return token;
     }),
-    decrypt: jest.fn((ciphertext: string) => store.get(ciphertext) ?? ciphertext.replace('enc:', '')),
+    decrypt: jest.fn(
+      (ciphertext: string) => store.get(ciphertext) ?? ciphertext.replace('enc:', ''),
+    ),
     hash: jest.fn((value: string) => value),
   };
 }
@@ -49,28 +54,50 @@ function buildPrismaMock() {
         if (!record) return Promise.resolve(null);
         return Promise.resolve({ ...record, endpoint });
       }),
-      findMany: jest.fn().mockImplementation(() =>
-        Promise.resolve(Array.from(deliveries.values()).filter((record) => record['status'] === 'RETRYING')),
-      ),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const existing = deliveries.get(where.id) ?? {};
-        const increment = (data['attemptCount'] as { increment?: number } | undefined)?.increment;
-        const merged = {
-          ...existing,
-          ...data,
-          attemptCount: increment !== undefined ? ((existing['attemptCount'] as number) ?? 0) + increment : existing['attemptCount'],
-        };
-        deliveries.set(where.id, merged);
-        return Promise.resolve(merged);
-      }),
-      updateMany: jest.fn().mockImplementation(({ where, data }: { where: { id: string; status: string }; data: Record<string, unknown> }) => {
-        const existing = deliveries.get(where.id);
-        if (!existing || existing['status'] !== where.status) {
-          return Promise.resolve({ count: 0 });
-        }
-        deliveries.set(where.id, { ...existing, ...data });
-        return Promise.resolve({ count: 1 });
-      }),
+      findMany: jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(
+            Array.from(deliveries.values()).filter((record) => record['status'] === 'RETRYING'),
+          ),
+        ),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+            const existing = deliveries.get(where.id) ?? {};
+            const increment = (data['attemptCount'] as { increment?: number } | undefined)
+              ?.increment;
+            const merged = {
+              ...existing,
+              ...data,
+              attemptCount:
+                increment !== undefined
+                  ? ((existing['attemptCount'] as number) ?? 0) + increment
+                  : existing['attemptCount'],
+            };
+            deliveries.set(where.id, merged);
+            return Promise.resolve(merged);
+          },
+        ),
+      updateMany: jest
+        .fn()
+        .mockImplementation(
+          ({
+            where,
+            data,
+          }: {
+            where: { id: string; status: string };
+            data: Record<string, unknown>;
+          }) => {
+            const existing = deliveries.get(where.id);
+            if (!existing || existing['status'] !== where.status) {
+              return Promise.resolve({ count: 0 });
+            }
+            deliveries.set(where.id, { ...existing, ...data });
+            return Promise.resolve({ count: 1 });
+          },
+        ),
     },
   };
 }
@@ -88,7 +115,11 @@ describe('WebhookService', () => {
     const crypto = buildCryptoMock();
     const service = new WebhookService(prisma as never, crypto as never);
 
-    const result = await service.register({ ownerUserId: 'user-1', name: 'My hook', url: 'https://example.com/webhook' });
+    const result = await service.register({
+      ownerUserId: 'user-1',
+      name: 'My hook',
+      url: 'https://example.com/webhook',
+    });
 
     expect(crypto.encrypt).toHaveBeenCalled();
     expect(result.secret).toBeDefined();
@@ -99,10 +130,12 @@ describe('WebhookService', () => {
     const prisma = buildPrismaMock();
     const crypto = buildCryptoMock();
     const capturedHeaders: Record<string, string>[] = [];
-    globalThis.fetch = jest.fn().mockImplementation((_url: string, init: { headers: Record<string, string> }) => {
-      capturedHeaders.push(init.headers);
-      return Promise.resolve({ status: 200, text: async () => 'ok' });
-    }) as unknown as typeof fetch;
+    globalThis.fetch = jest
+      .fn()
+      .mockImplementation((_url: string, init: { headers: Record<string, string> }) => {
+        capturedHeaders.push(init.headers);
+        return Promise.resolve({ status: 200, text: async () => 'ok' });
+      }) as unknown as typeof fetch;
 
     const service = new WebhookService(prisma as never, crypto as never);
     await service.deliver('endpoint-1', 'notification.sent', { hello: 'world' });
@@ -137,7 +170,9 @@ describe('WebhookService', () => {
   it('marks a delivery SUCCESS on a 2xx response', async () => {
     const prisma = buildPrismaMock();
     const crypto = buildCryptoMock();
-    globalThis.fetch = jest.fn().mockResolvedValue({ status: 202, text: async () => 'accepted' }) as unknown as typeof fetch;
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ status: 202, text: async () => 'accepted' }) as unknown as typeof fetch;
 
     const service = new WebhookService(prisma as never, crypto as never);
     const result = await service.deliver('endpoint-1', 'notification.sent', { hello: 'world' });
@@ -148,7 +183,10 @@ describe('WebhookService', () => {
   it('marks a delivery RETRYING with a future nextAttemptAt on a non-2xx response', async () => {
     const prisma = buildPrismaMock();
     const crypto = buildCryptoMock();
-    globalThis.fetch = jest.fn().mockResolvedValue({ status: 500, text: async () => 'server error' }) as unknown as typeof fetch;
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      status: 500,
+      text: async () => 'server error',
+    }) as unknown as typeof fetch;
 
     const service = new WebhookService(prisma as never, crypto as never);
     const result = await service.deliver('endpoint-1', 'notification.sent', { hello: 'world' });
@@ -160,7 +198,12 @@ describe('WebhookService', () => {
   it('refuses to retry a delivery that already succeeded', async () => {
     const prisma = buildPrismaMock();
     const crypto = buildCryptoMock();
-    prisma.webhookDelivery.findUnique.mockResolvedValueOnce({ id: 'delivery-1', status: 'SUCCESS', attemptCount: 1, endpoint: prisma.endpoint });
+    prisma.webhookDelivery.findUnique.mockResolvedValueOnce({
+      id: 'delivery-1',
+      status: 'SUCCESS',
+      attemptCount: 1,
+      endpoint: prisma.endpoint,
+    });
     const service = new WebhookService(prisma as never, crypto as never);
 
     await expect(service.retry('delivery-1')).rejects.toThrow(ConflictError);
@@ -178,7 +221,9 @@ describe('WebhookService', () => {
       attemptCount: 1,
       nextAttemptAt: new Date(Date.now() - 1000),
     });
-    globalThis.fetch = jest.fn().mockResolvedValue({ status: 200, text: async () => 'ok' }) as unknown as typeof fetch;
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ status: 200, text: async () => 'ok' }) as unknown as typeof fetch;
 
     const service = new WebhookService(prisma as never, crypto as never);
     const result = await service.processNextRetry('worker-1');

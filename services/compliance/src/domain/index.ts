@@ -6,12 +6,7 @@ export {
   ValidationError,
   UnauthorizedError,
 } from './errors';
-export {
-  ComplianceEventType,
-  EVENT_BUS,
-  type DomainEvent,
-  type EventBusPort,
-} from './events';
+export { ComplianceEventType, EVENT_BUS, type DomainEvent, type EventBusPort } from './events';
 export {
   evaluateExpression,
   computeCompositeRiskScore,

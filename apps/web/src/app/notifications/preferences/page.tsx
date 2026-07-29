@@ -25,9 +25,11 @@ export default function NotificationPreferencesPage(): ReactElement {
       setQuietStart(p.quietHoursStart != null ? String(p.quietHoursStart) : '');
       setQuietEnd(p.quietHoursEnd != null ? String(p.quietHoursEnd) : '');
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

@@ -6,7 +6,9 @@ export const envSchema = z
     PORT: z.coerce.number().int().positive().default(4001),
     SERVICE_NAME: z.string().default('auth'),
     SERVICE_VERSION: z.string().default('0.1.0'),
-    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().min(1),
     JWT_ACCESS_SECRET: z.string().min(32),
@@ -32,7 +34,7 @@ export const envSchema = z
     APP_PUBLIC_URL: z.string().url(),
     NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
     ANALYTICS_SERVICE_URL: z.string().url().optional(),
-  OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
+    OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
     INTERNAL_API_KEY: z.string().min(32).optional(),
     OTEL_ENABLED: z
       .enum(['true', 'false'])
@@ -55,8 +57,7 @@ export type ServiceEnv = z.infer<typeof envSchema>;
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   const withDefaults: NodeJS.ProcessEnv = {
     ...source,
-    COOKIE_SECURE:
-      source.COOKIE_SECURE ?? (source.NODE_ENV === 'production' ? 'true' : 'false'),
+    COOKIE_SECURE: source.COOKIE_SECURE ?? (source.NODE_ENV === 'production' ? 'true' : 'false'),
   };
   const parsed = envSchema.safeParse(withDefaults);
   if (!parsed.success) {

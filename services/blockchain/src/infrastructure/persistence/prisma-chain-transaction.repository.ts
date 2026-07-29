@@ -95,7 +95,10 @@ export class PrismaChainTransactionRepository implements ChainTransactionReposit
     return record ? mapTransaction(record) : null;
   }
 
-  async findByChainTxHash(chain: ChainNetwork, txHash: string): Promise<ChainTransactionRecord | null> {
+  async findByChainTxHash(
+    chain: ChainNetwork,
+    txHash: string,
+  ): Promise<ChainTransactionRecord | null> {
     const record = await this.prisma.chainTransaction.findUnique({
       where: { chain_txHash: { chain, txHash } },
     });
@@ -111,7 +114,9 @@ export class PrismaChainTransactionRepository implements ChainTransactionReposit
     return record ? mapTransaction(record) : null;
   }
 
-  async list(filters: ChainTransactionFilters): Promise<{ items: ChainTransactionRecord[]; total: number }> {
+  async list(
+    filters: ChainTransactionFilters,
+  ): Promise<{ items: ChainTransactionRecord[]; total: number }> {
     const where = {
       ...(filters.chain ? { chain: filters.chain } : {}),
       ...(filters.status ? { status: filters.status } : {}),
@@ -160,7 +165,12 @@ export class PrismaChainTransactionRepository implements ChainTransactionReposit
       where: { id },
       data: {
         confirmations,
-        blockNumber: blockNumber !== undefined ? (blockNumber === null ? null : BigInt(blockNumber)) : undefined,
+        blockNumber:
+          blockNumber !== undefined
+            ? blockNumber === null
+              ? null
+              : BigInt(blockNumber)
+            : undefined,
       },
     });
     return mapTransaction(record);

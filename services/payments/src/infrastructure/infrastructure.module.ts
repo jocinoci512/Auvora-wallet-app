@@ -25,12 +25,18 @@ import { NoopFraudHookAdapter } from './fraud/noop-fraud-hook.adapter';
 import { ComplianceFraudHttpClient } from './fraud/compliance-fraud-http.client';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,
 } from './observability/observability-publisher.adapter';
-import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  NotificationsPublisherAdapter,
+} from './notifications/notifications-publisher.adapter';
 import { PrismaChargebackRepository } from './persistence/prisma-chargeback.repository';
 import { PrismaDisputeRepository } from './persistence/prisma-dispute.repository';
 import { PrismaEventLogRepository } from './persistence/prisma-event-log.repository';
@@ -45,7 +51,11 @@ import {
   PrismaSettlementBatchRepository,
   PrismaSettlementRepository,
 } from './persistence/prisma-settlement.repository';
-import { PAYMENT_PROVIDERS, PROVIDER_REGISTRY, type ProviderRegistry } from './providers/provider-registry';
+import {
+  PAYMENT_PROVIDERS,
+  PROVIDER_REGISTRY,
+  type ProviderRegistry,
+} from './providers/provider-registry';
 import { ProviderFactory } from './providers/provider-factory.service';
 import { ProviderHealthMonitor } from './providers/provider-health-monitor.service';
 import { ProviderResolver } from './providers/provider-resolver.service';

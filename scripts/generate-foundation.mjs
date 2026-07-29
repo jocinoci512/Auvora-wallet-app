@@ -188,17 +188,17 @@ write(
     '  primary: {',
     '    background: tokens.color.accent,',
     "    color: '#FFFFFF',",
-    "    border: `1px solid ${tokens.color.accent}`,",
+    '    border: `1px solid ${tokens.color.accent}`,',
     '  },',
     '  secondary: {',
     '    background: tokens.color.accentMuted,',
     '    color: tokens.color.ink,',
-    "    border: `1px solid ${tokens.color.border}`,",
+    '    border: `1px solid ${tokens.color.border}`,',
     '  },',
     '  ghost: {',
     "    background: 'transparent',",
     '    color: tokens.color.ink,',
-    "    border: `1px solid ${tokens.color.border}`,",
+    '    border: `1px solid ${tokens.color.border}`,',
     '  },',
     '};',
     '',
@@ -382,7 +382,7 @@ write(
     '  private readonly defaultHeaders: Record<string, string>;',
     '',
     '  constructor(options: AuvoraClientOptions) {',
-    '    this.baseUrl = options.baseUrl.replace(/\\/$/, \'\');',
+    "    this.baseUrl = options.baseUrl.replace(/\\/$/, '');",
     '    this.fetchImpl = options.fetchImpl ?? fetch;',
     '    this.defaultHeaders = options.defaultHeaders ?? {};',
     '  }',
@@ -2160,12 +2160,14 @@ const categories = {
   services: written.filter((f) => f.startsWith('services/')).length,
   apps: written.filter((f) => f.startsWith('apps/')).length,
   database: written.filter((f) => f.startsWith('database/')).length,
-  infrastructure: written.filter((f) => f.startsWith('infrastructure/') || f === 'docker-compose.yml')
-    .length,
+  infrastructure: written.filter(
+    (f) => f.startsWith('infrastructure/') || f === 'docker-compose.yml',
+  ).length,
   docs: written.filter((f) => f.startsWith('docs/') || f === 'README.md').length,
   ci: written.filter((f) => f.startsWith('.github/') || f.startsWith('.husky/')).length,
-  scripts: written.filter((f) => f.startsWith('scripts/') && f !== 'scripts/generate-foundation.mjs')
-    .length,
+  scripts: written.filter(
+    (f) => f.startsWith('scripts/') && f !== 'scripts/generate-foundation.mjs',
+  ).length,
 };
 
 console.log('');
@@ -2187,4 +2189,3 @@ console.log('  pnpm install');
 console.log('  node scripts/bootstrap.mjs');
 console.log('  docker compose up -d');
 console.log('  pnpm db:generate && pnpm db:migrate && pnpm db:seed');
-

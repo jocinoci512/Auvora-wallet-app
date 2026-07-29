@@ -1,7 +1,7 @@
 ﻿global:
   namespace: auvora-production
   environment: production
-  imageTag: "1.2.0"
+  imageTag: '1.2.0'
   pullPolicy: IfNotPresent
   deploymentStrategy: rolling
   blueGreen:
@@ -18,7 +18,7 @@
       cpu: 200m
       memory: 512Mi
     limits:
-      cpu: "1"
+      cpu: '1'
       memory: 1Gi
 
 ingress:
@@ -62,47 +62,47 @@ ingress:
     secretName: auvora-wallet-prod-tls
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/limit-rps: "80"
-    nginx.ingress.kubernetes.io/limit-connections: "40"
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/proxy-body-size: '10m'
+    nginx.ingress.kubernetes.io/limit-rps: '80'
+    nginx.ingress.kubernetes.io/limit-connections: '40'
     nginx.ingress.kubernetes.io/configuration-snippet: |
       more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload";
 
 config:
   NODE_ENV: production
   LOG_LEVEL: warn
-  OTEL_ENABLED: "true"
-  APP_PUBLIC_URL: "https://app.example.com"
-  NEXT_PUBLIC_API_URL: "https://api.example.com"
-  NEXT_PUBLIC_APP_URL: "https://app.example.com"
-  NEXT_PUBLIC_ADMIN_URL: "https://admin.example.com"
-  NEXT_PUBLIC_DOCS_URL: "https://docs.example.com"
-  NEXT_PUBLIC_STATUS_URL: "https://status.example.com"
-  NEXT_PUBLIC_MARKETING_URL: "https://example.com"
-  CORS_ORIGINS: "https://example.com,https://www.example.com,https://app.example.com,https://admin.example.com,https://docs.example.com,https://status.example.com"
-  COOKIE_SECURE: "true"
-  COOKIE_DOMAIN: ".example.com"
-  CDN_ASSET_BASE_URL: "https://cdn.example.com"
-  OBJECT_STORAGE_BUCKET: "auvora-wallet-prod-assets"
-  OBJECT_STORAGE_REGION: "us-east-1"
-  AUTH_SERVICE_URL: "http://auth:4001"
-  WALLET_SERVICE_URL: "http://wallet:3002"
-  BLOCKCHAIN_SERVICE_URL: "http://blockchain:3003"
-  PAYMENTS_SERVICE_URL: "http://payments:3004"
-  COMPLIANCE_SERVICE_URL: "http://compliance:3005"
-  NOTIFICATIONS_SERVICE_URL: "http://notifications:3006"
-  ANALYTICS_SERVICE_URL: "http://analytics:3007"
-  AI_SERVICE_URL: "http://ai:3008"
-  CUSTODY_SERVICE_URL: "http://custody:3009"
-  OBSERVABILITY_SERVICE_URL: "http://observability:3010"
-  MARKET_DATA_SERVICE_URL: "http://market-data:3012"
-  SWAP_SERVICE_URL: "http://swap:3013"
-  NFT_SERVICE_URL: "http://nft:3014"
-  STAKING_SERVICE_URL: "http://staking:3015"
-  CONNECTIONS_SERVICE_URL: "http://connections:3016"
-  BRIDGE_SERVICE_URL: "http://bridge:3017"
+  OTEL_ENABLED: 'true'
+  APP_PUBLIC_URL: 'https://app.example.com'
+  NEXT_PUBLIC_API_URL: 'https://api.example.com'
+  NEXT_PUBLIC_APP_URL: 'https://app.example.com'
+  NEXT_PUBLIC_ADMIN_URL: 'https://admin.example.com'
+  NEXT_PUBLIC_DOCS_URL: 'https://docs.example.com'
+  NEXT_PUBLIC_STATUS_URL: 'https://status.example.com'
+  NEXT_PUBLIC_MARKETING_URL: 'https://example.com'
+  CORS_ORIGINS: 'https://example.com,https://www.example.com,https://app.example.com,https://admin.example.com,https://docs.example.com,https://status.example.com'
+  COOKIE_SECURE: 'true'
+  COOKIE_DOMAIN: '.example.com'
+  CDN_ASSET_BASE_URL: 'https://cdn.example.com'
+  OBJECT_STORAGE_BUCKET: 'auvora-wallet-prod-assets'
+  OBJECT_STORAGE_REGION: 'us-east-1'
+  AUTH_SERVICE_URL: 'http://auth:4001'
+  WALLET_SERVICE_URL: 'http://wallet:3002'
+  BLOCKCHAIN_SERVICE_URL: 'http://blockchain:3003'
+  PAYMENTS_SERVICE_URL: 'http://payments:3004'
+  COMPLIANCE_SERVICE_URL: 'http://compliance:3005'
+  NOTIFICATIONS_SERVICE_URL: 'http://notifications:3006'
+  ANALYTICS_SERVICE_URL: 'http://analytics:3007'
+  AI_SERVICE_URL: 'http://ai:3008'
+  CUSTODY_SERVICE_URL: 'http://custody:3009'
+  OBSERVABILITY_SERVICE_URL: 'http://observability:3010'
+  MARKET_DATA_SERVICE_URL: 'http://market-data:3012'
+  SWAP_SERVICE_URL: 'http://swap:3013'
+  NFT_SERVICE_URL: 'http://nft:3014'
+  STAKING_SERVICE_URL: 'http://staking:3015'
+  CONNECTIONS_SERVICE_URL: 'http://connections:3016'
+  BRIDGE_SERVICE_URL: 'http://bridge:3017'
 
 postgres:
   enabled: false
@@ -113,11 +113,11 @@ redis:
 backup:
   cronJob:
     enabled: true
-    schedule: "0 2 * * *"
+    schedule: '0 2 * * *'
 
 secrets:
   create: false
-  existingSecretName: ""
+  existingSecretName: ''
   externalSecret:
     enabled: true
     remoteKey: auvora/production/app

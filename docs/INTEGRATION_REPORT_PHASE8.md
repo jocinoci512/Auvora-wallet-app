@@ -11,12 +11,12 @@ Browser ──JWT──▶ Gateway :4000 ──proxy──▶ Notifications :300
 Auth :4001 ──optional MailPort──▶ Notifications /internal/send
 ```
 
-| Consumer | Integration |
-|----------|-------------|
-| Gateway | Proxy `/api/v1/notifications`, `/api/v1/admin/notifications` |
-| Auth | `NotificationsMailAdapter` when `NOTIFICATIONS_SERVICE_URL` + `INTERNAL_API_KEY` set |
-| Wallet / Blockchain / Payments / Compliance / Custody | No direct senders yet; ready for internal event ingest |
-| SDK / Web / Admin | Additive methods and UI |
+| Consumer                                              | Integration                                                                          |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Gateway                                               | Proxy `/api/v1/notifications`, `/api/v1/admin/notifications`                         |
+| Auth                                                  | `NotificationsMailAdapter` when `NOTIFICATIONS_SERVICE_URL` + `INTERNAL_API_KEY` set |
+| Wallet / Blockchain / Payments / Compliance / Custody | No direct senders yet; ready for internal event ingest                               |
+| SDK / Web / Admin                                     | Additive methods and UI                                                              |
 
 ## Boundaries
 

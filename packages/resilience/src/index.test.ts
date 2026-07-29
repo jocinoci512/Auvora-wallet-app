@@ -51,9 +51,11 @@ describe('@auvora/resilience', () => {
       resetTimeoutMs: 60_000,
       metrics,
     });
-    await expect(breaker.exec(async () => {
-      throw new Error('down');
-    })).rejects.toThrow('down');
+    await expect(
+      breaker.exec(async () => {
+        throw new Error('down');
+      }),
+    ).rejects.toThrow('down');
     await expect(
       breaker.exec(async () => {
         throw new Error('down');
@@ -102,9 +104,11 @@ describe('@auvora/resilience', () => {
 
   it('throws CircuitOpenError without fallback', async () => {
     const breaker = new CircuitBreaker('x', { failureThreshold: 1, resetTimeoutMs: 60_000 });
-    await expect(breaker.exec(async () => {
-      throw new Error('fail');
-    })).rejects.toThrow('fail');
+    await expect(
+      breaker.exec(async () => {
+        throw new Error('fail');
+      }),
+    ).rejects.toThrow('fail');
     await expect(breaker.exec(async () => 'nope')).rejects.toBeInstanceOf(CircuitOpenError);
   });
 });

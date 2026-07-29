@@ -24,14 +24,15 @@ import { type PaymentProvider, ProviderUnavailableError } from '../../domain';
 export class ProviderResolver implements ProviderResolverPort {
   constructor(
     @Inject(PROVIDER_FACTORY) private readonly factory: ProviderFactoryPort,
-    @Inject(PROVIDER_RECORD_REPOSITORY) private readonly providerRecords: ProviderRecordRepositoryPort,
+    @Inject(PROVIDER_RECORD_REPOSITORY)
+    private readonly providerRecords: ProviderRecordRepositoryPort,
     @Inject(PROVIDER_HEALTH_REPOSITORY) private readonly health: ProviderHealthRepositoryPort,
   ) {}
 
   async resolve(paymentType: PaymentType): Promise<PaymentProvider> {
-    const candidates = this.factory.listProviders().filter((provider) =>
-      provider.listCapabilities().includes(paymentType),
-    );
+    const candidates = this.factory
+      .listProviders()
+      .filter((provider) => provider.listCapabilities().includes(paymentType));
     if (candidates.length === 0) {
       throw new ProviderUnavailableError(`No provider registered for payment type ${paymentType}`);
     }
@@ -41,7 +42,9 @@ export class ProviderResolver implements ProviderResolverPort {
       this.health.latestByProvider(),
     ]);
     const recordByCode = new Map(records.map((record) => [record.code, record]));
-    const healthByCode = new Map(healthSnapshots.map((snapshot) => [snapshot.providerCode, snapshot]));
+    const healthByCode = new Map(
+      healthSnapshots.map((snapshot) => [snapshot.providerCode, snapshot]),
+    );
 
     const ranked = candidates
       .map((provider) => {
@@ -61,7 +64,9 @@ export class ProviderResolver implements ProviderResolverPort {
 
     const selected = ranked[0];
     if (!selected) {
-      throw new ProviderUnavailableError(`All providers for payment type ${paymentType} are disabled`);
+      throw new ProviderUnavailableError(
+        `All providers for payment type ${paymentType} are disabled`,
+      );
     }
     return selected.provider;
   }

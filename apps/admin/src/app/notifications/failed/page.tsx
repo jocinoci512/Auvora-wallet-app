@@ -15,9 +15,11 @@ export default function AdminFailedPage(): ReactElement {
       const result = await client.adminFailedNotifications();
       setItems(result.items);
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

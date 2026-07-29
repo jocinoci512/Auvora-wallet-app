@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  AuvoraClientError,
-  type Payment,
-  type PaymentStatistics,
-} from '@auvora/sdk';
+import { AuvoraClientError, type Payment, type PaymentStatistics } from '@auvora/sdk';
 import { AsyncStates, Button, PageHeader, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';

@@ -31,7 +31,9 @@ async function main() {
   await postgres.start();
   await postgres.createDatabase('auvora_wallet');
 
-  process.stdout.write(JSON.stringify({ level: 'info', msg: 'starting redis-memory-server' }) + '\n');
+  process.stdout.write(
+    JSON.stringify({ level: 'info', msg: 'starting redis-memory-server' }) + '\n',
+  );
   const redisPort = await redis.getPort();
   const redisHost = await redis.getHost();
 

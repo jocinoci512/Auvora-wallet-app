@@ -52,7 +52,8 @@ export interface BroadcastWithdrawalInput {
 @Injectable()
 export class TransactionEngine {
   constructor(
-    @Inject(CHAIN_TRANSACTION_REPOSITORY) private readonly transactions: ChainTransactionRepositoryPort,
+    @Inject(CHAIN_TRANSACTION_REPOSITORY)
+    private readonly transactions: ChainTransactionRepositoryPort,
     @Inject(CHAIN_ADDRESS_REPOSITORY) private readonly addresses: ChainAddressRepositoryPort,
     @Inject(NETWORK_CONFIG_REPOSITORY) private readonly networkConfig: NetworkConfigRepositoryPort,
     @Inject(PROVIDER_FACTORY) private readonly providerFactory: ProviderFactoryPort,
@@ -167,7 +168,12 @@ export class TransactionEngine {
       type: BlockchainEventType.WithdrawalBroadcast,
       chain: input.chain,
       aggregateId: created.id,
-      payload: { txHash, fromAddress: input.fromAddress, toAddress: input.toAddress, amount: input.amount },
+      payload: {
+        txHash,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        amount: input.amount,
+      },
     });
 
     return created;
@@ -253,6 +259,8 @@ export class TransactionEngine {
   }
 
   private generateTxHash(chain: ChainNetwork, address: string): string {
-    return createHash('sha256').update(`${chain}:${address}:${randomBytes(12).toString('hex')}`).digest('hex');
+    return createHash('sha256')
+      .update(`${chain}:${address}:${randomBytes(12).toString('hex')}`)
+      .digest('hex');
   }
 }

@@ -1,4 +1,12 @@
-import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+} from 'class-validator';
 import { PaymentStatus, PaymentType } from '@auvora/database';
 import { PaginationQueryDto } from './common.dto';
 

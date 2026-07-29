@@ -9,15 +9,31 @@ function buildPrisma(rows: Array<Record<string, unknown>>) {
   return {
     aiProvider: {
       findMany: jest.fn().mockResolvedValue(rows),
-      findUnique: jest.fn().mockImplementation(({ where: { code } }: { where: { code: string } }) =>
-        Promise.resolve(rows.find((row) => row['code'] === code) ?? null),
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where: { code } }: { where: { code: string } }) =>
+          Promise.resolve(rows.find((row) => row['code'] === code) ?? null),
+        ),
     },
   };
 }
 
-const simRow = { code: 'sim-default', providerType: 'SIMULATOR', defaultModel: 'sim-gpt', baseUrl: null, isEnabled: true, priority: 10 };
-const openaiRow = { code: 'openai-default', providerType: 'OPENAI', defaultModel: 'gpt-4o-mini', baseUrl: null, isEnabled: true, priority: 20 };
+const simRow = {
+  code: 'sim-default',
+  providerType: 'SIMULATOR',
+  defaultModel: 'sim-gpt',
+  baseUrl: null,
+  isEnabled: true,
+  priority: 10,
+};
+const openaiRow = {
+  code: 'openai-default',
+  providerType: 'OPENAI',
+  defaultModel: 'gpt-4o-mini',
+  baseUrl: null,
+  isEnabled: true,
+  priority: 20,
+};
 
 describe('AiProviderRegistry', () => {
   it('resolves the highest-priority enabled provider when no explicit code is given', async () => {
@@ -36,7 +52,10 @@ describe('AiProviderRegistry', () => {
 
   it('resolves an explicit provider code', async () => {
     const prisma = buildPrisma([simRow, openaiRow]);
-    const registry = new AiProviderRegistry(buildEnv({ AI_OPENAI_API_KEY: 'sk-test' }), prisma as never);
+    const registry = new AiProviderRegistry(
+      buildEnv({ AI_OPENAI_API_KEY: 'sk-test' }),
+      prisma as never,
+    );
     const provider = await registry.resolve('openai-default');
     expect(provider.code).toBe('openai-default');
   });
@@ -79,7 +98,9 @@ describe('AiProviderRegistry', () => {
     const prisma = buildPrisma([openaiRow]);
     const registry = new AiProviderRegistry(buildEnv(), prisma as never);
     await expect(
-      registry.resolveWithFailover(async (provider) => provider.chat({ messages: [{ role: 'USER', content: 'hi' }] })),
+      registry.resolveWithFailover(async (provider) =>
+        provider.chat({ messages: [{ role: 'USER', content: 'hi' }] }),
+      ),
     ).rejects.toThrow(ProviderUnavailableError);
   });
 });

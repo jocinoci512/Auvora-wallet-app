@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
 import { type WalletStatus } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
@@ -21,7 +13,7 @@ import {
 } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import {
   AdminSearchWalletsQueryDto,
   CreditDebitDto,

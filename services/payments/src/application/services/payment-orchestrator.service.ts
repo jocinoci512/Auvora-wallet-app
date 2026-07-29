@@ -12,10 +12,7 @@ import { REFUND_REPOSITORY, type RefundRepositoryPort } from '../ports/refund-re
 import { PROVIDER_RESOLVER, type ProviderResolverPort } from '../ports/provider-factory.port';
 import { WALLET_LEDGER, type WalletLedgerPort } from '../ports/wallet-ledger.port';
 import { ID_GENERATOR, type IdGeneratorPort } from '../ports/clock.port';
-import {
-  AI_PUBLISHER,
-  type AiPublisherPort,
-} from '../../infrastructure/ai/ai-publisher.adapter';
+import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
@@ -44,7 +41,10 @@ const WALLET_ROUTED_TYPES = new Set<PaymentType>([
   PaymentType.WALLET_TRANSFER,
 ]);
 
-const REFUNDABLE_STATUSES = new Set<PaymentStatus>([PaymentStatus.SETTLED, PaymentStatus.COMPLETED]);
+const REFUNDABLE_STATUSES = new Set<PaymentStatus>([
+  PaymentStatus.SETTLED,
+  PaymentStatus.COMPLETED,
+]);
 const CANCELLABLE_STATUSES = new Set<PaymentStatus>([
   PaymentStatus.CREATED,
   PaymentStatus.PENDING,
@@ -180,7 +180,9 @@ export class PaymentOrchestratorService {
       metadata: input.metadata,
     });
     if (!fraudResult.allow) {
-      throw new ForbiddenError(`Payment blocked by fraud screening: ${fraudResult.reasons?.join(', ') ?? 'risk threshold exceeded'}`);
+      throw new ForbiddenError(
+        `Payment blocked by fraud screening: ${fraudResult.reasons?.join(', ') ?? 'risk threshold exceeded'}`,
+      );
     }
 
     await this.limitsService.evaluate({
@@ -199,7 +201,12 @@ export class PaymentOrchestratorService {
       type: PaymentEventType.PaymentCreated,
       aggregateId: created.id,
       correlationId: created.correlationId ?? undefined,
-      payload: { reference: created.reference, type: created.type, amount: created.amount, currency: created.currency },
+      payload: {
+        reference: created.reference,
+        type: created.type,
+        amount: created.amount,
+        currency: created.currency,
+      },
     });
 
     return this.route(created);
@@ -279,7 +286,11 @@ export class PaymentOrchestratorService {
     return updated;
   }
 
-  async refund(id: string, input: RefundPaymentInput, requester: JwtAccessClaims): Promise<PaymentRecord> {
+  async refund(
+    id: string,
+    input: RefundPaymentInput,
+    requester: JwtAccessClaims,
+  ): Promise<PaymentRecord> {
     const payment = await this.requirePayment(id);
     this.assertOwnershipOrAdmin(payment, requester);
 
@@ -334,7 +345,10 @@ export class PaymentOrchestratorService {
       throw new ConflictError(`Refund could not be processed: ${message}`);
     }
 
-    await this.refunds.update(refund.id, { status: PaymentStatus.COMPLETED, completedAt: new Date() });
+    await this.refunds.update(refund.id, {
+      status: PaymentStatus.COMPLETED,
+      completedAt: new Date(),
+    });
 
     assertTransition(payment.status, PaymentStatus.REFUNDED);
     const updated = await this.payments.update(id, { status: PaymentStatus.REFUNDED });
@@ -364,13 +378,17 @@ export class PaymentOrchestratorService {
   }
 
   async getStatistics(ownerUserId: string): Promise<PaymentStatistics> {
-    const [{ total: totalPayments }, { total: totalCompleted }, { total: totalFailed }, { total: totalPending }] =
-      await Promise.all([
-        this.payments.list({ ownerUserId, take: 1 }),
-        this.payments.list({ ownerUserId, status: PaymentStatus.COMPLETED, take: 1 }),
-        this.payments.list({ ownerUserId, status: PaymentStatus.FAILED, take: 1 }),
-        this.payments.list({ ownerUserId, status: PaymentStatus.PENDING, take: 1 }),
-      ]);
+    const [
+      { total: totalPayments },
+      { total: totalCompleted },
+      { total: totalFailed },
+      { total: totalPending },
+    ] = await Promise.all([
+      this.payments.list({ ownerUserId, take: 1 }),
+      this.payments.list({ ownerUserId, status: PaymentStatus.COMPLETED, take: 1 }),
+      this.payments.list({ ownerUserId, status: PaymentStatus.FAILED, take: 1 }),
+      this.payments.list({ ownerUserId, status: PaymentStatus.PENDING, take: 1 }),
+    ]);
     const { total: totalVolume } = await this.payments.sumAmountSince(ownerUserId, new Date(0));
 
     return { totalPayments, totalCompleted, totalFailed, totalPending, totalVolume };
@@ -394,7 +412,10 @@ export class PaymentOrchestratorService {
         return current;
       }
       assertTransition(current.status, PaymentStatus.FAILED);
-      current = await this.payments.update(current.id, { status: PaymentStatus.FAILED, failureReason: message });
+      current = await this.payments.update(current.id, {
+        status: PaymentStatus.FAILED,
+        failureReason: message,
+      });
       await this.eventBus.publish({
         type: PaymentEventType.PaymentFailed,
         aggregateId: current.id,
@@ -442,7 +463,10 @@ export class PaymentOrchestratorService {
     });
 
     assertTransition(current.status, PaymentStatus.COMPLETED);
-    current = await this.payments.update(current.id, { status: PaymentStatus.COMPLETED, completedAt: new Date() });
+    current = await this.payments.update(current.id, {
+      status: PaymentStatus.COMPLETED,
+      completedAt: new Date(),
+    });
     await this.eventBus.publish({
       type: PaymentEventType.PaymentCompleted,
       aggregateId: current.id,
@@ -506,7 +530,10 @@ export class PaymentOrchestratorService {
     await this.settleWalletSideEffects(current);
 
     assertTransition(current.status, PaymentStatus.COMPLETED);
-    current = await this.payments.update(current.id, { status: PaymentStatus.COMPLETED, completedAt: new Date() });
+    current = await this.payments.update(current.id, {
+      status: PaymentStatus.COMPLETED,
+      completedAt: new Date(),
+    });
     await this.eventBus.publish({
       type: PaymentEventType.PaymentCompleted,
       aggregateId: current.id,

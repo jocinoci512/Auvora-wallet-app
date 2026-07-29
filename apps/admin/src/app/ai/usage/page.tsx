@@ -36,8 +36,8 @@ export default function AdminAiUsagePage(): ReactElement {
       {usage ? (
         <>
           <p>
-            Period {usage.period} · Requests {usage.totalRequests} · Tokens {usage.totalTokens} · Cost $
-            {usage.totalCost.toFixed(2)}
+            Period {usage.period} · Requests {usage.totalRequests} · Tokens {usage.totalTokens} ·
+            Cost ${usage.totalCost.toFixed(2)}
           </p>
           <section className="stack">
             <h2>By provider</h2>

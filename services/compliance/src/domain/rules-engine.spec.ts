@@ -21,7 +21,13 @@ describe('rules-engine', () => {
   it('computes composite risk bands', () => {
     expect(computeCompositeRiskScore({ country: 10, device: 10 }).band).toBe('LOW');
     expect(
-      computeCompositeRiskScore({ country: 80, device: 80, behavior: 80, velocity: 80, transaction: 80 }).band,
+      computeCompositeRiskScore({
+        country: 80,
+        device: 80,
+        behavior: 80,
+        velocity: 80,
+        transaction: 80,
+      }).band,
     ).toBe('MEDIUM');
     expect(
       computeCompositeRiskScore({

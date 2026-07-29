@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma, PrismaService, type SettlementMode, type SettlementStatus } from '@auvora/database';
+import {
+  Prisma,
+  PrismaService,
+  type SettlementMode,
+  type SettlementStatus,
+} from '@auvora/database';
 import type {
   CreateSettlementBatchData,
   CreateSettlementData,
@@ -171,7 +176,9 @@ export class PrismaSettlementBatchRepository implements SettlementBatchRepositor
     return record ? mapBatch(record) : null;
   }
 
-  async list(filters: SettlementBatchFilters): Promise<{ items: SettlementBatchRecord[]; total: number }> {
+  async list(
+    filters: SettlementBatchFilters,
+  ): Promise<{ items: SettlementBatchRecord[]; total: number }> {
     const where = {
       ...(filters.status ? { status: filters.status } : {}),
       ...(filters.mode ? { mode: filters.mode } : {}),
@@ -193,7 +200,8 @@ export class PrismaSettlementBatchRepository implements SettlementBatchRepositor
       where: { id },
       data: {
         status: data.status,
-        totalAmount: data.totalAmount !== undefined ? new Prisma.Decimal(data.totalAmount) : undefined,
+        totalAmount:
+          data.totalAmount !== undefined ? new Prisma.Decimal(data.totalAmount) : undefined,
         paymentCount: data.paymentCount,
         startedAt: data.startedAt,
         completedAt: data.completedAt,

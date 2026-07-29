@@ -55,7 +55,10 @@ export default function AdminPaymentsDashboardPage(): ReactElement {
         </div>
       </header>
 
-      <nav className="subnav" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+      <nav
+        className="subnav"
+        style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}
+      >
         <Link href="/payments/search">Search</Link>
         <Link href="/payments/settlements">Settlements</Link>
         <Link href="/payments/providers">Providers</Link>
@@ -70,7 +73,12 @@ export default function AdminPaymentsDashboardPage(): ReactElement {
       {error ? (
         <div className="alert alert--error">
           {error}
-          <Button type="button" variant="secondary" onClick={() => void load()} style={{ marginTop: '0.75rem' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void load()}
+            style={{ marginTop: '0.75rem' }}
+          >
             Retry
           </Button>
         </div>

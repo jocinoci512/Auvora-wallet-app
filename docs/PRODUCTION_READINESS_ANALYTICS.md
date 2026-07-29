@@ -8,16 +8,16 @@ See also: [`docs/diagrams/analytics-data-flow.md`](./diagrams/analytics-data-flo
 
 All eight modules publish via `AnalyticsPublisherAdapter` → `POST /api/v1/internal/analytics/events` with required `domain`, optional `metrics`, and `sourceService`:
 
-| Module | Event | Domain | Metrics |
-|--------|-------|--------|---------|
-| Auth | `auth.login.completed` | AUTH | `dau` |
-| Wallet | `wallet.transfer.completed` | WALLET | `tx_volume` |
-| Payments | `payment.completed` | PAYMENTS | `tx_volume` |
-| Compliance | `compliance.kyc.approved` | COMPLIANCE | — |
-| Custody | `custody.signing.completed` | CUSTODY | — |
-| Blockchain | `blockchain.transaction.confirmed` | BLOCKCHAIN | — |
-| Notifications | `notification.sent` | NOTIFICATIONS | `notification_sent_count` |
-| AI | `ai.chat.completed` | AI | `ai_request_count` |
+| Module        | Event                              | Domain        | Metrics                   |
+| ------------- | ---------------------------------- | ------------- | ------------------------- |
+| Auth          | `auth.login.completed`             | AUTH          | `dau`                     |
+| Wallet        | `wallet.transfer.completed`        | WALLET        | `tx_volume`               |
+| Payments      | `payment.completed`                | PAYMENTS      | `tx_volume`               |
+| Compliance    | `compliance.kyc.approved`          | COMPLIANCE    | —                         |
+| Custody       | `custody.signing.completed`        | CUSTODY       | —                         |
+| Blockchain    | `blockchain.transaction.confirmed` | BLOCKCHAIN    | —                         |
+| Notifications | `notification.sent`                | NOTIFICATIONS | `notification_sent_count` |
+| AI            | `ai.chat.completed`                | AI            | `ai_request_count`        |
 
 ## 2. Configurable definitions — **PASS**
 

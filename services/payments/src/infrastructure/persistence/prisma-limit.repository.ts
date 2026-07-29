@@ -67,7 +67,9 @@ export class PrismaLimitRepository implements LimitRepositoryPort {
     return record ? mapLimit(record) : null;
   }
 
-  async list(filters: PaymentLimitFilters): Promise<{ items: PaymentLimitRecord[]; total: number }> {
+  async list(
+    filters: PaymentLimitFilters,
+  ): Promise<{ items: PaymentLimitRecord[]; total: number }> {
     const where = {
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
       ...(filters.accountTier ? { accountTier: filters.accountTier } : {}),
@@ -105,10 +107,20 @@ export class PrismaLimitRepository implements LimitRepositoryPort {
           // Global defaults with no tier scoping
           { ownerUserId: null, accountTier: null, country: null, riskProfile: null },
           ...(criteria.country
-            ? [{ ownerUserId: null, country: criteria.country } satisfies Prisma.PaymentLimitWhereInput]
+            ? [
+                {
+                  ownerUserId: null,
+                  country: criteria.country,
+                } satisfies Prisma.PaymentLimitWhereInput,
+              ]
             : []),
           ...(criteria.riskProfile
-            ? [{ ownerUserId: null, riskProfile: criteria.riskProfile } satisfies Prisma.PaymentLimitWhereInput]
+            ? [
+                {
+                  ownerUserId: null,
+                  riskProfile: criteria.riskProfile,
+                } satisfies Prisma.PaymentLimitWhereInput,
+              ]
             : []),
         ],
       },

@@ -6,7 +6,12 @@ import {
   type TemplateFormat,
   type Prisma,
 } from '@auvora/database';
-import { ConflictError, NotFoundError, renderTemplateParts, type TemplateFormatCode } from '../../domain';
+import {
+  ConflictError,
+  NotFoundError,
+  renderTemplateParts,
+  type TemplateFormatCode,
+} from '../../domain';
 
 export interface CreateTemplateInput {
   code: string;
@@ -35,7 +40,14 @@ export interface UpdateTemplateInput {
 export class TemplateService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async list(filters: { category?: NotificationCategory; channel?: NotificationChannel; skip?: number; take?: number } = {}) {
+  async list(
+    filters: {
+      category?: NotificationCategory;
+      channel?: NotificationChannel;
+      skip?: number;
+      take?: number;
+    } = {},
+  ) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 200);
     const where: Prisma.NotificationTemplateWhereInput = {
@@ -43,7 +55,12 @@ export class TemplateService {
       ...(filters.channel ? { channel: filters.channel } : {}),
     };
     const [items, total] = await Promise.all([
-      this.prisma.notificationTemplate.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.notificationTemplate.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
       this.prisma.notificationTemplate.count({ where }),
     ]);
     return { items, total, skip, take };
@@ -59,7 +76,8 @@ export class TemplateService {
     const template = await this.prisma.notificationTemplate.findUnique({
       where: { code_channel_locale: { code, channel, locale } },
     });
-    if (!template) throw new NotFoundError(`Notification template ${code}/${channel}/${locale} not found`);
+    if (!template)
+      throw new NotFoundError(`Notification template ${code}/${channel}/${locale} not found`);
     return template;
   }
 
@@ -69,7 +87,9 @@ export class TemplateService {
       where: { code_channel_locale: { code: input.code, channel: input.channel, locale } },
     });
     if (existing) {
-      throw new ConflictError(`A template with code ${input.code} already exists for ${input.channel}/${locale}`);
+      throw new ConflictError(
+        `A template with code ${input.code} already exists for ${input.channel}/${locale}`,
+      );
     }
 
     const template = await this.prisma.notificationTemplate.create({
@@ -154,7 +174,12 @@ export class TemplateService {
     );
   }
 
-  previewRaw(input: { subject?: string; body: string; format?: TemplateFormatCode; variables: Record<string, unknown> }) {
+  previewRaw(input: {
+    subject?: string;
+    body: string;
+    format?: TemplateFormatCode;
+    variables: Record<string, unknown>;
+  }) {
     return renderTemplateParts(
       { subject: input.subject, body: input.body },
       input.variables,

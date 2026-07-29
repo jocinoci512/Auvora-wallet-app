@@ -171,7 +171,12 @@ export default function AdminWalletDetailPage(): ReactElement {
         <h2>Admin actions</h2>
         <div className="action-row">
           {wallet.status === 'ACTIVE' || wallet.status === 'PENDING' ? (
-            <Button type="button" variant="secondary" disabled={acting} onClick={() => void runAction('suspend')}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={acting}
+              onClick={() => void runAction('suspend')}
+            >
               Suspend
             </Button>
           ) : null}
@@ -181,7 +186,12 @@ export default function AdminWalletDetailPage(): ReactElement {
             </Button>
           ) : null}
           {wallet.status !== 'ARCHIVED' ? (
-            <Button type="button" variant="ghost" disabled={acting} onClick={() => void runAction('archive')}>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={acting}
+              onClick={() => void runAction('archive')}
+            >
               Archive
             </Button>
           ) : null}

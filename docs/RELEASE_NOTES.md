@@ -37,10 +37,10 @@ See [`DEPLOYMENT_GUIDE.md`](./DEPLOYMENT_GUIDE.md) and [`FINAL_RELEASE_CHECKLIST
 
 ## Verification URLs (local)
 
-| Surface | URL |
-|---------|-----|
-| Web | http://localhost:3000 |
-| Admin | http://localhost:3001 |
-| API | http://localhost:4000 |
+| Surface | URL                            |
+| ------- | ------------------------------ |
+| Web     | http://localhost:3000          |
+| Admin   | http://localhost:3001          |
+| API     | http://localhost:4000          |
 | Swagger | http://localhost:4000/api/docs |
-| Health | http://localhost:4000/health |
+| Health  | http://localhost:4000/health   |

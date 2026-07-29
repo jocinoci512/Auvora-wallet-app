@@ -47,7 +47,10 @@ export function toPdfPayload(rows: ReportRow[]): StructuredExportPayload {
   };
 }
 
-export function exportReport(format: ReportFormat, rows: ReportRow[]): string | StructuredExportPayload {
+export function exportReport(
+  format: ReportFormat,
+  rows: ReportRow[],
+): string | StructuredExportPayload {
   switch (format) {
     case 'CSV':
       return toCsv(rows);

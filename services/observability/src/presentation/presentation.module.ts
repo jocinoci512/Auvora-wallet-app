@@ -7,7 +7,7 @@ import { AdminObservabilityController } from './controllers/admin-observability.
 import { AdminInfrastructureController } from './controllers/admin-infrastructure.controller';
 import { InternalObservabilityController } from './controllers/internal-observability.controller';
 import { ObservabilityController } from './controllers/observability.controller';
-import { DomainExceptionFilter } from './filters/domain-exception.filter';
+import { DomainExceptionFilter } from '@auvora/nest-common';
 import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './guards/jwt.strategy';
@@ -17,7 +17,11 @@ import { HealthController } from './http/health.controller';
 import { RequestContextMiddleware } from './middleware/request-context.middleware';
 
 @Module({
-  imports: [InfrastructureModule, ApplicationModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [
+    InfrastructureModule,
+    ApplicationModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+  ],
   controllers: [
     HealthController,
     ObservabilityController,

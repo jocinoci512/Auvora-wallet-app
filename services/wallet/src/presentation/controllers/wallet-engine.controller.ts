@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import type { JwtAccessClaims } from '@auvora/types';
@@ -14,13 +6,10 @@ import { PortfolioEngineService } from '../../application/services/portfolio-eng
 import { WalletEngineService } from '../../application/services/wallet-engine.service';
 import { WalletSyncService } from '../../application/services/wallet-sync.service';
 import { WalletWorkersService } from '../../application/services/wallet-workers.service';
-import {
-  PERMISSION_WALLETS_READ,
-  PERMISSION_WALLETS_WRITE,
-} from '../../domain/permission-codes';
+import { PERMISSION_WALLETS_READ, PERMISSION_WALLETS_WRITE } from '../../domain/permission-codes';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { WalletIdParamDto } from '../dto/wallet.dto';
 
 class EngineCreateWalletDto {

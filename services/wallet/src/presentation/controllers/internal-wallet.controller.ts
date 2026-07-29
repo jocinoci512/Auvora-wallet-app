@@ -3,7 +3,7 @@ import { ApiExcludeController, ApiTags } from '@nestjs/swagger';
 import type { JwtAccessClaims, PermissionCode } from '@auvora/types';
 import { WalletService } from '../../application/services/wallet.service';
 import { PERMISSION_WALLETS_ADMIN } from '../../domain/permission-codes';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 

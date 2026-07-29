@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { WebhookService } from './webhook.service';
 
@@ -44,7 +50,9 @@ export class WebhookRetryWorkerService implements OnModuleInit, OnModuleDestroy 
         result = await this.webhooks.processNextRetry('webhook-retry-worker');
       }
     } catch (error) {
-      this.logger.error(`Webhook retry worker tick failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Webhook retry worker tick failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       this.ticking = false;
     }

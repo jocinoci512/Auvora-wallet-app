@@ -17,7 +17,12 @@ export class UsageService {
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
       ...(filters.providerCode ? { providerCode: filters.providerCode } : {}),
       ...(filters.from || filters.to
-        ? { createdAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
+        ? {
+            createdAt: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
         : {}),
     };
 
@@ -25,21 +30,27 @@ export class UsageService {
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
       ...(filters.providerCode ? { provider: { code: filters.providerCode } } : {}),
       ...(filters.from || filters.to
-        ? { createdAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
+        ? {
+            createdAt: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
         : {}),
     };
 
-    const [aggregate, requestCount, latencyAggregate, totalRequestsForRate, cacheHitCount] = await Promise.all([
-      this.prisma.aiTokenUsage.aggregate({
-        where,
-        _sum: { inputTokens: true, outputTokens: true, totalTokens: true, costUsdMicros: true },
-        _count: true,
-      }),
-      this.prisma.aiTokenUsage.count({ where }),
-      this.prisma.aiRequest.aggregate({ where: requestWhere, _avg: { latencyMs: true } }),
-      this.prisma.aiRequest.count({ where: requestWhere }),
-      this.prisma.aiRequest.count({ where: { ...requestWhere, cacheHit: true } }),
-    ]);
+    const [aggregate, requestCount, latencyAggregate, totalRequestsForRate, cacheHitCount] =
+      await Promise.all([
+        this.prisma.aiTokenUsage.aggregate({
+          where,
+          _sum: { inputTokens: true, outputTokens: true, totalTokens: true, costUsdMicros: true },
+          _count: true,
+        }),
+        this.prisma.aiTokenUsage.count({ where }),
+        this.prisma.aiRequest.aggregate({ where: requestWhere, _avg: { latencyMs: true } }),
+        this.prisma.aiRequest.count({ where: requestWhere }),
+        this.prisma.aiRequest.count({ where: { ...requestWhere, cacheHit: true } }),
+      ]);
 
     const totalCostUsdMicros = aggregate._sum.costUsdMicros ?? 0;
 
@@ -61,7 +72,12 @@ export class UsageService {
     const where = {
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
       ...(filters.from || filters.to
-        ? { createdAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
+        ? {
+            createdAt: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
         : {}),
     };
     const grouped = await this.prisma.aiTokenUsage.groupBy({

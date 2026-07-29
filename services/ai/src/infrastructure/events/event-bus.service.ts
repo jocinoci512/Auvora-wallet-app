@@ -25,10 +25,12 @@ export class EventBusService implements EventBusPort {
     });
 
     try {
-      await this.redis.getClient().publish(
-        AI_EVENTS_CHANNEL,
-        JSON.stringify({ ...input, publishedAt: new Date().toISOString() }),
-      );
+      await this.redis
+        .getClient()
+        .publish(
+          AI_EVENTS_CHANNEL,
+          JSON.stringify({ ...input, publishedAt: new Date().toISOString() }),
+        );
     } catch (error) {
       this.logger.warn(
         `Failed to publish event ${input.type}: ${error instanceof Error ? error.message : String(error)}`,

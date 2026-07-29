@@ -64,6 +64,8 @@ coverage
 .cache
 tmp
 temp
+.verify-logs
+.cursor
 
 # Typedoc
 docs/api

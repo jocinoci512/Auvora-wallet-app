@@ -63,14 +63,23 @@ describe('address-rules', () => {
 
   describe('validateAddressForChain', () => {
     it('routes each chain to the correct validator', () => {
-      expect(validateAddressForChain(ChainNetwork.BITCOIN, '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2')).toBe(true);
-      expect(validateAddressForChain(ChainNetwork.LITECOIN, 'LNL5W1VunEFqzMBP4LC6oXeXjqvcYSPzhK')).toBe(true);
+      expect(
+        validateAddressForChain(ChainNetwork.BITCOIN, '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'),
+      ).toBe(true);
+      expect(
+        validateAddressForChain(ChainNetwork.LITECOIN, 'LNL5W1VunEFqzMBP4LC6oXeXjqvcYSPzhK'),
+      ).toBe(true);
       expect(validateAddressForChain(ChainNetwork.ETHEREUM, '0x' + 'a'.repeat(40))).toBe(true);
       expect(validateAddressForChain(ChainNetwork.POLYGON, '0x' + 'b'.repeat(40))).toBe(true);
-      expect(validateAddressForChain(ChainNetwork.BNB_SMART_CHAIN, '0x' + 'c'.repeat(40))).toBe(true);
-      expect(validateAddressForChain(ChainNetwork.SOLANA, '4Nd1mYJq5eGoWzZ4hVYuQK5jN9tCLKgLQmDzYy1P8n2X')).toBe(
+      expect(validateAddressForChain(ChainNetwork.BNB_SMART_CHAIN, '0x' + 'c'.repeat(40))).toBe(
         true,
       );
+      expect(
+        validateAddressForChain(
+          ChainNetwork.SOLANA,
+          '4Nd1mYJq5eGoWzZ4hVYuQK5jN9tCLKgLQmDzYy1P8n2X',
+        ),
+      ).toBe(true);
       expect(validateAddressForChain(ChainNetwork.TRON, 'T' + 'A'.repeat(33))).toBe(true);
     });
 

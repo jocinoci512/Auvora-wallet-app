@@ -6,11 +6,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-  CSRF_TOKEN_COOKIE,
-  CSRF_TOKEN_HEADER,
-  timingSafeEqualString,
-} from '@auvora/security';
+import { CSRF_TOKEN_COOKIE, CSRF_TOKEN_HEADER, timingSafeEqualString } from '@auvora/security';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY, SKIP_CSRF_KEY } from '../decorators/auth.decorators';
 

@@ -39,7 +39,9 @@ describe('PolicyGateService', () => {
   it('creates alert when high-value rule matches', async () => {
     const createdAlert = { id: 'alert-1' };
     const prisma = {
-      kycProfile: { findUnique: jest.fn().mockResolvedValue({ riskScore: 20, country: 'US', level: 'BASIC' }) },
+      kycProfile: {
+        findUnique: jest.fn().mockResolvedValue({ riskScore: 20, country: 'US', level: 'BASIC' }),
+      },
       amlAlert: {
         count: jest.fn().mockResolvedValue(0),
         create: jest.fn().mockResolvedValue(createdAlert),

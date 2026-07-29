@@ -1,24 +1,37 @@
 # Alchemy Configuration
 
-**Phase:** 17  
+**Status:** Primary blockchain infrastructure for enabled mainnets  
 **Service:** `@auvora/blockchain-service`
+
+Alchemy is the **default primary** provider for Ethereum, BNB Smart Chain, Solana, Tron, and Bitcoin mainnets. Simulators remain only as local/dev fallback when credentials are absent (or when `BLOCKCHAIN_PRIMARY_PROVIDER=simulator`).
 
 ## Environment variables
 
-Read **only** from process env (validated by `services/blockchain/src/config/env.schema.ts`).
+Validated by `services/blockchain/src/config/env.schema.ts`. Put secrets in root `.env` only (gitignored).
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ALCHEMY_API_KEY` | No* | Shared key used to construct default per-chain URLs |
-| `ALCHEMY_ETHEREUM_RPC_URL` | No* | Explicit Ethereum JSON-RPC URL |
-| `ALCHEMY_BSC_RPC_URL` | No* | Explicit BNB Smart Chain JSON-RPC URL |
-| `ALCHEMY_SOLANA_RPC_URL` | No* | Explicit Solana JSON-RPC URL |
-| `ALCHEMY_TRON_RPC_URL` | No* | Explicit Tron JSON-RPC / HTTP base URL |
-| `ALCHEMY_BITCOIN_RPC_URL` | No* | Explicit Bitcoin JSON-RPC URL |
-| `ALCHEMY_RPC_TIMEOUT_MS` | No | Per-request timeout (default `12000`) |
+| Variable                       | Required | Description                                                      |
+| ------------------------------ | -------- | ---------------------------------------------------------------- |
+| `BLOCKCHAIN_PRIMARY_PROVIDER`  | No       | `alchemy` (default) or `simulator`                               |
+| `ALCHEMY_API_KEY`              | Yes*     | Shared key used to construct default per-chain URLs              |
+| `ALCHEMY_ETHEREUM_RPC_URL`     | No*      | Explicit Ethereum JSON-RPC URL override                          |
+| `ALCHEMY_BSC_RPC_URL`          | No*      | Explicit BNB Smart Chain JSON-RPC URL                            |
+| `ALCHEMY_SOLANA_RPC_URL`       | No*      | Explicit Solana JSON-RPC URL                                     |
+| `ALCHEMY_TRON_RPC_URL`         | No*      | Explicit Tron JSON-RPC / HTTP base URL                           |
+| `ALCHEMY_BITCOIN_RPC_URL`      | No*      | Explicit Bitcoin JSON-RPC URL                                    |
+| `ALCHEMY_RPC_TIMEOUT_MS`       | No       | Per-request timeout (default `12000`)                            |
+| `ALCHEMY_REQUIRED`             | No       | When `true`, service refuses to boot without Alchemy credentials |
+| `BLOCKCHAIN_SIMULATOR_ENABLED` | No       | Must be `false` in production                                    |
 
 \* At least one of API key or an explicit URL is required to activate live providers.  
-In **production**, missing Alchemy config logs a startup warning (soft fail — service still boots on simulators for non-overridden chains).
+In **production** with primary=`alchemy`, missing credentials hard-fail unless `ALCHEMY_REQUIRED=false`.
+
+## Centralized config
+
+Runtime policy lives in:
+
+- `services/blockchain/src/config/blockchain.config.ts` — enabled mainnets, network metadata, `resolveBlockchainConfig()`
+- `services/blockchain/src/infrastructure/providers/alchemy/alchemy-rpc.config.ts` — URL resolution + redaction
+- `services/blockchain/src/infrastructure/providers/multi-chain-provider.manager.ts` — network switching / backend selection
 
 ## URL resolution
 
@@ -27,27 +40,30 @@ Implemented in `resolveAlchemyRpcUrls()`:
 1. If `ALCHEMY_<CHAIN>_RPC_URL` is set → use it.
 2. Else if `ALCHEMY_API_KEY` is set →  
    `https://<alchemy-host>/v2/<ALCHEMY_API_KEY>`
-3. Else → chain stays on the simulator provider.
+3. Else → chain stays on the simulator provider (dev only).
 
 Default hosts:
 
-| Chain | Host |
-|-------|------|
-| Ethereum | `eth-mainnet.g.alchemy.com` |
-| BNB Smart Chain | `bnb-mainnet.g.alchemy.com` |
-| Solana | `solana-mainnet.g.alchemy.com` |
-| Tron | `tron-mainnet.g.alchemy.com` |
-| Bitcoin | `bitcoin-mainnet.g.alchemy.com` |
+| Chain           | Host                            |
+| --------------- | ------------------------------- |
+| Ethereum        | `eth-mainnet.g.alchemy.com`     |
+| BNB Smart Chain | `bnb-mainnet.g.alchemy.com`     |
+| Solana          | `solana-mainnet.g.alchemy.com`  |
+| Tron            | `tron-mainnet.g.alchemy.com`    |
+| Bitcoin         | `bitcoin-mainnet.g.alchemy.com` |
 
 ## Local setup
 
-1. Copy `.env.example` → `.env` (if needed).
-2. Set placeholders only in example files; put the real key in local `.env` (gitignored).
-3. Restart the blockchain service so the registry rebuilds.
+1. Copy `.env.example` → `.env`.
+2. Set `ALCHEMY_API_KEY` (never commit the real value).
+3. Set `BLOCKCHAIN_PRIMARY_PROVIDER=alchemy` and `BLOCKCHAIN_SIMULATOR_ENABLED=false`.
+4. Restart the blockchain service so the registry rebuilds.
 
 ```bash
-# PowerShell example (local only — do not commit)
-$env:ALCHEMY_API_KEY = "<your-key>"
+# Live connectivity probe (redacts the key in output)
+node scripts/verify-alchemy-rpc.mjs
+
+# Service
 pnpm --filter @auvora/blockchain-service dev
 ```
 
@@ -56,16 +72,19 @@ pnpm --filter @auvora/blockchain-service dev
 - Never commit real keys or populated RPC URLs.
 - `.env.example` contains **empty** placeholders only.
 - Logs use `redactRpcUrl()` / provider labels — API keys must not appear in log lines.
-- Wallet / gateway services must not receive Alchemy env vars for outbound RPC.
+- Wallet / gateway services must not receive Alchemy env vars for outbound RPC; they call blockchain via `BLOCKCHAIN_SERVICE_URL`.
+- If a key was pasted into chat or tickets, rotate it in the Alchemy dashboard.
 
-## Validation
+## Error handling
 
-| Check | Behavior |
-|-------|----------|
-| Zod schema | Optional URL / key shapes; timeout positive int |
-| Production + simulator | Hard fail if `BLOCKCHAIN_SIMULATOR_ENABLED=true` |
-| Production + no Alchemy | Warning log; simulators remain for non-live chains |
-| Registry boot | Logs which chains activated Alchemy (redacted endpoints) |
+`JsonRpcClient` classifies:
+
+| Condition                                | Behavior                              |
+| ---------------------------------------- | ------------------------------------- |
+| Missing / invalid API key (HTTP 401/403) | `JsonRpcError` kind `auth`            |
+| Rate limit (HTTP 429)                    | Retry with backoff; kind `rate_limit` |
+| Upstream 5xx / network outage            | Retry; kind `upstream` / `network`    |
+| Timeout                                  | kind `timeout`                        |
 
 ## Verification
 
@@ -73,4 +92,4 @@ pnpm --filter @auvora/blockchain-service dev
 GET http://127.0.0.1:3003/health/providers
 ```
 
-Expect `alchemyConfigured: true` and `backend: "alchemy"` for configured chains when RPC responds.
+Expect `alchemyConfigured: true` and `backend: "alchemy"` for the five enabled mainnets when RPC responds.

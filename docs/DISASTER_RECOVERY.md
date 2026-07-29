@@ -4,13 +4,13 @@ Last updated: **2026-07-26** (Production Deployment Readiness)
 
 ## Objectives
 
-| Metric | Production target | Notes |
-|--------|-------------------|-------|
-| RPO | ≤ 15 minutes | Continuous Postgres WAL / PITR + object storage versioning |
-| RTO | ≤ 60 minutes | Fail over to `disaster-recovery` environment |
-| Backup retention | 35 days (prod) | Configurable per Terraform `postgres` module |
-| Restore validation | Monthly | `InfraRecoveryDrill` with verified outcome |
-| Full DR failover drill | Quarterly | Tabletop + technical cutover |
+| Metric                 | Production target | Notes                                                      |
+| ---------------------- | ----------------- | ---------------------------------------------------------- |
+| RPO                    | ≤ 15 minutes      | Continuous Postgres WAL / PITR + object storage versioning |
+| RTO                    | ≤ 60 minutes      | Fail over to `disaster-recovery` environment               |
+| Backup retention       | 35 days (prod)    | Configurable per Terraform `postgres` module               |
+| Restore validation     | Monthly           | `InfraRecoveryDrill` with verified outcome                 |
+| Full DR failover drill | Quarterly         | Tabletop + technical cutover                               |
 
 ## Scope
 
@@ -85,11 +85,11 @@ Canary: scale `{service}-canary` to 0 and remove canary image tag.
 
 ## Testing cadence
 
-| Drill | Frequency | Owner | Success criteria |
-|-------|-----------|-------|------------------|
-| Backup restore validation | Monthly | Platform | Restore completes; RPO met; smoke green |
-| Full DR failover tabletop | Quarterly | Platform + Security | RTO ≤ 60m documented |
-| Secret rotation dry-run | Quarterly | Security | Apps restart cleanly with rotated refs |
+| Drill                     | Frequency | Owner               | Success criteria                        |
+| ------------------------- | --------- | ------------------- | --------------------------------------- |
+| Backup restore validation | Monthly   | Platform            | Restore completes; RPO met; smoke green |
+| Full DR failover tabletop | Quarterly | Platform + Security | RTO ≤ 60m documented                    |
+| Secret rotation dry-run   | Quarterly | Security            | Apps restart cleanly with rotated refs  |
 
 Track drills as `InfraRecoveryDrill` records (Admin → Infrastructure → Recovery).
 

@@ -44,7 +44,10 @@ export class AlchemyTronProvider implements BlockchainProvider {
 
   async createAddress(): Promise<{ address: string; metadata?: Record<string, unknown> }> {
     const generated = generateTronAddress();
-    return { address: generated.address, metadata: { publicKey: generated.publicKey, backend: 'alchemy' } };
+    return {
+      address: generated.address,
+      metadata: { publicKey: generated.publicKey, backend: 'alchemy' },
+    };
   }
 
   validateAddress(address: string): boolean {
@@ -64,13 +67,16 @@ export class AlchemyTronProvider implements BlockchainProvider {
   }
 
   async getTokenBalance(contractAddress: string, holder: string): Promise<string> {
-    const result = await this.httpPost<{ constant_result?: string[] }>('/wallet/triggerconstantcontract', {
-      owner_address: holder,
-      contract_address: contractAddress,
-      function_selector: 'balanceOf(address)',
-      parameter: holder,
-      visible: true,
-    });
+    const result = await this.httpPost<{ constant_result?: string[] }>(
+      '/wallet/triggerconstantcontract',
+      {
+        owner_address: holder,
+        contract_address: contractAddress,
+        function_selector: 'balanceOf(address)',
+        parameter: holder,
+        visible: true,
+      },
+    );
     const hex = result.constant_result?.[0];
     return hex ? BigInt(`0x${hex}`).toString() : '0';
   }
@@ -106,7 +112,12 @@ export class AlchemyTronProvider implements BlockchainProvider {
         amount: '0',
         confirmations: Math.max(0, confirmations),
         blockNumber,
-        status: info.receipt?.result === 'FAILED' ? 'FAILED' : blockNumber != null ? 'CONFIRMED' : 'PENDING',
+        status:
+          info.receipt?.result === 'FAILED'
+            ? 'FAILED'
+            : blockNumber != null
+              ? 'CONFIRMED'
+              : 'PENDING',
       };
     } catch {
       return null;
@@ -120,7 +131,9 @@ export class AlchemyTronProvider implements BlockchainProvider {
       ]);
       return { txHash };
     } catch {
-      const result = await this.httpPost<{ txid?: string }>('/wallet/broadcasthex', { transaction: rawTxHex });
+      const result = await this.httpPost<{ txid?: string }>('/wallet/broadcasthex', {
+        transaction: rawTxHex,
+      });
       if (!result.txid) {
         throw new Error('Tron broadcast failed');
       }
@@ -139,7 +152,9 @@ export class AlchemyTronProvider implements BlockchainProvider {
   }
 
   /** Energy / bandwidth resource estimate for a TRX transfer (best-effort). */
-  async estimateResources(address: string): Promise<{ energy: number; bandwidth: number; freeNetLimit: number }> {
+  async estimateResources(
+    address: string,
+  ): Promise<{ energy: number; bandwidth: number; freeNetLimit: number }> {
     try {
       const resources = await this.httpPost<{
         EnergyLimit?: number;
@@ -152,7 +167,8 @@ export class AlchemyTronProvider implements BlockchainProvider {
       const energy = Math.max(0, (resources.EnergyLimit ?? 0) - (resources.EnergyUsed ?? 0));
       const bandwidth = Math.max(
         0,
-        (resources.freeNetLimit ?? 0) - (resources.freeNetUsed ?? 0) +
+        (resources.freeNetLimit ?? 0) -
+          (resources.freeNetUsed ?? 0) +
           ((resources.NetLimit ?? 0) - (resources.NetUsed ?? 0)),
       );
       return { energy, bandwidth, freeNetLimit: resources.freeNetLimit ?? 0 };
@@ -177,8 +193,12 @@ export class AlchemyTronProvider implements BlockchainProvider {
   async healthCheck(): Promise<{ healthy: boolean; latencyMs: number; message?: string }> {
     const start = Date.now();
     try {
-      await this.getBlockHeight();
-      return { healthy: true, latencyMs: Date.now() - start, message: 'alchemy_tron_ok' };
+      const tip = await this.getBlockHeight();
+      return {
+        healthy: true,
+        latencyMs: Date.now() - start,
+        message: `alchemy_tron_ok tip=${tip.toString()}`,
+      };
     } catch (error) {
       return {
         healthy: false,
@@ -210,7 +230,8 @@ export class AlchemyTronProvider implements BlockchainProvider {
       this.metrics.errors += 1;
       this.metrics.totalLatencyMs += Date.now() - started;
       this.metrics.lastErrorAt = new Date().toISOString();
-      this.metrics.lastErrorMessage = error instanceof Error ? error.message.slice(0, 200) : 'tron_http_error';
+      this.metrics.lastErrorMessage =
+        error instanceof Error ? error.message.slice(0, 200) : 'tron_http_error';
       throw error;
     } finally {
       clearTimeout(timer);

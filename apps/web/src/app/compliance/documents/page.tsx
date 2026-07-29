@@ -73,7 +73,11 @@ export default function ComplianceDocumentsPage(): ReactElement {
         </label>
         <label>
           Storage key
-          <input value={storageKey} onChange={(e) => setStorageKey(e.target.value)} placeholder="s3://… or local://…" />
+          <input
+            value={storageKey}
+            onChange={(e) => setStorageKey(e.target.value)}
+            placeholder="s3://… or local://…"
+          />
         </label>
         <Button type="submit">Upload metadata</Button>
       </form>

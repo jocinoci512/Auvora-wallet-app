@@ -114,10 +114,7 @@ export class BlockchainAnalyticsSimulatorProvider implements BlockchainAnalytics
       score: mixer || darknet ? 88 : 15,
       mixerExposure: mixer,
       darknetExposure: darknet,
-      flags: [
-        ...(mixer ? ['mixer_exposure'] : []),
-        ...(darknet ? ['darknet_exposure'] : []),
-      ],
+      flags: [...(mixer ? ['mixer_exposure'] : []), ...(darknet ? ['darknet_exposure'] : [])],
     };
   }
 }

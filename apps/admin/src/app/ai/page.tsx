@@ -45,9 +45,10 @@ export default function AdminAiPage(): ReactElement {
       {error ? <div className="alert alert--error">{error}</div> : null}
       {metrics ? (
         <p>
-          Conversations: {metrics.totalConversations} · Messages: {metrics.totalMessages} · Active users:{' '}
-          {metrics.activeUsers} · Avg latency: {Math.round(metrics.averageLatencyMs)}ms · Tokens used:{' '}
-          {metrics.totalTokensUsed} · Error rate: {Math.round(metrics.errorRate * 100)}%
+          Conversations: {metrics.totalConversations} · Messages: {metrics.totalMessages} · Active
+          users: {metrics.activeUsers} · Avg latency: {Math.round(metrics.averageLatencyMs)}ms ·
+          Tokens used: {metrics.totalTokensUsed} · Error rate: {Math.round(metrics.errorRate * 100)}
+          %
         </p>
       ) : null}
       <section className="stack">

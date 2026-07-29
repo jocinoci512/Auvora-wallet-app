@@ -1,3 +1,5 @@
+/* App-specific overrides — shared chrome lives in @auvora/ui/styles.css */
+
 html,
 body {
   margin: 0;
@@ -5,13 +7,11 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, rgba(15, 110, 86, 0.12), transparent 40%),
-    linear-gradient(180deg, #f7f4ef 0%, #ebe6de 100%);
-  color: var(--auvora-ink);
+  color: var(--auvora-color-text, var(--auvora-ink));
 }
 
-main {
+main,
+.auvora-page {
   max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
@@ -34,41 +34,6 @@ p {
   font-size: 1rem;
 }
 
-.site-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--auvora-border);
-  background: rgba(247, 244, 239, 0.85);
-  backdrop-filter: blur(8px);
-}
-
-.site-nav__brand {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--auvora-accent);
-}
-
-.site-nav__links {
-  display: flex;
-  gap: 1.25rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.site-nav__links a {
-  color: var(--auvora-ink);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.site-nav__links a:hover {
-  color: var(--auvora-accent);
-}
-
 .token-panel {
   max-width: 960px;
   margin: 0 auto;
@@ -78,7 +43,7 @@ p {
 .token-panel__hint {
   font-size: 0.875rem;
   margin: 0 0 0.75rem;
-  color: rgba(11, 18, 32, 0.75);
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
 }
 
 .token-panel__row {
@@ -95,7 +60,7 @@ p {
 
 .token-panel__saved {
   font-size: 0.875rem;
-  color: var(--auvora-accent);
+  color: var(--auvora-color-primary, var(--auvora-accent));
 }
 
 .page-header {
@@ -108,103 +73,61 @@ p {
 
 .page-subtitle {
   margin: 0;
-  color: rgba(11, 18, 32, 0.65);
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
   font-size: 0.95rem;
 }
 
 .state-message {
-  color: rgba(11, 18, 32, 0.65);
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
 }
 
-.alert {
-  padding: 0.875rem 1rem;
-  border-radius: var(--auvora-radius-sm, 6px);
-  margin-bottom: 1rem;
-  font-size: 0.95rem;
-}
-
-.alert--error {
-  background: #fef3f2;
-  border: 1px solid #fecdca;
-  color: #912018;
-}
-
-.alert--warn {
-  background: #fffaeb;
-  border: 1px solid #fedf89;
-  color: #7a2e0e;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.field-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.field-input {
-  font-family: inherit;
-  font-size: 1rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--auvora-border);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--auvora-ink);
-}
-
-.filters__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-end;
-}
-
-.filters__row .field {
-  flex: 1 1 10rem;
-  margin-bottom: 0;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.panel {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid var(--auvora-border);
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-}
-
-.kv-list {
+.wallet-list {
+  list-style: none;
   margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
 }
 
-.kv-list > div {
+.wallet-card {
+  border: 1px solid var(--auvora-color-border, var(--auvora-border));
+  border-radius: var(--auvora-radius-md, 10px);
+  background: var(--auvora-color-surface);
+}
+
+.wallet-card__link {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(214, 211, 205, 0.6);
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
 }
 
-.kv-list dt {
-  font-size: 0.875rem;
-  color: rgba(11, 18, 32, 0.6);
+.wallet-card__link:hover {
+  background: var(--auvora-color-hover);
 }
 
-.kv-list dd {
-  margin: 0;
+.wallet-card__primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+}
+
+.wallet-card__asset {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.wallet-card__label {
   font-weight: 500;
-  text-align: right;
+}
+
+.wallet-card__alias {
+  font-size: 0.875rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
 }
 
 .mono {
@@ -219,92 +142,48 @@ p {
   gap: 0.5rem;
 }
 
-.status-badge {
-  display: inline-block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: var(--auvora-accent-muted);
-  color: var(--auvora-accent);
-}
-
-.status-badge--pending {
-  background: #fffaeb;
-  color: #7a2e0e;
-}
-
-.status-badge--suspended {
-  background: #fef3f2;
-  color: #912018;
-}
-
-.status-badge--archived {
-  background: #f2f4f7;
-  color: #344054;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--auvora-border);
-}
-
-.data-table th {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(11, 18, 32, 0.55);
-}
-
-.data-table a {
-  color: var(--auvora-accent);
-  font-weight: 500;
-}
-
 code {
   font-family: var(--auvora-font-mono);
   font-size: 0.85em;
-  background: rgba(215, 237, 230, 0.5);
+  background: var(--auvora-color-primary-muted, var(--auvora-accent-muted));
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
 
-.metric-grid {
+.chain-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.75rem;
-  margin-bottom: 1.5rem;
 }
 
-.metric-card {
-  border: 1px solid var(--auvora-border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
+.chain-card {
+  border: 1px solid var(--auvora-color-border, var(--auvora-border));
+  border-radius: var(--auvora-radius-md, 10px);
+  background: var(--auvora-color-surface);
   padding: 1rem 1.25rem;
 }
 
-.metric-card__label {
+.chain-card__name {
+  font-weight: 700;
+  font-size: 1.05rem;
   display: block;
-  font-size: 0.8rem;
-  color: rgba(11, 18, 32, 0.6);
-  margin-bottom: 0.35rem;
 }
 
-.metric-card__value {
-  display: block;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.chain-card__symbol {
+  font-size: 0.8rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
+}
+
+.chain-card__meta {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .dot {
@@ -316,79 +195,56 @@ code {
 }
 
 .dot--healthy {
-  background: var(--auvora-accent);
+  background: var(--auvora-color-primary, var(--auvora-accent));
 }
 
 .dot--unhealthy {
-  background: #d92d20;
+  background: var(--auvora-color-error, #d92d20);
 }
 
-.tag {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  background: rgba(15, 110, 86, 0.1);
-  color: var(--auvora-accent);
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.status-badge--active,
-.status-badge--succeeded,
-.status-badge--confirmed {
-  background: var(--auvora-accent-muted);
-  color: var(--auvora-accent);
+.copy-row .mono {
+  flex: 1 1 auto;
 }
 
-.status-badge--running,
-.status-badge--queued,
-.status-badge--mempool,
-.status-badge--retrying {
-  background: #fffaeb;
-  color: #7a2e0e;
+.address-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
 }
 
-.status-badge--failed,
-.status-badge--rejected,
-.status-badge--cancelled {
-  background: #fef3f2;
-  color: #912018;
+.address-card {
+  border: 1px solid var(--auvora-color-border, var(--auvora-border));
+  border-radius: var(--auvora-radius-md, 10px);
+  background: var(--auvora-color-surface);
 }
 
-.section-header {
+.address-card__link {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
 }
 
-/* Shared layout primitives (ops/status/infra + forms) */
-.page__header {
+.address-card__link:hover {
+  background: var(--auvora-color-hover);
+}
+
+.address-card__primary {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.page__subnav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1rem;
-}
-
-.page__subnav a {
-  color: var(--auvora-accent);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.page__subnav a:hover,
-.page__subnav a[aria-current='page'] {
-  text-decoration: underline;
+  gap: 0.2rem;
 }
 
 .stack {
@@ -401,96 +257,14 @@ code {
 
 .stack > li {
   padding: 0.75rem 1rem;
-  border: 1px solid var(--auvora-border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.65);
-}
-
-.form-stack {
-  display: grid;
-  gap: 1rem;
-  max-width: 32rem;
-  margin-bottom: 1rem;
-}
-
-.form-stack label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.form-stack input,
-.form-stack select,
-.form-stack textarea {
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 400;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--auvora-border);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--auvora-ink);
-}
-
-.form-stack input:focus-visible,
-.form-stack select:focus-visible,
-.form-stack textarea:focus-visible,
-.field-input:focus-visible,
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--auvora-accent);
-  outline-offset: 2px;
-}
-
-.alert--success {
-  background: #ecfdf3;
-  border: 1px solid #abefc6;
-  color: #0f6e56;
-}
-
-.alert--info {
-  background: #eff8ff;
-  border: 1px solid #b2ddff;
-  color: #175cd3;
-}
-
-.field-error {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #912018;
-}
-
-.table-scroll {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.site-nav__links {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.site-nav__links a[aria-current='page'] {
-  color: var(--auvora-accent);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  border: 1px solid var(--auvora-color-border, var(--auvora-border));
+  border-radius: var(--auvora-radius-md, 10px);
+  background: var(--auvora-color-surface);
 }
 
 @media (max-width: 768px) {
-  .site-nav {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .site-nav__links {
-    gap: 0.75rem 1rem;
-    justify-content: flex-start;
-  }
-
-  main {
+  main,
+  .auvora-page {
     padding: 1.25rem 1rem 3rem;
   }
 

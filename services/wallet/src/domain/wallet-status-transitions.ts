@@ -11,9 +11,7 @@ const ALLOWED_TRANSITIONS: Record<WalletStatus, readonly WalletStatus[]> = {
 export function assertStatusTransition(from: WalletStatus, to: WalletStatus): void {
   const allowed = ALLOWED_TRANSITIONS[from];
   if (!allowed.includes(to)) {
-    throw new InvalidStatusTransitionError(
-      `Cannot transition wallet from ${from} to ${to}`,
-    );
+    throw new InvalidStatusTransitionError(`Cannot transition wallet from ${from} to ${to}`);
   }
 }
 

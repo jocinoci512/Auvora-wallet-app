@@ -16,7 +16,9 @@ function buildEnv(overrides: Partial<Record<string, unknown>> = {}) {
   } as never;
 }
 
-function buildPrisma(enabledRow: Record<string, unknown> | null = { id: 'provider-1', priority: 100 }) {
+function buildPrisma(
+  enabledRow: Record<string, unknown> | null = { id: 'provider-1', priority: 100 },
+) {
   return {
     notificationChannelProvider: {
       findFirst: jest.fn().mockResolvedValue(enabledRow),
@@ -29,7 +31,11 @@ describe('ChannelProviderRegistry', () => {
     const registry = new ChannelProviderRegistry(buildEnv(), buildPrisma() as never);
     const provider = await registry.resolve('EMAIL');
     expect(provider.getCode()).toBe('simulator-email');
-    const result = await provider.send({ notificationId: 'n1', recipient: 'user@auvora.io', body: 'hi' });
+    const result = await provider.send({
+      notificationId: 'n1',
+      recipient: 'user@auvora.io',
+      body: 'hi',
+    });
     expect(result.success).toBe(true);
   });
 
@@ -44,23 +50,32 @@ describe('ChannelProviderRegistry', () => {
   });
 
   it('treats a channel as disabled via env flag regardless of DB state', async () => {
-    const registry = new ChannelProviderRegistry(buildEnv({ NOTIFICATIONS_CHANNEL_SMS_ENABLED: false }), buildPrisma() as never);
+    const registry = new ChannelProviderRegistry(
+      buildEnv({ NOTIFICATIONS_CHANNEL_SMS_ENABLED: false }),
+      buildPrisma() as never,
+    );
 
     const provider = await registry.resolve('SMS');
     expect(provider.getCode()).toBe('unavailable-sms');
-    await expect(provider.send({ notificationId: 'n1', recipient: '+15550001111', body: 'hi' })).rejects.toThrow(
-      ProviderUnavailableError,
-    );
+    await expect(
+      provider.send({ notificationId: 'n1', recipient: '+15550001111', body: 'hi' }),
+    ).rejects.toThrow(ProviderUnavailableError);
   });
 
   it('falls back to unavailable providers for EMAIL/SMS/PUSH/SLACK/TEAMS when simulators are off and no HTTP URL is set', async () => {
-    const registry = new ChannelProviderRegistry(buildEnv({ NOTIFICATIONS_SIMULATOR_ENABLED: false }), buildPrisma() as never);
+    const registry = new ChannelProviderRegistry(
+      buildEnv({ NOTIFICATIONS_SIMULATOR_ENABLED: false }),
+      buildPrisma() as never,
+    );
     const provider = await registry.resolve('SMS');
     expect(provider.getCode()).toBe('unavailable-sms');
   });
 
   it('uses the local in-app provider for IN_APP/BROWSER/WEBHOOK when simulators are off', async () => {
-    const registry = new ChannelProviderRegistry(buildEnv({ NOTIFICATIONS_SIMULATOR_ENABLED: false }), buildPrisma() as never);
+    const registry = new ChannelProviderRegistry(
+      buildEnv({ NOTIFICATIONS_SIMULATOR_ENABLED: false }),
+      buildPrisma() as never,
+    );
     const provider = await registry.resolve('IN_APP');
     expect(provider.getCode()).toBe('local-in_app');
     const result = await provider.send({ notificationId: 'n1', recipient: 'user-1', body: 'hi' });
@@ -69,7 +84,10 @@ describe('ChannelProviderRegistry', () => {
 
   it('uses an HTTP provider when a channel-specific provider URL is configured', async () => {
     const registry = new ChannelProviderRegistry(
-      buildEnv({ NOTIFICATIONS_SIMULATOR_ENABLED: false, NOTIFICATIONS_EMAIL_PROVIDER_URL: 'https://esp.example.com/send' }),
+      buildEnv({
+        NOTIFICATIONS_SIMULATOR_ENABLED: false,
+        NOTIFICATIONS_EMAIL_PROVIDER_URL: 'https://esp.example.com/send',
+      }),
       buildPrisma() as never,
     );
     const provider = await registry.resolve('EMAIL');

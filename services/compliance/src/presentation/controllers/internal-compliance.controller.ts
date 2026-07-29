@@ -2,7 +2,7 @@ import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
 import { ApiExcludeController, ApiTags } from '@nestjs/swagger';
 import { IsObject, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 import { PolicyGateService } from '../../application/services/policy-gate.service';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 

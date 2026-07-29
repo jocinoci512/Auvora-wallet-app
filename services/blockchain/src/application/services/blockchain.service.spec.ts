@@ -4,7 +4,10 @@ import type {
   ChainAddressRecord,
   ChainAddressRepositoryPort,
 } from '../ports/chain-address-repository.port';
-import type { NetworkConfigRecord, NetworkConfigRepositoryPort } from '../ports/network-config-repository.port';
+import type {
+  NetworkConfigRecord,
+  NetworkConfigRepositoryPort,
+} from '../ports/network-config-repository.port';
 import type { ProviderFactoryPort } from '../ports/provider-factory.port';
 import { ForbiddenError, ValidationError, type EventBusPort } from '../../domain';
 import { BlockchainService } from './blockchain.service';
@@ -91,7 +94,10 @@ describe('BlockchainService', () => {
 
   it('creates an address for the requesting owner and publishes AddressCreated', async () => {
     const { service, eventBus } = createService();
-    const result = await service.createAddress({ ownerUserId: 'owner-1', chain: ChainNetwork.BITCOIN });
+    const result = await service.createAddress({
+      ownerUserId: 'owner-1',
+      chain: ChainNetwork.BITCOIN,
+    });
     expect(result.ownerUserId).toBe('owner-1');
     expect(eventBus.publish).toHaveBeenCalledWith(
       expect.objectContaining({ type: expect.any(String), chain: ChainNetwork.BITCOIN }),
@@ -119,9 +125,9 @@ describe('BlockchainService', () => {
 
   it('denies access to another user who does not own the address and lacks admin permission', async () => {
     const { service } = createService();
-    await expect(service.getAddress('address-1', buildUser({ sub: 'someone-else' }))).rejects.toThrow(
-      ForbiddenError,
-    );
+    await expect(
+      service.getAddress('address-1', buildUser({ sub: 'someone-else' })),
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('allows an admin permission holder to access addresses they do not own', async () => {

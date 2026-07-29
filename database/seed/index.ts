@@ -1,10 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import {
-  AssetStandard,
-  ChainNetwork,
-  PrismaClient,
-  UserStatus,
-} from '../generated/client';
+import { AssetStandard, ChainNetwork, PrismaClient, UserStatus } from '../generated/client';
 
 const prisma = new PrismaClient();
 
@@ -66,10 +61,43 @@ const PERMISSIONS: Array<{ code: string; description: string }> = [
   { code: 'observability:alerts', description: 'Manage alert rules and alerts' },
   { code: 'observability:incidents', description: 'Manage incidents and postmortems' },
   { code: 'observability:slo', description: 'Manage SLO/SLI definitions and measurements' },
-  { code: 'infrastructure:read', description: 'View infrastructure environments and operations data' },
-  { code: 'infrastructure:admin', description: 'Administer infrastructure platform and feature flags' },
+  {
+    code: 'infrastructure:read',
+    description: 'View infrastructure environments and operations data',
+  },
+  {
+    code: 'infrastructure:admin',
+    description: 'Administer infrastructure platform and feature flags',
+  },
   { code: 'infrastructure:deploy', description: 'Record and manage deployments' },
   { code: 'infrastructure:backup', description: 'Record and manage backup jobs' },
+  { code: 'swap:read', description: 'Read swap quotes, routes, and history' },
+  { code: 'swap:execute', description: 'Prepare and execute swaps' },
+  { code: 'swap:admin', description: 'Administer swap providers and analytics' },
+  { code: 'nft:read', description: 'Read NFT gallery, collections, and asset details' },
+  { code: 'nft:write', description: 'Sync NFTs, favorites, hidden assets, and ownership checks' },
+  { code: 'nft:admin', description: 'Administer NFT providers, workers, and sync metrics' },
+  { code: 'staking:read', description: 'Read staking positions, validators, and yield analytics' },
+  {
+    code: 'staking:write',
+    description: 'Prepare and confirm stake, unstake, and claim operations',
+  },
+  { code: 'staking:admin', description: 'Administer staking providers, validators, and sync' },
+  {
+    code: 'connections:read',
+    description: 'Read hardware wallets, WalletConnect sessions, and watch addresses',
+  },
+  {
+    code: 'connections:write',
+    description: 'Pair devices, manage sessions, and confirm external signing',
+  },
+  {
+    code: 'connections:admin',
+    description: 'Administer connection providers, sessions, and workers',
+  },
+  { code: 'bridge:read', description: 'Read bridge quotes, routes, and history' },
+  { code: 'bridge:execute', description: 'Prepare and confirm cross-chain bridge transfers' },
+  { code: 'bridge:admin', description: 'Administer bridge providers, routes, and workers' },
 ];
 
 const USER_WALLET_PERMISSION_CODES = [
@@ -97,6 +125,16 @@ const USER_WALLET_PERMISSION_CODES = [
   'analytics:reports',
   'analytics:dashboards',
   'observability:read',
+  'swap:read',
+  'swap:execute',
+  'nft:read',
+  'nft:write',
+  'staking:read',
+  'staking:write',
+  'connections:read',
+  'connections:write',
+  'bridge:read',
+  'bridge:execute',
 ] as const;
 
 const NETWORK_CONFIGS: Array<{
@@ -304,18 +342,46 @@ async function main(): Promise<void> {
         networkId: networkRecord.id,
         code: 'local-simulator',
         name: `${network.displayName} Local Simulator`,
-        isPrimary: true,
+        isPrimary: false,
         isEnabled: true,
-        priority: 1,
+        priority: 100,
         metadata: { mode: 'simulator' },
       },
       update: {
         name: `${network.displayName} Local Simulator`,
-        isPrimary: true,
+        isPrimary: false,
         isEnabled: true,
+        priority: 100,
         networkId: networkRecord.id,
       },
     });
+
+    const alchemyChains = new Set(['ETHEREUM', 'BNB_SMART_CHAIN', 'SOLANA', 'TRON', 'BITCOIN']);
+    if (alchemyChains.has(network.chain)) {
+      await prisma.blockchainProviderRecord.upsert({
+        where: {
+          chain_code: { chain: network.chain, code: 'alchemy' },
+        },
+        create: {
+          chain: network.chain,
+          networkId: networkRecord.id,
+          code: 'alchemy',
+          name: `${network.displayName} Alchemy`,
+          isPrimary: true,
+          isEnabled: true,
+          priority: 1,
+          metadata: { mode: 'alchemy', infrastructure: 'alchemy' },
+        },
+        update: {
+          name: `${network.displayName} Alchemy`,
+          isPrimary: true,
+          isEnabled: true,
+          priority: 1,
+          networkId: networkRecord.id,
+          metadata: { mode: 'alchemy', infrastructure: 'alchemy' },
+        },
+      });
+    }
   }
 
   const paymentProviders: Array<{
@@ -437,15 +503,69 @@ async function main(): Promise<void> {
     isPrimary: boolean;
     priority: number;
   }> = [
-    { code: 'local-identity-simulator', name: 'Local Identity Simulator', providerType: 'IDENTITY', isPrimary: true, priority: 1 },
-    { code: 'local-document-simulator', name: 'Local Document Simulator', providerType: 'DOCUMENT', isPrimary: true, priority: 1 },
-    { code: 'local-sanctions-simulator', name: 'Local Sanctions Simulator', providerType: 'SANCTIONS', isPrimary: true, priority: 1 },
-    { code: 'local-pep-simulator', name: 'Local PEP Simulator', providerType: 'PEP', isPrimary: true, priority: 1 },
-    { code: 'local-address-risk-simulator', name: 'Local Address Risk Simulator', providerType: 'ADDRESS_RISK', isPrimary: true, priority: 1 },
-    { code: 'local-chain-analytics-simulator', name: 'Local Blockchain Analytics Simulator', providerType: 'BLOCKCHAIN_ANALYTICS', isPrimary: true, priority: 1 },
-    { code: 'local-fraud-simulator', name: 'Local Fraud Simulator', providerType: 'FRAUD', isPrimary: true, priority: 1 },
-    { code: 'local-risk-simulator', name: 'Local Risk Scoring Simulator', providerType: 'RISK_SCORING', isPrimary: true, priority: 1 },
-    { code: 'local-travel-rule-simulator', name: 'Local Travel Rule Simulator', providerType: 'TRAVEL_RULE', isPrimary: true, priority: 1 },
+    {
+      code: 'local-identity-simulator',
+      name: 'Local Identity Simulator',
+      providerType: 'IDENTITY',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-document-simulator',
+      name: 'Local Document Simulator',
+      providerType: 'DOCUMENT',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-sanctions-simulator',
+      name: 'Local Sanctions Simulator',
+      providerType: 'SANCTIONS',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-pep-simulator',
+      name: 'Local PEP Simulator',
+      providerType: 'PEP',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-address-risk-simulator',
+      name: 'Local Address Risk Simulator',
+      providerType: 'ADDRESS_RISK',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-chain-analytics-simulator',
+      name: 'Local Blockchain Analytics Simulator',
+      providerType: 'BLOCKCHAIN_ANALYTICS',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-fraud-simulator',
+      name: 'Local Fraud Simulator',
+      providerType: 'FRAUD',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-risk-simulator',
+      name: 'Local Risk Scoring Simulator',
+      providerType: 'RISK_SCORING',
+      isPrimary: true,
+      priority: 1,
+    },
+    {
+      code: 'local-travel-rule-simulator',
+      name: 'Local Travel Rule Simulator',
+      providerType: 'TRAVEL_RULE',
+      isPrimary: true,
+      priority: 1,
+    },
   ];
 
   for (const provider of complianceProviders) {
@@ -544,7 +664,12 @@ async function main(): Promise<void> {
     { code: 'sim-self', name: 'Simulator Self Custody', custodyModel: 'SELF', priority: 10 },
     { code: 'sim-hosted', name: 'Simulator Hosted Custody', custodyModel: 'HOSTED', priority: 20 },
     { code: 'sim-shared', name: 'Simulator Shared Custody', custodyModel: 'SHARED', priority: 30 },
-    { code: 'sim-institutional', name: 'Simulator Institutional', custodyModel: 'INSTITUTIONAL', priority: 40 },
+    {
+      code: 'sim-institutional',
+      name: 'Simulator Institutional',
+      custodyModel: 'INSTITUTIONAL',
+      priority: 40,
+    },
     { code: 'sim-mpc', name: 'Simulator MPC', custodyModel: 'MPC', priority: 50 },
     { code: 'sim-hsm', name: 'Simulator HSM', custodyModel: 'HSM', priority: 60 },
   ];
@@ -580,8 +705,20 @@ async function main(): Promise<void> {
     { code: 'single-default', name: 'Single approval', kind: 'SINGLE', threshold: 1 },
     { code: 'dual-control', name: 'Dual control', kind: 'DUAL', threshold: 2 },
     { code: 'threshold-2-of-3', name: '2-of-3 threshold', kind: 'THRESHOLD', threshold: 2 },
-    { code: 'amount-high-value', name: 'High value amount', kind: 'AMOUNT_BASED', threshold: 1, amountThreshold: '10000' },
-    { code: 'risk-elevated', name: 'Elevated risk approval', kind: 'RISK_BASED', threshold: 1, riskThreshold: 70 },
+    {
+      code: 'amount-high-value',
+      name: 'High value amount',
+      kind: 'AMOUNT_BASED',
+      threshold: 1,
+      amountThreshold: '10000',
+    },
+    {
+      code: 'risk-elevated',
+      name: 'Elevated risk approval',
+      kind: 'RISK_BASED',
+      threshold: 1,
+      riskThreshold: 70,
+    },
   ];
 
   for (const policy of defaultApprovalPolicies) {
@@ -795,12 +932,48 @@ async function main(): Promise<void> {
     priority: number;
     defaultModel: string;
   }> = [
-    { code: 'sim-default', name: 'Simulator LLM', providerType: 'SIMULATOR', priority: 10, defaultModel: 'sim-gpt' },
-    { code: 'openai-default', name: 'OpenAI', providerType: 'OPENAI', priority: 20, defaultModel: 'gpt-4o-mini' },
-    { code: 'anthropic-default', name: 'Anthropic', providerType: 'ANTHROPIC', priority: 30, defaultModel: 'claude-3-5-haiku-latest' },
-    { code: 'gemini-default', name: 'Google Gemini', providerType: 'GEMINI', priority: 40, defaultModel: 'gemini-1.5-flash' },
-    { code: 'azure-openai-default', name: 'Azure OpenAI', providerType: 'AZURE_OPENAI', priority: 50, defaultModel: 'gpt-4o-mini' },
-    { code: 'local-default', name: 'Local LLM', providerType: 'LOCAL', priority: 60, defaultModel: 'local-llm' },
+    {
+      code: 'sim-default',
+      name: 'Simulator LLM',
+      providerType: 'SIMULATOR',
+      priority: 10,
+      defaultModel: 'sim-gpt',
+    },
+    {
+      code: 'openai-default',
+      name: 'OpenAI',
+      providerType: 'OPENAI',
+      priority: 20,
+      defaultModel: 'gpt-4o-mini',
+    },
+    {
+      code: 'anthropic-default',
+      name: 'Anthropic',
+      providerType: 'ANTHROPIC',
+      priority: 30,
+      defaultModel: 'claude-3-5-haiku-latest',
+    },
+    {
+      code: 'gemini-default',
+      name: 'Google Gemini',
+      providerType: 'GEMINI',
+      priority: 40,
+      defaultModel: 'gemini-1.5-flash',
+    },
+    {
+      code: 'azure-openai-default',
+      name: 'Azure OpenAI',
+      providerType: 'AZURE_OPENAI',
+      priority: 50,
+      defaultModel: 'gpt-4o-mini',
+    },
+    {
+      code: 'local-default',
+      name: 'Local LLM',
+      providerType: 'LOCAL',
+      priority: 60,
+      defaultModel: 'local-llm',
+    },
   ];
 
   // AI provider upsert: `priority` and `isEnabled` are runtime operational config (adjustable via
@@ -832,7 +1005,16 @@ async function main(): Promise<void> {
   const aiPrompts: Array<{
     code: string;
     name: string;
-    category: 'SUPPORT' | 'WALLET' | 'PAYMENT' | 'COMPLIANCE' | 'FRAUD' | 'OPERATIONS' | 'ADMIN' | 'DEVELOPER' | 'DOCUMENTATION';
+    category:
+      | 'SUPPORT'
+      | 'WALLET'
+      | 'PAYMENT'
+      | 'COMPLIANCE'
+      | 'FRAUD'
+      | 'OPERATIONS'
+      | 'ADMIN'
+      | 'DEVELOPER'
+      | 'DOCUMENTATION';
     systemPrompt: string;
     userPrompt: string;
   }> = [
@@ -840,7 +1022,8 @@ async function main(): Promise<void> {
       code: 'assistant.customer_support',
       name: 'Customer Support Assistant',
       category: 'SUPPORT',
-      systemPrompt: 'You are the Auvora Wallet customer support assistant. Be concise, accurate, and never invent balances or transactions.',
+      systemPrompt:
+        'You are the Auvora Wallet customer support assistant. Be concise, accurate, and never invent balances or transactions.',
       userPrompt: '{{message}}',
     },
     {
@@ -861,7 +1044,8 @@ async function main(): Promise<void> {
       code: 'assistant.compliance',
       name: 'Compliance Assistant',
       category: 'COMPLIANCE',
-      systemPrompt: 'You assist with KYC/AML explanations using only provided context. Do not invent screening results.',
+      systemPrompt:
+        'You assist with KYC/AML explanations using only provided context. Do not invent screening results.',
       userPrompt: '{{message}}',
     },
     {
@@ -945,17 +1129,83 @@ async function main(): Promise<void> {
     valueType: 'COUNTER' | 'GAUGE' | 'RATE' | 'RATIO' | 'DURATION_MS';
     unit?: string;
   }> = [
-    { code: 'dau', name: 'Daily Active Users', domain: 'CUSTOMER', valueType: 'GAUGE', unit: 'users' },
-    { code: 'mau', name: 'Monthly Active Users', domain: 'CUSTOMER', valueType: 'GAUGE', unit: 'users' },
-    { code: 'tx_volume', name: 'Transaction Volume', domain: 'WALLET', valueType: 'COUNTER', unit: 'count' },
-    { code: 'wallet_growth', name: 'Wallet Growth', domain: 'WALLET', valueType: 'GAUGE', unit: 'wallets' },
-    { code: 'payment_success_rate', name: 'Payment Success Rate', domain: 'PAYMENTS', valueType: 'RATIO', unit: 'ratio' },
-    { code: 'notification_delivery_rate', name: 'Notification Delivery Rate', domain: 'NOTIFICATIONS', valueType: 'RATIO', unit: 'ratio' },
-    { code: 'notification_sent_count', name: 'Notification Sent Count', domain: 'NOTIFICATIONS', valueType: 'COUNTER', unit: 'count' },
-    { code: 'ai_request_count', name: 'AI Request Count', domain: 'AI', valueType: 'COUNTER', unit: 'count' },
-    { code: 'dashboard_load_ms', name: 'Dashboard Load Duration', domain: 'INFRASTRUCTURE', valueType: 'DURATION_MS', unit: 'ms' },
-    { code: 'report_generate_ms', name: 'Report Generate Duration', domain: 'INFRASTRUCTURE', valueType: 'DURATION_MS', unit: 'ms' },
-    { code: 'aggregation_duration_ms', name: 'Aggregation Duration', domain: 'INFRASTRUCTURE', valueType: 'DURATION_MS', unit: 'ms' },
+    {
+      code: 'dau',
+      name: 'Daily Active Users',
+      domain: 'CUSTOMER',
+      valueType: 'GAUGE',
+      unit: 'users',
+    },
+    {
+      code: 'mau',
+      name: 'Monthly Active Users',
+      domain: 'CUSTOMER',
+      valueType: 'GAUGE',
+      unit: 'users',
+    },
+    {
+      code: 'tx_volume',
+      name: 'Transaction Volume',
+      domain: 'WALLET',
+      valueType: 'COUNTER',
+      unit: 'count',
+    },
+    {
+      code: 'wallet_growth',
+      name: 'Wallet Growth',
+      domain: 'WALLET',
+      valueType: 'GAUGE',
+      unit: 'wallets',
+    },
+    {
+      code: 'payment_success_rate',
+      name: 'Payment Success Rate',
+      domain: 'PAYMENTS',
+      valueType: 'RATIO',
+      unit: 'ratio',
+    },
+    {
+      code: 'notification_delivery_rate',
+      name: 'Notification Delivery Rate',
+      domain: 'NOTIFICATIONS',
+      valueType: 'RATIO',
+      unit: 'ratio',
+    },
+    {
+      code: 'notification_sent_count',
+      name: 'Notification Sent Count',
+      domain: 'NOTIFICATIONS',
+      valueType: 'COUNTER',
+      unit: 'count',
+    },
+    {
+      code: 'ai_request_count',
+      name: 'AI Request Count',
+      domain: 'AI',
+      valueType: 'COUNTER',
+      unit: 'count',
+    },
+    {
+      code: 'dashboard_load_ms',
+      name: 'Dashboard Load Duration',
+      domain: 'INFRASTRUCTURE',
+      valueType: 'DURATION_MS',
+      unit: 'ms',
+    },
+    {
+      code: 'report_generate_ms',
+      name: 'Report Generate Duration',
+      domain: 'INFRASTRUCTURE',
+      valueType: 'DURATION_MS',
+      unit: 'ms',
+    },
+    {
+      code: 'aggregation_duration_ms',
+      name: 'Aggregation Duration',
+      domain: 'INFRASTRUCTURE',
+      valueType: 'DURATION_MS',
+      unit: 'ms',
+    },
   ];
 
   for (const metric of metricDefs) {
@@ -986,10 +1236,38 @@ async function main(): Promise<void> {
     targetValue: number;
     higherIsBetter: boolean;
   }> = [
-    { code: 'kpi.dau', name: 'DAU Target', domain: 'CUSTOMER', metricCode: 'dau', targetValue: 1000, higherIsBetter: true },
-    { code: 'kpi.payment_success', name: 'Payment Success', domain: 'PAYMENTS', metricCode: 'payment_success_rate', targetValue: 0.99, higherIsBetter: true },
-    { code: 'kpi.notification_delivery', name: 'Notification Delivery', domain: 'NOTIFICATIONS', metricCode: 'notification_delivery_rate', targetValue: 0.995, higherIsBetter: true },
-    { code: 'kpi.tx_volume', name: 'Daily TX Volume', domain: 'WALLET', metricCode: 'tx_volume', targetValue: 500, higherIsBetter: true },
+    {
+      code: 'kpi.dau',
+      name: 'DAU Target',
+      domain: 'CUSTOMER',
+      metricCode: 'dau',
+      targetValue: 1000,
+      higherIsBetter: true,
+    },
+    {
+      code: 'kpi.payment_success',
+      name: 'Payment Success',
+      domain: 'PAYMENTS',
+      metricCode: 'payment_success_rate',
+      targetValue: 0.99,
+      higherIsBetter: true,
+    },
+    {
+      code: 'kpi.notification_delivery',
+      name: 'Notification Delivery',
+      domain: 'NOTIFICATIONS',
+      metricCode: 'notification_delivery_rate',
+      targetValue: 0.995,
+      higherIsBetter: true,
+    },
+    {
+      code: 'kpi.tx_volume',
+      name: 'Daily TX Volume',
+      domain: 'WALLET',
+      metricCode: 'tx_volume',
+      targetValue: 500,
+      higherIsBetter: true,
+    },
   ];
 
   for (const kpi of kpiDefs) {
@@ -1013,7 +1291,11 @@ async function main(): Promise<void> {
     });
   }
 
-  const systemDashboards: Array<{ code: string; name: string; domain: 'ADMIN' | 'PAYMENTS' | 'COMPLIANCE' | 'AI' | 'INFRASTRUCTURE' | 'SYSTEM' | 'CUSTODY' }> = [
+  const systemDashboards: Array<{
+    code: string;
+    name: string;
+    domain: 'ADMIN' | 'PAYMENTS' | 'COMPLIANCE' | 'AI' | 'INFRASTRUCTURE' | 'SYSTEM' | 'CUSTODY';
+  }> = [
     { code: 'executive', name: 'Executive Dashboard', domain: 'ADMIN' },
     { code: 'operations', name: 'Operations Dashboard', domain: 'SYSTEM' },
     { code: 'finance', name: 'Finance Dashboard', domain: 'PAYMENTS' },
@@ -1048,9 +1330,24 @@ async function main(): Promise<void> {
     domain: 'WALLET' | 'PAYMENTS' | 'COMPLIANCE';
     querySpec: Record<string, unknown>;
   }> = [
-    { code: 'wallet_activity', name: 'Wallet Activity Report', domain: 'WALLET', querySpec: { metrics: ['tx_volume', 'wallet_growth'], window: 'DAILY' } },
-    { code: 'payment_summary', name: 'Payment Summary Report', domain: 'PAYMENTS', querySpec: { metrics: ['payment_success_rate'], window: 'DAILY' } },
-    { code: 'compliance_overview', name: 'Compliance Overview Report', domain: 'COMPLIANCE', querySpec: { metrics: [], window: 'DAILY' } },
+    {
+      code: 'wallet_activity',
+      name: 'Wallet Activity Report',
+      domain: 'WALLET',
+      querySpec: { metrics: ['tx_volume', 'wallet_growth'], window: 'DAILY' },
+    },
+    {
+      code: 'payment_summary',
+      name: 'Payment Summary Report',
+      domain: 'PAYMENTS',
+      querySpec: { metrics: ['payment_success_rate'], window: 'DAILY' },
+    },
+    {
+      code: 'compliance_overview',
+      name: 'Compliance Overview Report',
+      domain: 'COMPLIANCE',
+      querySpec: { metrics: [], window: 'DAILY' },
+    },
   ];
 
   for (const tpl of reportTemplates) {
@@ -1073,8 +1370,18 @@ async function main(): Promise<void> {
   }
 
   for (const model of [
-    { code: 'wallet_growth_linear', name: 'Wallet Growth Forecast', domain: 'WALLET' as const, metricCode: 'wallet_growth' },
-    { code: 'tx_volume_linear', name: 'Transaction Volume Forecast', domain: 'WALLET' as const, metricCode: 'tx_volume' },
+    {
+      code: 'wallet_growth_linear',
+      name: 'Wallet Growth Forecast',
+      domain: 'WALLET' as const,
+      metricCode: 'wallet_growth',
+    },
+    {
+      code: 'tx_volume_linear',
+      name: 'Transaction Volume Forecast',
+      domain: 'WALLET' as const,
+      metricCode: 'tx_volume',
+    },
   ]) {
     await prisma.forecastModel.upsert({
       where: { code: model.code },
@@ -1095,10 +1402,34 @@ async function main(): Promise<void> {
   }
 
   const obsMetrics = [
-    { code: 'http_latency_ms', name: 'HTTP latency', domain: 'GATEWAY' as const, kind: 'HISTOGRAM' as const, unit: 'ms' },
-    { code: 'error_rate', name: 'Error rate', domain: 'SYSTEM' as const, kind: 'GAUGE' as const, unit: 'ratio' },
-    { code: 'queue_depth', name: 'Queue depth', domain: 'NOTIFICATIONS' as const, kind: 'GAUGE' as const, unit: 'count' },
-    { code: 'cpu_percent', name: 'CPU percent', domain: 'INFRASTRUCTURE' as const, kind: 'GAUGE' as const, unit: '%' },
+    {
+      code: 'http_latency_ms',
+      name: 'HTTP latency',
+      domain: 'GATEWAY' as const,
+      kind: 'HISTOGRAM' as const,
+      unit: 'ms',
+    },
+    {
+      code: 'error_rate',
+      name: 'Error rate',
+      domain: 'SYSTEM' as const,
+      kind: 'GAUGE' as const,
+      unit: 'ratio',
+    },
+    {
+      code: 'queue_depth',
+      name: 'Queue depth',
+      domain: 'NOTIFICATIONS' as const,
+      kind: 'GAUGE' as const,
+      unit: 'count',
+    },
+    {
+      code: 'cpu_percent',
+      name: 'CPU percent',
+      domain: 'INFRASTRUCTURE' as const,
+      kind: 'GAUGE' as const,
+      unit: '%',
+    },
   ];
   for (const metric of obsMetrics) {
     await prisma.obsMetricDefinition.upsert({
@@ -1314,10 +1645,7 @@ async function main(): Promise<void> {
       adminEmail,
       adminUsername,
       // Intentionally omit password from logs.
-      passwordFingerprint: createHash('sha256')
-        .update(adminPassword)
-        .digest('hex')
-        .slice(0, 8),
+      passwordFingerprint: createHash('sha256').update(adminPassword).digest('hex').slice(0, 8),
       nonce: randomBytes(4).toString('hex'),
     }) + '\n',
   );

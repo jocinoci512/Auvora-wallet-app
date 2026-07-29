@@ -45,7 +45,11 @@ export function buildPaymentsProxyOpenApiPaths(): OpenAPIObject['paths'] {
     '/api/v1/admin/payments/health': proxyPath('get', 'Provider health snapshots', adminTag),
     '/api/v1/admin/payments/settlements': proxyPath('get', 'List settlements', adminTag),
     '/api/v1/admin/payments/settlements/run': proxyPath('post', 'Run a settlement', adminTag),
-    '/api/v1/admin/payments/settlements/batches': proxyPath('get', 'List settlement batches', adminTag),
+    '/api/v1/admin/payments/settlements/batches': proxyPath(
+      'get',
+      'List settlement batches',
+      adminTag,
+    ),
     '/api/v1/admin/payments/settlements/reports': proxyPath('get', 'Settlement reports', adminTag),
     '/api/v1/admin/payments/limits': {
       ...proxyPath('get', 'List payment limits', adminTag),

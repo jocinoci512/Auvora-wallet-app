@@ -19,6 +19,13 @@ describe('webhook-signer', () => {
     const timestamp = Date.now();
     const signature = signWebhookPayload('secret-a', rawBody, timestamp);
     expect(verifyWebhookSignature('secret-b', rawBody, timestamp, signature)).toBe(false);
-    expect(verifyWebhookSignature('secret-a', JSON.stringify({ eventType: 'other' }), timestamp, signature)).toBe(false);
+    expect(
+      verifyWebhookSignature(
+        'secret-a',
+        JSON.stringify({ eventType: 'other' }),
+        timestamp,
+        signature,
+      ),
+    ).toBe(false);
   });
 });

@@ -26,7 +26,9 @@ describe('safety', () => {
 
   describe('redactPii / containsPii', () => {
     it('redacts emails', () => {
-      expect(redactPii('contact me at ada@example.com please')).toBe('contact me at [REDACTED_EMAIL] please');
+      expect(redactPii('contact me at ada@example.com please')).toBe(
+        'contact me at [REDACTED_EMAIL] please',
+      );
     });
 
     it('redacts phone numbers', () => {

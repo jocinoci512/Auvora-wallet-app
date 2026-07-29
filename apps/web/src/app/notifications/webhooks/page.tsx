@@ -18,9 +18,11 @@ export default function NotificationWebhooksPage(): ReactElement {
       const client = createApiClient();
       setItems(await client.listWebhookEndpoints());
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

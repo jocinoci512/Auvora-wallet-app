@@ -20,7 +20,7 @@ import { ConversationService } from '../../application/services/conversation.ser
 import { KnowledgeService } from '../../application/services/knowledge.service';
 import { ALL_ASSISTANT_TYPES, listAssistants } from '../../application/assistant-registry';
 import { PERMISSION_AI_CHAT, PERMISSION_AI_KNOWLEDGE, PERMISSION_AI_READ } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions } from '../decorators/auth.decorators';
 import { CorrelationId, CurrentUser } from '../decorators/current-user.decorator';
 
@@ -108,7 +108,13 @@ export class KnowledgeSearchDto {
   topK?: number;
 }
 
-const _dtoRuntime = { PageQueryDto, ChatDto, CreateConversationDto, FeedbackDto, KnowledgeSearchDto };
+const _dtoRuntime = {
+  PageQueryDto,
+  ChatDto,
+  CreateConversationDto,
+  FeedbackDto,
+  KnowledgeSearchDto,
+};
 void _dtoRuntime;
 
 @ApiTags('ai')
@@ -129,7 +135,11 @@ export class AiController {
     @CorrelationId() correlationId?: string,
   ) {
     return successResponse(
-      await this.chat.chat({ ownerUserId: user.sub, ...dto, correlationId: dto.correlationId ?? correlationId }),
+      await this.chat.chat({
+        ownerUserId: user.sub,
+        ...dto,
+        correlationId: dto.correlationId ?? correlationId,
+      }),
     );
   }
 
@@ -141,7 +151,10 @@ export class AiController {
 
   @Post('conversations')
   @Permissions(PERMISSION_AI_CHAT)
-  async createConversation(@CurrentUser() user: JwtAccessClaims, @Body() dto: CreateConversationDto) {
+  async createConversation(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: CreateConversationDto,
+  ) {
     return successResponse(await this.conversations.create({ ownerUserId: user.sub, ...dto }));
   }
 
@@ -181,14 +194,20 @@ export class AiController {
 
   @Post('messages/:id/feedback')
   @Permissions(PERMISSION_AI_CHAT)
-  async recordFeedback(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims, @Body() dto: FeedbackDto) {
+  async recordFeedback(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: FeedbackDto,
+  ) {
     return successResponse(await this.conversations.recordFeedback(id, dto.score, user, dto.notes));
   }
 
   @Post('knowledge/search')
   @Permissions(PERMISSION_AI_KNOWLEDGE)
   async searchKnowledge(@Body() dto: KnowledgeSearchDto) {
-    return successResponse(await this.knowledge.search(dto.query, { sourceIds: dto.sourceIds, topK: dto.topK }));
+    return successResponse(
+      await this.knowledge.search(dto.query, { sourceIds: dto.sourceIds, topK: dto.topK }),
+    );
   }
 
   @Get('assistants')

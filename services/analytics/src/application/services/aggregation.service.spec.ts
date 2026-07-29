@@ -13,9 +13,11 @@ describe('AggregationService', () => {
     return {
       aggregationJob: {
         create: jest.fn().mockResolvedValue({ id: 'job-1' }),
-        update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-          Promise.resolve({ id: 'job-1', ...data }),
-        ),
+        update: jest
+          .fn()
+          .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+            Promise.resolve({ id: 'job-1', ...data }),
+          ),
       },
       analyticsEvent: {
         findMany: jest.fn().mockResolvedValue([]),

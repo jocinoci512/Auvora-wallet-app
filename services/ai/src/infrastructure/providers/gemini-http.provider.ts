@@ -43,7 +43,7 @@ export class GeminiHttpProvider implements AiProviderPort {
   }
 
   private get fetchImpl(): FetchLike {
-    return globalThis.fetch as unknown as FetchLike;
+    return globalThis.fetch.bind(globalThis) as unknown as FetchLike;
   }
 
   private get baseUrl(): string {
@@ -78,10 +78,14 @@ export class GeminiHttpProvider implements AiProviderPort {
       const latencyMs = Date.now() - startedAt;
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new ProviderUnavailableError(`${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`);
+        throw new ProviderUnavailableError(
+          `${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`,
+        );
       }
       const body = (await response.json()) as GeminiGenerateResponse;
-      const content = (body.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+      const content = (body.candidates?.[0]?.content?.parts ?? [])
+        .map((p) => p.text ?? '')
+        .join('');
       return {
         providerCode: this.code,
         model,
@@ -115,7 +119,9 @@ export class GeminiHttpProvider implements AiProviderPort {
         );
         if (!response.ok) {
           const errorText = await response.text().catch(() => '');
-          throw new ProviderUnavailableError(`${this.code} HTTP ${response.status}: ${errorText.slice(0, 300)}`);
+          throw new ProviderUnavailableError(
+            `${this.code} HTTP ${response.status}: ${errorText.slice(0, 300)}`,
+          );
         }
         const body = (await response.json()) as GeminiEmbedResponse;
         vectors.push(body.embedding?.values ?? []);

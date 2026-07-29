@@ -1,44 +1,28 @@
-export abstract class DomainError extends Error {
-  abstract readonly code: string;
-  abstract readonly httpStatus: number;
+import {
+  DomainError,
+  NotFoundError,
+  ForbiddenError,
+  ConflictError,
+  UnauthorizedError,
+} from '@auvora/nest-common';
 
-  constructor(message: string) {
-    super(message);
-    this.name = new.target.name;
+export { DomainError, NotFoundError, ForbiddenError, ConflictError, UnauthorizedError };
+
+/** Auth uses 422 for validation failures. */
+export class ValidationError extends DomainError {
+  constructor(message = 'Validation failed') {
+    super(message, 'VALIDATION_ERROR', 422);
   }
 }
 
-export class ConflictError extends DomainError {
-  readonly code = 'CONFLICT';
-  readonly httpStatus = 409;
-}
-
-export class UnauthorizedError extends DomainError {
-  readonly code = 'UNAUTHORIZED';
-  readonly httpStatus = 401;
-}
-
-export class ForbiddenError extends DomainError {
-  readonly code = 'FORBIDDEN';
-  readonly httpStatus = 403;
-}
-
-export class NotFoundError extends DomainError {
-  readonly code = 'NOT_FOUND';
-  readonly httpStatus = 404;
-}
-
-export class ValidationError extends DomainError {
-  readonly code = 'VALIDATION_ERROR';
-  readonly httpStatus = 422;
-}
-
 export class LockedError extends DomainError {
-  readonly code = 'ACCOUNT_LOCKED';
-  readonly httpStatus = 423;
+  constructor(message = 'Account locked') {
+    super(message, 'ACCOUNT_LOCKED', 423);
+  }
 }
 
 export class RateLimitError extends DomainError {
-  readonly code = 'RATE_LIMIT_EXCEEDED';
-  readonly httpStatus = 429;
+  constructor(message = 'Rate limit exceeded') {
+    super(message, 'RATE_LIMIT_EXCEEDED', 429);
+  }
 }

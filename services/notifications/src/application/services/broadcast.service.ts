@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { PrismaService, type NotificationCategory, type NotificationChannel, type NotificationPriority } from '@auvora/database';
+import {
+  PrismaService,
+  type NotificationCategory,
+  type NotificationChannel,
+  type NotificationPriority,
+} from '@auvora/database';
 import { ValidationError } from '../../domain';
 import { NotificationService } from './notification.service';
 

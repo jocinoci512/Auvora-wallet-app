@@ -3,6 +3,7 @@
 import {
   AuvoraClientError,
   type BlockchainMetrics,
+  type LiveProviderRpcHealthSummary,
   type ProviderHealthSnapshot,
 } from '@auvora/sdk';
 import { Button } from '@auvora/ui';
@@ -24,6 +25,7 @@ function latestByChain(snapshots: ProviderHealthSnapshot[]): ProviderHealthSnaps
 export default function AdminBlockchainDashboardPage(): ReactElement {
   const [metrics, setMetrics] = useState<BlockchainMetrics | null>(null);
   const [health, setHealth] = useState<ProviderHealthSnapshot[]>([]);
+  const [liveRpc, setLiveRpc] = useState<LiveProviderRpcHealthSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,12 +34,14 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
     setError(null);
     try {
       const client = createApiClient();
-      const [metricsData, healthData] = await Promise.all([
+      const [metricsData, healthData, liveRpcData] = await Promise.all([
         client.adminBlockchainMetrics(),
         client.adminBlockchainHealth(),
+        client.adminBlockchainLiveRpcHealth().catch(() => null),
       ]);
       setMetrics(metricsData);
       setHealth(healthData);
+      setLiveRpc(liveRpcData);
     } catch (err) {
       if (err instanceof AuvoraClientError && err.status === 401) {
         setError('Unauthorized — save an admin JWT access token above.');
@@ -69,7 +73,12 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
       {error ? (
         <div className="alert alert--error">
           {error}
-          <Button type="button" variant="secondary" onClick={() => void load()} style={{ marginTop: '0.75rem' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void load()}
+            style={{ marginTop: '0.75rem' }}
+          >
             Retry
           </Button>
         </div>
@@ -104,6 +113,64 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
             </span>
           </div>
         </div>
+      ) : null}
+
+      {!loading && !error && liveRpc ? (
+        <section className="panel">
+          <div className="section-header">
+            <h2>Live RPC health</h2>
+            <span className="tag">
+              sync={liveRpc.sync.mode} · primary={liveRpc.sync.primaryProvider}
+            </span>
+          </div>
+          <p className="page-subtitle" style={{ marginBottom: '1rem' }}>
+            Ledger sync {liveRpc.sync.ledgerSyncEnabled ? 'enabled' : 'disabled'} · live providers{' '}
+            {liveRpc.sync.liveProvidersExpected ? 'expected' : 'not configured'}
+          </p>
+          {liveRpc.providers.length === 0 ? (
+            <p className="state-message">No registered providers.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Chain</th>
+                  <th>Status</th>
+                  <th>Backend</th>
+                  <th>Sync mode</th>
+                  <th>Latency</th>
+                  <th>Tip</th>
+                  <th>Endpoint</th>
+                  <th>Last RPC</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {liveRpc.providers.map((row) => (
+                  <tr key={row.chain}>
+                    <td>{row.chain.replace(/_/g, ' ')}</td>
+                    <td>
+                      <span
+                        className={`dot ${row.status === 'up' ? 'dot--healthy' : 'dot--unhealthy'}`}
+                      />
+                      {row.status}
+                    </td>
+                    <td>{row.backend}</td>
+                    <td>{row.syncMode}</td>
+                    <td>{row.latencyMs}ms</td>
+                    <td>{row.latestBlockHeight ?? '—'}</td>
+                    <td>{row.endpoint ?? '—'}</td>
+                    <td>
+                      {row.lastSuccessfulRpc
+                        ? new Date(row.lastSuccessfulRpc).toLocaleString()
+                        : '—'}
+                    </td>
+                    <td>{row.errorState ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       ) : null}
 
       {!loading && !error ? (

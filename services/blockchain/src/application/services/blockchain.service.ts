@@ -140,7 +140,9 @@ export class BlockchainService {
     const address = await this.requireAddress(id);
     this.assertOwnershipOrAdmin(address, requester);
     if (address.isPrimary) {
-      throw new ValidationError('Cannot archive the primary address; set another address as primary first');
+      throw new ValidationError(
+        'Cannot archive the primary address; set another address as primary first',
+      );
     }
     return this.addresses.setStatus(id, ChainAddressStatus.ARCHIVED);
   }
@@ -154,7 +156,10 @@ export class BlockchainService {
     return this.addresses.setPrimary(id, address.ownerUserId, address.chain);
   }
 
-  async getBalance(chain: ChainNetwork, address: string): Promise<{ chain: ChainNetwork; address: string; balance: string }> {
+  async getBalance(
+    chain: ChainNetwork,
+    address: string,
+  ): Promise<{ chain: ChainNetwork; address: string; balance: string }> {
     if (!this.providerFactory.hasProvider(chain)) {
       throw new NotFoundError(`Unsupported chain ${chain}`);
     }

@@ -99,7 +99,9 @@ export default function AdminBlockchainSyncPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Sync jobs</h1>
-          <p className="page-subtitle">{total} job{total === 1 ? '' : 's'}</p>
+          <p className="page-subtitle">
+            {total} job{total === 1 ? '' : 's'}
+          </p>
         </div>
         <Link href="/blockchain">
           <Button variant="ghost">Back</Button>

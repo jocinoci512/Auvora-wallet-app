@@ -41,7 +41,9 @@ describe('SloService', () => {
             indicatorType: 'AVAILABILITY',
             targetPercent: 99.9,
             latencyMsTarget: 250,
-            measurements: [{ sliPercent: 99.95, errorBudgetRemaining: 50, reliabilityScore: 99.95 }],
+            measurements: [
+              { sliPercent: 99.95, errorBudgetRemaining: 50, reliabilityScore: 99.95 },
+            ],
           },
         ]),
       },
@@ -53,11 +55,13 @@ describe('SloService', () => {
         }),
       },
       obsMetricSample: {
-        findMany: jest.fn().mockImplementation(async ({ where }: { where: { metricId: string } }) => {
-          if (where.metricId === 'm-latency') return [{ value: 120 }, { value: 180 }];
-          if (where.metricId === 'm-error') return [{ value: 0 }, { value: 0 }, { value: 1 }];
-          return [];
-        }),
+        findMany: jest
+          .fn()
+          .mockImplementation(async ({ where }: { where: { metricId: string } }) => {
+            if (where.metricId === 'm-latency') return [{ value: 120 }, { value: 180 }];
+            if (where.metricId === 'm-error') return [{ value: 0 }, { value: 0 }, { value: 1 }];
+            return [];
+          }),
       },
     };
     const service = new SloService(prisma as never);

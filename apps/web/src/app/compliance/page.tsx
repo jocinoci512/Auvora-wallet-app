@@ -1,6 +1,11 @@
 'use client';
 
-import { AuvoraClientError, type ComplianceRiskSummary, type KycProfile, type VerificationRequest } from '@auvora/sdk';
+import {
+  AuvoraClientError,
+  type ComplianceRiskSummary,
+  type KycProfile,
+  type VerificationRequest,
+} from '@auvora/sdk';
 import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react';

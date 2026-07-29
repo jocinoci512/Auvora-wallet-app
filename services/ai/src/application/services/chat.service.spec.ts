@@ -3,8 +3,16 @@ import { ChatService } from './chat.service';
 
 function buildPrismaMock() {
   return {
-    aiProvider: { findUnique: jest.fn().mockResolvedValue({ id: 'provider-1', code: 'sim-default' }) },
-    aiRequest: { create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'req-1', createdAt: new Date(), ...data })) },
+    aiProvider: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'provider-1', code: 'sim-default' }),
+    },
+    aiRequest: {
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'req-1', createdAt: new Date(), ...data }),
+        ),
+    },
     aiTokenUsage: { create: jest.fn().mockResolvedValue({}) },
     aiProviderMetric: { upsert: jest.fn().mockResolvedValue({}) },
   };
@@ -21,19 +29,25 @@ function buildConversationsMock() {
   return {
     get: jest.fn().mockResolvedValue(conversation),
     create: jest.fn().mockResolvedValue(conversation),
-    assertOwner: jest.fn().mockImplementation((conv: { ownerUserId: string }, requesterId: string) => {
-      if (conv.ownerUserId !== requesterId) throw new ForbiddenError('Access denied');
-    }),
+    assertOwner: jest
+      .fn()
+      .mockImplementation((conv: { ownerUserId: string }, requesterId: string) => {
+        if (conv.ownerUserId !== requesterId) throw new ForbiddenError('Access denied');
+      }),
     getRecentMessages: jest.fn().mockResolvedValue([]),
-    appendMessage: jest.fn().mockImplementation((_id: string, input: Record<string, unknown>) =>
-      Promise.resolve({ id: `msg-${Math.random()}`, createdAt: new Date(), ...input }),
-    ),
+    appendMessage: jest
+      .fn()
+      .mockImplementation((_id: string, input: Record<string, unknown>) =>
+        Promise.resolve({ id: `msg-${Math.random()}`, createdAt: new Date(), ...input }),
+      ),
   };
 }
 
 const promptsMock = { getActiveVersionByCode: jest.fn().mockRejectedValue(new Error('not found')) };
 
-function buildModelRouterMock(chatImpl: (provider: { chat: (r: unknown) => Promise<unknown> }) => Promise<unknown>) {
+function buildModelRouterMock(
+  chatImpl: (provider: { chat: (r: unknown) => Promise<unknown> }) => Promise<unknown>,
+) {
   return {
     withFailover: jest.fn().mockImplementation(async (fn: (p: unknown) => Promise<unknown>) => {
       const result = await fn({ chat: chatImpl } as never);
@@ -73,9 +87,14 @@ describe('ChatService', () => {
     const conversations = buildConversationsMock();
     const cache = buildCacheMock();
     const audit = buildAuditMock();
-    const modelRouter = buildModelRouterMock(async () =>
-      ({ providerCode: 'sim-default', model: 'sim-gpt', content: '[simulator] hi there', inputTokens: 5, outputTokens: 5, latencyMs: 10 }),
-    );
+    const modelRouter = buildModelRouterMock(async () => ({
+      providerCode: 'sim-default',
+      model: 'sim-gpt',
+      content: '[simulator] hi there',
+      inputTokens: 5,
+      outputTokens: 5,
+      latencyMs: 10,
+    }));
 
     const service = new ChatService(
       prisma as never,
@@ -97,8 +116,13 @@ describe('ChatService', () => {
     expect(prisma.aiRequest.create).toHaveBeenCalled();
     expect(prisma.aiTokenUsage.create).toHaveBeenCalled();
     expect(prisma.aiProviderMetric.upsert).toHaveBeenCalled();
-    expect(audit.record).toHaveBeenCalledWith('ai.chat.completed', expect.objectContaining({ actorUserId: 'user-1' }));
-    expect(eventsMock.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'RequestCompleted' }));
+    expect(audit.record).toHaveBeenCalledWith(
+      'ai.chat.completed',
+      expect.objectContaining({ actorUserId: 'user-1' }),
+    );
+    expect(eventsMock.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'RequestCompleted' }),
+    );
   });
 
   it('rejects a message that fails safety validation', async () => {
@@ -106,7 +130,14 @@ describe('ChatService', () => {
     const conversations = buildConversationsMock();
     const cache = buildCacheMock();
     const audit = buildAuditMock();
-    const modelRouter = buildModelRouterMock(async () => ({ content: 'unused', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' }));
+    const modelRouter = buildModelRouterMock(async () => ({
+      content: 'unused',
+      model: 'sim-gpt',
+      inputTokens: 1,
+      outputTokens: 1,
+      latencyMs: 1,
+      providerCode: 'sim-default',
+    }));
 
     const service = new ChatService(
       prisma as never,
@@ -121,7 +152,9 @@ describe('ChatService', () => {
       analyticsMock as never,
     );
 
-    await expect(service.chat({ ownerUserId: 'user-1', message: '' })).rejects.toThrow(SafetyViolationError);
+    await expect(service.chat({ ownerUserId: 'user-1', message: '' })).rejects.toThrow(
+      SafetyViolationError,
+    );
     expect(modelRouter.withFailover).not.toHaveBeenCalled();
   });
 
@@ -131,7 +164,14 @@ describe('ChatService', () => {
     conversations.get.mockResolvedValueOnce({ ...conversation, ownerUserId: 'someone-else' });
     const cache = buildCacheMock();
     const audit = buildAuditMock();
-    const modelRouter = buildModelRouterMock(async () => ({ content: 'x', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' }));
+    const modelRouter = buildModelRouterMock(async () => ({
+      content: 'x',
+      model: 'sim-gpt',
+      inputTokens: 1,
+      outputTokens: 1,
+      latencyMs: 1,
+      providerCode: 'sim-default',
+    }));
 
     const service = new ChatService(
       prisma as never,
@@ -157,7 +197,13 @@ describe('ChatService', () => {
     const cache = buildCacheMock();
     const audit = buildAuditMock();
     cache.get.mockResolvedValueOnce(
-      JSON.stringify({ content: 'cached reply', providerCode: 'sim-default', model: 'sim-gpt', inputTokens: 2, outputTokens: 2 }),
+      JSON.stringify({
+        content: 'cached reply',
+        providerCode: 'sim-default',
+        model: 'sim-gpt',
+        inputTokens: 2,
+        outputTokens: 2,
+      }),
     );
     const modelRouter = buildModelRouterMock(async () => {
       throw new Error('should not be called');
@@ -203,12 +249,19 @@ describe('ChatService', () => {
       analyticsMock as never,
     );
 
-    await expect(service.chat({ ownerUserId: 'user-1', message: 'hello' })).rejects.toThrow(ProviderUnavailableError);
+    await expect(service.chat({ ownerUserId: 'user-1', message: 'hello' })).rejects.toThrow(
+      ProviderUnavailableError,
+    );
     expect(prisma.aiRequest.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
     );
-    expect(audit.record).toHaveBeenCalledWith('ai.chat.failed', expect.objectContaining({ actorUserId: 'user-1' }));
-    expect(eventsMock.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'RequestFailed' }));
+    expect(audit.record).toHaveBeenCalledWith(
+      'ai.chat.failed',
+      expect.objectContaining({ actorUserId: 'user-1' }),
+    );
+    expect(eventsMock.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'RequestFailed' }),
+    );
   });
 
   it('includes knowledge base citations in the system prompt when useKnowledge is set', async () => {
@@ -217,24 +270,58 @@ describe('ChatService', () => {
     const cache = buildCacheMock();
     const audit = buildAuditMock();
     vectorSearchMock.search.mockResolvedValueOnce([
-      { chunkId: 'c1', documentId: 'd1', documentVersion: 1, sourceId: 's1', sourceCode: 'docs', sourceName: 'Docs', documentTitle: 'T', content: 'wallets can hold BTC and ETH', score: 0.9 },
+      {
+        chunkId: 'c1',
+        documentId: 'd1',
+        documentVersion: 1,
+        sourceId: 's1',
+        sourceCode: 'docs',
+        sourceName: 'Docs',
+        documentTitle: 'T',
+        content: 'wallets can hold BTC and ETH',
+        score: 0.9,
+      },
     ]);
     let capturedMessages: Array<{ role: string; content: string }> = [];
     const modelRouter = buildModelRouterMock(async (provider) => {
-      const chatFn = provider.chat as unknown as (r: { messages: Array<{ role: string; content: string }> }) => Promise<unknown>;
-      return chatFn({ messages: [] }).then(() => ({ content: 'ok', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' }));
+      const chatFn = provider.chat as unknown as (r: {
+        messages: Array<{ role: string; content: string }>;
+      }) => Promise<unknown>;
+      return chatFn({ messages: [] }).then(() => ({
+        content: 'ok',
+        model: 'sim-gpt',
+        inputTokens: 1,
+        outputTokens: 1,
+        latencyMs: 1,
+        providerCode: 'sim-default',
+      }));
     });
     // Override to capture messages passed into provider.chat
-    modelRouter.withFailover = jest.fn().mockImplementation(async (fn: (p: { chat: (r: { messages: Array<{ role: string; content: string }> }) => Promise<unknown> }) => Promise<unknown>) => {
-      const provider = {
-        chat: (r: { messages: Array<{ role: string; content: string }> }) => {
-          capturedMessages = r.messages;
-          return Promise.resolve({ content: 'ok', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' });
+    modelRouter.withFailover = jest
+      .fn()
+      .mockImplementation(
+        async (
+          fn: (p: {
+            chat: (r: { messages: Array<{ role: string; content: string }> }) => Promise<unknown>;
+          }) => Promise<unknown>,
+        ) => {
+          const provider = {
+            chat: (r: { messages: Array<{ role: string; content: string }> }) => {
+              capturedMessages = r.messages;
+              return Promise.resolve({
+                content: 'ok',
+                model: 'sim-gpt',
+                inputTokens: 1,
+                outputTokens: 1,
+                latencyMs: 1,
+                providerCode: 'sim-default',
+              });
+            },
+          };
+          const result = await fn(provider);
+          return { result, providerCode: 'sim-default' };
         },
-      };
-      const result = await fn(provider);
-      return { result, providerCode: 'sim-default' };
-    });
+      );
 
     const service = new ChatService(
       prisma as never,
@@ -249,7 +336,11 @@ describe('ChatService', () => {
       analyticsMock as never,
     );
 
-    const result = await service.chat({ ownerUserId: 'user-1', message: 'what assets can I hold?', useKnowledge: true });
+    const result = await service.chat({
+      ownerUserId: 'user-1',
+      message: 'what assets can I hold?',
+      useKnowledge: true,
+    });
     expect(result.citations).toHaveLength(1);
     expect(capturedMessages[0].content).toContain('wallets can hold BTC and ETH');
   });
@@ -259,9 +350,26 @@ describe('ChatService', () => {
     const conversations = buildConversationsMock();
     const cache = buildCacheMock();
     const audit = buildAuditMock();
-    const citation = { chunkId: 'c1', documentId: 'd1', documentVersion: 2, sourceId: 's1', sourceCode: 'docs', sourceName: 'Docs', documentTitle: 'T', content: 'snippet', score: 0.8 };
+    const citation = {
+      chunkId: 'c1',
+      documentId: 'd1',
+      documentVersion: 2,
+      sourceId: 's1',
+      sourceCode: 'docs',
+      sourceName: 'Docs',
+      documentTitle: 'T',
+      content: 'snippet',
+      score: 0.8,
+    };
     vectorSearchMock.search.mockResolvedValueOnce([citation]);
-    const modelRouter = buildModelRouterMock(async () => ({ content: 'ok', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' }));
+    const modelRouter = buildModelRouterMock(async () => ({
+      content: 'ok',
+      model: 'sim-gpt',
+      inputTokens: 1,
+      outputTokens: 1,
+      latencyMs: 1,
+      providerCode: 'sim-default',
+    }));
 
     const service = new ChatService(
       prisma as never,
@@ -276,11 +384,17 @@ describe('ChatService', () => {
       analyticsMock as never,
     );
 
-    const result = await service.chat({ ownerUserId: 'user-1', message: 'cite this please', useKnowledge: true });
+    const result = await service.chat({
+      ownerUserId: 'user-1',
+      message: 'cite this please',
+      useKnowledge: true,
+    });
 
     expect(result.assistantMessage).toMatchObject({ metadata: { citations: [citation] } });
     expect(prisma.aiRequest.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ metadata: { citations: [citation] } }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ metadata: { citations: [citation] } }),
+      }),
     );
   });
 
@@ -289,7 +403,14 @@ describe('ChatService', () => {
     const conversations = buildConversationsMock();
     const cache = buildCacheMock();
     const audit = buildAuditMock();
-    const modelRouter = buildModelRouterMock(async () => ({ content: 'ok', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' }));
+    const modelRouter = buildModelRouterMock(async () => ({
+      content: 'ok',
+      model: 'sim-gpt',
+      inputTokens: 1,
+      outputTokens: 1,
+      latencyMs: 1,
+      providerCode: 'sim-default',
+    }));
 
     const service = new ChatService(
       prisma as never,
@@ -306,7 +427,9 @@ describe('ChatService', () => {
 
     await service.chat({ ownerUserId: 'user-1', message: 'no correlation id supplied' });
 
-    const createCall = (prisma.aiRequest.create as jest.Mock).mock.calls[0][0] as { data: { correlationId?: string } };
+    const createCall = (prisma.aiRequest.create as jest.Mock).mock.calls[0][0] as {
+      data: { correlationId?: string };
+    };
     expect(createCall.data.correlationId).toEqual(expect.any(String));
     expect(createCall.data.correlationId!.length).toBeGreaterThan(0);
     expect(audit.record).toHaveBeenCalledWith(
@@ -314,7 +437,10 @@ describe('ChatService', () => {
       expect.objectContaining({ correlationId: createCall.data.correlationId }),
     );
     expect(eventsMock.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'RequestCompleted', correlationId: createCall.data.correlationId }),
+      expect.objectContaining({
+        type: 'RequestCompleted',
+        correlationId: createCall.data.correlationId,
+      }),
     );
   });
 
@@ -323,7 +449,14 @@ describe('ChatService', () => {
     const conversations = buildConversationsMock();
     const cache = buildCacheMock();
     const audit = buildAuditMock();
-    const modelRouter = buildModelRouterMock(async () => ({ content: 'ok', model: 'sim-gpt', inputTokens: 1, outputTokens: 1, latencyMs: 1, providerCode: 'sim-default' }));
+    const modelRouter = buildModelRouterMock(async () => ({
+      content: 'ok',
+      model: 'sim-gpt',
+      inputTokens: 1,
+      outputTokens: 1,
+      latencyMs: 1,
+      providerCode: 'sim-default',
+    }));
 
     const service = new ChatService(
       prisma as never,
@@ -338,11 +471,18 @@ describe('ChatService', () => {
       analyticsMock as never,
     );
 
-    await service.chat({ ownerUserId: 'user-1', message: 'has a correlation id', correlationId: 'corr-123' });
+    await service.chat({
+      ownerUserId: 'user-1',
+      message: 'has a correlation id',
+      correlationId: 'corr-123',
+    });
 
     expect(prisma.aiRequest.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ correlationId: 'corr-123' }) }),
     );
-    expect(audit.record).toHaveBeenCalledWith('ai.chat.completed', expect.objectContaining({ correlationId: 'corr-123' }));
+    expect(audit.record).toHaveBeenCalledWith(
+      'ai.chat.completed',
+      expect.objectContaining({ correlationId: 'corr-123' }),
+    );
   });
 });

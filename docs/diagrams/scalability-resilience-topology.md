@@ -72,14 +72,14 @@ flowchart LR
 
 ## Failure signaling
 
-| Signal | Where |
-|--------|-------|
-| Readiness `degraded` | Gateway `/ready` when auth/deps fail |
-| Upstream timeouts / circuit | Proxy timeouts; `/metrics/resilience` |
-| Alerts / incidents / SLOs | Observability service + Admin `/observability` |
-| Public status | Web `/status` |
-| Rate limiting | `X-RateLimit-*` / HTTP 429 |
-| Logs | Structured pino logs with correlation IDs |
+| Signal                      | Where                                          |
+| --------------------------- | ---------------------------------------------- |
+| Readiness `degraded`        | Gateway `/ready` when auth/deps fail           |
+| Upstream timeouts / circuit | Proxy timeouts; `/metrics/resilience`          |
+| Alerts / incidents / SLOs   | Observability service + Admin `/observability` |
+| Public status               | Web `/status`                                  |
+| Rate limiting               | `X-RateLimit-*` / HTTP 429                     |
+| Logs                        | Structured pino logs with correlation IDs      |
 
 ## Related diagrams
 

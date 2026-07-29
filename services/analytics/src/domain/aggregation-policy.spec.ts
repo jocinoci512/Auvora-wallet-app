@@ -1,4 +1,9 @@
-import { bucketStart, defaultWindowsForMetric, isAggregationWindow, parseMetricSnapshot } from './aggregation-policy';
+import {
+  bucketStart,
+  defaultWindowsForMetric,
+  isAggregationWindow,
+  parseMetricSnapshot,
+} from './aggregation-policy';
 
 describe('aggregation-policy', () => {
   it('computes hourly bucket start', () => {

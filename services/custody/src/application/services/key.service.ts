@@ -83,7 +83,10 @@ export class KeyService {
       },
     });
 
-    await this.audit(key.id, ownerUserId, 'KEY_GENERATED', { algorithm: input.algorithm, custodyModel: input.custodyModel });
+    await this.audit(key.id, ownerUserId, 'KEY_GENERATED', {
+      algorithm: input.algorithm,
+      custodyModel: input.custodyModel,
+    });
     await this.events.publish({
       type: CustodyEventType.KeyGenerated,
       aggregateId: key.id,
@@ -93,7 +96,12 @@ export class KeyService {
     return sanitize(key);
   }
 
-  async list(filters: { ownerUserId?: string; status?: KeyStatus; skip?: number; take?: number }): Promise<{
+  async list(filters: {
+    ownerUserId?: string;
+    status?: KeyStatus;
+    skip?: number;
+    take?: number;
+  }): Promise<{
     items: SanitizedKey[];
     total: number;
     skip: number;
@@ -157,7 +165,10 @@ export class KeyService {
       },
     });
 
-    await this.audit(key.id, actor.sub, 'KEY_ROTATED', { fromVersion: key.currentVersion, toVersion: nextVersion });
+    await this.audit(key.id, actor.sub, 'KEY_ROTATED', {
+      fromVersion: key.currentVersion,
+      toVersion: nextVersion,
+    });
     await this.events.publish({
       type: CustodyEventType.KeyRotated,
       aggregateId: key.id,
@@ -193,7 +204,11 @@ export class KeyService {
       throw new ConflictError('Key already destroyed');
     }
     const provider = this.providers.resolve(key.custodyModel);
-    await provider.destroy({ keyId: key.id, providerRef: key.providerRef ?? undefined, materialEncrypted: key.materialEncrypted ?? undefined });
+    await provider.destroy({
+      keyId: key.id,
+      providerRef: key.providerRef ?? undefined,
+      materialEncrypted: key.materialEncrypted ?? undefined,
+    });
 
     const updated = await this.prisma.cryptographicKey.update({
       where: { id },
@@ -231,14 +246,22 @@ export class KeyService {
     return key;
   }
 
-  private async audit(keyId: string, actorUserId: string, action: string, details: Record<string, unknown>) {
+  private async audit(
+    keyId: string,
+    actorUserId: string,
+    action: string,
+    details: Record<string, unknown>,
+  ) {
     await this.prisma.keyAuditLog.create({
       data: { keyId, actorUserId, action, details: details as Prisma.InputJsonValue },
     });
   }
 
   private assertSelfOrAdmin(ownerUserId: string, requester: JwtAccessClaims) {
-    if (ownerUserId !== requester.sub && !requester.permissions.includes(PERMISSION_CUSTODY_ADMIN)) {
+    if (
+      ownerUserId !== requester.sub &&
+      !requester.permissions.includes(PERMISSION_CUSTODY_ADMIN)
+    ) {
       throw new ForbiddenError('Access denied');
     }
   }

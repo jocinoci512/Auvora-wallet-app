@@ -15,7 +15,9 @@ function isObservabilityProxyPath(pathname: string): boolean {
   );
 }
 
-export function createObservabilityProxyMiddleware(observabilityServiceUrl: string): RequestHandler {
+export function createObservabilityProxyMiddleware(
+  observabilityServiceUrl: string,
+): RequestHandler {
   return createProxyMiddleware({
     target: observabilityServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,

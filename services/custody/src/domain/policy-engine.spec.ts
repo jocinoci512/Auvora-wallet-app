@@ -25,16 +25,46 @@ describe('policy-engine', () => {
   });
 
   it('evaluates contains and in operators for asset/destination fields', () => {
-    expect(evaluateExpression({ field: 'destination', op: 'contains', value: 'mixer' }, { destination: 'known-mixer-addr' })).toBe(true);
-    expect(evaluateExpression({ field: 'asset', op: 'in', value: ['BTC', 'ETH'] }, { asset: 'ETH' })).toBe(true);
-    expect(evaluateExpression({ field: 'asset', op: 'in', value: ['BTC', 'ETH'] }, { asset: 'SOL' })).toBe(false);
+    expect(
+      evaluateExpression(
+        { field: 'destination', op: 'contains', value: 'mixer' },
+        { destination: 'known-mixer-addr' },
+      ),
+    ).toBe(true);
+    expect(
+      evaluateExpression({ field: 'asset', op: 'in', value: ['BTC', 'ETH'] }, { asset: 'ETH' }),
+    ).toBe(true);
+    expect(
+      evaluateExpression({ field: 'asset', op: 'in', value: ['BTC', 'ETH'] }, { asset: 'SOL' }),
+    ).toBe(false);
   });
 
   it('ignores disabled policies and sorts by priority', () => {
     const policies: PolicyDefinition[] = [
-      { code: 'B', name: 'B', action: 'ALERT', isEnabled: true, priority: 200, expression: { field: 'amount', op: 'gte', value: 0 } },
-      { code: 'A', name: 'A', action: 'DENY', isEnabled: true, priority: 10, expression: { field: 'amount', op: 'gte', value: 0 } },
-      { code: 'C', name: 'C', action: 'DENY', isEnabled: false, priority: 1, expression: { field: 'amount', op: 'gte', value: 0 } },
+      {
+        code: 'B',
+        name: 'B',
+        action: 'ALERT',
+        isEnabled: true,
+        priority: 200,
+        expression: { field: 'amount', op: 'gte', value: 0 },
+      },
+      {
+        code: 'A',
+        name: 'A',
+        action: 'DENY',
+        isEnabled: true,
+        priority: 10,
+        expression: { field: 'amount', op: 'gte', value: 0 },
+      },
+      {
+        code: 'C',
+        name: 'C',
+        action: 'DENY',
+        isEnabled: false,
+        priority: 1,
+        expression: { field: 'amount', op: 'gte', value: 0 },
+      },
     ];
     const evaluated = evaluatePolicySet(policies, { amount: 5 });
     expect(evaluated.map((e) => e.code)).toEqual(['A', 'B']);

@@ -1,19 +1,12 @@
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
 import { ApiExcludeController, ApiTags } from '@nestjs/swagger';
 import { KeyAlgorithm, CustodyModel, SigningRequestType } from '@auvora/database';
-import {
-  IsEnum,
-  IsObject,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MinLength,
-} from 'class-validator';
+import { IsEnum, IsObject, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { KeyService } from '../../application/services/key.service';
 import { PolicyService } from '../../application/services/policy.service';
 import { SigningService } from '../../application/services/signing.service';
 import type { PolicyContext } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 
@@ -163,6 +156,8 @@ export class InternalCustodyController {
 
   @Post('policy/evaluate')
   async evaluate(@Body() dto: InternalPolicyEvaluateDto) {
-    return successResponse(await this.policies.evaluateTransactionContext(dto as unknown as PolicyContext));
+    return successResponse(
+      await this.policies.evaluateTransactionContext(dto as unknown as PolicyContext),
+    );
   }
 }

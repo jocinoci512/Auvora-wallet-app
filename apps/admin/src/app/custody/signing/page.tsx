@@ -15,9 +15,11 @@ export default function AdminSigningQueuePage(): ReactElement {
       const result = await client.adminCustodySigningQueue();
       setItems(result.items);
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

@@ -40,7 +40,10 @@ export class AlchemyBitcoinProvider implements BlockchainProvider {
 
   async createAddress(): Promise<{ address: string; metadata?: Record<string, unknown> }> {
     const generated = generateBase58CheckAddress(0x00);
-    return { address: generated.address, metadata: { publicKey: generated.publicKey, backend: 'alchemy' } };
+    return {
+      address: generated.address,
+      metadata: { publicKey: generated.publicKey, backend: 'alchemy' },
+    };
   }
 
   validateAddress(address: string): boolean {
@@ -107,7 +110,9 @@ export class AlchemyBitcoinProvider implements BlockchainProvider {
       PRIORITY: 1,
     };
     try {
-      const result = await this.client.call<{ feerate?: number }>('estimatesmartfee', [confTarget[priority]]);
+      const result = await this.client.call<{ feerate?: number }>('estimatesmartfee', [
+        confTarget[priority],
+      ]);
       const btcPerKb = result.feerate ?? 0.00001;
       return { amount: btcPerKb.toFixed(8), unit: 'BTC/kB' };
     } catch {
@@ -131,8 +136,12 @@ export class AlchemyBitcoinProvider implements BlockchainProvider {
   async healthCheck(): Promise<{ healthy: boolean; latencyMs: number; message?: string }> {
     const start = Date.now();
     try {
-      await this.getBlockHeight();
-      return { healthy: true, latencyMs: Date.now() - start, message: 'alchemy_bitcoin_ok' };
+      const tip = await this.getBlockHeight();
+      return {
+        healthy: true,
+        latencyMs: Date.now() - start,
+        message: `alchemy_bitcoin_ok tip=${tip.toString()}`,
+      };
     } catch (error) {
       return {
         healthy: false,

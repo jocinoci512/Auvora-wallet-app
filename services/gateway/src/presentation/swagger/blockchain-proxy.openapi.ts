@@ -23,7 +23,11 @@ export function buildBlockchainProxyOpenApiPaths(): OpenAPIObject['paths'] {
   const adminTag = 'blockchain-admin-proxy';
 
   return {
-    '/api/v1/blockchain/chains': proxyPath('get', 'List supported chains and network config', chainTag),
+    '/api/v1/blockchain/chains': proxyPath(
+      'get',
+      'List supported chains and network config',
+      chainTag,
+    ),
     '/api/v1/blockchain/network-status': proxyPath(
       'get',
       'Get network status per chain (block height, health, latency)',
@@ -89,7 +93,11 @@ export function buildBlockchainProxyOpenApiPaths(): OpenAPIObject['paths'] {
       'Trigger a sync job (admin)',
       adminTag,
     ),
-    '/api/v1/admin/blockchain/blocks': proxyPath('get', 'List recent chain blocks (admin)', adminTag),
+    '/api/v1/admin/blockchain/blocks': proxyPath(
+      'get',
+      'List recent chain blocks (admin)',
+      adminTag,
+    ),
     '/api/v1/admin/blockchain/transactions': proxyPath(
       'get',
       'List chain transactions across all users (admin)',
@@ -100,7 +108,15 @@ export function buildBlockchainProxyOpenApiPaths(): OpenAPIObject['paths'] {
       'Search chain addresses across all users (admin)',
       adminTag,
     ),
-    '/api/v1/admin/blockchain/metrics': proxyPath('get', 'Get blockchain service metrics (admin)', adminTag),
-    '/api/v1/admin/blockchain/events': proxyPath('get', 'List blockchain event log entries (admin)', adminTag),
+    '/api/v1/admin/blockchain/metrics': proxyPath(
+      'get',
+      'Get blockchain service metrics (admin)',
+      adminTag,
+    ),
+    '/api/v1/admin/blockchain/events': proxyPath(
+      'get',
+      'List blockchain event log entries (admin)',
+      adminTag,
+    ),
   };
 }

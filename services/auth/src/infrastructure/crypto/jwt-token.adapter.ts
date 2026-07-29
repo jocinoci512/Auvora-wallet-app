@@ -4,7 +4,10 @@ import { hashToken, generateOpaqueToken } from '@auvora/security';
 import type { JwtAccessClaims } from '@auvora/types';
 import { UnauthorizedError } from '../../domain';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
-import type { AccessTokenPayload, TokenServicePort } from '../../application/ports/token-service.port';
+import type {
+  AccessTokenPayload,
+  TokenServicePort,
+} from '../../application/ports/token-service.port';
 
 @Injectable()
 export class JwtTokenAdapter implements TokenServicePort {

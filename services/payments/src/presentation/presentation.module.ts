@@ -5,7 +5,7 @@ import { ApplicationModule } from '../application/application.module';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { AdminPaymentsController } from './controllers/admin-payments.controller';
 import { PaymentsController } from './controllers/payments.controller';
-import { DomainExceptionFilter } from './filters/domain-exception.filter';
+import { DomainExceptionFilter } from '@auvora/nest-common';
 import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './guards/jwt.strategy';
@@ -16,7 +16,11 @@ import { ObservabilityMetricsInterceptor } from './interceptors/observability-me
 import { RequestContextMiddleware } from './middleware/request-context.middleware';
 
 @Module({
-  imports: [InfrastructureModule, ApplicationModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [
+    InfrastructureModule,
+    ApplicationModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+  ],
   controllers: [HealthController, PaymentsController, AdminPaymentsController],
   providers: [
     JwtStrategy,

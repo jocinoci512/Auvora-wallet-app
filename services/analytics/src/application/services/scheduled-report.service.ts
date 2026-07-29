@@ -89,10 +89,7 @@ export class ScheduledReportService {
     const due = await this.prisma.scheduledReport.findMany({
       where: {
         status: 'ACTIVE',
-        OR: [
-          { nextAttemptAt: { lte: now } },
-          { nextAttemptAt: null, nextRunAt: { lte: now } },
-        ],
+        OR: [{ nextAttemptAt: { lte: now } }, { nextAttemptAt: null, nextRunAt: { lte: now } }],
       },
       include: { template: true },
       take: limit,

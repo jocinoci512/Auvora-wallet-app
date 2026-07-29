@@ -13,12 +13,12 @@
 
 ## Surfaces
 
-| Flow | Route | Component |
-|------|-------|-----------|
-| Swap | `/swap` | `SwapExperience` |
-| Bridge | `/bridge` | `BridgeExperience` |
-| Buy | `/buy` | `BuyExperience` |
-| Sell | `/sell` | `SellExperience` |
+| Flow    | Route      | Component           |
+| ------- | ---------- | ------------------- |
+| Swap    | `/swap`    | `SwapExperience`    |
+| Bridge  | `/bridge`  | `BridgeExperience`  |
+| Buy     | `/buy`     | `BuyExperience`     |
+| Sell    | `/sell`    | `SellExperience`    |
 | Staking | `/staking` | `StakingExperience` |
 
 ## Portfolio integration
@@ -29,8 +29,8 @@
 
 ## Shared helpers
 
-- `lib/trading/api.ts` — timed JSON fetch + fee/ETA formatters  
-- `lib/trading/activity.ts` — local activity store + demo datasets  
+- `lib/trading/api.ts` — timed JSON fetch + fee/ETA formatters
+- `lib/trading/activity.ts` — local activity store + demo datasets
 
 ## Related docs
 

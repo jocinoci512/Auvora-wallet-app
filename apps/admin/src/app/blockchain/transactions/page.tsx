@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  AuvoraClientError,
-  type ChainTransaction,
-  type ChainTxStatus,
-} from '@auvora/sdk';
+import { AuvoraClientError, type ChainTransaction, type ChainTxStatus } from '@auvora/sdk';
 import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
@@ -57,7 +53,9 @@ export default function AdminBlockchainTransactionsPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Transactions</h1>
-          <p className="page-subtitle">{total} transaction{total === 1 ? '' : 's'}</p>
+          <p className="page-subtitle">
+            {total} transaction{total === 1 ? '' : 's'}
+          </p>
         </div>
         <Link href="/blockchain">
           <Button variant="ghost">Back</Button>

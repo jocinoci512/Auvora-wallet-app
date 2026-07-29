@@ -14,7 +14,10 @@ export function extractRequestContext(req: Request): { ipAddress?: string; userA
   const forwarded = req.headers['x-forwarded-for'];
   let ipAddress: string | undefined;
   if (typeof forwarded === 'string' && forwarded.length > 0) {
-    const hops = forwarded.split(',').map((part) => part.trim()).filter(Boolean);
+    const hops = forwarded
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
     ipAddress = hops[hops.length - 1];
   } else {
     ipAddress = req.ip ?? req.socket.remoteAddress ?? undefined;

@@ -15,7 +15,7 @@ import { RATE_LIMITER, type RateLimiterPort } from '../../application/ports/cloc
 import { TelemetryIngestService } from '../../application/services/telemetry-ingest.service';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { RateLimitError } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 

@@ -1,54 +1,45 @@
-import type { ButtonHTMLAttributes, ReactElement } from 'react';
-import { tokens } from './tokens';
+import type { ButtonHTMLAttributes, ReactElement, ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  size?: ButtonSize;
+  loading?: boolean;
+  children?: ReactNode;
 }
-
-const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
-  primary: {
-    background: tokens.color.accent,
-    color: '#FFFFFF',
-    border: `1px solid ${tokens.color.accent}`,
-  },
-  secondary: {
-    background: tokens.color.accentMuted,
-    color: tokens.color.ink,
-    border: `1px solid ${tokens.color.border}`,
-  },
-  ghost: {
-    background: 'transparent',
-    color: tokens.color.ink,
-    border: `1px solid ${tokens.color.border}`,
-  },
-};
 
 export function Button({
   variant = 'primary',
-  style,
+  size = 'md',
+  loading = false,
+  className,
   type = 'button',
   children,
+  disabled,
   ...rest
 }: ButtonProps): ReactElement {
+  const classes = [
+    'auvora-btn',
+    `auvora-btn--${variant}`,
+    size !== 'md' ? `auvora-btn--${size}` : '',
+    loading ? 'auvora-btn--loading' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <button
       type={type}
-      style={{
-        fontFamily: tokens.font.sans,
-        fontWeight: 600,
-        borderRadius: tokens.radius.sm,
-        padding: `${tokens.space.sm} ${tokens.space.md}`,
-        cursor: rest.disabled ? 'not-allowed' : 'pointer',
-        opacity: rest.disabled ? 0.6 : 1,
-        lineHeight: 1.25,
-        ...variantStyles[variant],
-        ...style,
-      }}
+      className={classes}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...rest}
     >
-      {children}
+      {loading ? <span className="auvora-btn__spinner" aria-hidden /> : null}
+      <span className="auvora-btn__label">{children}</span>
     </button>
   );
 }

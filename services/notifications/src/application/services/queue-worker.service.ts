@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { QueueService } from './queue.service';
 
@@ -51,7 +57,9 @@ export class QueueWorkerService implements OnModuleInit, OnModuleDestroy {
         result = await this.queue.processNext('queue-worker');
       }
     } catch (error) {
-      this.logger.error(`Queue worker tick failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Queue worker tick failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       this.ticking = false;
     }

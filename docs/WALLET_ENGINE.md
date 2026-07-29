@@ -21,19 +21,19 @@ Wallet Core never calls Alchemy. Private keys never enter wallet responses or ex
 
 ## Operations
 
-| Operation | API | Notes |
-|-----------|-----|-------|
-| Create | `POST /api/v1/wallet-engine/wallets` | Ledger wallet + HD prefs + optional address provision |
-| Restore | `POST /api/v1/wallet-engine/wallets/:id/restore` | Status restore + recovery verification stamp |
-| Import | `POST /api/v1/wallet-engine/wallets/import` | **Public address only** |
-| Export | `GET /api/v1/wallet-engine/wallets/:id/export` | Public metadata; `containsPrivateKeys: false` |
-| Address generate | `POST .../addresses/generate` | Via blockchain internal API |
-| Address validate | `POST /api/v1/wallet-engine/addresses/validate` | Blockchain or local format |
-| Network switch | `POST .../network` | Preference `activeNetwork` |
-| Account switch | `POST .../accounts/switch` | Preference `activeAccountIndex` |
-| Account discover | `POST .../accounts/discover` | HD path templates (no keys) |
-| Sync | `POST .../sync` | Balance + network tip + blockchain sync trigger |
-| Recovery verify | `POST .../recovery/verify` | Metadata attestation only |
+| Operation        | API                                              | Notes                                                 |
+| ---------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| Create           | `POST /api/v1/wallet-engine/wallets`             | Ledger wallet + HD prefs + optional address provision |
+| Restore          | `POST /api/v1/wallet-engine/wallets/:id/restore` | Status restore + recovery verification stamp          |
+| Import           | `POST /api/v1/wallet-engine/wallets/import`      | **Public address only**                               |
+| Export           | `GET /api/v1/wallet-engine/wallets/:id/export`   | Public metadata; `containsPrivateKeys: false`         |
+| Address generate | `POST .../addresses/generate`                    | Via blockchain internal API                           |
+| Address validate | `POST /api/v1/wallet-engine/addresses/validate`  | Blockchain or local format                            |
+| Network switch   | `POST .../network`                               | Preference `activeNetwork`                            |
+| Account switch   | `POST .../accounts/switch`                       | Preference `activeAccountIndex`                       |
+| Account discover | `POST .../accounts/discover`                     | HD path templates (no keys)                           |
+| Sync             | `POST .../sync`                                  | Balance + network tip + blockchain sync trigger       |
+| Recovery verify  | `POST .../recovery/verify`                       | Metadata attestation only                             |
 
 Existing `/api/v1/wallets/*` lifecycle (rename, archive, balances, ledger) remains unchanged.
 

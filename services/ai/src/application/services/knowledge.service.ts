@@ -47,7 +47,8 @@ export class KnowledgeService {
   async listSources(filters: { isEnabled?: boolean; skip?: number; take?: number } = {}) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 200);
-    const where: Prisma.AiKnowledgeSourceWhereInput = filters.isEnabled === undefined ? {} : { isEnabled: filters.isEnabled };
+    const where: Prisma.AiKnowledgeSourceWhereInput =
+      filters.isEnabled === undefined ? {} : { isEnabled: filters.isEnabled };
     const [items, total] = await Promise.all([
       this.prisma.aiKnowledgeSource.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
       this.prisma.aiKnowledgeSource.count({ where }),
@@ -77,7 +78,10 @@ export class KnowledgeService {
 
   async setSourceEnabled(id: string, isEnabled: boolean, actorUserId?: string) {
     await this.getSource(id);
-    const updated = await this.prisma.aiKnowledgeSource.update({ where: { id }, data: { isEnabled } });
+    const updated = await this.prisma.aiKnowledgeSource.update({
+      where: { id },
+      data: { isEnabled },
+    });
     await this.audit.record('ai.knowledge.source_enabled_changed', {
       actorUserId,
       resourceType: 'AiKnowledgeSource',
@@ -113,7 +117,9 @@ export class KnowledgeService {
    */
   async ingestDocument(sourceId: string, input: IngestDocumentInput, actorUserId?: string) {
     await this.getSource(sourceId);
-    const existing = await this.prisma.aiDocument.findFirst({ where: { sourceId, title: input.title } });
+    const existing = await this.prisma.aiDocument.findFirst({
+      where: { sourceId, title: input.title },
+    });
     if (existing) {
       return this.upsertDocument(existing.id, input, actorUserId);
     }
@@ -152,7 +158,13 @@ export class KnowledgeService {
     await this.prisma.aiDocumentChunk.deleteMany({ where: { documentId } });
     await this.prisma.aiDocument.update({
       where: { id: documentId },
-      data: { content: input.content, contentType, checksum, version: nextVersion, status: 'PARSING' },
+      data: {
+        content: input.content,
+        contentType,
+        checksum,
+        version: nextVersion,
+        status: 'PARSING',
+      },
     });
     await this.audit.record('ai.knowledge.document_updated', {
       actorUserId,
@@ -172,7 +184,10 @@ export class KnowledgeService {
     const document = await this.getDocument(documentId);
     await this.prisma.aiDocumentChunk.deleteMany({ where: { documentId } });
     const nextVersion = document.version + 1;
-    await this.prisma.aiDocument.update({ where: { id: documentId }, data: { version: nextVersion, status: 'PARSING' } });
+    await this.prisma.aiDocument.update({
+      where: { id: documentId },
+      data: { version: nextVersion, status: 'PARSING' },
+    });
     await this.audit.record('ai.knowledge.document_reindexed', {
       actorUserId,
       resourceType: 'AiDocument',
@@ -188,16 +203,29 @@ export class KnowledgeService {
   ) {
     const document = await this.getDocument(documentId);
     try {
-      const parsed = document.contentType.includes('markdown') ? stripMarkdown(document.content) : document.content;
-      await this.prisma.aiDocument.update({ where: { id: documentId }, data: { status: 'CHUNKING' } });
+      const parsed = document.contentType.includes('markdown')
+        ? stripMarkdown(document.content)
+        : document.content;
+      await this.prisma.aiDocument.update({
+        where: { id: documentId },
+        data: { status: 'CHUNKING' },
+      });
 
-      const chunks = chunkText(parsed, { size: options.chunkSize ?? 800, overlap: options.chunkOverlap ?? 100 });
+      const chunks = chunkText(parsed, {
+        size: options.chunkSize ?? 800,
+        overlap: options.chunkOverlap ?? 100,
+      });
       if (chunks.length === 0) {
         throw new Error('Document produced no chunks after parsing');
       }
 
-      await this.prisma.aiDocument.update({ where: { id: documentId }, data: { status: 'EMBEDDING' } });
-      const embedResult = await this.embeddings.embed(chunks, { providerCode: options.providerCode });
+      await this.prisma.aiDocument.update({
+        where: { id: documentId },
+        data: { status: 'EMBEDDING' },
+      });
+      const embedResult = await this.embeddings.embed(chunks, {
+        providerCode: options.providerCode,
+      });
 
       for (let i = 0; i < chunks.length; i += 1) {
         const chunkContent = chunks[i] ?? '';
@@ -236,7 +264,10 @@ export class KnowledgeService {
       return indexed;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await this.prisma.aiDocument.update({ where: { id: documentId }, data: { status: 'FAILED', errorMessage: message } });
+      await this.prisma.aiDocument.update({
+        where: { id: documentId },
+        data: { status: 'FAILED', errorMessage: message },
+      });
       await this.events.publish({
         type: AiEventType.DocumentIndexFailed,
         aggregateId: documentId,
@@ -286,7 +317,11 @@ export class KnowledgeService {
         await this.indexDocument(document.id, {});
         results.push({ documentId: document.id, success: true });
       } catch (error) {
-        results.push({ documentId: document.id, success: false, error: error instanceof Error ? error.message : String(error) });
+        results.push({
+          documentId: document.id,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

@@ -16,7 +16,11 @@ export function getModelRate(model: string): { input: number; output: number } {
 }
 
 /** Estimates the USD-micros cost of a request given input/output token counts. */
-export function estimateCostUsdMicros(model: string, inputTokens: number, outputTokens: number): number {
+export function estimateCostUsdMicros(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+): number {
   const rate = getModelRate(model);
   const inputCost = (inputTokens / 1000) * rate.input;
   const outputCost = (outputTokens / 1000) * rate.output;

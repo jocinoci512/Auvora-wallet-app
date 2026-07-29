@@ -59,8 +59,8 @@ export default function AdminAlertsPage(): ReactElement {
         <ul className="stack">
           {items.map((alert) => (
             <li key={alert.id}>
-              <StatusBadge status={alert.severity} />{' '}
-              <StatusBadge status={alert.status} /> {alert.title}
+              <StatusBadge status={alert.severity} /> <StatusBadge status={alert.status} />{' '}
+              {alert.title}
               <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
                 {alert.message}
               </p>

@@ -1,23 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  LedgerEntryType,
-  Prisma,
-  TransactionType,
-  WalletStatus,
-} from '@auvora/database';
+import { LedgerEntryType, Prisma, TransactionType, WalletStatus } from '@auvora/database';
 import type { JwtAccessClaims, PermissionCode } from '@auvora/types';
 import { assertStatusTransition } from '../../domain/wallet-status-transitions';
-import {
-  ConflictError,
-  ForbiddenError,
-  NotFoundError,
-  ValidationError,
-} from '../../domain';
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../domain';
 import { PERMISSION_WALLETS_ADMIN } from '../../domain/permission-codes';
-import {
-  AI_PUBLISHER,
-  type AiPublisherPort,
-} from '../../infrastructure/ai/ai-publisher.adapter';
+import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
@@ -113,11 +100,7 @@ export class WalletService {
 
     // Empty string (not null) so the DB unique constraint on (owner, asset, alias) works.
     const alias = input.alias?.trim() ? input.alias.trim() : '';
-    const existing = await this.wallets.findByOwnerAssetAlias(
-      input.ownerUserId,
-      asset.id,
-      alias,
-    );
+    const existing = await this.wallets.findByOwnerAssetAlias(input.ownerUserId, asset.id, alias);
     if (existing) {
       throw new ConflictError(
         `Wallet already exists for owner, asset ${input.assetCode}, and alias`,
@@ -213,7 +196,12 @@ export class WalletService {
     const wallet = await this.requireWallet(id);
     this.assertOwnershipOrAdmin(wallet, requester);
     assertStatusTransition(wallet.status, WalletStatus.ACTIVE);
-    return this.wallets.transitionStatus(id, WalletStatus.ACTIVE, requester.sub, reason ?? 'Restored');
+    return this.wallets.transitionStatus(
+      id,
+      WalletStatus.ACTIVE,
+      requester.sub,
+      reason ?? 'Restored',
+    );
   }
 
   async getBalance(walletId: string, requester: JwtAccessClaims): Promise<BalanceRecord> {
@@ -254,7 +242,12 @@ export class WalletService {
   async adminRestore(id: string, actorId: string, reason?: string): Promise<WalletRecord> {
     const wallet = await this.requireWallet(id);
     assertStatusTransition(wallet.status, WalletStatus.ACTIVE);
-    return this.wallets.transitionStatus(id, WalletStatus.ACTIVE, actorId, reason ?? 'Admin restore');
+    return this.wallets.transitionStatus(
+      id,
+      WalletStatus.ACTIVE,
+      actorId,
+      reason ?? 'Admin restore',
+    );
   }
 
   async adminArchive(id: string, actorId: string, reason?: string): Promise<WalletRecord> {
@@ -344,7 +337,11 @@ export class WalletService {
   async createInternalTransfer(
     input: InternalTransferInput,
     requester: JwtAccessClaims,
-  ): Promise<{ transaction: TransactionRecord; fromEntry: LedgerEntryRecord; toEntry: LedgerEntryRecord }> {
+  ): Promise<{
+    transaction: TransactionRecord;
+    fromEntry: LedgerEntryRecord;
+    toEntry: LedgerEntryRecord;
+  }> {
     this.assertSystemOrAdmin(requester);
 
     if (input.fromWalletId === input.toWalletId) {

@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Inject,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from '../../application/services/auth.service';
@@ -21,7 +12,7 @@ import {
   setCsrfTokenCookie,
   setRefreshTokenCookie,
 } from '../common/cookie.helper';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -49,7 +40,8 @@ void _authDtoRuntime;
 @ApiTags('auth')
 @Controller('api/v1/auth')
 export class AuthController {
-  constructor(@Inject(AuthService) private readonly authService: AuthService,
+  constructor(
+    @Inject(AuthService) private readonly authService: AuthService,
     @Inject(ENV) private readonly env: ServiceEnv,
   ) {}
 
@@ -65,7 +57,11 @@ export class AuthController {
   @SkipCsrf()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.login(dto, extractRequestContext(req));
     setRefreshTokenCookie(res, this.env, result.refreshToken);
     setCsrfTokenCookie(res, this.env, result.csrfToken);

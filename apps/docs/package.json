@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3011",
-    "build": "next build",
+    "build": "node ../../scripts/next-production-build.mjs",
     "start": "next start --port 3011",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",

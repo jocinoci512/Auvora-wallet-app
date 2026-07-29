@@ -14,9 +14,12 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { NotificationService, type SendNotificationInput } from '../../application/services/notification.service';
+import {
+  NotificationService,
+  type SendNotificationInput,
+} from '../../application/services/notification.service';
 import { WebhookService } from '../../application/services/webhook.service';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 
@@ -112,7 +115,11 @@ export class InternalEventIngestDto {
   correlationId?: string;
 }
 
-const _internalDtoRuntime = { InternalSendNotificationDto, InternalSendBatchDto, InternalEventIngestDto };
+const _internalDtoRuntime = {
+  InternalSendNotificationDto,
+  InternalSendBatchDto,
+  InternalEventIngestDto,
+};
 void _internalDtoRuntime;
 
 function toSendInput(dto: InternalSendNotificationDto): SendNotificationInput {
@@ -175,6 +182,10 @@ export class InternalNotificationsController {
       });
       if (delivery) deliveries.push(delivery);
     }
-    return successResponse({ eventType: dto.eventType, deliveries: deliveries.length, correlationId });
+    return successResponse({
+      eventType: dto.eventType,
+      deliveries: deliveries.length,
+      correlationId,
+    });
   }
 }

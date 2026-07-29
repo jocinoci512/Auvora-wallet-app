@@ -29,7 +29,7 @@ import {
   ROLE_SUPER_ADMIN,
   type AiProviderTypeCode,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -310,7 +310,10 @@ export class AdminAiController {
 
   @Get('prompts')
   @Permissions(PERMISSION_AI_PROMPTS)
-  async listPrompts(@Query('category') category: AiPromptCategory | undefined, @Query() query: PageQueryDto) {
+  async listPrompts(
+    @Query('category') category: AiPromptCategory | undefined,
+    @Query() query: PageQueryDto,
+  ) {
     return successResponse(await this.prompts.list({ category, ...query }));
   }
 
@@ -334,7 +337,11 @@ export class AdminAiController {
 
   @Post('prompts/:id/versions')
   @Permissions(PERMISSION_AI_PROMPTS)
-  async createPromptVersion(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims, @Body() dto: CreatePromptVersionDto) {
+  async createPromptVersion(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: CreatePromptVersionDto,
+  ) {
     return successResponse(await this.prompts.createVersion(id, dto, user.sub));
   }
 
@@ -370,7 +377,11 @@ export class AdminAiController {
 
   @Post('prompts/:id/rollback')
   @Permissions(PERMISSION_AI_PROMPTS)
-  async rollbackPrompt(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims, @Body() dto: RollbackPromptDto) {
+  async rollbackPrompt(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: RollbackPromptDto,
+  ) {
     return successResponse(await this.prompts.rollback(id, dto.toVersion, user.sub));
   }
 
@@ -406,7 +417,11 @@ export class AdminAiController {
 
   @Post('knowledge/sources/:id/documents')
   @Permissions(PERMISSION_AI_KNOWLEDGE)
-  async ingestDocument(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims, @Body() dto: IngestDocumentDto) {
+  async ingestDocument(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: IngestDocumentDto,
+  ) {
     return successResponse(await this.knowledge.ingestDocument(id, dto, user.sub));
   }
 
@@ -441,6 +456,8 @@ export class AdminAiController {
     @Query('assistantType') assistantType: AiAssistantType | undefined,
     @Query() query: PageQueryDto,
   ) {
-    return successResponse(await this.conversations.listAdmin({ ownerUserId, assistantType, ...query }));
+    return successResponse(
+      await this.conversations.listAdmin({ ownerUserId, assistantType, ...query }),
+    );
   }
 }

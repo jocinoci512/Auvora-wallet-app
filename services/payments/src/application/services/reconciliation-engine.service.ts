@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PaymentStatus, ReconciliationStatus } from '@auvora/database';
-import { PAYMENT_REPOSITORY, type PaymentRecord, type PaymentRepositoryPort } from '../ports/payment-repository.port';
+import {
+  PAYMENT_REPOSITORY,
+  type PaymentRecord,
+  type PaymentRepositoryPort,
+} from '../ports/payment-repository.port';
 import {
   RECONCILIATION_REPOSITORY,
   type ReconciliationRecord,
@@ -17,7 +21,8 @@ import { EVENT_BUS, type EventBusPort, NotFoundError, PaymentEventType } from '.
 export class ReconciliationEngineService {
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: PaymentRepositoryPort,
-    @Inject(RECONCILIATION_REPOSITORY) private readonly reconciliations: ReconciliationRepositoryPort,
+    @Inject(RECONCILIATION_REPOSITORY)
+    private readonly reconciliations: ReconciliationRepositoryPort,
     @Inject(PROVIDER_RESOLVER) private readonly providerResolver: ProviderResolverPort,
     @Inject(EVENT_BUS) private readonly eventBus: EventBusPort,
   ) {}
@@ -38,7 +43,10 @@ export class ReconciliationEngineService {
           actualAmount = String(reportedAmount);
         }
       } catch (error) {
-        return this.recordException(payment, error instanceof Error ? error.message : 'provider status lookup failed');
+        return this.recordException(
+          payment,
+          error instanceof Error ? error.message : 'provider status lookup failed',
+        );
       }
     }
 
@@ -96,7 +104,10 @@ export class ReconciliationEngineService {
     return { processed: items.length, mismatches };
   }
 
-  private async recordException(payment: PaymentRecord, reason: string): Promise<ReconciliationRecord> {
+  private async recordException(
+    payment: PaymentRecord,
+    reason: string,
+  ): Promise<ReconciliationRecord> {
     const record = await this.reconciliations.create({
       paymentId: payment.id,
       status: ReconciliationStatus.EXCEPTION,

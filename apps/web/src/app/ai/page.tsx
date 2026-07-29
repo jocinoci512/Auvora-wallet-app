@@ -151,10 +151,7 @@ export default function AiPage(): ReactElement {
             </Button>
           </div>
           {conversations.length === 0 ? (
-            <EmptyState
-              title="No conversations"
-              description="Start a new chat to begin."
-            />
+            <EmptyState title="No conversations" description="Start a new chat to begin." />
           ) : (
             <ul className="stack">
               {conversations.map((c) => (

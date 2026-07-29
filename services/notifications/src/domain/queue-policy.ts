@@ -29,11 +29,18 @@ export function computeBackoffDelayMs(attempt: number, options: QueueBackoffOpti
   return Math.min(delay, maxDelayMs);
 }
 
-export function computeNextAttemptAt(now: Date, attempt: number, options: QueueBackoffOptions = {}): Date {
+export function computeNextAttemptAt(
+  now: Date,
+  attempt: number,
+  options: QueueBackoffOptions = {},
+): Date {
   return new Date(now.getTime() + computeBackoffDelayMs(attempt, options));
 }
 
-export function hasExceededMaxAttempts(attemptCount: number, options: QueueBackoffOptions = {}): boolean {
+export function hasExceededMaxAttempts(
+  attemptCount: number,
+  options: QueueBackoffOptions = {},
+): boolean {
   const { maxAttempts } = { ...DEFAULT_BACKOFF_OPTIONS, ...options };
   return attemptCount >= maxAttempts;
 }
@@ -46,7 +53,10 @@ export function resolveFailureOutcome(
   if (hasExceededMaxAttempts(attemptCount, options)) {
     return { outcome: 'DEAD_LETTER' };
   }
-  return { outcome: 'RETRY', nextAttemptAt: computeNextAttemptAt(new Date(), attemptCount, options) };
+  return {
+    outcome: 'RETRY',
+    nextAttemptAt: computeNextAttemptAt(new Date(), attemptCount, options),
+  };
 }
 
 export function priorityWeight(priority: NotificationPriorityCode): number {

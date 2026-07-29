@@ -1,6 +1,12 @@
-import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common';
-import { ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { Controller, Get, Headers, HttpCode, Res, UnauthorizedException } from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiServiceUnavailableResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { HealthStatus, type HealthCheckResponse } from '@auvora/types';
+import type { Response } from 'express';
 import { loadEnv } from '../../config/env.schema';
 import {
   getGatewayProxyCircuitStates,
@@ -27,11 +33,14 @@ export class HealthController {
 
   @Get('ready')
   @ApiOkResponse({ description: 'Gateway readiness probe (includes auth service reachability)' })
-  async getReady(): Promise<HealthCheckResponse> {
+  @ApiServiceUnavailableResponse({
+    description: 'Auth dependency unreachable — load balancers should treat as not ready',
+  })
+  async getReady(@Res({ passthrough: true }) res: Response): Promise<HealthCheckResponse> {
     const authCheck = await this.checkAuthService();
-
-    return {
-      status: authCheck === HealthStatus.Ok ? HealthStatus.Ok : HealthStatus.Degraded,
+    const ready = authCheck === HealthStatus.Ok;
+    const payload: HealthCheckResponse = {
+      status: ready ? HealthStatus.Ok : HealthStatus.Degraded,
       service: this.env.SERVICE_NAME,
       version: this.env.SERVICE_VERSION,
       timestamp: new Date().toISOString(),
@@ -41,9 +50,13 @@ export class HealthController {
         auth: authCheck,
       },
     };
+    // Probe-compatible: non-2xx when dependencies are not ready (body still returned).
+    res.status(ready ? 200 : 503);
+    return payload;
   }
 
   @Get('metrics/resilience')
+  @HttpCode(200)
   @ApiOkResponse({ description: 'Gateway proxy resilience counters (Phase 13)' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid x-internal-api-key when required' })
   getResilienceMetrics(@Headers('x-internal-api-key') internalKey?: string) {
@@ -61,7 +74,9 @@ export class HealthController {
     const requireKey = this.env.NODE_ENV === 'production' || Boolean(configured);
     if (!requireKey) return;
     if (!configured || internalKey !== configured) {
-      throw new UnauthorizedException('Resilience metrics require a valid x-internal-api-key header');
+      throw new UnauthorizedException(
+        'Resilience metrics require a valid x-internal-api-key header',
+      );
     }
   }
 

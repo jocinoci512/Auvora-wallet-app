@@ -22,7 +22,7 @@ import {
   PERMISSION_CUSTODY_RECOVERY,
   PERMISSION_CUSTODY_WRITE,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -144,7 +144,9 @@ export class CustodyController {
   @Get('keys')
   @Permissions(PERMISSION_CUSTODY_READ)
   async listKeys(@CurrentUser() user: JwtAccessClaims, @Query() query: PageQueryDto) {
-    return successResponse(await this.keys.list({ ownerUserId: user.sub, skip: query.skip, take: query.take }));
+    return successResponse(
+      await this.keys.list({ ownerUserId: user.sub, skip: query.skip, take: query.take }),
+    );
   }
 
   @Post('keys')
@@ -174,7 +176,10 @@ export class CustodyController {
 
   @Post('signing-requests')
   @Permissions(PERMISSION_CUSTODY_WRITE)
-  async createSigningRequest(@CurrentUser() user: JwtAccessClaims, @Body() dto: CreateSigningRequestDto) {
+  async createSigningRequest(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: CreateSigningRequestDto,
+  ) {
     return successResponse(await this.signing.createRequest(user, dto));
   }
 
@@ -238,7 +243,10 @@ export class CustodyController {
 
   @Post('recovery/contacts')
   @Permissions(PERMISSION_CUSTODY_RECOVERY)
-  async addRecoveryContact(@CurrentUser() user: JwtAccessClaims, @Body() dto: AddRecoveryContactDto) {
+  async addRecoveryContact(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: AddRecoveryContactDto,
+  ) {
     return successResponse(await this.recovery.addContact(user.sub, dto));
   }
 

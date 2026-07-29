@@ -42,7 +42,10 @@ export class HealthController {
   @ApiOkResponse({ description: 'Readiness probe' })
   async getReady(): Promise<HealthCheckResponse> {
     const started = Date.now();
-    const [dbHealthy, redisHealthy] = await Promise.all([this.prisma.isHealthy(), this.redis.ping()]);
+    const [dbHealthy, redisHealthy] = await Promise.all([
+      this.prisma.isHealthy(),
+      this.redis.ping(),
+    ]);
     const checks: Record<string, HealthStatus> = {
       database: dbHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,
       redis: redisHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,

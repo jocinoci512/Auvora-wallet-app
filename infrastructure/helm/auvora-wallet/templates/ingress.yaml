@@ -1,4 +1,5 @@
 {{- if .Values.ingress.enabled }}
+{{- $multi := and .Values.ingress.hosts (gt (len .Values.ingress.hosts) 0) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -14,11 +15,33 @@ spec:
   {{- end }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
+    {{- if $multi }}
+    - hosts:
+        {{- range .Values.ingress.hosts }}
+        - {{ .host | quote }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+    {{- else }}
     - hosts:
         - {{ .Values.ingress.host }}
       secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
   {{- end }}
   rules:
+    {{- if $multi }}
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: {{ default "/" .path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .backend }}
+                port:
+                  number: {{ .port }}
+    {{- end }}
+    {{- else }}
     - host: {{ .Values.ingress.host }}
       http:
         paths:
@@ -49,4 +72,5 @@ spec:
                 port:
                   number: {{ .Values.services.gateway.port }}
           {{- end }}
+    {{- end }}
 {{- end }}

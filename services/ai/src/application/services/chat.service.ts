@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { PrismaService, type AiAssistantType, type AiConversation, type AiMessage, type AiRequest, type Prisma } from '@auvora/database';
+import {
+  PrismaService,
+  type AiAssistantType,
+  type AiConversation,
+  type AiMessage,
+  type AiRequest,
+  type Prisma,
+} from '@auvora/database';
 import {
   AiEventType,
   DEFAULT_MAX_INPUT_LENGTH,
@@ -86,14 +93,19 @@ export class ChatService {
 
     const conversation = input.conversationId
       ? await this.conversations.get(input.conversationId)
-      : await this.conversations.create({ ownerUserId: input.ownerUserId, assistantType: input.assistantType });
+      : await this.conversations.create({
+          ownerUserId: input.ownerUserId,
+          assistantType: input.assistantType,
+        });
     this.conversations.assertOwner(conversation, input.ownerUserId, false);
 
     const assistantType = conversation.assistantType;
     let systemPrompt = getAssistantDefaultSystemPrompt(assistantType);
     let promptTemplateId: string | undefined;
     try {
-      const { template, version } = await this.prompts.getActiveVersionByCode(getAssistantPromptCode(assistantType));
+      const { template, version } = await this.prompts.getActiveVersionByCode(
+        getAssistantPromptCode(assistantType),
+      );
       promptTemplateId = template.id;
       systemPrompt = version.systemPrompt ?? systemPrompt;
     } catch {
@@ -102,7 +114,10 @@ export class ChatService {
 
     let citations: KnowledgeSearchResult[] = [];
     if (input.useKnowledge) {
-      citations = await this.vectorSearch.search(redactedMessage, { sourceIds: input.knowledgeSourceIds, topK: 4 });
+      citations = await this.vectorSearch.search(redactedMessage, {
+        sourceIds: input.knowledgeSourceIds,
+        topK: 4,
+      });
       if (citations.length > 0) {
         const context = citations
           .map((c, i) => `[${i + 1}] (${c.sourceName}) ${c.content}`)
@@ -152,11 +167,24 @@ export class ChatService {
         latencyMs = result.latencyMs;
 
         if (this.env.AI_CACHE_TTL_SECONDS > 0) {
-          const payload: CachedChatPayload = { content, providerCode: providerCodeUsed, model, inputTokens, outputTokens };
+          const payload: CachedChatPayload = {
+            content,
+            providerCode: providerCodeUsed,
+            model,
+            inputTokens,
+            outputTokens,
+          };
           await this.cache.set(cacheKey, JSON.stringify(payload), this.env.AI_CACHE_TTL_SECONDS);
         }
       } catch (error) {
-        await this.recordFailedRequest(conversation, redactedMessage, promptTemplateId, input, error, correlationId);
+        await this.recordFailedRequest(
+          conversation,
+          redactedMessage,
+          promptTemplateId,
+          input,
+          error,
+          correlationId,
+        );
         throw error;
       }
     }
@@ -174,7 +202,9 @@ export class ChatService {
       metadata: { citations },
     });
 
-    const providerRow = await this.prisma.aiProvider.findUnique({ where: { code: providerCodeUsed } });
+    const providerRow = await this.prisma.aiProvider.findUnique({
+      where: { code: providerCodeUsed },
+    });
     const costUsdMicros = estimateCostUsdMicros(model, inputTokens, outputTokens);
 
     const request = await this.prisma.aiRequest.create({
@@ -227,14 +257,23 @@ export class ChatService {
       resourceType: 'AiConversation',
       resourceId: conversation.id,
       correlationId,
-      details: { providerCode: providerCodeUsed, model, cacheHit: cached, citationCount: citations.length },
+      details: {
+        providerCode: providerCodeUsed,
+        model,
+        cacheHit: cached,
+        citationCount: citations.length,
+      },
     });
 
     await this.events.publish({
       type: AiEventType.RequestCompleted,
       aggregateId: request.id,
       correlationId,
-      payload: { conversationId: conversation.id, providerCode: providerCodeUsed, cacheHit: cached },
+      payload: {
+        conversationId: conversation.id,
+        providerCode: providerCodeUsed,
+        cacheHit: cached,
+      },
     });
     await this.analytics.publishEvent({
       eventType: 'ai.chat.completed',
@@ -243,7 +282,11 @@ export class ChatService {
       correlationId,
       ownerUserId: input.ownerUserId,
       metrics: { ai_request_count: 1 },
-      payload: { conversationId: conversation.id, providerCode: providerCodeUsed, cacheHit: cached },
+      payload: {
+        conversationId: conversation.id,
+        providerCode: providerCodeUsed,
+        cacheHit: cached,
+      },
     });
 
     return { conversation, userMessage, assistantMessage, request, cached, citations };
@@ -287,7 +330,13 @@ export class ChatService {
 
   private async bumpProviderMetric(
     providerId: string,
-    opts: { success: boolean; cacheHit: boolean; latencyMs: number; tokens: number; costUsdMicros: number },
+    opts: {
+      success: boolean;
+      cacheHit: boolean;
+      latencyMs: number;
+      tokens: number;
+      costUsdMicros: number;
+    },
   ): Promise<void> {
     const windowStart = new Date();
     windowStart.setMinutes(0, 0, 0);

@@ -6,7 +6,9 @@ describe('template-engine', () => {
   });
 
   it('renders nested dot-path variables', () => {
-    expect(renderTemplate('Hi {{user.firstName}}', { user: { firstName: 'Grace' } })).toBe('Hi Grace');
+    expect(renderTemplate('Hi {{user.firstName}}', { user: { firstName: 'Grace' } })).toBe(
+      'Hi Grace',
+    );
   });
 
   it('replaces missing variables with an empty string', () => {
@@ -25,7 +27,9 @@ describe('template-engine', () => {
 
   it('escapes HTML-unsafe characters only for the HTML format', () => {
     const template = 'Hello {{name}}';
-    expect(renderTemplate(template, { name: '<b>Ada</b>' }, 'HTML')).toBe('Hello &lt;b&gt;Ada&lt;/b&gt;');
+    expect(renderTemplate(template, { name: '<b>Ada</b>' }, 'HTML')).toBe(
+      'Hello &lt;b&gt;Ada&lt;/b&gt;',
+    );
     expect(renderTemplate(template, { name: '<b>Ada</b>' }, 'TEXT')).toBe('Hello <b>Ada</b>');
   });
 
@@ -35,7 +39,10 @@ describe('template-engine', () => {
   });
 
   it('renders subject and body together', () => {
-    const result = renderTemplateParts({ subject: 'Welcome {{name}}', body: 'Hi {{name}}, enjoy!' }, { name: 'Sam' });
+    const result = renderTemplateParts(
+      { subject: 'Welcome {{name}}', body: 'Hi {{name}}, enjoy!' },
+      { name: 'Sam' },
+    );
     expect(result).toEqual({ subject: 'Welcome Sam', body: 'Hi Sam, enjoy!' });
   });
 });

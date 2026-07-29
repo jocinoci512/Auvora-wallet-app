@@ -2,8 +2,15 @@ import { randomBytes } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService, type Prisma, type WebhookDeliveryStatus } from '@auvora/database';
 import { ConflictError, ForbiddenError, NotFoundError, resolveFailureOutcome } from '../../domain';
-import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../../infrastructure/crypto/field-encryption.adapter';
-import { signWebhookPayload, WEBHOOK_SIGNATURE_HEADER, WEBHOOK_TIMESTAMP_HEADER } from '../../infrastructure/crypto/webhook-signer';
+import {
+  FIELD_ENCRYPTION,
+  type FieldEncryptionPort,
+} from '../../infrastructure/crypto/field-encryption.adapter';
+import {
+  signWebhookPayload,
+  WEBHOOK_SIGNATURE_HEADER,
+  WEBHOOK_TIMESTAMP_HEADER,
+} from '../../infrastructure/crypto/webhook-signer';
 
 export interface RegisterWebhookInput {
   ownerUserId?: string;
@@ -20,7 +27,10 @@ export interface UpdateWebhookInput {
   version?: string;
 }
 
-type FetchLike = (input: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<{
+type FetchLike = (
+  input: string,
+  init: { method: string; headers: Record<string, string>; body: string },
+) => Promise<{
   status: number;
   text(): Promise<string>;
 }>;
@@ -35,7 +45,7 @@ export class WebhookService {
   ) {}
 
   private get fetchImpl(): FetchLike {
-    return globalThis.fetch as unknown as FetchLike;
+    return globalThis.fetch.bind(globalThis) as unknown as FetchLike;
   }
 
   async register(input: RegisterWebhookInput) {
@@ -113,7 +123,10 @@ export class WebhookService {
    * subscribers safely evolve their handling of `data` across `apiVersion` bumps without the
    * signature format itself changing.
    */
-  private buildEnvelope(delivery: { eventType: string; payload: unknown }, endpointVersion: string) {
+  private buildEnvelope(
+    delivery: { eventType: string; payload: unknown },
+    endpointVersion: string,
+  ) {
     return {
       apiVersion: endpointVersion,
       eventType: delivery.eventType,
@@ -176,7 +189,8 @@ export class WebhookService {
     responseBody: string | undefined,
   ) {
     const outcome = resolveFailureOutcome(attemptCount, { maxAttempts: 5 });
-    const status: WebhookDeliveryStatus = outcome.outcome === 'DEAD_LETTER' ? 'DEAD_LETTER' : 'RETRYING';
+    const status: WebhookDeliveryStatus =
+      outcome.outcome === 'DEAD_LETTER' ? 'DEAD_LETTER' : 'RETRYING';
     return this.prisma.webhookDelivery.update({
       where: { id: deliveryId },
       data: {
@@ -194,7 +208,9 @@ export class WebhookService {
    * Uses the RETRYING -> PENDING status transition as an atomic claim so multiple worker
    * instances never double-dispatch the same delivery.
    */
-  async processNextRetry(workerId = 'webhook-worker'): Promise<{ processed: boolean; deliveryId?: string }> {
+  async processNextRetry(
+    workerId = 'webhook-worker',
+  ): Promise<{ processed: boolean; deliveryId?: string }> {
     const now = new Date();
     const candidates = await this.prisma.webhookDelivery.findMany({
       where: { status: 'RETRYING', nextAttemptAt: { lte: now } },
@@ -258,7 +274,9 @@ export class WebhookService {
   async listLogs(filters: { status?: WebhookDeliveryStatus; skip?: number; take?: number } = {}) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 200);
-    const where: Prisma.WebhookDeliveryWhereInput = filters.status ? { status: filters.status } : {};
+    const where: Prisma.WebhookDeliveryWhereInput = filters.status
+      ? { status: filters.status }
+      : {};
     const [items, total] = await Promise.all([
       this.prisma.webhookDelivery.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
       this.prisma.webhookDelivery.count({ where }),
@@ -266,7 +284,10 @@ export class WebhookService {
     return { items, total, skip, take };
   }
 
-  private assertSelfOrAdmin(ownerUserId: string | null, requester: { sub: string; isAdmin: boolean }) {
+  private assertSelfOrAdmin(
+    ownerUserId: string | null,
+    requester: { sub: string; isAdmin: boolean },
+  ) {
     if (ownerUserId !== requester.sub && !requester.isAdmin) {
       throw new ForbiddenError('Access denied');
     }

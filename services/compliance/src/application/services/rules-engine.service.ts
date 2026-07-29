@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  evaluateExpression,
-  type RuleContext,
-  type RuleExpression,
-} from '../../domain';
+import { evaluateExpression, type RuleContext, type RuleExpression } from '../../domain';
 
 export interface EvaluatedRule {
   code: string;
@@ -15,7 +11,14 @@ export interface EvaluatedRule {
 @Injectable()
 export class RulesEngineService {
   evaluateAll(
-    rules: Array<{ code: string; name: string; action: string; expression: unknown; isEnabled: boolean; priority: number }>,
+    rules: Array<{
+      code: string;
+      name: string;
+      action: string;
+      expression: unknown;
+      isEnabled: boolean;
+      priority: number;
+    }>,
     ctx: RuleContext,
   ): EvaluatedRule[] {
     return rules

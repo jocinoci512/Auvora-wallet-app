@@ -75,7 +75,8 @@ export class KpiService {
       where: { code },
       data: {
         ...input,
-        metadata: input.metadata === undefined ? undefined : (input.metadata as Prisma.InputJsonValue),
+        metadata:
+          input.metadata === undefined ? undefined : (input.metadata as Prisma.InputJsonValue),
       },
     });
   }

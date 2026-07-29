@@ -14,15 +14,16 @@ export class DashboardService {
   ) {}
 
   async metrics() {
-    const [total, succeeded, failed, cached, avgLatency, conversations, activeConversations] = await Promise.all([
-      this.prisma.aiRequest.count(),
-      this.prisma.aiRequest.count({ where: { status: 'SUCCEEDED' } }),
-      this.prisma.aiRequest.count({ where: { status: 'FAILED' } }),
-      this.prisma.aiRequest.count({ where: { cacheHit: true } }),
-      this.prisma.aiRequest.aggregate({ _avg: { latencyMs: true } }),
-      this.prisma.aiConversation.count(),
-      this.prisma.aiConversation.count({ where: { status: 'ACTIVE' } }),
-    ]);
+    const [total, succeeded, failed, cached, avgLatency, conversations, activeConversations] =
+      await Promise.all([
+        this.prisma.aiRequest.count(),
+        this.prisma.aiRequest.count({ where: { status: 'SUCCEEDED' } }),
+        this.prisma.aiRequest.count({ where: { status: 'FAILED' } }),
+        this.prisma.aiRequest.count({ where: { cacheHit: true } }),
+        this.prisma.aiRequest.aggregate({ _avg: { latencyMs: true } }),
+        this.prisma.aiConversation.count(),
+        this.prisma.aiConversation.count({ where: { status: 'ACTIVE' } }),
+      ]);
 
     const providers = await this.modelRouter.status();
     const usageSummary = await this.usage.summary();
@@ -94,7 +95,11 @@ export class DashboardService {
 
   async auditTrail(skip = 0, take = 50) {
     const [items, total] = await Promise.all([
-      this.prisma.aiAuditRecord.findMany({ orderBy: { createdAt: 'desc' }, skip, take: Math.min(take, 200) }),
+      this.prisma.aiAuditRecord.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: Math.min(take, 200),
+      }),
       this.prisma.aiAuditRecord.count(),
     ]);
     return { items, total, skip, take };

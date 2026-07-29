@@ -37,22 +37,22 @@
 
 ## Incremental / failed recovery
 
-| Concern | Mechanism |
-|---------|-----------|
-| Incremental | Only active wallets; metadata tip height |
-| Failed sync | Retry queue + retry worker |
+| Concern        | Mechanism                                               |
+| -------------- | ------------------------------------------------------- |
+| Incremental    | Only active wallets; metadata tip height                |
+| Failed sync    | Retry queue + retry worker                              |
 | Network outage | Graceful null from HTTP client; local validate fallback |
-| Duplicate txs | In-memory key on chain+address+blockHeight |
+| Duplicate txs  | In-memory key on chain+address+blockHeight              |
 
 ## Internal API (blockchain)
 
-| Method | Path |
-|--------|------|
-| POST | `/api/v1/internal/blockchain/addresses` |
-| POST | `/api/v1/internal/blockchain/addresses/validate` |
-| GET | `/api/v1/internal/blockchain/balances/:chain/:address` |
-| GET | `/api/v1/internal/blockchain/networks/:chain/status` |
-| POST | `/api/v1/internal/blockchain/sync` |
-| GET | `/api/v1/internal/blockchain/chains` |
+| Method | Path                                                   |
+| ------ | ------------------------------------------------------ |
+| POST   | `/api/v1/internal/blockchain/addresses`                |
+| POST   | `/api/v1/internal/blockchain/addresses/validate`       |
+| GET    | `/api/v1/internal/blockchain/balances/:chain/:address` |
+| GET    | `/api/v1/internal/blockchain/networks/:chain/status`   |
+| POST   | `/api/v1/internal/blockchain/sync`                     |
+| GET    | `/api/v1/internal/blockchain/chains`                   |
 
 Auth: `x-internal-api-key` (same `INTERNAL_API_KEY` as wallet).

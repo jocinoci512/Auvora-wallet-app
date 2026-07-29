@@ -19,11 +19,11 @@ import {
   PERMISSION_COMPLIANCE_REVIEW,
   ValidationError,
 } from '../../domain';
-import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../../infrastructure/crypto/field-encryption.adapter';
 import {
-  AI_PUBLISHER,
-  type AiPublisherPort,
-} from '../../infrastructure/ai/ai-publisher.adapter';
+  FIELD_ENCRYPTION,
+  type FieldEncryptionPort,
+} from '../../infrastructure/crypto/field-encryption.adapter';
+import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
@@ -66,7 +66,8 @@ export class KycService {
     @Inject(ID_GENERATOR) private readonly ids: IdGeneratorPort,
     @Inject(EVENT_BUS) private readonly events: EventBusPort,
     @Inject(IDENTITY_VERIFICATION_PROVIDER) private readonly identity: IdentityVerificationProvider,
-    @Inject(DOCUMENT_VERIFICATION_PROVIDER) private readonly documents: DocumentVerificationProvider,
+    @Inject(DOCUMENT_VERIFICATION_PROVIDER)
+    private readonly documents: DocumentVerificationProvider,
     @Inject(SANCTIONS_PROVIDER) private readonly sanctions: SanctionsProvider,
     @Inject(PEP_PROVIDER) private readonly pep: PEPProvider,
     @Inject(RISK_SCORING_PROVIDER) private readonly riskProvider: RiskScoringProvider,
@@ -259,8 +260,12 @@ export class KycService {
         country: input.country,
         nationality: input.nationality,
         legalNameEncrypted: legalName ? this.crypto.encrypt(legalName) : undefined,
-        dateOfBirthEncrypted: input.dateOfBirth ? this.crypto.encrypt(input.dateOfBirth) : undefined,
-        businessNameEncrypted: input.businessName ? this.crypto.encrypt(input.businessName) : undefined,
+        dateOfBirthEncrypted: input.dateOfBirth
+          ? this.crypto.encrypt(input.dateOfBirth)
+          : undefined,
+        businessNameEncrypted: input.businessName
+          ? this.crypto.encrypt(input.businessName)
+          : undefined,
         riskBand: risk.band as RiskBand,
         riskScore: risk.score,
         verifiedAt: needsReview ? undefined : new Date(),
@@ -339,7 +344,9 @@ export class KycService {
 
   async listQueue(status?: VerificationStatus) {
     return this.prisma.verificationRequest.findMany({
-      where: status ? { status } : { status: { in: [VerificationStatus.IN_REVIEW, VerificationStatus.SUBMITTED] } },
+      where: status
+        ? { status }
+        : { status: { in: [VerificationStatus.IN_REVIEW, VerificationStatus.SUBMITTED] } },
       orderBy: { submittedAt: 'asc' },
       take: 100,
     });
@@ -349,7 +356,10 @@ export class KycService {
     this.assertReviewer(reviewer);
     const request = await this.prisma.verificationRequest.findUnique({ where: { id: requestId } });
     if (!request) throw new NotFoundError('Verification request not found');
-    if (request.status !== VerificationStatus.IN_REVIEW && request.status !== VerificationStatus.SUBMITTED) {
+    if (
+      request.status !== VerificationStatus.IN_REVIEW &&
+      request.status !== VerificationStatus.SUBMITTED
+    ) {
       throw new ConflictError(`Cannot approve request in status ${request.status}`);
     }
     const updated = await this.prisma.verificationRequest.update({
@@ -422,7 +432,10 @@ export class KycService {
   }
 
   private assertSelfOrAdmin(ownerUserId: string, requester: JwtAccessClaims) {
-    if (ownerUserId !== requester.sub && !requester.permissions.includes(PERMISSION_COMPLIANCE_ADMIN)) {
+    if (
+      ownerUserId !== requester.sub &&
+      !requester.permissions.includes(PERMISSION_COMPLIANCE_ADMIN)
+    ) {
       throw new ForbiddenError('Access denied');
     }
   }

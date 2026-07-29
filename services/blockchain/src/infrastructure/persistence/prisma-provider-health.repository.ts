@@ -72,7 +72,9 @@ export class PrismaProviderHealthRepository implements ProviderHealthRepositoryP
     return results;
   }
 
-  async list(filters: ProviderHealthFilters): Promise<{ items: ProviderHealthRecord[]; total: number }> {
+  async list(
+    filters: ProviderHealthFilters,
+  ): Promise<{ items: ProviderHealthRecord[]; total: number }> {
     const where = { ...(filters.chain ? { chain: filters.chain } : {}) };
     const [items, total] = await Promise.all([
       this.prisma.providerHealthSnapshot.findMany({

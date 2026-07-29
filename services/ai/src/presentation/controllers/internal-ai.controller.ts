@@ -6,7 +6,7 @@ import { ALL_ASSISTANT_TYPES } from '../../application/assistant-registry';
 import { AutomationService } from '../../application/services/automation.service';
 import { ChatService } from '../../application/services/chat.service';
 import { AiEventType, EVENT_BUS, type EventBusPort } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { CorrelationId } from '../decorators/current-user.decorator';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
@@ -84,7 +84,9 @@ export class InternalAiController {
 
   @Post('complete')
   async complete(@Body() dto: InternalCompleteDto, @CorrelationId() correlationId?: string) {
-    return successResponse(await this.chat.chat({ ...dto, correlationId: dto.correlationId ?? correlationId }));
+    return successResponse(
+      await this.chat.chat({ ...dto, correlationId: dto.correlationId ?? correlationId }),
+    );
   }
 
   /** Fan-in ingestion point for upstream services to trigger AI-driven automation from domain events. */
@@ -102,7 +104,11 @@ export class InternalAiController {
   @Post('summarize')
   async summarize(@Body() dto: InternalSummarizeDto, @CorrelationId() correlationId?: string) {
     return successResponse(
-      await this.automation.summarizeCase(dto.ownerUserId, dto.text, dto.correlationId ?? correlationId),
+      await this.automation.summarizeCase(
+        dto.ownerUserId,
+        dto.text,
+        dto.correlationId ?? correlationId,
+      ),
     );
   }
 }

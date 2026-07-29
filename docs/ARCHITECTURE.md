@@ -16,33 +16,33 @@ services/<name>/src/
 
 ## Shared packages
 
-| Package | Role |
-|---------|------|
-| `@auvora/types` | Cross-cutting TypeScript types and Result helpers |
-| `@auvora/ui` | React design system primitives |
-| `@auvora/sdk` | Typed HTTP client for platform APIs |
-| `@auvora/database` | Prisma NestJS module |
-| `@auvora/security` | Security headers and crypto helpers |
-| `@auvora/config` | ESLint, Prettier, Jest, and TS configs |
-| `@auvora/resilience` | Timeout, retry, circuit breaker, bulkhead |
-| `@auvora/cache` | Read-through cache helpers |
-| `@auvora/secrets` | Secrets provider factory |
+| Package              | Role                                              |
+| -------------------- | ------------------------------------------------- |
+| `@auvora/types`      | Cross-cutting TypeScript types and Result helpers |
+| `@auvora/ui`         | React design system primitives                    |
+| `@auvora/sdk`        | Typed HTTP client for platform APIs               |
+| `@auvora/database`   | Prisma NestJS module                              |
+| `@auvora/security`   | Security headers and crypto helpers               |
+| `@auvora/config`     | ESLint, Prettier, Jest, and TS configs            |
+| `@auvora/resilience` | Timeout, retry, circuit breaker, bulkhead         |
+| `@auvora/cache`      | Read-through cache helpers                        |
+| `@auvora/secrets`    | Secrets provider factory                          |
 
 ## Services (ports)
 
-| Service | Port | Phase |
-|---------|------|-------|
-| gateway | 4000 | 2+ |
-| auth | 4001 | 2 |
-| wallet | 3002 | 3 |
-| blockchain | 3003 | 4 |
-| payments | 3004 | 5 |
-| compliance | 3005 | 6 |
-| notifications | 3006 | 8 |
-| analytics | 3007 | 10 |
-| ai | 3008 | 9 |
-| custody | 3009 | 7 |
-| observability | 3010 | 11 |
+| Service       | Port | Phase |
+| ------------- | ---- | ----- |
+| gateway       | 4000 | 2+    |
+| auth          | 4001 | 2     |
+| wallet        | 3002 | 3     |
+| blockchain    | 3003 | 4     |
+| payments      | 3004 | 5     |
+| compliance    | 3005 | 6     |
+| notifications | 3006 | 8     |
+| analytics     | 3007 | 10    |
+| ai            | 3008 | 9     |
+| custody       | 3009 | 7     |
+| observability | 3010 | 11    |
 
 ## Data
 

@@ -22,6 +22,12 @@ export const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /**
+   * Primary blockchain infrastructure mode.
+   * - `alchemy` (default): use Alchemy for ETH/BSC/SOL/TRON/BTC when credentials exist
+   * - `simulator`: force local simulators even if Alchemy env is present
+   */
+  BLOCKCHAIN_PRIMARY_PROVIDER: z.enum(['alchemy', 'simulator']).default('alchemy'),
   BLOCKCHAIN_SYNC_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
   /** Alchemy API key — used to construct per-chain RPC URLs when explicit URLs are unset. */
   ALCHEMY_API_KEY: z.string().min(1).optional(),
@@ -31,6 +37,11 @@ export const envSchema = z.object({
   ALCHEMY_TRON_RPC_URL: z.string().url().optional(),
   ALCHEMY_BITCOIN_RPC_URL: z.string().url().optional(),
   ALCHEMY_RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(12_000),
+  /** Fail boot when Alchemy is primary but credentials are missing (default true in production). */
+  ALCHEMY_REQUIRED: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : value === 'true')),
   CUSTODY_SERVICE_URL: z.string().url().optional(),
   /** Optional. When set with INTERNAL_API_KEY, NotificationsPublisherAdapter forwards confirmed-transaction events for downstream webhook/notification fan-out. */
   NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
@@ -54,20 +65,36 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   if (parsed.data.NODE_ENV === 'production' && parsed.data.BLOCKCHAIN_SIMULATOR_ENABLED) {
     throw new Error('BLOCKCHAIN_SIMULATOR_ENABLED must be false in production');
   }
-  if (
-    parsed.data.NODE_ENV === 'production' &&
-    !parsed.data.ALCHEMY_API_KEY &&
-    !parsed.data.ALCHEMY_ETHEREUM_RPC_URL &&
-    !parsed.data.ALCHEMY_BSC_RPC_URL &&
-    !parsed.data.ALCHEMY_SOLANA_RPC_URL &&
-    !parsed.data.ALCHEMY_TRON_RPC_URL &&
-    !parsed.data.ALCHEMY_BITCOIN_RPC_URL
-  ) {
-    // Soft requirement: allow boot so ops can bring Alchemy online without a hard outage.
-    console.warn(
-      '[blockchain] ALCHEMY_API_KEY / ALCHEMY_*_RPC_URL missing in production — live RPC providers will not activate',
+
+  const hasAlchemy =
+    Boolean(parsed.data.ALCHEMY_API_KEY) ||
+    Boolean(parsed.data.ALCHEMY_ETHEREUM_RPC_URL) ||
+    Boolean(parsed.data.ALCHEMY_BSC_RPC_URL) ||
+    Boolean(parsed.data.ALCHEMY_SOLANA_RPC_URL) ||
+    Boolean(parsed.data.ALCHEMY_TRON_RPC_URL) ||
+    Boolean(parsed.data.ALCHEMY_BITCOIN_RPC_URL);
+
+  const alchemyRequired =
+    parsed.data.ALCHEMY_REQUIRED ??
+    (parsed.data.NODE_ENV === 'production' &&
+      parsed.data.BLOCKCHAIN_PRIMARY_PROVIDER === 'alchemy');
+
+  if (alchemyRequired && !hasAlchemy) {
+    throw new Error(
+      'Alchemy is required (ALCHEMY_REQUIRED / production primary) but ALCHEMY_API_KEY / ALCHEMY_*_RPC_URL are missing',
     );
   }
+
+  if (
+    parsed.data.BLOCKCHAIN_PRIMARY_PROVIDER === 'alchemy' &&
+    !hasAlchemy &&
+    parsed.data.NODE_ENV !== 'test'
+  ) {
+    console.warn(
+      '[blockchain] BLOCKCHAIN_PRIMARY_PROVIDER=alchemy but no Alchemy credentials — simulators remain until ALCHEMY_API_KEY is set',
+    );
+  }
+
   return parsed.data;
 }
 

@@ -57,7 +57,7 @@ export class HttpOpenAiCompatibleProvider implements AiProviderPort {
   }
 
   private get fetchImpl(): FetchLike {
-    return globalThis.fetch as unknown as FetchLike;
+    return globalThis.fetch.bind(globalThis) as unknown as FetchLike;
   }
 
   private buildUrl(path: string): string {
@@ -83,7 +83,10 @@ export class HttpOpenAiCompatibleProvider implements AiProviderPort {
         headers: this.buildHeaders(),
         body: JSON.stringify({
           model,
-          messages: request.messages.map((m) => ({ role: toOpenAiRole(m.role), content: m.content })),
+          messages: request.messages.map((m) => ({
+            role: toOpenAiRole(m.role),
+            content: m.content,
+          })),
           temperature: request.temperature,
           max_tokens: request.maxTokens,
         }),
@@ -92,7 +95,9 @@ export class HttpOpenAiCompatibleProvider implements AiProviderPort {
       const latencyMs = Date.now() - startedAt;
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new ProviderUnavailableError(`${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`);
+        throw new ProviderUnavailableError(
+          `${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`,
+        );
       }
       const body = (await response.json()) as OpenAiChatResponse;
       const content = body.choices?.[0]?.message?.content ?? '';
@@ -100,7 +105,8 @@ export class HttpOpenAiCompatibleProvider implements AiProviderPort {
         providerCode: this.code,
         model: body.model ?? model,
         content,
-        inputTokens: body.usage?.prompt_tokens ?? Math.ceil(JSON.stringify(request.messages).length / 4),
+        inputTokens:
+          body.usage?.prompt_tokens ?? Math.ceil(JSON.stringify(request.messages).length / 4),
         outputTokens: body.usage?.completion_tokens ?? Math.ceil(content.length / 4),
         latencyMs,
       };
@@ -125,7 +131,9 @@ export class HttpOpenAiCompatibleProvider implements AiProviderPort {
       const latencyMs = Date.now() - startedAt;
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new ProviderUnavailableError(`${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`);
+        throw new ProviderUnavailableError(
+          `${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`,
+        );
       }
       const body = (await response.json()) as OpenAiEmbeddingResponse;
       const vectors = (body.data ?? []).map((item) => item.embedding);

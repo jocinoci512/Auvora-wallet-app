@@ -41,7 +41,9 @@ describe('InfrastructureService', () => {
         }),
       },
       featureFlag: {
-        findMany: jest.fn().mockResolvedValue([{ code: 'infra.canary_deployments', enabled: true }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ code: 'infra.canary_deployments', enabled: true }]),
         update: jest.fn().mockResolvedValue({ code: 'infra.canary_deployments', enabled: false }),
       },
       infraAuditRecord: {

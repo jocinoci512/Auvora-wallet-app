@@ -56,9 +56,11 @@ export function createDownstreamProxyMiddleware(options: DownstreamProxyOptions)
         hardenProxyRequest(proxyReq, req);
       },
       error: (_err, _req, res) => {
-        void breaker.exec(async () => {
-          throw new Error('downstream_error');
-        }).catch(() => undefined);
+        void breaker
+          .exec(async () => {
+            throw new Error('downstream_error');
+          })
+          .catch(() => undefined);
         if (res && 'writeHead' in res && typeof res.writeHead === 'function' && !res.headersSent) {
           const open = breaker.getState() === 'open';
           res.writeHead(open ? 503 : 502, { 'Content-Type': 'application/json' });

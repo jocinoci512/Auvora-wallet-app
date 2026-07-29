@@ -40,6 +40,8 @@ export type {
   NetworkStatus,
   BlockchainProvider,
   ProviderHealthSnapshot,
+  LiveProviderRpcHealth,
+  LiveProviderRpcHealthSummary,
   SyncJob,
   SyncJobListResult,
   ListSyncJobsQuery,

@@ -8,13 +8,13 @@
 
 ## What this repo already provides
 
-| Layer | How it deploys |
-|-------|----------------|
-| **Frontend** (`apps/web`, `apps/admin`, `apps/docs`) | Vercel (GitHub integration and/or Actions) |
-| **Backend** (17 Nest services + gateway) | Docker → GHCR → Helm on Kubernetes |
-| **CI** | `.github/workflows/ci.yml` — lint, typecheck, test, build |
-| **CD** | `.github/workflows/cd.yml` — on every push to `main`/`master` |
-| **Env templates** | `.env.example`, `.env.staging.example`, `.env.production.example` |
+| Layer                                                | How it deploys                                                    |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| **Frontend** (`apps/web`, `apps/admin`, `apps/docs`) | Vercel (GitHub integration and/or Actions)                        |
+| **Backend** (17 Nest services + gateway)             | Docker → GHCR → Helm on Kubernetes                                |
+| **CI**                                               | `.github/workflows/ci.yml` — lint, typecheck, test, build         |
+| **CD**                                               | `.github/workflows/cd.yml` — on every push to `main`/`master`     |
+| **Env templates**                                    | `.env.example`, `.env.staging.example`, `.env.production.example` |
 
 After secrets are configured once, **each push to `main`/`master` runs Continuous Deployment**.
 
@@ -45,20 +45,20 @@ Create GitHub Environments named **`staging`** and **`production`**
 
 Create **three** Vercel projects (or start with web only):
 
-| Vercel project | Root Directory | Framework |
-|----------------|----------------|-----------|
-| auvora-web | `apps/web` | Next.js |
-| auvora-admin | `apps/admin` | Next.js |
-| auvora-docs | `apps/docs` | Next.js (optional) |
+| Vercel project | Root Directory | Framework          |
+| -------------- | -------------- | ------------------ |
+| auvora-web     | `apps/web`     | Next.js            |
+| auvora-admin   | `apps/admin`   | Next.js            |
+| auvora-docs    | `apps/docs`    | Next.js (optional) |
 
 Each app has a `vercel.json` with monorepo `installCommand` / `buildCommand`.
 
 ### A. Recommended: Vercel ↔ GitHub integration
 
-1. [vercel.com](https://vercel.com) → Add New Project → Import the GitHub repo.  
-2. Set **Root Directory** to `apps/web` (repeat for admin/docs).  
-3. Framework preset: **Next.js**.  
-4. Enable **Production Branch** = `main` (or `master`).  
+1. [vercel.com](https://vercel.com) → Add New Project → Import the GitHub repo.
+2. Set **Root Directory** to `apps/web` (repeat for admin/docs).
+3. Framework preset: **Next.js**.
+4. Enable **Production Branch** = `main` (or `master`).
 5. Add Environment Variables (Production + Preview) from `.env.example` — at minimum:
 
 ```text
@@ -77,12 +77,12 @@ NEXT_PUBLIC_MARKETING_URL=https://YOUR_DOMAIN
 
 Repo → Settings → Secrets and variables → Actions:
 
-| Secret | Value |
-|--------|--------|
-| `VERCEL_TOKEN` | Vercel → Settings → Tokens |
-| `VERCEL_ORG_ID` | Team / user id from `vercel project ls` or dashboard |
-| `VERCEL_PROJECT_ID_WEB` | Project id for web |
-| `VERCEL_PROJECT_ID_ADMIN` | Project id for admin |
+| Secret                    | Value                                                |
+| ------------------------- | ---------------------------------------------------- |
+| `VERCEL_TOKEN`            | Vercel → Settings → Tokens                           |
+| `VERCEL_ORG_ID`           | Team / user id from `vercel project ls` or dashboard |
+| `VERCEL_PROJECT_ID_WEB`   | Project id for web                                   |
+| `VERCEL_PROJECT_ID_ADMIN` | Project id for admin                                 |
 
 If these are missing, CD **skips** Vercel steps and relies on the GitHub integration (A).
 
@@ -107,10 +107,10 @@ Make packages public or grant the cluster pull access (imagePullSecrets).
 
 On the GitHub **`staging`** environment, add:
 
-| Secret | Description |
-|--------|-------------|
-| `KUBE_CONFIG_DATA` | Base64-encoded kubeconfig (`base64 -w0 ~/.kube/config`) |
-| `DATABASE_URL` | Optional — enables `prisma migrate deploy` before Helm |
+| Secret                | Description                                                        |
+| --------------------- | ------------------------------------------------------------------ |
+| `KUBE_CONFIG_DATA`    | Base64-encoded kubeconfig (`base64 -w0 ~/.kube/config`)            |
+| `DATABASE_URL`        | Optional — enables `prisma migrate deploy` before Helm             |
 | `STAGING_GATEWAY_URL` | Optional — e.g. `https://api.staging.YOUR_DOMAIN` for smoke checks |
 
 CD then runs:
@@ -123,9 +123,9 @@ Without `KUBE_CONFIG_DATA`, CD still builds images and runs a **Helm dry-run** (
 
 ### Production Helm (gated — not every push)
 
-1. Soak staging.  
-2. Run **Promote Release** (`staging-verified`).  
-3. Run **Deploy** with `environment=production`, `image_tag=<sha>`, `confirm_production=deploy-production`.  
+1. Soak staging.
+2. Run **Promote Release** (`staging-verified`).
+3. Run **Deploy** with `environment=production`, `image_tag=<sha>`, `confirm_production=deploy-production`.
 
 Production environment secret: `KUBE_CONFIG_DATA` (prod cluster).
 
@@ -149,9 +149,9 @@ docker build -f infrastructure/docker/Dockerfile.next \
 
 Compatible platforms (configure via their Docker / compose UI):
 
-- Railway / Render / Fly.io / ECS / Cloud Run — one service per Nest package  
-- Set env from `.env.production.example`  
-- Point `NEXT_PUBLIC_API_URL` on Vercel at your public gateway URL  
+- Railway / Render / Fly.io / ECS / Cloud Run — one service per Nest package
+- Set env from `.env.production.example`
+- Point `NEXT_PUBLIC_API_URL` on Vercel at your public gateway URL
 
 Do **not** run Nest services as Vercel serverless functions — they are long-lived Nest apps.
 
@@ -173,16 +173,16 @@ Never use `migrate:dev` against production.
 
 ## 5. One-time checklist (do this once)
 
-- [ ] Repo pushed to GitHub (`main` or `master`)  
-- [ ] GitHub Environments: `staging`, `production`  
-- [ ] Vercel projects linked (`apps/web`, optionally admin/docs) + `NEXT_PUBLIC_*` set  
-- [ ] (Optional) `VERCEL_*` Action secrets  
-- [ ] GHCR packages readable by the cluster  
-- [ ] Staging kubeconfig → `KUBE_CONFIG_DATA`  
-- [ ] Managed Postgres + Redis URLs in secrets  
-- [ ] Alchemy / JWT / CSRF / SMTP secrets loaded  
-- [ ] DNS + TLS for app / api / admin hosts  
-- [ ] Push a commit to `main`/`master` and open **Actions → Continuous Deployment**  
+- [ ] Repo pushed to GitHub (`main` or `master`)
+- [ ] GitHub Environments: `staging`, `production`
+- [ ] Vercel projects linked (`apps/web`, optionally admin/docs) + `NEXT_PUBLIC_*` set
+- [ ] (Optional) `VERCEL_*` Action secrets
+- [ ] GHCR packages readable by the cluster
+- [ ] Staging kubeconfig → `KUBE_CONFIG_DATA`
+- [ ] Managed Postgres + Redis URLs in secrets
+- [ ] Alchemy / JWT / CSRF / SMTP secrets loaded
+- [ ] DNS + TLS for app / api / admin hosts
+- [ ] Push a commit to `main`/`master` and open **Actions → Continuous Deployment**
 
 ---
 
@@ -197,12 +197,12 @@ flowchart LR
   helm --> smoke[Smoke optional]
 ```
 
-| Job | Requires |
-|-----|----------|
-| Quality gates | Always |
+| Job           | Requires                              |
+| ------------- | ------------------------------------- |
+| Quality gates | Always                                |
 | Vercel deploy | Integration and/or `VERCEL_*` secrets |
-| GHCR images | Always (on CD) |
-| Helm staging | `KUBE_CONFIG_DATA` on `staging` env |
+| GHCR images   | Always (on CD)                        |
+| Helm staging  | `KUBE_CONFIG_DATA` on `staging` env   |
 
 Production cluster updates stay **manual + confirmed** (safer for wallets).
 
@@ -228,21 +228,21 @@ pnpm preview:health
 
 ## 8. Related docs
 
-- [`docs/CI_CD_GUIDE.md`](./docs/CI_CD_GUIDE.md)  
-- [`docs/PRODUCTION_DEPLOYMENT.md`](./docs/PRODUCTION_DEPLOYMENT.md)  
-- [`docs/ENVIRONMENT_SETUP.md`](./docs/ENVIRONMENT_SETUP.md)  
-- [`STAGING_DEPLOYMENT.md`](./STAGING_DEPLOYMENT.md)  
-- [`.env.example`](./.env.example)  
+- [`docs/CI_CD_GUIDE.md`](./docs/CI_CD_GUIDE.md)
+- [`docs/PRODUCTION_DEPLOYMENT.md`](./docs/PRODUCTION_DEPLOYMENT.md)
+- [`docs/ENVIRONMENT_SETUP.md`](./docs/ENVIRONMENT_SETUP.md)
+- [`STAGING_DEPLOYMENT.md`](./STAGING_DEPLOYMENT.md)
+- [`.env.example`](./.env.example)
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| CD skips Vercel | Add GitHub↔Vercel integration or `VERCEL_*` secrets |
-| CD skips Helm | Add `KUBE_CONFIG_DATA` to Environment `staging` |
-| Next build fails on Vercel | Confirm Root Directory `apps/web` and pnpm 9 |
-| Frontend calls wrong API | Rebuild with correct `NEXT_PUBLIC_API_URL` |
-| Image pull errors | Auth cluster to `ghcr.io/<owner>/<repo>` |
-| Migrate fails | Check `DATABASE_URL` and that migrations are committed |
+| Symptom                    | Fix                                                    |
+| -------------------------- | ------------------------------------------------------ |
+| CD skips Vercel            | Add GitHub↔Vercel integration or `VERCEL_*` secrets    |
+| CD skips Helm              | Add `KUBE_CONFIG_DATA` to Environment `staging`        |
+| Next build fails on Vercel | Confirm Root Directory `apps/web` and pnpm 9           |
+| Frontend calls wrong API   | Rebuild with correct `NEXT_PUBLIC_API_URL`             |
+| Image pull errors          | Auth cluster to `ghcr.io/<owner>/<repo>`               |
+| Migrate fails              | Check `DATABASE_URL` and that migrations are committed |

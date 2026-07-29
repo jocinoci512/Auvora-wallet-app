@@ -1,11 +1,7 @@
 export type CustodyModelCode = 'SELF' | 'HOSTED' | 'SHARED' | 'INSTITUTIONAL' | 'MPC' | 'HSM';
 
 export type KeyAlgorithmCode =
-  | 'SECP256K1'
-  | 'ED25519'
-  | 'BITCOIN_SECP256K1'
-  | 'ETHEREUM_SECP256K1'
-  | 'FUTURE_PQ';
+  'SECP256K1' | 'ED25519' | 'BITCOIN_SECP256K1' | 'ETHEREUM_SECP256K1' | 'FUTURE_PQ';
 
 export interface GenerateKeyRequest {
   ownerUserId: string;

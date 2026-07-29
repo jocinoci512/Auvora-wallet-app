@@ -52,7 +52,9 @@ export default function AdminBlockchainBlocksPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Blocks</h1>
-          <p className="page-subtitle">{total} recent block{total === 1 ? '' : 's'}</p>
+          <p className="page-subtitle">
+            {total} recent block{total === 1 ? '' : 's'}
+          </p>
         </div>
         <Link href="/blockchain">
           <Button variant="ghost">Back</Button>

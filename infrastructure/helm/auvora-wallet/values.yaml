@@ -13,7 +13,7 @@ global:
     activeSlot: blue
   canary:
     replicas: 1
-    imageTag: ""
+    imageTag: ''
     weightPercent: 10
 
   securityContext:
@@ -50,8 +50,23 @@ global:
 config:
   NODE_ENV: production
   LOG_LEVEL: info
-  OTEL_ENABLED: "false"
+  OTEL_ENABLED: 'false'
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  # Public surface URLs — override per environment (never hardcode in app source).
+  APP_PUBLIC_URL: 'https://app.example.com'
+  NEXT_PUBLIC_API_URL: 'https://api.example.com'
+  NEXT_PUBLIC_APP_URL: 'https://app.example.com'
+  NEXT_PUBLIC_ADMIN_URL: 'https://admin.example.com'
+  NEXT_PUBLIC_DOCS_URL: 'https://docs.example.com'
+  NEXT_PUBLIC_STATUS_URL: 'https://status.example.com'
+  NEXT_PUBLIC_MARKETING_URL: 'https://example.com'
+  CORS_ORIGINS: 'https://app.example.com,https://admin.example.com,https://www.example.com'
+  COOKIE_SECURE: 'true'
+  COOKIE_DOMAIN: '.example.com'
+  CDN_ASSET_BASE_URL: ''
+  OBJECT_STORAGE_BUCKET: ''
+  OBJECT_STORAGE_REGION: ''
+  OBJECT_STORAGE_ENDPOINT: ''
 
 # NestJS microservices (@auvora/{name}-service; gateway uses gateway-service)
 services:
@@ -147,6 +162,54 @@ services:
     networkPolicy:
       allowFromGateway: true
       allowFromIngress: false
+  market-data:
+    enabled: true
+    image: market-data-service
+    port: 3012
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  swap:
+    enabled: true
+    image: swap-service
+    port: 3013
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  nft:
+    enabled: true
+    image: nft-service
+    port: 3014
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  staking:
+    enabled: true
+    image: staking-service
+    port: 3015
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  connections:
+    enabled: true
+    image: connections-service
+    port: 3016
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
+  bridge:
+    enabled: true
+    image: bridge-service
+    port: 3017
+    replicas: 2
+    networkPolicy:
+      allowFromGateway: true
+      allowFromIngress: false
 
 # Frontend apps
 apps:
@@ -168,11 +231,20 @@ apps:
     ingressPath: /admin
     healthPath: /api/health
     readyPath: /api/health
+  docs:
+    enabled: true
+    image: docs
+    port: 3011
+    replicas: 1
+    exposeViaIngress: true
+    ingressPath: /
+    healthPath: /api/health
+    readyPath: /api/health
 
 postgres:
   enabled: false
   image: postgres:16-alpine
-  storageClass: ""
+  storageClass: ''
   storageSize: 10Gi
   database: auvora_wallet
   username: auvora
@@ -185,22 +257,30 @@ redis:
 backup:
   cronJob:
     enabled: false
-    schedule: "0 2 * * *"
+    schedule: '0 2 * * *'
     image: postgres:16-alpine
 
 ingress:
   enabled: true
   className: nginx
+  # Legacy single-host mode (path-based /admin + /api). Used when hosts[] is empty.
   host: wallet.example.com
+  # Preferred multi-host mode for public launch (set per environment).
+  # Each entry: host + backend (web|admin|docs|gateway) + optional path (default /).
+  hosts: []
   tls:
     enabled: true
     secretName: auvora-wallet-tls
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/limit-rps: "50"
-    nginx.ingress.kubernetes.io/limit-connections: "20"
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/proxy-body-size: '10m'
+    nginx.ingress.kubernetes.io/limit-rps: '50'
+    nginx.ingress.kubernetes.io/limit-connections: '20'
+    # HSTS at ingress (TLS terminator). Apps also set HSTS when NODE_ENV=production.
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
 
 rbac:
   create: true
@@ -212,7 +292,7 @@ serviceAccount:
 # Never commit real credentials. Local chart Secret is opt-in via secrets.create.
 secrets:
   create: false
-  existingSecretName: ""
+  existingSecretName: ''
   data: {}
   externalSecret:
     enabled: true
@@ -228,3 +308,12 @@ secrets:
       - JWT_ACCESS_SECRET
       - JWT_REFRESH_SECRET
       - INTERNAL_API_KEY
+      - CSRF_SECRET
+      - COOKIE_DOMAIN
+      - APP_PUBLIC_URL
+      - NEXT_PUBLIC_API_URL
+      - CORS_ORIGINS
+      - OBJECT_STORAGE_ACCESS_KEY
+      - OBJECT_STORAGE_SECRET_KEY
+      - CDN_ASSET_BASE_URL
+      - ALCHEMY_API_KEY

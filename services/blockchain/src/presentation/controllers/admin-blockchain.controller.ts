@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { AdminMetricsService } from '../../application/services/admin-metrics.service';
 import { AdminQueryService } from '../../application/services/admin-query.service';
+import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { SyncService } from '../../application/services/sync.service';
 import { TransactionEngine } from '../../application/services/transaction-engine.service';
 import {
@@ -10,7 +11,7 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain/permission-codes';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import {
   AdminListBlocksQueryDto,
@@ -42,6 +43,7 @@ export class AdminBlockchainController {
     @Inject(SyncService) private readonly syncService: SyncService,
     @Inject(AdminMetricsService) private readonly metricsService: AdminMetricsService,
     @Inject(AdminQueryService) private readonly queryService: AdminQueryService,
+    @Inject(ProviderRpcHealthService) private readonly providerRpcHealth: ProviderRpcHealthService,
   ) {}
 
   @Get('providers')
@@ -60,6 +62,15 @@ export class AdminBlockchainController {
       take: query.take ?? 50,
     });
     return successResponse(data);
+  }
+
+  /** Live RPC probe summary (Alchemy vs simulator) for every registered chain. */
+  @Get('providers/rpc-health')
+  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  async listLiveRpcHealth() {
+    const providers = await this.providerRpcHealth.getAll();
+    const sync = this.syncService.getSyncPolicy();
+    return successResponse({ sync, providers });
   }
 
   @Get('sync-jobs')

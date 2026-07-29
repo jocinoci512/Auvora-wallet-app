@@ -122,32 +122,21 @@ export interface StatusChangeInput {
 }
 
 export type ChainNetwork =
-  | 'BITCOIN'
-  | 'ETHEREUM'
-  | 'POLYGON'
-  | 'SOLANA'
-  | 'BNB_SMART_CHAIN'
-  | 'TRON'
-  | 'LITECOIN';
+  'BITCOIN' | 'ETHEREUM' | 'POLYGON' | 'SOLANA' | 'BNB_SMART_CHAIN' | 'TRON' | 'LITECOIN';
 
 export type ChainAddressStatus = 'PENDING' | 'ACTIVE' | 'ARCHIVED';
 
 export type ChainTxDirection = 'INCOMING' | 'OUTGOING' | 'INTERNAL';
 
 export type ChainTxStatus =
-  | 'MEMPOOL'
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'FAILED'
-  | 'REJECTED'
-  | 'CANCELLED'
-  | 'REORGED';
+  'MEMPOOL' | 'PENDING' | 'CONFIRMED' | 'FAILED' | 'REJECTED' | 'CANCELLED' | 'REORGED';
 
 export type FeePriority = 'SLOW' | 'STANDARD' | 'FAST' | 'PRIORITY';
 
 export type SyncJobType = 'BLOCK_SCAN' | 'ADDRESS_WATCH' | 'MEMPOOL' | 'REORG_CHECK' | 'RETRY';
 
-export type SyncJobStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'RETRYING' | 'CANCELLED';
+export type SyncJobStatus =
+  'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'RETRYING' | 'CANCELLED';
 
 export interface SupportedChain {
   id: string;
@@ -305,6 +294,30 @@ export interface ProviderHealthSnapshot {
   checkedAt: string;
 }
 
+export interface LiveProviderRpcHealth {
+  chain: ChainNetwork;
+  status: 'up' | 'down' | 'degraded';
+  backend: 'alchemy' | 'simulator';
+  syncMode: 'live-backed' | 'simulator-only';
+  latencyMs: number;
+  latestBlockHeight: string | null;
+  synchronized: boolean;
+  lastSuccessfulRpc: string | null;
+  endpoint: string | null;
+  errorState: string | null;
+  message?: string;
+}
+
+export interface LiveProviderRpcHealthSummary {
+  sync: {
+    mode: 'live-backed' | 'simulator-only';
+    ledgerSyncEnabled: boolean;
+    liveProvidersExpected: boolean;
+    primaryProvider: string;
+  };
+  providers: LiveProviderRpcHealth[];
+}
+
 export interface SyncJob {
   id: string;
   chain: ChainNetwork;
@@ -422,19 +435,15 @@ export type PaymentStatus =
   | 'DISPUTED'
   | 'CHARGEBACK';
 
-export type PaymentMethodType = 'BANK_ACCOUNT' | 'CARD' | 'WALLET' | 'CRYPTO_ADDRESS' | 'MERCHANT' | 'OTHER';
+export type PaymentMethodType =
+  'BANK_ACCOUNT' | 'CARD' | 'WALLET' | 'CRYPTO_ADDRESS' | 'MERCHANT' | 'OTHER';
 
 export type SettlementMode = 'INSTANT' | 'DAILY' | 'SCHEDULED' | 'MANUAL';
 
 export type SettlementStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export type ReconciliationStatus =
-  | 'PENDING'
-  | 'MATCHED'
-  | 'MISMATCH'
-  | 'EXCEPTION'
-  | 'MANUAL_REVIEW'
-  | 'RESOLVED';
+  'PENDING' | 'MATCHED' | 'MISMATCH' | 'EXCEPTION' | 'MANUAL_REVIEW' | 'RESOLVED';
 
 export interface Payment {
   id: string;
@@ -1540,7 +1549,9 @@ export class AuvoraClient {
 
   constructor(options: AuvoraClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Never store bare `fetch` — calling it as `this.fetchImpl(...)` loses the Window binding
+    // and throws "Illegal invocation" in browsers.
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.defaultHeaders = options.defaultHeaders ?? {};
     this.credentials = options.credentials ?? 'include';
     this.timeoutMs = options.timeoutMs === undefined ? 30_000 : options.timeoutMs;
@@ -1625,11 +1636,7 @@ export class AuvoraClient {
     return this.request<WalletBalance>('GET', `/api/v1/wallets/${walletId}/balance`);
   }
 
-  async getWalletTransactions(
-    walletId: string,
-    skip = 0,
-    take = 50,
-  ): Promise<WalletTransaction[]> {
+  async getWalletTransactions(walletId: string, skip = 0, take = 50): Promise<WalletTransaction[]> {
     const params = new URLSearchParams({ skip: String(skip), take: String(take) });
     return this.request<WalletTransaction[]>(
       'GET',
@@ -1711,11 +1718,19 @@ export class AuvoraClient {
   }
 
   async activateAddress(addressId: string): Promise<ChainAddress> {
-    return this.request<ChainAddress>('POST', `/api/v1/blockchain/addresses/${addressId}/activate`, {});
+    return this.request<ChainAddress>(
+      'POST',
+      `/api/v1/blockchain/addresses/${addressId}/activate`,
+      {},
+    );
   }
 
   async archiveAddress(addressId: string): Promise<ChainAddress> {
-    return this.request<ChainAddress>('POST', `/api/v1/blockchain/addresses/${addressId}/archive`, {});
+    return this.request<ChainAddress>(
+      'POST',
+      `/api/v1/blockchain/addresses/${addressId}/archive`,
+      {},
+    );
   }
 
   async setPrimaryAddress(addressId: string): Promise<ChainAddress> {
@@ -1727,7 +1742,11 @@ export class AuvoraClient {
   }
 
   async validateAddress(input: ValidateAddressInput): Promise<ValidateAddressResult> {
-    return this.request<ValidateAddressResult>('POST', '/api/v1/blockchain/addresses/validate', input);
+    return this.request<ValidateAddressResult>(
+      'POST',
+      '/api/v1/blockchain/addresses/validate',
+      input,
+    );
   }
 
   async getChainBalance(addressId: string): Promise<ChainBalance> {
@@ -1735,7 +1754,10 @@ export class AuvoraClient {
   }
 
   async getChainTransaction(transactionId: string): Promise<ChainTransaction> {
-    return this.request<ChainTransaction>('GET', `/api/v1/blockchain/transactions/${transactionId}`);
+    return this.request<ChainTransaction>(
+      'GET',
+      `/api/v1/blockchain/transactions/${transactionId}`,
+    );
   }
 
   async listChainTransactions(
@@ -1769,6 +1791,13 @@ export class AuvoraClient {
 
   async adminBlockchainHealth(): Promise<ProviderHealthSnapshot[]> {
     return this.request<ProviderHealthSnapshot[]>('GET', '/api/v1/admin/blockchain/health');
+  }
+
+  async adminBlockchainLiveRpcHealth(): Promise<LiveProviderRpcHealthSummary> {
+    return this.request<LiveProviderRpcHealthSummary>(
+      'GET',
+      '/api/v1/admin/blockchain/providers/rpc-health',
+    );
   }
 
   async adminListSyncJobs(query: ListSyncJobsQuery = {}): Promise<SyncJobListResult> {
@@ -1807,7 +1836,9 @@ export class AuvoraClient {
     );
   }
 
-  async adminListAddresses(query: AdminListChainAddressesQuery = {}): Promise<ChainAddressListResult> {
+  async adminListAddresses(
+    query: AdminListChainAddressesQuery = {},
+  ): Promise<ChainAddressListResult> {
     const params = new URLSearchParams();
     if (query.ownerUserId) params.set('ownerUserId', query.ownerUserId);
     if (query.chain) params.set('chain', query.chain);
@@ -1815,7 +1846,10 @@ export class AuvoraClient {
     if (query.walletId) params.set('walletId', query.walletId);
     params.set('skip', String(query.skip ?? 0));
     params.set('take', String(query.take ?? 50));
-    return this.request<ChainAddressListResult>('GET', `/api/v1/admin/blockchain/addresses?${params}`);
+    return this.request<ChainAddressListResult>(
+      'GET',
+      `/api/v1/admin/blockchain/addresses?${params}`,
+    );
   }
 
   async adminBlockchainMetrics(): Promise<BlockchainMetrics> {
@@ -1830,7 +1864,10 @@ export class AuvoraClient {
     if (query.chain) params.set('chain', query.chain);
     params.set('skip', String(query.skip ?? 0));
     params.set('take', String(query.take ?? 50));
-    return this.request<BlockchainEventListResult>('GET', `/api/v1/admin/blockchain/events?${params}`);
+    return this.request<BlockchainEventListResult>(
+      'GET',
+      `/api/v1/admin/blockchain/events?${params}`,
+    );
   }
 
   async createPayment(input: CreatePaymentInput): Promise<Payment> {
@@ -1855,7 +1892,10 @@ export class AuvoraClient {
     return this.request<Payment>('POST', `/api/v1/payments/${paymentId}/cancel`, {});
   }
 
-  async refundPayment(paymentId: string, input: { amount?: string; reason?: string } = {}): Promise<Payment> {
+  async refundPayment(
+    paymentId: string,
+    input: { amount?: string; reason?: string } = {},
+  ): Promise<Payment> {
     return this.request<Payment>('POST', `/api/v1/payments/${paymentId}/refund`, input);
   }
 
@@ -1925,7 +1965,10 @@ export class AuvoraClient {
   }
 
   async adminListSettlementBatches(): Promise<SettlementBatchListResult> {
-    return this.request<SettlementBatchListResult>('GET', '/api/v1/admin/payments/settlements/batches');
+    return this.request<SettlementBatchListResult>(
+      'GET',
+      '/api/v1/admin/payments/settlements/batches',
+    );
   }
 
   async adminListPaymentLimits(): Promise<PaymentLimit[]> {
@@ -1937,15 +1980,24 @@ export class AuvoraClient {
   }
 
   async adminListRefunds(): Promise<{ items: Refund[]; total: number }> {
-    return this.request<{ items: Refund[]; total: number }>('GET', '/api/v1/admin/payments/refunds');
+    return this.request<{ items: Refund[]; total: number }>(
+      'GET',
+      '/api/v1/admin/payments/refunds',
+    );
   }
 
   async adminListDisputes(): Promise<{ items: Dispute[]; total: number }> {
-    return this.request<{ items: Dispute[]; total: number }>('GET', '/api/v1/admin/payments/disputes');
+    return this.request<{ items: Dispute[]; total: number }>(
+      'GET',
+      '/api/v1/admin/payments/disputes',
+    );
   }
 
   async adminListChargebacks(): Promise<{ items: Chargeback[]; total: number }> {
-    return this.request<{ items: Chargeback[]; total: number }>('GET', '/api/v1/admin/payments/chargebacks');
+    return this.request<{ items: Chargeback[]; total: number }>(
+      'GET',
+      '/api/v1/admin/payments/chargebacks',
+    );
   }
 
   async adminListReconciliation(): Promise<ReconciliationListResult> {
@@ -1976,7 +2028,9 @@ export class AuvoraClient {
     return this.request<ComplianceDocument[]>('GET', '/api/v1/compliance/documents');
   }
 
-  async uploadComplianceDocument(input: UploadComplianceDocumentInput): Promise<ComplianceDocument> {
+  async uploadComplianceDocument(
+    input: UploadComplianceDocumentInput,
+  ): Promise<ComplianceDocument> {
     return this.request<ComplianceDocument>('POST', '/api/v1/compliance/documents', input);
   }
 
@@ -1997,7 +2051,11 @@ export class AuvoraClient {
   }
 
   async adminApproveKyc(id: string): Promise<VerificationRequest> {
-    return this.request<VerificationRequest>('POST', `/api/v1/admin/compliance/kyc/${id}/approve`, {});
+    return this.request<VerificationRequest>(
+      'POST',
+      `/api/v1/admin/compliance/kyc/${id}/approve`,
+      {},
+    );
   }
 
   async adminRejectKyc(id: string, reason: string): Promise<VerificationRequest> {
@@ -2007,11 +2065,17 @@ export class AuvoraClient {
   }
 
   async adminListComplianceAlerts(): Promise<{ items: AmlAlert[]; total: number }> {
-    return this.request<{ items: AmlAlert[]; total: number }>('GET', '/api/v1/admin/compliance/alerts');
+    return this.request<{ items: AmlAlert[]; total: number }>(
+      'GET',
+      '/api/v1/admin/compliance/alerts',
+    );
   }
 
   async adminListComplianceCases(): Promise<{ items: ComplianceCase[]; total: number }> {
-    return this.request<{ items: ComplianceCase[]; total: number }>('GET', '/api/v1/admin/compliance/cases');
+    return this.request<{ items: ComplianceCase[]; total: number }>(
+      'GET',
+      '/api/v1/admin/compliance/cases',
+    );
   }
 
   async adminListComplianceRules(): Promise<ComplianceRule[]> {
@@ -2026,7 +2090,10 @@ export class AuvoraClient {
     return this.request<ComplianceRule>('POST', '/api/v1/admin/compliance/rules', input);
   }
 
-  async adminUpdateComplianceRule(id: string, input: UpdateComplianceRuleInput): Promise<ComplianceRule> {
+  async adminUpdateComplianceRule(
+    id: string,
+    input: UpdateComplianceRuleInput,
+  ): Promise<ComplianceRule> {
     return this.request<ComplianceRule>('PATCH', `/api/v1/admin/compliance/rules/${id}`, input);
   }
 
@@ -2074,7 +2141,10 @@ export class AuvoraClient {
   }
 
   async listSigningRequests(): Promise<{ items: SigningRequest[]; total: number }> {
-    return this.request<{ items: SigningRequest[]; total: number }>('GET', '/api/v1/custody/signing-requests');
+    return this.request<{ items: SigningRequest[]; total: number }>(
+      'GET',
+      '/api/v1/custody/signing-requests',
+    );
   }
 
   async createSigningRequest(input: CreateSigningRequestInput): Promise<SigningRequest> {
@@ -2110,7 +2180,10 @@ export class AuvoraClient {
   }
 
   async adminListCustodyKeys(): Promise<{ items: CustodyKey[]; total: number }> {
-    return this.request<{ items: CustodyKey[]; total: number }>('GET', '/api/v1/admin/custody/keys');
+    return this.request<{ items: CustodyKey[]; total: number }>(
+      'GET',
+      '/api/v1/admin/custody/keys',
+    );
   }
 
   async adminCustodySigningQueue(): Promise<{ items: SigningRequest[]; total: number }> {
@@ -2140,11 +2213,17 @@ export class AuvoraClient {
   }
 
   async adminListCustodyAudit(): Promise<{ items: CustodyAuditItem[]; total: number }> {
-    return this.request<{ items: CustodyAuditItem[]; total: number }>('GET', '/api/v1/admin/custody/audit');
+    return this.request<{ items: CustodyAuditItem[]; total: number }>(
+      'GET',
+      '/api/v1/admin/custody/audit',
+    );
   }
 
   async listNotifications(): Promise<{ items: NotificationItem[]; total: number }> {
-    return this.request<{ items: NotificationItem[]; total: number }>('GET', '/api/v1/notifications');
+    return this.request<{ items: NotificationItem[]; total: number }>(
+      'GET',
+      '/api/v1/notifications',
+    );
   }
 
   async markNotificationRead(id: string): Promise<NotificationItem> {
@@ -2170,7 +2249,10 @@ export class AuvoraClient {
   }
 
   async adminNotificationDashboard(): Promise<NotificationDashboardMetrics> {
-    return this.request<NotificationDashboardMetrics>('GET', '/api/v1/admin/notifications/dashboard');
+    return this.request<NotificationDashboardMetrics>(
+      'GET',
+      '/api/v1/admin/notifications/dashboard',
+    );
   }
 
   async adminListNotificationProviders(): Promise<NotificationProvider[]> {
@@ -2199,11 +2281,17 @@ export class AuvoraClient {
     );
   }
 
-  async adminBroadcastNotification(input: BroadcastNotificationInput): Promise<BroadcastNotificationResult> {
-    return this.request<BroadcastNotificationResult>('POST', '/api/v1/admin/notifications/broadcast', {
-      ...input,
-      all: input.all ?? true,
-    });
+  async adminBroadcastNotification(
+    input: BroadcastNotificationInput,
+  ): Promise<BroadcastNotificationResult> {
+    return this.request<BroadcastNotificationResult>(
+      'POST',
+      '/api/v1/admin/notifications/broadcast',
+      {
+        ...input,
+        all: input.all ?? true,
+      },
+    );
   }
 
   async adminListWebhookEndpoints(): Promise<WebhookEndpoint[]> {
@@ -2215,14 +2303,19 @@ export class AuvoraClient {
   }
 
   async listAiConversations(): Promise<{ items: AiConversation[]; total: number }> {
-    return this.request<{ items: AiConversation[]; total: number }>('GET', '/api/v1/ai/conversations');
+    return this.request<{ items: AiConversation[]; total: number }>(
+      'GET',
+      '/api/v1/ai/conversations',
+    );
   }
 
   async getAiConversation(id: string): Promise<AiConversationDetail> {
     return this.request<AiConversationDetail>('GET', `/api/v1/ai/conversations/${id}`);
   }
 
-  async searchAiKnowledge(query: string): Promise<{ items: AiKnowledgeSearchResult[]; total: number }> {
+  async searchAiKnowledge(
+    query: string,
+  ): Promise<{ items: AiKnowledgeSearchResult[]; total: number }> {
     return this.request<{ items: AiKnowledgeSearchResult[]; total: number }>(
       'POST',
       '/api/v1/ai/knowledge/search',
@@ -2234,7 +2327,10 @@ export class AuvoraClient {
     return this.request<AiAssistant[]>('GET', '/api/v1/ai/assistants');
   }
 
-  async submitAiMessageFeedback(messageId: string, input: SubmitAiMessageFeedbackInput): Promise<void> {
+  async submitAiMessageFeedback(
+    messageId: string,
+    input: SubmitAiMessageFeedbackInput,
+  ): Promise<void> {
     await this.request<void>('POST', `/api/v1/ai/messages/${messageId}/feedback`, input);
   }
 
@@ -2292,7 +2388,10 @@ export class AuvoraClient {
   }
 
   async adminListAiConversations(): Promise<{ items: AiConversation[]; total: number }> {
-    return this.request<{ items: AiConversation[]; total: number }>('GET', '/api/v1/admin/ai/conversations');
+    return this.request<{ items: AiConversation[]; total: number }>(
+      'GET',
+      '/api/v1/admin/ai/conversations',
+    );
   }
 
   async getAnalyticsSummary(): Promise<AnalyticsSummary> {
@@ -2308,7 +2407,10 @@ export class AuvoraClient {
   }
 
   async listAnalyticsReports(): Promise<{ items: AnalyticsReport[]; total: number }> {
-    return this.request<{ items: AnalyticsReport[]; total: number }>('GET', '/api/v1/analytics/reports');
+    return this.request<{ items: AnalyticsReport[]; total: number }>(
+      'GET',
+      '/api/v1/analytics/reports',
+    );
   }
 
   async generateAnalyticsReport(input: GenerateAnalyticsReportInput): Promise<AnalyticsReport> {
@@ -2353,13 +2455,22 @@ export class AuvoraClient {
     return match;
   }
 
-  async adminListAnalyticsAggregationJobs(): Promise<{ items: AnalyticsAggregationJob[]; total: number }> {
+  async adminListAnalyticsAggregationJobs(): Promise<{
+    items: AnalyticsAggregationJob[];
+    total: number;
+  }> {
     // Nest exposes trigger-only aggregate/run; no job list endpoint yet.
     return { items: [], total: 0 };
   }
 
-  async adminRunAnalyticsAggregation(input: RunAnalyticsAggregationInput = {}): Promise<AnalyticsAggregationJob> {
-    return this.request<AnalyticsAggregationJob>('POST', '/api/v1/admin/analytics/aggregate/run', input);
+  async adminRunAnalyticsAggregation(
+    input: RunAnalyticsAggregationInput = {},
+  ): Promise<AnalyticsAggregationJob> {
+    return this.request<AnalyticsAggregationJob>(
+      'POST',
+      '/api/v1/admin/analytics/aggregate/run',
+      input,
+    );
   }
 
   async adminListAnalyticsDashboards(): Promise<AnalyticsDashboard[]> {
@@ -2371,7 +2482,10 @@ export class AuvoraClient {
   }
 
   async adminListAnalyticsReports(): Promise<{ items: AnalyticsReport[]; total: number }> {
-    return this.request<{ items: AnalyticsReport[]; total: number }>('GET', '/api/v1/admin/analytics/reports');
+    return this.request<{ items: AnalyticsReport[]; total: number }>(
+      'GET',
+      '/api/v1/admin/analytics/reports',
+    );
   }
 
   async getPlatformStatus(): Promise<PlatformStatus> {
@@ -2383,7 +2497,10 @@ export class AuvoraClient {
   }
 
   async listPublicIncidents(): Promise<{ items: PublicIncident[]; total: number }> {
-    return this.request<{ items: PublicIncident[]; total: number }>('GET', '/api/v1/observability/incidents');
+    return this.request<{ items: PublicIncident[]; total: number }>(
+      'GET',
+      '/api/v1/observability/incidents',
+    );
   }
 
   async adminObservabilityDashboard(): Promise<OpsDashboardOverview> {
@@ -2391,11 +2508,17 @@ export class AuvoraClient {
   }
 
   async adminListObservabilityAlerts(): Promise<{ items: OpsAlert[]; total: number }> {
-    return this.request<{ items: OpsAlert[]; total: number }>('GET', '/api/v1/admin/observability/alerts');
+    return this.request<{ items: OpsAlert[]; total: number }>(
+      'GET',
+      '/api/v1/admin/observability/alerts',
+    );
   }
 
   async adminListObservabilityIncidents(): Promise<{ items: OpsIncident[]; total: number }> {
-    return this.request<{ items: OpsIncident[]; total: number }>('GET', '/api/v1/admin/observability/incidents');
+    return this.request<{ items: OpsIncident[]; total: number }>(
+      'GET',
+      '/api/v1/admin/observability/incidents',
+    );
   }
 
   async adminListObservabilitySlos(): Promise<OpsSlo[]> {
@@ -2469,9 +2592,7 @@ export class AuvoraClient {
     items: InfraDeployment[];
     total: number;
   }> {
-    const suffix = environmentCode
-      ? `?${new URLSearchParams({ environmentCode }).toString()}`
-      : '';
+    const suffix = environmentCode ? `?${new URLSearchParams({ environmentCode }).toString()}` : '';
     return this.request<{ items: InfraDeployment[]; total: number }>(
       'GET',
       `/api/v1/admin/infrastructure/deployments${suffix}`,
@@ -2482,9 +2603,7 @@ export class AuvoraClient {
     items: InfraBackupJob[];
     total: number;
   }> {
-    const suffix = environmentCode
-      ? `?${new URLSearchParams({ environmentCode }).toString()}`
-      : '';
+    const suffix = environmentCode ? `?${new URLSearchParams({ environmentCode }).toString()}` : '';
     return this.request<{ items: InfraBackupJob[]; total: number }>(
       'GET',
       `/api/v1/admin/infrastructure/backups${suffix}`,
@@ -2495,9 +2614,7 @@ export class AuvoraClient {
     items: InfraRecoveryDrill[];
     total: number;
   }> {
-    const suffix = environmentCode
-      ? `?${new URLSearchParams({ environmentCode }).toString()}`
-      : '';
+    const suffix = environmentCode ? `?${new URLSearchParams({ environmentCode }).toString()}` : '';
     return this.request<{ items: InfraRecoveryDrill[]; total: number }>(
       'GET',
       `/api/v1/admin/infrastructure/recovery${suffix}`,
@@ -2505,20 +2622,14 @@ export class AuvoraClient {
   }
 
   async adminListFeatureFlags(environmentCode?: string): Promise<FeatureFlag[]> {
-    const suffix = environmentCode
-      ? `?${new URLSearchParams({ environmentCode }).toString()}`
-      : '';
+    const suffix = environmentCode ? `?${new URLSearchParams({ environmentCode }).toString()}` : '';
     return this.request<FeatureFlag[]>(
       'GET',
       `/api/v1/admin/infrastructure/feature-flags${suffix}`,
     );
   }
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       Accept: 'application/json',
       ...this.defaultHeaders,

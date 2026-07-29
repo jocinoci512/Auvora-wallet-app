@@ -107,7 +107,10 @@ export class AuthService {
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
   ) {}
 
-  async register(input: RegisterInput, ctx: RequestContext): Promise<{ userId: string; message: string }> {
+  async register(
+    input: RegisterInput,
+    ctx: RequestContext,
+  ): Promise<{ userId: string; message: string }> {
     await this.enforceRateLimit(`register:${ctx.ipAddress ?? 'unknown'}`);
 
     assertPasswordPolicy(input.password);
@@ -360,7 +363,11 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string, sessionId: string, ctx: RequestContext): Promise<{ message: string }> {
+  async logout(
+    userId: string,
+    sessionId: string,
+    ctx: RequestContext,
+  ): Promise<{ message: string }> {
     await this.sessions.revoke(sessionId);
     await this.refreshTokens.revokeAllForSession(sessionId);
 
@@ -402,7 +409,9 @@ export class AuthService {
 
     const user = await this.users.findByEmail(email.trim().toLowerCase());
     if (!user || user.emailVerified) {
-      return { message: 'If the account exists and is unverified, a verification email has been sent.' };
+      return {
+        message: 'If the account exists and is unverified, a verification email has been sent.',
+      };
     }
 
     const rawToken = generateOpaqueToken();
@@ -418,7 +427,9 @@ export class AuthService {
       html: `<p><a href="${verifyUrl}">Verify your email</a></p>`,
     });
 
-    return { message: 'If the account exists and is unverified, a verification email has been sent.' };
+    return {
+      message: 'If the account exists and is unverified, a verification email has been sent.',
+    };
   }
 
   async forgotPassword(email: string, ctx: RequestContext): Promise<{ message: string }> {
@@ -451,7 +462,11 @@ export class AuthService {
     return { message: 'If the account exists, a password reset email has been sent.' };
   }
 
-  async resetPassword(token: string, newPassword: string, ctx: RequestContext): Promise<{ message: string }> {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    ctx: RequestContext,
+  ): Promise<{ message: string }> {
     assertPasswordPolicy(newPassword);
 
     const tokenHash = hashToken(token);
@@ -529,7 +544,11 @@ export class AuthService {
     }));
   }
 
-  async revokeSession(userId: string, sessionId: string, ctx: RequestContext): Promise<{ message: string }> {
+  async revokeSession(
+    userId: string,
+    sessionId: string,
+    ctx: RequestContext,
+  ): Promise<{ message: string }> {
     const session = await this.sessions.findById(sessionId);
     if (!session || session.userId !== userId) {
       throw new NotFoundError('Session not found');
@@ -563,7 +582,11 @@ export class AuthService {
     }));
   }
 
-  async revokeDevice(userId: string, deviceId: string, ctx: RequestContext): Promise<{ message: string }> {
+  async revokeDevice(
+    userId: string,
+    deviceId: string,
+    ctx: RequestContext,
+  ): Promise<{ message: string }> {
     const devices = await this.devices.listByUserId(userId);
     const device = devices.find((d) => d.id === deviceId);
     if (!device) {
@@ -629,7 +652,11 @@ export class AuthService {
     return this.toProfile(user);
   }
 
-  async adminSoftDelete(actorId: string, userId: string, ctx: RequestContext): Promise<UserProfileDto> {
+  async adminSoftDelete(
+    actorId: string,
+    userId: string,
+    ctx: RequestContext,
+  ): Promise<UserProfileDto> {
     const user = await this.users.softDelete(userId);
     await this.sessions.revokeAllForUser(userId);
     await this.refreshTokens.revokeAllForUser(userId);
@@ -643,7 +670,11 @@ export class AuthService {
     return this.toProfile(user);
   }
 
-  async adminRestore(actorId: string, userId: string, ctx: RequestContext): Promise<UserProfileDto> {
+  async adminRestore(
+    actorId: string,
+    userId: string,
+    ctx: RequestContext,
+  ): Promise<UserProfileDto> {
     const user = await this.users.restore(userId);
     await this.audit.create({
       action: 'USER_RESTORED',
@@ -673,7 +704,11 @@ export class AuthService {
     return this.toProfile(user);
   }
 
-  async adminForceLogout(actorId: string, userId: string, ctx: RequestContext): Promise<{ revoked: number }> {
+  async adminForceLogout(
+    actorId: string,
+    userId: string,
+    ctx: RequestContext,
+  ): Promise<{ revoked: number }> {
     const revoked = await this.sessions.revokeAllForUser(userId);
     await this.refreshTokens.revokeAllForUser(userId);
     await this.audit.create({

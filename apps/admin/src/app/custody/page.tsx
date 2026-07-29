@@ -58,9 +58,10 @@ export default function AdminCustodyPage(): ReactElement {
       {metrics ? (
         <section className="stack">
           <p>
-            Active keys: {metrics.activeKeys} · Pending signing: {metrics.pendingSigning} · Approvals:{' '}
-            {metrics.pendingApprovals} · Recoveries: {metrics.pendingRecovery ?? metrics.openRecoveries ?? 0}{' '}
-            · Providers: {metrics.enabledProviders} · Recent violations:{' '}
+            Active keys: {metrics.activeKeys} · Pending signing: {metrics.pendingSigning} ·
+            Approvals: {metrics.pendingApprovals} · Recoveries:{' '}
+            {metrics.pendingRecovery ?? metrics.openRecoveries ?? 0} · Providers:{' '}
+            {metrics.enabledProviders} · Recent violations:{' '}
             {metrics.recentViolations?.length ?? metrics.policyViolations24h ?? 0}
           </p>
         </section>

@@ -1,11 +1,20 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
 import { type ChainNetwork, ChainTxStatus, SyncJobType } from '@auvora/database';
 import {
   CHAIN_ADDRESS_REPOSITORY,
   type ChainAddressRepositoryPort,
 } from '../ports/chain-address-repository.port';
-import { CHAIN_BLOCK_REPOSITORY, type ChainBlockRepositoryPort } from '../ports/chain-block-repository.port';
+import {
+  CHAIN_BLOCK_REPOSITORY,
+  type ChainBlockRepositoryPort,
+} from '../ports/chain-block-repository.port';
 import {
   CHAIN_TRANSACTION_REPOSITORY,
   type ChainTransactionRepositoryPort,
@@ -16,7 +25,11 @@ import {
   type NetworkConfigRepositoryPort,
 } from '../ports/network-config-repository.port';
 import { SIMULATOR_LEDGER, type SimulatorLedgerPort } from '../ports/simulator-ledger.port';
-import { SYNC_JOB_REPOSITORY, type SyncJobRecord, type SyncJobRepositoryPort } from '../ports/sync-job-repository.port';
+import {
+  SYNC_JOB_REPOSITORY,
+  type SyncJobRecord,
+  type SyncJobRepositoryPort,
+} from '../ports/sync-job-repository.port';
 import { BlockchainEventType, EVENT_BUS, type EventBusPort, NotFoundError } from '../../domain';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { ConfirmationEngine } from './confirmation-engine.service';
@@ -33,7 +46,8 @@ export class SyncService implements OnModuleInit, OnModuleDestroy {
     @Inject(NETWORK_CONFIG_REPOSITORY) private readonly networkConfig: NetworkConfigRepositoryPort,
     @Inject(SIMULATOR_LEDGER) private readonly ledger: SimulatorLedgerPort,
     @Inject(CHAIN_BLOCK_REPOSITORY) private readonly blocks: ChainBlockRepositoryPort,
-    @Inject(CHAIN_TRANSACTION_REPOSITORY) private readonly transactions: ChainTransactionRepositoryPort,
+    @Inject(CHAIN_TRANSACTION_REPOSITORY)
+    private readonly transactions: ChainTransactionRepositoryPort,
     @Inject(CHAIN_ADDRESS_REPOSITORY) private readonly addresses: ChainAddressRepositoryPort,
     @Inject(SYNC_JOB_REPOSITORY) private readonly syncJobs: SyncJobRepositoryPort,
     @Inject(EVENT_BUS) private readonly eventBus: EventBusPort,
@@ -42,15 +56,53 @@ export class SyncService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
+    const policy = this.getSyncPolicy();
+    this.logger.log(
+      `Blockchain sync mode=${policy.mode} ledgerSync=${policy.ledgerSyncEnabled} liveProvidersExpected=${policy.liveProvidersExpected}`,
+    );
     if (!this.env.BLOCKCHAIN_SIMULATOR_ENABLED) {
+      // Live Alchemy tip/health is owned by ProviderRpcHealthService + /health/providers.
+      // Simulator ledger block scans stay off until BLOCKCHAIN_SIMULATOR_ENABLED=true.
       return;
     }
     this.timer = setInterval(() => {
       this.tick().catch((error: unknown) => {
-        this.logger.error(`Sync tick failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `Sync tick failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
       });
     }, this.env.BLOCKCHAIN_SYNC_INTERVAL_MS);
     this.timer.unref();
+  }
+
+  /**
+   * Surfaces whether background sync is simulator-ledger-backed or live-provider-backed.
+   * TransactionEngine may still use the simulator ledger for bookkeeping — this does not
+   * imply product services call Alchemy directly.
+   */
+  getSyncPolicy(): {
+    mode: 'live-backed' | 'simulator-only';
+    ledgerSyncEnabled: boolean;
+    liveProvidersExpected: boolean;
+    primaryProvider: string;
+  } {
+    const liveProvidersExpected =
+      this.env.BLOCKCHAIN_PRIMARY_PROVIDER === 'alchemy' &&
+      Boolean(
+        this.env.ALCHEMY_API_KEY ||
+        this.env.ALCHEMY_ETHEREUM_RPC_URL ||
+        this.env.ALCHEMY_BSC_RPC_URL ||
+        this.env.ALCHEMY_SOLANA_RPC_URL ||
+        this.env.ALCHEMY_TRON_RPC_URL ||
+        this.env.ALCHEMY_BITCOIN_RPC_URL,
+      );
+    const ledgerSyncEnabled = this.env.BLOCKCHAIN_SIMULATOR_ENABLED;
+    return {
+      mode: liveProvidersExpected && !ledgerSyncEnabled ? 'live-backed' : 'simulator-only',
+      ledgerSyncEnabled,
+      liveProvidersExpected,
+      primaryProvider: this.env.BLOCKCHAIN_PRIMARY_PROVIDER,
+    };
   }
 
   onModuleDestroy(): void {
@@ -88,7 +140,8 @@ export class SyncService implements OnModuleInit, OnModuleDestroy {
       const previousBlock = await this.blocks.findLatest(network.chain);
       const newHeight = await this.ledger.advanceBlockHeight(network.chain);
 
-      const shouldReorg = previousBlock !== null && this.tickCount % REORG_CHECK_INTERVAL_TICKS === 0;
+      const shouldReorg =
+        previousBlock !== null && this.tickCount % REORG_CHECK_INTERVAL_TICKS === 0;
       if (shouldReorg && previousBlock) {
         await this.blocks.markOrphan(previousBlock.id);
         await this.eventBus.publish({

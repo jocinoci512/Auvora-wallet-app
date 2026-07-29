@@ -1,9 +1,5 @@
 import type { Response } from 'express';
-import {
-  ACCESS_TOKEN_COOKIE,
-  CSRF_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-} from '@auvora/security';
+import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@auvora/security';
 import type { ServiceEnv } from '../../config/env.schema';
 
 export interface CookieOptions {
@@ -54,6 +50,8 @@ export function clearAuthCookies(res: Response, env: ServiceEnv): void {
   res.clearCookie(ACCESS_TOKEN_COOKIE, opts);
 }
 
-export function getRefreshTokenFromRequest(cookies: Record<string, string | undefined>): string | undefined {
+export function getRefreshTokenFromRequest(
+  cookies: Record<string, string | undefined>,
+): string | undefined {
   return cookies[REFRESH_TOKEN_COOKIE];
 }

@@ -24,6 +24,7 @@ export class JsonRpcError extends Error {
     message: string,
     readonly code?: number,
     readonly data?: unknown,
+    readonly kind: 'rpc' | 'http' | 'timeout' | 'unauthorized' | 'rate_limit' | 'network' = 'rpc',
   ) {
     super(message);
     this.name = 'JsonRpcError';
@@ -106,7 +107,8 @@ export class JsonRpcClient {
         this.metrics.lastErrorMessage =
           error instanceof Error ? error.message.slice(0, 200) : 'rpc_error';
         lastError = error;
-        if (attempt >= this.maxRetries) {
+        const nonRetryable = error instanceof JsonRpcError && error.kind === 'unauthorized';
+        if (nonRetryable || attempt >= this.maxRetries) {
           break;
         }
         this.metrics.retries += 1;
@@ -130,21 +132,74 @@ export class JsonRpcClient {
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
         signal: controller.signal,
       });
+      if (response.status === 401 || response.status === 403) {
+        throw new JsonRpcError(
+          `Alchemy authentication failed (HTTP ${response.status}) for ${this.label} — check ALCHEMY_API_KEY`,
+          response.status,
+          undefined,
+          'unauthorized',
+        );
+      }
+      if (response.status === 429) {
+        throw new JsonRpcError(
+          `Alchemy rate limit exceeded (HTTP 429) for ${this.label}`,
+          429,
+          undefined,
+          'rate_limit',
+        );
+      }
+      if (response.status >= 500) {
+        throw new JsonRpcError(
+          `Alchemy / RPC outage (HTTP ${response.status}) for ${this.label}`,
+          response.status,
+          undefined,
+          'network',
+        );
+      }
       if (!response.ok) {
-        throw new JsonRpcError(`RPC HTTP ${response.status} from ${this.label}`);
+        throw new JsonRpcError(
+          `RPC HTTP ${response.status} from ${this.label}`,
+          response.status,
+          undefined,
+          'http',
+        );
       }
       const payload = (await response.json()) as {
         result?: T;
         error?: { code?: number; message?: string; data?: unknown };
       };
       if (payload.error) {
+        const msg = (payload.error.message ?? '').toLowerCase();
+        const kind =
+          msg.includes('rate') || payload.error.code === 429
+            ? 'rate_limit'
+            : msg.includes('unauthorized') || msg.includes('api key')
+              ? 'unauthorized'
+              : 'rpc';
         throw new JsonRpcError(
           payload.error.message ?? `RPC error from ${this.label}`,
           payload.error.code,
           payload.error.data,
+          kind,
         );
       }
       return payload.result as T;
+    } catch (error) {
+      if (error instanceof JsonRpcError) throw error;
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new JsonRpcError(
+          `RPC timeout after ${this.timeoutMs}ms for ${this.label}`,
+          undefined,
+          undefined,
+          'timeout',
+        );
+      }
+      throw new JsonRpcError(
+        `RPC network failure for ${this.label}: ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        undefined,
+        'network',
+      );
     } finally {
       clearTimeout(timer);
     }

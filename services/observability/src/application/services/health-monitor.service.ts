@@ -18,7 +18,10 @@ export class HealthMonitorService {
       orderBy: { checkedAt: 'desc' },
       take: 500,
     });
-    const latest = new Map<string, { checkName: string; status: ObsHealthStatus; checkedAt: Date }>();
+    const latest = new Map<
+      string,
+      { checkName: string; status: ObsHealthStatus; checkedAt: Date }
+    >();
     for (const check of checks) {
       const key = `${check.serviceName}:${check.checkName}`;
       if (!latest.has(key)) {
@@ -29,7 +32,10 @@ export class HealthMonitorService {
         });
       }
     }
-    const byService = new Map<string, Array<{ checkName: string; status: ObsHealthStatus; checkedAt: Date }>>();
+    const byService = new Map<
+      string,
+      Array<{ checkName: string; status: ObsHealthStatus; checkedAt: Date }>
+    >();
     for (const [key, value] of latest.entries()) {
       const serviceName = key.split(':')[0]!;
       const list = byService.get(serviceName) ?? [];

@@ -27,7 +27,9 @@ export class AiProviderRegistry implements ModelRouterPort {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  private buildBackend(row: Pick<AiProvider, 'code' | 'providerType' | 'defaultModel' | 'baseUrl'>): AiProviderPort {
+  private buildBackend(
+    row: Pick<AiProvider, 'code' | 'providerType' | 'defaultModel' | 'baseUrl'>,
+  ): AiProviderPort {
     const type = row.providerType as AiProviderTypeCode;
     switch (type) {
       case 'SIMULATOR':
@@ -89,12 +91,17 @@ export class AiProviderRegistry implements ModelRouterPort {
   }
 
   private async loadEnabledRows(): Promise<AiProvider[]> {
-    return this.prisma.aiProvider.findMany({ where: { isEnabled: true }, orderBy: { priority: 'asc' } });
+    return this.prisma.aiProvider.findMany({
+      where: { isEnabled: true },
+      orderBy: { priority: 'asc' },
+    });
   }
 
   async resolve(explicitProviderCode?: string): Promise<AiProviderPort> {
     if (explicitProviderCode) {
-      const row = await this.prisma.aiProvider.findUnique({ where: { code: explicitProviderCode } });
+      const row = await this.prisma.aiProvider.findUnique({
+        where: { code: explicitProviderCode },
+      });
       if (!row || !row.isEnabled) {
         throw new ProviderUnavailableError(`Provider ${explicitProviderCode} is not enabled`);
       }
@@ -134,7 +141,9 @@ export class AiProviderRegistry implements ModelRouterPort {
         lastError = error;
       }
     }
-    throw lastError instanceof Error ? lastError : new ProviderUnavailableError('All AI providers failed');
+    throw lastError instanceof Error
+      ? lastError
+      : new ProviderUnavailableError('All AI providers failed');
   }
 
   async listAll(): Promise<AiProviderPort[]> {

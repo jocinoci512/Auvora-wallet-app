@@ -38,6 +38,8 @@ export const envSchema = z.object({
   /** Optional. When set with INTERNAL_API_KEY, AnalyticsPublisherAdapter forwards domain events to the analytics platform. */
   ANALYTICS_SERVICE_URL: z.string().url().optional(),
   OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
+  /** Optional. When set with INTERNAL_API_KEY, portfolio fiat valuation uses market-data internal APIs. */
+  MARKET_DATA_SERVICE_URL: z.string().url().optional(),
   INTERNAL_API_KEY: z.string().min(32),
   OTEL_ENABLED: z
     .enum(['true', 'false'])

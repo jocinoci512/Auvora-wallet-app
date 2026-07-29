@@ -1,11 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, WalletStatus } from '@auvora/database';
 import type { JwtAccessClaims, PermissionCode } from '@auvora/types';
-import {
-  ForbiddenError,
-  NotFoundError,
-  ValidationError,
-} from '../../domain';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../domain';
 import { PERMISSION_WALLETS_ADMIN } from '../../domain/permission-codes';
 import {
   BLOCKCHAIN_HTTP_CLIENT,
@@ -254,9 +250,7 @@ export class WalletEngineService {
       preferences: {
         ...prefs,
         activeNetwork: normalized,
-        preferredNetworks: Array.from(
-          new Set([...(prefs.preferredNetworks ?? []), normalized]),
-        ),
+        preferredNetworks: Array.from(new Set([...(prefs.preferredNetworks ?? []), normalized])),
       } as Prisma.InputJsonValue,
     });
   }
@@ -289,7 +283,10 @@ export class WalletEngineService {
     });
   }
 
-  async listAccounts(walletId: string, requester: JwtAccessClaims): Promise<WalletAccountPreference[]> {
+  async listAccounts(
+    walletId: string,
+    requester: JwtAccessClaims,
+  ): Promise<WalletAccountPreference[]> {
     const wallet = await this.wallets.getWallet(walletId, requester);
     return readPreferences(wallet.preferences).accounts ?? [];
   }

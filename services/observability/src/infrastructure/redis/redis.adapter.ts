@@ -71,7 +71,9 @@ export class RedisAdapter implements RedisPort, RateLimiterPort, OnModuleDestroy
       }
       await this.client.set(key, value, 'EX', ttlSeconds);
     } catch (error) {
-      this.logger.warn(`Failed to cache key ${key}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to cache key ${key}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }

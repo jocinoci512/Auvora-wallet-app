@@ -1,4 +1,7 @@
-import { ALL_OBSERVABILITY_PERMISSION_CODES, PERMISSION_OBSERVABILITY_ADMIN } from './permission-codes';
+import {
+  ALL_OBSERVABILITY_PERMISSION_CODES,
+  PERMISSION_OBSERVABILITY_ADMIN,
+} from './permission-codes';
 
 describe('permission-codes', () => {
   it('includes admin permission', () => {

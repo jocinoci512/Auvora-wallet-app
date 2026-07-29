@@ -6,16 +6,11 @@ export class DashboardService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async metrics() {
-    const [
-      openAlerts,
-      openCases,
-      pendingKyc,
-      providers,
-      rules,
-      recentRisk,
-    ] = await Promise.all([
+    const [openAlerts, openCases, pendingKyc, providers, rules, recentRisk] = await Promise.all([
       this.prisma.amlAlert.count({ where: { status: 'OPEN' } }),
-      this.prisma.complianceCase.count({ where: { status: { in: ['OPEN', 'ASSIGNED', 'INVESTIGATING'] } } }),
+      this.prisma.complianceCase.count({
+        where: { status: { in: ['OPEN', 'ASSIGNED', 'INVESTIGATING'] } },
+      }),
       this.prisma.verificationRequest.count({
         where: { status: { in: ['IN_REVIEW', 'SUBMITTED', 'PENDING_PROVIDER'] } },
       }),

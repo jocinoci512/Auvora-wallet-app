@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PrismaService, type CustodyPolicyAction, type ApprovalPolicyKind, type Prisma } from '@auvora/database';
+import {
+  PrismaService,
+  type CustodyPolicyAction,
+  type ApprovalPolicyKind,
+  type Prisma,
+} from '@auvora/database';
 import {
   ConflictError,
   evaluatePolicySet,
@@ -73,8 +78,11 @@ export class PolicyService {
   }
 
   async createTransactionPolicy(input: CreateTransactionPolicyInput) {
-    const existing = await this.prisma.transactionPolicy.findUnique({ where: { code: input.code } });
-    if (existing) throw new ConflictError(`A transaction policy with code ${input.code} already exists`);
+    const existing = await this.prisma.transactionPolicy.findUnique({
+      where: { code: input.code },
+    });
+    if (existing)
+      throw new ConflictError(`A transaction policy with code ${input.code} already exists`);
     return this.prisma.transactionPolicy.create({
       data: {
         code: input.code,
@@ -119,7 +127,8 @@ export class PolicyService {
 
   async createApprovalPolicy(input: CreateApprovalPolicyInput) {
     const existing = await this.prisma.approvalPolicy.findUnique({ where: { code: input.code } });
-    if (existing) throw new ConflictError(`An approval policy with code ${input.code} already exists`);
+    if (existing)
+      throw new ConflictError(`An approval policy with code ${input.code} already exists`);
     return this.prisma.approvalPolicy.create({
       data: {
         code: input.code,
@@ -164,20 +173,21 @@ export class PolicyService {
   async findApplicableApprovalPolicy(ctx: PolicyContext) {
     const policies = await this.prisma.approvalPolicy.findMany({ where: { isEnabled: true } });
     const withExpression = policies.filter((policy) => policy.expression);
-    const matched = withExpression.find((policy) =>
-      evaluatePolicySet(
-        [
-          {
-            code: policy.code,
-            name: policy.name,
-            action: 'REQUIRE_APPROVAL',
-            isEnabled: true,
-            priority: 0,
-            expression: policy.expression,
-          },
-        ],
-        ctx,
-      )[0]?.matched,
+    const matched = withExpression.find(
+      (policy) =>
+        evaluatePolicySet(
+          [
+            {
+              code: policy.code,
+              name: policy.name,
+              action: 'REQUIRE_APPROVAL',
+              isEnabled: true,
+              priority: 0,
+              expression: policy.expression,
+            },
+          ],
+          ctx,
+        )[0]?.matched,
     );
     if (matched) return matched;
     return policies.find((policy) => !policy.expression) ?? null;

@@ -80,7 +80,11 @@ function mapPayment(record: {
   };
 }
 
-const DEFAULT_EXCLUDED_STATUSES: PaymentStatus[] = ['CANCELLED', 'FAILED', 'EXPIRED'] as PaymentStatus[];
+const DEFAULT_EXCLUDED_STATUSES: PaymentStatus[] = [
+  'CANCELLED',
+  'FAILED',
+  'EXPIRED',
+] as PaymentStatus[];
 
 @Injectable()
 export class PrismaPaymentRepository implements PaymentRepositoryPort {
@@ -188,7 +192,10 @@ export class PrismaPaymentRepository implements PaymentRepositoryPort {
       _sum: { amount: true },
       _count: true,
     });
-    return { count: result._count, total: (result._sum.amount ?? new Prisma.Decimal(0)).toString() };
+    return {
+      count: result._count,
+      total: (result._sum.amount ?? new Prisma.Decimal(0)).toString(),
+    };
   }
 
   async findSettlable(_mode: 'INSTANT' | 'BATCH', take: number): Promise<PaymentRecord[]> {

@@ -15,8 +15,12 @@ import {
 import { NotificationService } from '../../application/services/notification.service';
 import { PreferenceService } from '../../application/services/preference.service';
 import { WebhookService } from '../../application/services/webhook.service';
-import { PERMISSION_NOTIFICATION_READ, PERMISSION_NOTIFICATION_WEBHOOKS, PERMISSION_NOTIFICATION_WRITE } from '../../domain';
-import { successResponse } from '../common/api-response';
+import {
+  PERMISSION_NOTIFICATION_READ,
+  PERMISSION_NOTIFICATION_WEBHOOKS,
+  PERMISSION_NOTIFICATION_WRITE,
+} from '../../domain';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 

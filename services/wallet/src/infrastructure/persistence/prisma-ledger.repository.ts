@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  LedgerEntryType,
-  Prisma,
-  PrismaService,
-} from '@auvora/database';
+import { LedgerEntryType, Prisma, PrismaService } from '@auvora/database';
 import { ValidationError } from '../../domain';
 import type {
   ApplyLedgerEntryInput,
@@ -82,7 +78,12 @@ function mapEntry(record: {
   };
 }
 
-function computeTotal(available: Decimal, pending: Decimal, locked: Decimal, reserved: Decimal): Decimal {
+function computeTotal(
+  available: Decimal,
+  pending: Decimal,
+  locked: Decimal,
+  reserved: Decimal,
+): Decimal {
   return available.add(pending).add(locked).add(reserved);
 }
 

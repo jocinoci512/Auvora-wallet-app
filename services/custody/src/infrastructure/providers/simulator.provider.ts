@@ -15,7 +15,11 @@ import type {
   VerifySignatureResult,
 } from '../../domain';
 import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../crypto/field-encryption.adapter';
-import { generateSimulatedKeyPair, signWithSimulatedKey, verifySimulatedSignature } from '../crypto/keypair.util';
+import {
+  generateSimulatedKeyPair,
+  signWithSimulatedKey,
+  verifySimulatedSignature,
+} from '../crypto/keypair.util';
 
 /**
  * Local development/test custody backend. Generates real secp256k1/ed25519 keypairs with
@@ -55,7 +59,12 @@ export class SimulatorCustodyProvider implements CustodyProviderPort {
 
   async verify(input: VerifySignatureRequest): Promise<VerifySignatureResult> {
     return {
-      valid: verifySimulatedSignature(input.algorithm, input.publicKey, input.payloadHash, input.signature),
+      valid: verifySimulatedSignature(
+        input.algorithm,
+        input.publicKey,
+        input.payloadHash,
+        input.signature,
+      ),
     };
   }
 

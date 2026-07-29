@@ -113,13 +113,13 @@ export function computeCompositeRiskScore(factors: RiskFactorInput): {
   const normalized: Record<string, number> = {};
   for (const key of Object.keys(DEFAULT_WEIGHTS) as RiskFactorKey[]) {
     const raw = factors[key];
-    const value = typeof raw === 'number' && Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) : 0;
+    const value =
+      typeof raw === 'number' && Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) : 0;
     normalized[key] = value;
     weighted += value * DEFAULT_WEIGHTS[key];
     weightSum += DEFAULT_WEIGHTS[key];
   }
   const score = Math.round((weighted / weightSum) * 100) / 100;
-  const band =
-    score >= 90 ? 'CRITICAL' : score >= 70 ? 'HIGH' : score >= 40 ? 'MEDIUM' : 'LOW';
+  const band = score >= 90 ? 'CRITICAL' : score >= 70 ? 'HIGH' : score >= 40 ? 'MEDIUM' : 'LOW';
   return { score, band, normalized };
 }

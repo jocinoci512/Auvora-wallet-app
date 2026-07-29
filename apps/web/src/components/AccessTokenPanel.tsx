@@ -2,11 +2,7 @@
 
 import { Button } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
-import {
-  ACCESS_TOKEN_KEY,
-  getStoredAccessToken,
-  setStoredAccessToken,
-} from '../lib/api-client';
+import { ACCESS_TOKEN_KEY, getStoredAccessToken, setStoredAccessToken } from '../lib/api-client';
 
 export function AccessTokenPanel(): ReactElement {
   const [token, setToken] = useState('');

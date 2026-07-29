@@ -23,6 +23,12 @@ export interface ProviderRecordRepositoryPort {
   findByCode(code: string): Promise<ProviderRecord | null>;
   upsertByCode(
     code: string,
-    data: { name: string; providerType: string; priority?: number; isEnabled?: boolean; capabilities?: Prisma.InputJsonValue },
+    data: {
+      name: string;
+      providerType: string;
+      priority?: number;
+      isEnabled?: boolean;
+      capabilities?: Prisma.InputJsonValue;
+    },
   ): Promise<ProviderRecord>;
 }

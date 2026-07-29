@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  PrismaService,
-  type AnalyticsDomain,
-  type Prisma,
-} from '@auvora/database';
+import { PrismaService, type AnalyticsDomain, type Prisma } from '@auvora/database';
 import { AuditService } from './audit.service';
 
 export interface IngestEventInput {

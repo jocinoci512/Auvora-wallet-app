@@ -38,13 +38,17 @@ function buildPrisma(overrides: Partial<Record<string, unknown>> = {}) {
     cryptographicKey: { findUnique: jest.fn().mockResolvedValue(buildKeyRow()) },
     signingRequest: {
       count: jest.fn().mockResolvedValue(0),
-      create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'sr-1', receivedApprovals: 0, ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'sr-1', receivedApprovals: 0, ...data }),
+        ),
       findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow()),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...buildSigningRequestRow(), ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...buildSigningRequestRow(), ...data }),
+        ),
       findMany: jest.fn().mockResolvedValue([]),
     },
     signingSession: {
@@ -57,7 +61,9 @@ function buildPrisma(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function buildRegistry(signResult: { signature: string; signatureAlg: string; providerCode: string } | Error) {
+function buildRegistry(
+  signResult: { signature: string; signatureAlg: string; providerCode: string } | Error,
+) {
   const provider = {
     sign: jest.fn().mockImplementation(() => {
       if (signResult instanceof Error) return Promise.reject(signResult);
@@ -84,7 +90,11 @@ const strangerUser: JwtAccessClaims = {
   permissions: ['custody:write'] as never,
 };
 
-const crypto = { encrypt: (v: string) => `enc:${v}`, decrypt: (v: string) => v.replace('enc:', ''), hash: (v: string) => `hash:${v}` };
+const crypto = {
+  encrypt: (v: string) => `enc:${v}`,
+  decrypt: (v: string) => v.replace('enc:', ''),
+  hash: (v: string) => `hash:${v}`,
+};
 
 const notifications = { publishEvent: jest.fn().mockResolvedValue(undefined) };
 const ai = { publishEvent: jest.fn().mockResolvedValue(undefined) };
@@ -95,10 +105,25 @@ describe('SigningService', () => {
     const prisma = buildPrisma();
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
     const events = { publish: jest.fn().mockResolvedValue(undefined) };
-    const policies = { evaluateTransactionContext: jest.fn().mockResolvedValue({ action: 'DENY', matched: [{ code: 'deny-rule', action: 'DENY' }] }) };
-    const service = new SigningService(prisma as never, registry as never, crypto as never, events as never, policies as never, notifications as never, ai as never, analytics as never);
+    const policies = {
+      evaluateTransactionContext: jest
+        .fn()
+        .mockResolvedValue({ action: 'DENY', matched: [{ code: 'deny-rule', action: 'DENY' }] }),
+    };
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      events as never,
+      policies as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
-    await expect(service.createRequest(ownerUser, { keyId: 'key-1', payload: 'tx-data' })).rejects.toThrow(ForbiddenError);
+    await expect(
+      service.createRequest(ownerUser, { keyId: 'key-1', payload: 'tx-data' }),
+    ).rejects.toThrow(ForbiddenError);
     expect(prisma.custodyPolicyViolation.create).toHaveBeenCalled();
   });
 
@@ -106,18 +131,42 @@ describe('SigningService', () => {
     const prisma = buildPrisma();
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
     const events = { publish: jest.fn() };
-    const policies = { evaluateTransactionContext: jest.fn().mockResolvedValue({ action: 'ALLOW', matched: [] }) };
-    const service = new SigningService(prisma as never, registry as never, crypto as never, events as never, policies as never, notifications as never, ai as never, analytics as never);
+    const policies = {
+      evaluateTransactionContext: jest.fn().mockResolvedValue({ action: 'ALLOW', matched: [] }),
+    };
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      events as never,
+      policies as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
-    await expect(service.createRequest(strangerUser, { keyId: 'key-1', payload: 'tx-data' })).rejects.toThrow(ForbiddenError);
+    await expect(
+      service.createRequest(strangerUser, { keyId: 'key-1', payload: 'tx-data' }),
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('queues an allowed signing request immediately', async () => {
     const prisma = buildPrisma();
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
     const events = { publish: jest.fn().mockResolvedValue(undefined) };
-    const policies = { evaluateTransactionContext: jest.fn().mockResolvedValue({ action: 'ALLOW', matched: [] }) };
-    const service = new SigningService(prisma as never, registry as never, crypto as never, events as never, policies as never, notifications as never, ai as never, analytics as never);
+    const policies = {
+      evaluateTransactionContext: jest.fn().mockResolvedValue({ action: 'ALLOW', matched: [] }),
+    };
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      events as never,
+      policies as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     const created = await service.createRequest(ownerUser, { keyId: 'key-1', payload: 'tx-data' });
     expect((created as { status: string }).status).toBe('QUEUED');
@@ -129,12 +178,24 @@ describe('SigningService', () => {
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
     const events = { publish: jest.fn().mockResolvedValue(undefined) };
     const policies = {
-      evaluateTransactionContext: jest
+      evaluateTransactionContext: jest.fn().mockResolvedValue({
+        action: 'REQUIRE_APPROVAL',
+        matched: [{ code: 'high-value', action: 'REQUIRE_APPROVAL' }],
+      }),
+      findApplicableApprovalPolicy: jest
         .fn()
-        .mockResolvedValue({ action: 'REQUIRE_APPROVAL', matched: [{ code: 'high-value', action: 'REQUIRE_APPROVAL' }] }),
-      findApplicableApprovalPolicy: jest.fn().mockResolvedValue({ id: 'policy-1', kind: 'DUAL', threshold: 2 }),
+        .mockResolvedValue({ id: 'policy-1', kind: 'DUAL', threshold: 2 }),
     };
-    const service = new SigningService(prisma as never, registry as never, crypto as never, events as never, policies as never, notifications as never, ai as never, analytics as never);
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      events as never,
+      policies as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     const created = await service.createRequest(ownerUser, { keyId: 'key-1', payload: 'tx-data' });
     expect((created as { status: string }).status).toBe('AWAITING_APPROVAL');
@@ -144,29 +205,64 @@ describe('SigningService', () => {
   it('refuses to execute a signing request awaiting approval', async () => {
     const prisma = buildPrisma({
       signingRequest: {
-        findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow({ status: 'AWAITING_APPROVAL' })),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(buildSigningRequestRow({ status: 'AWAITING_APPROVAL' })),
         update: jest.fn(),
       },
     });
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
-    const service = new SigningService(prisma as never, registry as never, crypto as never, { publish: jest.fn() } as never, {} as never, notifications as never, ai as never, analytics as never);
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+      {} as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     await expect(service.execute('sr-1')).rejects.toThrow(ConflictError);
   });
 
   it('throws NotFoundError when executing a missing signing request', async () => {
-    const prisma = buildPrisma({ signingRequest: { findUnique: jest.fn().mockResolvedValue(null) } });
+    const prisma = buildPrisma({
+      signingRequest: { findUnique: jest.fn().mockResolvedValue(null) },
+    });
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
-    const service = new SigningService(prisma as never, registry as never, crypto as never, { publish: jest.fn() } as never, {} as never, notifications as never, ai as never, analytics as never);
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+      {} as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     await expect(service.execute('missing')).rejects.toThrow(NotFoundError);
   });
 
   it('executes signing successfully and records the signature', async () => {
     const prisma = buildPrisma();
-    const registry = buildRegistry({ signature: 'sig-value', signatureAlg: 'SECP256K1-SHA256', providerCode: 'sim' });
+    const registry = buildRegistry({
+      signature: 'sig-value',
+      signatureAlg: 'SECP256K1-SHA256',
+      providerCode: 'sim',
+    });
     const events = { publish: jest.fn().mockResolvedValue(undefined) };
-    const service = new SigningService(prisma as never, registry as never, crypto as never, events as never, {} as never, notifications as never, ai as never, analytics as never);
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      events as never,
+      {} as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     const result = await service.execute('sr-1');
     expect((result as { status: string }).status).toBe('SIGNED');
@@ -179,7 +275,16 @@ describe('SigningService', () => {
   it('marks the signing request as FAILED when the provider throws', async () => {
     const prisma = buildPrisma();
     const registry = buildRegistry(new Error('provider exploded'));
-    const service = new SigningService(prisma as never, registry as never, crypto as never, { publish: jest.fn() } as never, {} as never, notifications as never, ai as never, analytics as never);
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+      {} as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     await expect(service.execute('sr-1')).rejects.toThrow('provider exploded');
     expect(prisma.signingRequest.update).toHaveBeenCalledWith(
@@ -189,10 +294,21 @@ describe('SigningService', () => {
 
   it('refuses to verify a request with no signature yet', async () => {
     const prisma = buildPrisma({
-      signingRequest: { findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow({ signature: null })) },
+      signingRequest: {
+        findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow({ signature: null })),
+      },
     });
     const registry = buildRegistry({ signature: 'sig', signatureAlg: 'alg', providerCode: 'sim' });
-    const service = new SigningService(prisma as never, registry as never, crypto as never, { publish: jest.fn() } as never, {} as never, notifications as never, ai as never, analytics as never);
+    const service = new SigningService(
+      prisma as never,
+      registry as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+      {} as never,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
 
     await expect(service.verifySignature('sr-1')).rejects.toThrow(ConflictError);
   });

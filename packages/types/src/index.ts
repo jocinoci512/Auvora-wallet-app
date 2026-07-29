@@ -14,8 +14,7 @@ export interface HealthCheckResponse {
 }
 
 export type Result<T, E = Error> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly error: E };
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: E };
 
 export function ok<T>(value: T): Result<T, never> {
   return { ok: true, value };
@@ -94,6 +93,10 @@ export type PermissionCode =
   | 'analytics:reports'
   | 'analytics:dashboards'
   | 'analytics:kpis'
+  | 'market-data:read'
+  | 'market-data:write'
+  | 'market-data:admin'
+  | 'market-data:alerts'
   | 'observability:read'
   | 'observability:write'
   | 'observability:admin'

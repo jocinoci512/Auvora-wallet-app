@@ -5,7 +5,7 @@ import { LimitsService } from '../../application/services/limits.service';
 import { PaymentMethodsService } from '../../application/services/payment-methods.service';
 import { PaymentOrchestratorService } from '../../application/services/payment-orchestrator.service';
 import { PERMISSION_PAYMENT_READ, PERMISSION_PAYMENT_WRITE } from '../../domain/permission-codes';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { CreatePaymentMethodDto, ListPaymentMethodsQueryDto } from '../dto/payment-method.dto';
@@ -19,7 +19,11 @@ import {
 } from '../dto/payment.dto';
 
 // Keep DTO classes as runtime values for Nest ValidationPipe + Swagger.
-const _paymentsDtoRuntime = { ListPaymentMethodsQueryDto, PaymentIdParamDto, SearchPaymentsQueryDto };
+const _paymentsDtoRuntime = {
+  ListPaymentMethodsQueryDto,
+  PaymentIdParamDto,
+  SearchPaymentsQueryDto,
+};
 void _paymentsDtoRuntime;
 
 @ApiTags('payments')
@@ -44,7 +48,13 @@ export class PaymentsController {
   @Permissions(PERMISSION_PAYMENT_READ)
   async search(@CurrentUser() user: JwtAccessClaims, @Query() query: SearchPaymentsQueryDto) {
     const data = await this.orchestrator.search(
-      { type: query.type, status: query.status, currency: query.currency, skip: query.skip ?? 0, take: query.take ?? 50 },
+      {
+        type: query.type,
+        status: query.status,
+        currency: query.currency,
+        skip: query.skip ?? 0,
+        take: query.take ?? 50,
+      },
       user,
     );
     return successResponse(data);
@@ -68,7 +78,10 @@ export class PaymentsController {
 
   @Get('methods')
   @Permissions(PERMISSION_PAYMENT_READ)
-  async listMethods(@CurrentUser() user: JwtAccessClaims, @Query() query: ListPaymentMethodsQueryDto) {
+  async listMethods(
+    @CurrentUser() user: JwtAccessClaims,
+    @Query() query: ListPaymentMethodsQueryDto,
+  ) {
     const data = await this.paymentMethods.listForUser(user.sub, {
       isActive: query.isActive,
       skip: query.skip ?? 0,

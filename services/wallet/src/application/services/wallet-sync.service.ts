@@ -4,10 +4,7 @@ import {
   BLOCKCHAIN_HTTP_CLIENT,
   type BlockchainHttpClientPort,
 } from '../../infrastructure/blockchain/blockchain-client.port';
-import {
-  LEDGER_REPOSITORY,
-  type LedgerRepositoryPort,
-} from '../ports/ledger-repository.port';
+import { LEDGER_REPOSITORY, type LedgerRepositoryPort } from '../ports/ledger-repository.port';
 import {
   WALLET_REPOSITORY,
   type WalletRecord,

@@ -65,8 +65,14 @@ export interface ChainTransactionRepositoryPort {
   findById(id: string): Promise<ChainTransactionRecord | null>;
   findByChainTxHash(chain: ChainNetwork, txHash: string): Promise<ChainTransactionRecord | null>;
   findByIdOrHash(idOrHash: string): Promise<ChainTransactionRecord | null>;
-  list(filters: ChainTransactionFilters): Promise<{ items: ChainTransactionRecord[]; total: number }>;
-  updateStatus(id: string, status: ChainTxStatus, data?: UpdateStatusData): Promise<ChainTransactionRecord>;
+  list(
+    filters: ChainTransactionFilters,
+  ): Promise<{ items: ChainTransactionRecord[]; total: number }>;
+  updateStatus(
+    id: string,
+    status: ChainTxStatus,
+    data?: UpdateStatusData,
+  ): Promise<ChainTransactionRecord>;
   updateConfirmations(
     id: string,
     confirmations: number,

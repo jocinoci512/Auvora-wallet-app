@@ -1,18 +1,18 @@
 # Network Support
 
-**Phase:** 17 — Live blockchain networks via Alchemy
+**Status:** Alchemy is the primary infrastructure provider for five enabled mainnets
 
 ## Matrix
 
-| Network | Live Alchemy | Simulator fallback | Native | Tokens | Notes |
-|---------|--------------|--------------------|--------|--------|-------|
-| Ethereum | Yes | Yes (if unset) | ETH | ERC-20 via `getTokenBalance` | Gas via `eth_gasPrice` |
-| BNB Smart Chain | Yes | Yes | BNB | BEP-20 via `getTokenBalance` | Same EVM provider |
-| Solana | Yes | Yes | SOL | SPL via `getTokenAccountsByOwner` | `getLatestBlockhash` |
-| Tron | Yes | Yes | TRX | TRC-20 via HTTP trigger | Energy/bandwidth estimate |
-| Bitcoin | Yes | Yes | BTC | N/A | UTXO via `scantxoutset` (tier-dependent) |
-| Polygon | No | Yes | MATIC | — | Simulator only in Phase 17 |
-| Litecoin | No | Yes | LTC | — | Simulator only in Phase 17 |
+| Network         | Live Alchemy (primary) | Simulator fallback  | Native | Tokens                            | Notes                                    |
+| --------------- | ---------------------- | ------------------- | ------ | --------------------------------- | ---------------------------------------- |
+| Ethereum        | Yes                    | Dev only (if unset) | ETH    | ERC-20 via `getTokenBalance`      | Gas via `eth_gasPrice`                   |
+| BNB Smart Chain | Yes                    | Dev only            | BNB    | BEP-20 via `getTokenBalance`      | Same EVM provider                        |
+| Solana          | Yes                    | Dev only            | SOL    | SPL via `getTokenAccountsByOwner` | `getLatestBlockhash`                     |
+| Tron            | Yes                    | Dev only            | TRX    | TRC-20 via HTTP trigger           | Energy/bandwidth estimate                |
+| Bitcoin         | Yes                    | Dev only            | BTC    | N/A                               | UTXO via `scantxoutset` (tier-dependent) |
+| Polygon         | No                     | Yes                 | MATIC  | —                                 | Simulator only                           |
+| Litecoin        | No                     | Yes                 | LTC    | —                                 | Simulator only                           |
 
 ## Capability checklist (Alchemy-backed)
 

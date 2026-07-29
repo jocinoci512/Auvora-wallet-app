@@ -5,7 +5,10 @@ import { CLOCK, ID_GENERATOR, RATE_LIMITER } from '../application/ports/clock.po
 import { CHANNEL_PROVIDER_REGISTRY } from '../application/ports/provider.tokens';
 import { EVENT_BUS } from '../domain';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,

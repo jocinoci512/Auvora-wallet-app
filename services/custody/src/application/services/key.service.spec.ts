@@ -34,12 +34,17 @@ function buildPrismaMock(keyRow: ReturnType<typeof buildKeyRow>) {
       findMany: jest.fn().mockResolvedValue([keyRow]),
       count: jest.fn().mockResolvedValue(1),
       findUnique: jest.fn().mockResolvedValue(keyRow),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...keyRow, ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...keyRow, ...data }),
+        ),
     },
     keyVersion: { create: jest.fn().mockResolvedValue({}) },
-    keyAuditLog: { create: jest.fn().mockResolvedValue({}), findMany: jest.fn().mockResolvedValue([]) },
+    keyAuditLog: {
+      create: jest.fn().mockResolvedValue({}),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -98,7 +103,10 @@ describe('KeyService', () => {
     const events = { publish: jest.fn().mockResolvedValue(undefined) };
     const service = new KeyService(prisma as never, registry as never, events as never);
 
-    const result = await service.generate('user-1', { algorithm: 'SECP256K1' as never, custodyModel: 'SELF' as never });
+    const result = await service.generate('user-1', {
+      algorithm: 'SECP256K1' as never,
+      custodyModel: 'SELF' as never,
+    });
 
     expect(result).not.toHaveProperty('materialEncrypted');
     expect(registry.resolve).toHaveBeenCalledWith('SELF');
@@ -121,7 +129,11 @@ describe('KeyService', () => {
     const prisma = buildPrismaMock(buildKeyRow());
     prisma.cryptographicKey.findUnique.mockResolvedValueOnce(null);
     const registry = buildProviderRegistryMock();
-    const service = new KeyService(prisma as never, registry as never, { publish: jest.fn() } as never);
+    const service = new KeyService(
+      prisma as never,
+      registry as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.get('missing')).rejects.toThrow(NotFoundError);
   });
@@ -129,7 +141,11 @@ describe('KeyService', () => {
   it('forbids access to another user key without admin permission', async () => {
     const prisma = buildPrismaMock(buildKeyRow());
     const registry = buildProviderRegistryMock();
-    const service = new KeyService(prisma as never, registry as never, { publish: jest.fn() } as never);
+    const service = new KeyService(
+      prisma as never,
+      registry as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.get('key-1', strangerUser)).rejects.toThrow(ForbiddenError);
     await expect(service.get('key-1', ownerUser)).resolves.toBeDefined();
@@ -150,7 +166,11 @@ describe('KeyService', () => {
   it('refuses to rotate a revoked key', async () => {
     const prisma = buildPrismaMock(buildKeyRow({ status: 'REVOKED' }));
     const registry = buildProviderRegistryMock();
-    const service = new KeyService(prisma as never, registry as never, { publish: jest.fn() } as never);
+    const service = new KeyService(
+      prisma as never,
+      registry as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.rotate('key-1', ownerUser)).rejects.toThrow(ConflictError);
   });
@@ -158,7 +178,11 @@ describe('KeyService', () => {
   it('requires admin permission to revoke a key', async () => {
     const prisma = buildPrismaMock(buildKeyRow());
     const registry = buildProviderRegistryMock();
-    const service = new KeyService(prisma as never, registry as never, { publish: jest.fn() } as never);
+    const service = new KeyService(
+      prisma as never,
+      registry as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.revoke('key-1', ownerUser)).rejects.toThrow(ForbiddenError);
     await expect(service.revoke('key-1', adminUser)).resolves.toBeDefined();
@@ -172,7 +196,9 @@ describe('KeyService', () => {
 
     const result = await service.destroy('key-1', adminUser);
     expect(prisma.cryptographicKey.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'DESTROYED', materialEncrypted: null }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'DESTROYED', materialEncrypted: null }),
+      }),
     );
     expect(result).not.toHaveProperty('materialEncrypted');
   });

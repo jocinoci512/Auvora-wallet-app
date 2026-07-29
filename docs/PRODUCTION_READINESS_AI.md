@@ -7,13 +7,13 @@ See also: [`docs/diagrams/ai-system-interaction.md`](./diagrams/ai-system-intera
 
 ## 1. Providers added / removed / reprioritized without code changes — **PASS**
 
-| Capability | Evidence |
-|------------|----------|
-| Enable / disable | `POST /api/v1/admin/ai/providers/:code/enable\|disable` → `ModelRouterService.setEnabled` |
-| Priority | `PATCH /api/v1/admin/ai/providers/:code` or `setPriority` → DB `priority` used by registry failover order |
-| Upsert row | `POST /api/v1/admin/ai/providers` → `upsertProvider` for existing `providerType` values |
-| Seed safe | Seed **update** does not overwrite `priority` / `isEnabled` |
-| Credentials | Env only (`AI_OPENAI_API_KEY`, etc.) — never request body or source |
+| Capability       | Evidence                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Enable / disable | `POST /api/v1/admin/ai/providers/:code/enable\|disable` → `ModelRouterService.setEnabled`                 |
+| Priority         | `PATCH /api/v1/admin/ai/providers/:code` or `setPriority` → DB `priority` used by registry failover order |
+| Upsert row       | `POST /api/v1/admin/ai/providers` → `upsertProvider` for existing `providerType` values                   |
+| Seed safe        | Seed **update** does not overwrite `priority` / `isEnabled`                                               |
+| Credentials      | Env only (`AI_OPENAI_API_KEY`, etc.) — never request body or source                                       |
 
 **Note:** A brand-new `providerType` still needs an adapter case in `AiProviderRegistry.buildBackend`. New rows of OpenAI/Anthropic/Gemini/Azure/Local/Simulator are config-only.
 
@@ -40,13 +40,13 @@ See also: [`docs/diagrams/ai-system-interaction.md`](./diagrams/ai-system-intera
 
 ## 5. Token usage, latency, cache hit rate, estimated cost — **PASS**
 
-| Metric | Where |
-|--------|-------|
-| Tokens | `AiTokenUsage`, `GET admin/ai/usage`, dashboard |
-| Latency | `AiRequest.latencyMs`, usage `averageLatencyMs`, dashboard |
-| Cache hit rate | `AiRequest.cacheHit`, usage + dashboard `cacheHitRate` |
-| Estimated cost | `costUsdMicros` / `estimatedCostUsd` (static rate table — not invoices) |
-| Per-provider 24h | Dashboard `providerMetrics` from `AiProviderMetric` |
+| Metric           | Where                                                                   |
+| ---------------- | ----------------------------------------------------------------------- |
+| Tokens           | `AiTokenUsage`, `GET admin/ai/usage`, dashboard                         |
+| Latency          | `AiRequest.latencyMs`, usage `averageLatencyMs`, dashboard              |
+| Cache hit rate   | `AiRequest.cacheHit`, usage + dashboard `cacheHitRate`                  |
+| Estimated cost   | `costUsdMicros` / `estimatedCostUsd` (static rate table — not invoices) |
+| Per-provider 24h | Dashboard `providerMetrics` from `AiProviderMetric`                     |
 
 ## 6. No secrets in source — **PASS**
 

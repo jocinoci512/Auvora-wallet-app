@@ -7,22 +7,26 @@ import type { JsonRpcMetrics } from '../../infrastructure/providers/alchemy/json
 
 export type ProviderBackend = 'alchemy' | 'simulator';
 
+export type ProviderSyncMode = 'live-backed' | 'simulator-only';
+
 export type ProviderRpcHealth = {
   chain: ChainNetwork;
   status: 'up' | 'down' | 'degraded';
   backend: ProviderBackend;
+  /** Whether tip/health come from live Alchemy RPC vs local simulator. */
+  syncMode: ProviderSyncMode;
   latencyMs: number;
   latestBlockHeight: string | null;
   synchronized: boolean;
   lastSuccessfulRpc: string | null;
   endpoint: string | null;
+  /** Present when last probe failed or metrics recorded an error. */
+  errorState: string | null;
   message?: string;
   metrics?: JsonRpcMetrics;
 };
 
-function isAlchemyLive(
-  provider: BlockchainProvider,
-): provider is BlockchainProvider & {
+function isAlchemyLive(provider: BlockchainProvider): provider is BlockchainProvider & {
   getRpcMetrics(): JsonRpcMetrics;
   getSafeEndpoint(): string;
 } {
@@ -54,6 +58,7 @@ export class ProviderRpcHealthService {
   private async probe(chain: ChainNetwork): Promise<ProviderRpcHealth> {
     const provider = this.providers.getProvider(chain);
     const backend: ProviderBackend = isAlchemyLive(provider) ? 'alchemy' : 'simulator';
+    const syncMode: ProviderSyncMode = backend === 'alchemy' ? 'live-backed' : 'simulator-only';
     const endpoint = isAlchemyLive(provider) ? provider.getSafeEndpoint() : null;
     const metrics = isAlchemyLive(provider) ? provider.getRpcMetrics() : undefined;
 
@@ -79,30 +84,42 @@ export class ProviderRpcHealthService {
         this.logger.warn(`Provider health ${chain} status=${status} backend=${backend}`);
       }
 
+      const errorState =
+        status === 'down'
+          ? (health.message ?? metrics?.lastErrorMessage ?? 'unhealthy')
+          : (metrics?.lastErrorMessage ?? null);
+
       return {
         chain,
         status,
         backend,
+        syncMode,
         latencyMs: health.latencyMs,
         latestBlockHeight,
         synchronized,
-        lastSuccessfulRpc: metrics?.lastSuccessAt ?? (health.healthy ? new Date().toISOString() : null),
+        lastSuccessfulRpc:
+          metrics?.lastSuccessAt ?? (health.healthy ? new Date().toISOString() : null),
         endpoint,
+        errorState,
         message: health.message,
         metrics,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 200) : 'probe_failed';
-      this.logger.error(`Provider health probe failed chain=${chain} backend=${backend}: ${message}`);
+      this.logger.error(
+        `Provider health probe failed chain=${chain} backend=${backend}: ${message}`,
+      );
       return {
         chain,
         status: 'down',
         backend,
+        syncMode,
         latencyMs: 0,
         latestBlockHeight: null,
         synchronized: false,
         lastSuccessfulRpc: metrics?.lastSuccessAt ?? null,
         endpoint,
+        errorState: message,
         message,
         metrics,
       };

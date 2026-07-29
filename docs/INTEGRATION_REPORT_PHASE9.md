@@ -12,10 +12,10 @@ Browser ──JWT──▶ Gateway :4000 ──proxy──▶ AI :3008 ──Pri
 Internal services ──x-internal-api-key──▶ AI /api/v1/internal/ai/*
 ```
 
-| Consumer | Integration |
-|----------|-------------|
-| Gateway | Proxy `/api/v1/ai`, `/api/v1/admin/ai` |
-| SDK / Web / Admin | Chat, knowledge search, admin dashboards |
+| Consumer              | Integration                                                       |
+| --------------------- | ----------------------------------------------------------------- |
+| Gateway               | Proxy `/api/v1/ai`, `/api/v1/admin/ai`                            |
+| SDK / Web / Admin     | Chat, knowledge search, admin dashboards                          |
 | Other domain services | Internal complete/summarize/events available; optional publishers |
 
 ## Boundaries

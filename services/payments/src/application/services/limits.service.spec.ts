@@ -35,10 +35,7 @@ describe('LimitsService', () => {
     const paymentRepository: Partial<jest.Mocked<PaymentRepositoryPort>> = {
       sumAmountSince: jest.fn().mockResolvedValue({ count: 1, total: sumTotal }),
     };
-    const service = new LimitsService(
-      limitRepository,
-      paymentRepository as PaymentRepositoryPort,
-    );
+    const service = new LimitsService(limitRepository, paymentRepository as PaymentRepositoryPort);
     return { service, limitRepository, paymentRepository };
   }
 

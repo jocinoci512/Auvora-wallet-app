@@ -76,7 +76,11 @@ const report = {
   webBase,
   adminBase,
   headers,
-  web: { passed: webResults.filter((r) => r.ok).length, failed: webResults.filter((r) => !r.ok).length, results: webResults },
+  web: {
+    passed: webResults.filter((r) => r.ok).length,
+    failed: webResults.filter((r) => !r.ok).length,
+    results: webResults,
+  },
   admin: {
     passed: adminResults.filter((r) => r.ok).length,
     failed: adminResults.filter((r) => !r.ok).length,

@@ -16,7 +16,7 @@ import { AggregationService } from '../../application/services/aggregation.servi
 import { EventIngestService } from '../../application/services/event-ingest.service';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { RateLimitError } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { CorrelationId } from '../decorators/current-user.decorator';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
@@ -73,7 +73,11 @@ export class InternalRunAggregationDto {
   limit?: number;
 }
 
-const _internalDtoRuntime = { InternalIngestEventDto, InternalBatchIngestDto, InternalRunAggregationDto };
+const _internalDtoRuntime = {
+  InternalIngestEventDto,
+  InternalBatchIngestDto,
+  InternalRunAggregationDto,
+};
 void _internalDtoRuntime;
 
 @ApiTags('internal-analytics')

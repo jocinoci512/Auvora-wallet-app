@@ -17,7 +17,9 @@ export class NotificationsMailAdapter implements MailPort {
     const baseUrl = this.env.NOTIFICATIONS_SERVICE_URL;
     const apiKey = this.env.INTERNAL_API_KEY;
     if (!baseUrl || !apiKey) {
-      throw new Error('Notifications mail adapter requires NOTIFICATIONS_SERVICE_URL and INTERNAL_API_KEY');
+      throw new Error(
+        'Notifications mail adapter requires NOTIFICATIONS_SERVICE_URL and INTERNAL_API_KEY',
+      );
     }
 
     // `SendMailInput` (mail.port.ts) carries no user id today, so ownerUserId is intentionally
@@ -40,7 +42,12 @@ export class NotificationsMailAdapter implements MailPort {
         dedupeKey: `auth-mail:${input.to}:${input.subject}:${Date.now()}`,
         correlationId,
         sourceEventType: 'auth.mail.send',
-        metadata: { source: 'auth-service', text: input.text, sourceEventType: 'auth.mail.send', correlationId },
+        metadata: {
+          source: 'auth-service',
+          text: input.text,
+          sourceEventType: 'auth.mail.send',
+          correlationId,
+        },
       }),
       signal: AbortSignal.timeout(8000),
     });

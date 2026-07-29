@@ -5,14 +5,14 @@
 
 ## Workers
 
-| Worker | Interval env | Responsibility |
-|--------|--------------|----------------|
-| Sync Worker | `WALLET_SYNC_INTERVAL_MS` (default 30s) | Batch balance/network sync |
-| Balance Worker | `WALLET_BALANCE_INTERVAL_MS` (default 45s) | Balance refresh batch |
-| Transaction Worker | sync + 5s | Trigger chain sync; duplicate detection |
-| Portfolio Worker | `WALLET_PORTFOLIO_INTERVAL_MS` (default 60s) | Aggregate portfolios for active owners |
-| Retry Worker | `WALLET_RETRY_INTERVAL_MS` (default 20s) | Drain `WalletRetryQueue` |
-| Health Worker | `WALLET_HEALTH_INTERVAL_MS` (default 60s) | Probe Phase 18 network status |
+| Worker             | Interval env                                 | Responsibility                          |
+| ------------------ | -------------------------------------------- | --------------------------------------- |
+| Sync Worker        | `WALLET_SYNC_INTERVAL_MS` (default 30s)      | Batch balance/network sync              |
+| Balance Worker     | `WALLET_BALANCE_INTERVAL_MS` (default 45s)   | Balance refresh batch                   |
+| Transaction Worker | sync + 5s                                    | Trigger chain sync; duplicate detection |
+| Portfolio Worker   | `WALLET_PORTFOLIO_INTERVAL_MS` (default 60s) | Aggregate portfolios for active owners  |
+| Retry Worker       | `WALLET_RETRY_INTERVAL_MS` (default 20s)     | Drain `WalletRetryQueue`                |
+| Health Worker      | `WALLET_HEALTH_INTERVAL_MS` (default 60s)    | Probe Phase 18 network status           |
 
 Kill switch: `WALLET_WORKERS_ENABLED=false` (also disabled when `NODE_ENV=test`).
 

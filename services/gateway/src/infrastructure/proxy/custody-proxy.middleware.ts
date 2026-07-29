@@ -3,10 +3,7 @@ import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { hardenProxyRequest } from './proxy-hardening';
 import { getProxyTimeoutMs } from './proxy-timeout';
 
-export const CUSTODY_PROXY_PREFIXES = [
-  '/api/v1/custody',
-  '/api/v1/admin/custody',
-] as const;
+export const CUSTODY_PROXY_PREFIXES = ['/api/v1/custody', '/api/v1/admin/custody'] as const;
 
 function isCustodyProxyPath(pathname: string): boolean {
   return CUSTODY_PROXY_PREFIXES.some(

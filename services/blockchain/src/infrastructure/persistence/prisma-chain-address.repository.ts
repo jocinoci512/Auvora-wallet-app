@@ -68,14 +68,19 @@ export class PrismaChainAddressRepository implements ChainAddressRepositoryPort 
     return record ? mapAddress(record) : null;
   }
 
-  async findByChainAddress(chain: ChainNetwork, address: string): Promise<ChainAddressRecord | null> {
+  async findByChainAddress(
+    chain: ChainNetwork,
+    address: string,
+  ): Promise<ChainAddressRecord | null> {
     const record = await this.prisma.chainAddress.findFirst({
       where: { chain, address, deletedAt: null },
     });
     return record ? mapAddress(record) : null;
   }
 
-  async list(filters: ChainAddressFilters): Promise<{ items: ChainAddressRecord[]; total: number }> {
+  async list(
+    filters: ChainAddressFilters,
+  ): Promise<{ items: ChainAddressRecord[]; total: number }> {
     const where = {
       deletedAt: null,
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
@@ -121,7 +126,11 @@ export class PrismaChainAddressRepository implements ChainAddressRepositoryPort 
     return mapAddress(record);
   }
 
-  async setPrimary(id: string, ownerUserId: string, chain: ChainNetwork): Promise<ChainAddressRecord> {
+  async setPrimary(
+    id: string,
+    ownerUserId: string,
+    chain: ChainNetwork,
+  ): Promise<ChainAddressRecord> {
     return this.prisma.$transaction(async (tx) => {
       await tx.chainAddress.updateMany({
         where: { ownerUserId, chain, isPrimary: true, deletedAt: null },

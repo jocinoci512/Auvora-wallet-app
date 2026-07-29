@@ -84,9 +84,13 @@ function createWalletService(deps: {
 describe('WalletService', () => {
   it('creates a wallet and auto-activates it', async () => {
     const wallets = {
-      findAssetByCode: jest.fn().mockResolvedValue({ id: assetId, code: 'BTC', symbol: 'BTC', decimals: 8 }),
+      findAssetByCode: jest
+        .fn()
+        .mockResolvedValue({ id: assetId, code: 'BTC', symbol: 'BTC', decimals: 8 }),
       findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
-      createWithZeroBalance: jest.fn().mockResolvedValue({ ...baseWallet, status: WalletStatus.PENDING }),
+      createWithZeroBalance: jest
+        .fn()
+        .mockResolvedValue({ ...baseWallet, status: WalletStatus.PENDING }),
       transitionStatus: jest.fn().mockResolvedValue(baseWallet),
     };
     const service = createWalletService({ wallets });

@@ -1,6 +1,16 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { PaymentStatus, SettlementMode, SettlementStatus } from '@auvora/database';
-import { PAYMENT_REPOSITORY, type PaymentRecord, type PaymentRepositoryPort } from '../ports/payment-repository.port';
+import {
+  PAYMENT_REPOSITORY,
+  type PaymentRecord,
+  type PaymentRepositoryPort,
+} from '../ports/payment-repository.port';
 import {
   SETTLEMENT_BATCH_REPOSITORY,
   SETTLEMENT_REPOSITORY,
@@ -10,7 +20,13 @@ import {
   type SettlementRepositoryPort,
 } from '../ports/settlement-repository.port';
 import { ID_GENERATOR, type IdGeneratorPort } from '../ports/clock.port';
-import { assertTransition, EVENT_BUS, type EventBusPort, NotFoundError, PaymentEventType } from '../../domain';
+import {
+  assertTransition,
+  EVENT_BUS,
+  type EventBusPort,
+  NotFoundError,
+  PaymentEventType,
+} from '../../domain';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 
 @Injectable()
@@ -33,7 +49,9 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
     }
     this.timer = setInterval(() => {
       this.runScheduledBatch().catch((error: unknown) => {
-        this.logger.error(`Scheduled settlement run failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `Scheduled settlement run failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
       });
     }, this.env.SETTLEMENT_INTERVAL_MS);
     this.timer.unref();
@@ -70,7 +88,10 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
     return this.runScheduledBatch();
   }
 
-  private async runBatch(payments: PaymentRecord[], mode: SettlementMode): Promise<SettlementBatchRecord> {
+  private async runBatch(
+    payments: PaymentRecord[],
+    mode: SettlementMode,
+  ): Promise<SettlementBatchRecord> {
     const currency = payments[0]?.currency ?? 'USD';
     let batch = await this.batches.create({
       reference: `BATCH-${this.ids.uuid()}`,
@@ -85,7 +106,10 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
       payload: { reference: batch.reference, mode, paymentCount: payments.length },
     });
 
-    batch = await this.batches.update(batch.id, { status: SettlementStatus.PROCESSING, startedAt: new Date() });
+    batch = await this.batches.update(batch.id, {
+      status: SettlementStatus.PROCESSING,
+      startedAt: new Date(),
+    });
 
     let totalAmount = 0;
     let failed = false;
@@ -109,9 +133,15 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
     });
 
     await this.eventBus.publish({
-      type: failed ? PaymentEventType.SettlementBatchFailed : PaymentEventType.SettlementBatchCompleted,
+      type: failed
+        ? PaymentEventType.SettlementBatchFailed
+        : PaymentEventType.SettlementBatchCompleted,
       aggregateId: completed.id,
-      payload: { reference: completed.reference, totalAmount: completed.totalAmount, paymentCount: payments.length },
+      payload: {
+        reference: completed.reference,
+        totalAmount: completed.totalAmount,
+        paymentCount: payments.length,
+      },
     });
 
     return completed;
@@ -122,8 +152,13 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
     mode: SettlementMode,
     batchId?: string,
   ): Promise<SettlementRecord> {
-    if (payment.status !== PaymentStatus.PROCESSING && payment.status !== PaymentStatus.AUTHORIZED) {
-      throw new NotFoundError(`Payment ${payment.reference} is not eligible for settlement (status ${payment.status})`);
+    if (
+      payment.status !== PaymentStatus.PROCESSING &&
+      payment.status !== PaymentStatus.AUTHORIZED
+    ) {
+      throw new NotFoundError(
+        `Payment ${payment.reference} is not eligible for settlement (status ${payment.status})`,
+      );
     }
 
     let settlement = await this.settlements.create({
@@ -147,7 +182,10 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
     }
 
     assertTransition(current.status, PaymentStatus.SETTLED);
-    current = await this.payments.update(current.id, { status: PaymentStatus.SETTLED, settledAt: new Date() });
+    current = await this.payments.update(current.id, {
+      status: PaymentStatus.SETTLED,
+      settledAt: new Date(),
+    });
 
     settlement = await this.settlements.update(settlement.id, {
       status: SettlementStatus.COMPLETED,
@@ -166,7 +204,10 @@ export class SettlementEngineService implements OnModuleInit, OnModuleDestroy {
     });
 
     assertTransition(current.status, PaymentStatus.COMPLETED);
-    current = await this.payments.update(current.id, { status: PaymentStatus.COMPLETED, completedAt: new Date() });
+    current = await this.payments.update(current.id, {
+      status: PaymentStatus.COMPLETED,
+      completedAt: new Date(),
+    });
     await this.eventBus.publish({
       type: PaymentEventType.PaymentCompleted,
       aggregateId: current.id,

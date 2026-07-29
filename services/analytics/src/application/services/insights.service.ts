@@ -11,16 +11,17 @@ export class InsightsService {
   ) {}
 
   async summary() {
-    const [eventCount, unprocessedEvents, metricCount, kpiDefinitions, recentJobs] = await Promise.all([
-      this.prisma.analyticsEvent.count(),
-      this.prisma.analyticsEvent.count({ where: { processedAt: null } }),
-      this.prisma.metricDefinition.count({ where: { isEnabled: true } }),
-      this.kpis.list({ enabledOnly: true }),
-      this.prisma.aggregationJob.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      }),
-    ]);
+    const [eventCount, unprocessedEvents, metricCount, kpiDefinitions, recentJobs] =
+      await Promise.all([
+        this.prisma.analyticsEvent.count(),
+        this.prisma.analyticsEvent.count({ where: { processedAt: null } }),
+        this.prisma.metricDefinition.count({ where: { isEnabled: true } }),
+        this.kpis.list({ enabledOnly: true }),
+        this.prisma.aggregationJob.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+      ]);
 
     const kpiStatuses = [];
     for (const kpi of kpiDefinitions.slice(0, 10)) {
@@ -49,7 +50,9 @@ export class InsightsService {
       recentAggregationJobs: recentJobs,
       highlights: [
         criticalKpis > 0 ? `${criticalKpis} KPI(s) in critical state` : 'No critical KPI breaches',
-        unprocessedEvents > 0 ? `${unprocessedEvents} events awaiting aggregation` : 'Event pipeline caught up',
+        unprocessedEvents > 0
+          ? `${unprocessedEvents} events awaiting aggregation`
+          : 'Event pipeline caught up',
       ],
     };
   }

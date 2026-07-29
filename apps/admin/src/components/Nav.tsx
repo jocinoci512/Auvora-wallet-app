@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { ThemeToggle } from '@auvora/ui';
 
 const links = [
   { href: '/', label: 'Home' },
@@ -14,8 +15,14 @@ const links = [
   { href: '/notifications', label: 'Notifications' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/ai', label: 'AI' },
+  { href: '/swap', label: 'Swap' },
+  { href: '/nfts', label: 'NFTs' },
+  { href: '/staking', label: 'Staking' },
+  { href: '/connections', label: 'Connect' },
+  { href: '/bridge', label: 'Bridge' },
   { href: '/observability', label: 'Ops' },
   { href: '/infrastructure', label: 'Infra' },
+  { href: '/design-system', label: 'Design System' },
 ];
 
 function isCurrent(pathname: string, href: string): boolean {
@@ -43,6 +50,9 @@ export function Nav(): ReactElement {
           );
         })}
       </ul>
+      <div className="site-nav__actions">
+        <ThemeToggle />
+      </div>
     </nav>
   );
 }

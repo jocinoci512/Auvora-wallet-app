@@ -22,11 +22,7 @@ export class DashboardService {
         where: {
           domain: filters.domain,
           isEnabled: true,
-          OR: [
-            { visibility: 'SYSTEM' },
-            { visibility: 'ORGANIZATION' },
-            { ownerUserId },
-          ],
+          OR: [{ visibility: 'SYSTEM' }, { visibility: 'ORGANIZATION' }, { ownerUserId }],
         },
         include: { widgets: true },
         orderBy: { code: 'asc' },

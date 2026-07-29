@@ -113,6 +113,8 @@ export class ChannelProviderRegistry implements ChannelProviderRegistryPort {
   }
 
   async listAll(): Promise<ChannelProviderPort[]> {
-    return Promise.resolve(ALL_CHANNELS.map((channel) => this.backends.get(channel) as ChannelProviderPort));
+    return Promise.resolve(
+      ALL_CHANNELS.map((channel) => this.backends.get(channel) as ChannelProviderPort),
+    );
   }
 }

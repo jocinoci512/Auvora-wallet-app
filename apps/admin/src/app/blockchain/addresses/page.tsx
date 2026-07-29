@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  AuvoraClientError,
-  type ChainAddress,
-  type ChainAddressStatus,
-} from '@auvora/sdk';
+import { AuvoraClientError, type ChainAddress, type ChainAddressStatus } from '@auvora/sdk';
 import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
@@ -55,7 +51,9 @@ export default function AdminBlockchainAddressesPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Addresses</h1>
-          <p className="page-subtitle">{total} address{total === 1 ? '' : 'es'} found</p>
+          <p className="page-subtitle">
+            {total} address{total === 1 ? '' : 'es'} found
+          </p>
         </div>
         <Link href="/blockchain">
           <Button variant="ghost">Back</Button>

@@ -55,12 +55,14 @@ export class PrismaReconciliationRepository implements ReconciliationRepositoryP
         settlementId: data.settlementId ?? null,
         status: data.status ?? 'PENDING',
         source: data.source,
-        expectedAmount: data.expectedAmount !== undefined && data.expectedAmount !== null
-          ? new Prisma.Decimal(data.expectedAmount)
-          : undefined,
-        actualAmount: data.actualAmount !== undefined && data.actualAmount !== null
-          ? new Prisma.Decimal(data.actualAmount)
-          : undefined,
+        expectedAmount:
+          data.expectedAmount !== undefined && data.expectedAmount !== null
+            ? new Prisma.Decimal(data.expectedAmount)
+            : undefined,
+        actualAmount:
+          data.actualAmount !== undefined && data.actualAmount !== null
+            ? new Prisma.Decimal(data.actualAmount)
+            : undefined,
         currency: data.currency ?? null,
         mismatchReason: data.mismatchReason ?? null,
         requiresManualReview: data.requiresManualReview ?? false,
@@ -75,10 +77,14 @@ export class PrismaReconciliationRepository implements ReconciliationRepositoryP
     return record ? mapReconciliation(record) : null;
   }
 
-  async list(filters: ReconciliationFilters): Promise<{ items: ReconciliationRecord[]; total: number }> {
+  async list(
+    filters: ReconciliationFilters,
+  ): Promise<{ items: ReconciliationRecord[]; total: number }> {
     const where = {
       ...(filters.status ? { status: filters.status } : {}),
-      ...(filters.requiresManualReview !== undefined ? { requiresManualReview: filters.requiresManualReview } : {}),
+      ...(filters.requiresManualReview !== undefined
+        ? { requiresManualReview: filters.requiresManualReview }
+        : {}),
       ...(filters.paymentId ? { paymentId: filters.paymentId } : {}),
     };
     const [items, total] = await Promise.all([

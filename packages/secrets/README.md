@@ -7,7 +7,7 @@ Secret resolution helpers intended for env / vault-backed providers. Not yet ado
 ## Usage
 
 ```ts
-import { /* exports from package */ } from '@auvora/secrets';
+import {} from /* exports from package */ '@auvora/secrets';
 ```
 
 See `src/index.ts` and unit tests for the supported surface.

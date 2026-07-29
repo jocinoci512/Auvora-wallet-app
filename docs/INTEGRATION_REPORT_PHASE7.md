@@ -11,13 +11,13 @@ Browser ──JWT──▶ Gateway :4000 ──proxy──▶ Custody :3009 ─�
 Blockchain :3003 ──optional internal──▶ Custody /sign  (CUSTODY_SERVICE_URL)
 ```
 
-| Consumer | Integration |
-|----------|-------------|
-| Gateway | Proxy `/api/v1/custody`, `/api/v1/admin/custody` |
-| Blockchain | Optional `CustodySigningHttpClient` on withdrawal when URL + API key set |
-| Auth | New `custody:*` permission codes via seed |
-| SDK / Web / Admin | Additive client methods and UI routes |
-| Wallet / Payments / Compliance | Untouched |
+| Consumer                       | Integration                                                              |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| Gateway                        | Proxy `/api/v1/custody`, `/api/v1/admin/custody`                         |
+| Blockchain                     | Optional `CustodySigningHttpClient` on withdrawal when URL + API key set |
+| Auth                           | New `custody:*` permission codes via seed                                |
+| SDK / Web / Admin              | Additive client methods and UI routes                                    |
+| Wallet / Payments / Compliance | Untouched                                                                |
 
 ## Boundaries
 

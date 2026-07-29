@@ -28,9 +28,11 @@ function buildPrismaMock(templateRow: ReturnType<typeof buildTemplateRow>) {
       findMany: jest.fn().mockResolvedValue([templateRow]),
       count: jest.fn().mockResolvedValue(1),
       create: jest.fn().mockResolvedValue(templateRow),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...templateRow, ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...templateRow, ...data }),
+        ),
     },
     notificationTemplateVersion: {
       create: jest.fn().mockResolvedValue({}),
@@ -64,7 +66,13 @@ describe('TemplateService', () => {
     const service = new TemplateService(prisma as never);
 
     await expect(
-      service.create({ code: 'welcome', name: 'Dup', category: 'AUTH' as never, channel: 'EMAIL' as never, body: 'x' }),
+      service.create({
+        code: 'welcome',
+        name: 'Dup',
+        category: 'AUTH' as never,
+        channel: 'EMAIL' as never,
+        body: 'x',
+      }),
     ).rejects.toThrow(ConflictError);
   });
 

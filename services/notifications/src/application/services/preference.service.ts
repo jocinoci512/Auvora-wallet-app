@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PrismaService, type NotificationCategory, type NotificationChannel, type Prisma } from '@auvora/database';
+import {
+  PrismaService,
+  type NotificationCategory,
+  type NotificationChannel,
+  type Prisma,
+} from '@auvora/database';
 import {
   EVENT_BUS,
   evaluatePreferenceSuppression,
@@ -38,7 +43,11 @@ const DEFAULT_PREFERENCE = {
 
 function hourOfDayInTimeZone(timeZone: string, at: Date): number {
   try {
-    const formatted = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hour12: false }).format(at);
+    const formatted = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      hour12: false,
+    }).format(at);
     const hour = Number.parseInt(formatted, 10);
     return Number.isNaN(hour) ? at.getUTCHours() : hour % 24;
   } catch {
@@ -54,7 +63,9 @@ export class PreferenceService {
   ) {}
 
   async get(ownerUserId: string) {
-    const preference = await this.prisma.notificationPreference.findUnique({ where: { ownerUserId } });
+    const preference = await this.prisma.notificationPreference.findUnique({
+      where: { ownerUserId },
+    });
     if (!preference) {
       return { ownerUserId, ...DEFAULT_PREFERENCE };
     }
@@ -111,7 +122,9 @@ export class PreferenceService {
     const hourOfDay = hourOfDayInTimeZone(preference.timeZone, at);
     const frequencyLimits = (preference.frequencyLimits as FrequencyLimitMap | null) ?? null;
 
-    const hasLimit = Boolean(frequencyLimits && (frequencyLimits[channel] || frequencyLimits[category]));
+    const hasLimit = Boolean(
+      frequencyLimits && (frequencyLimits[channel] || frequencyLimits[category]),
+    );
     const { recentHourCount, recentDayCount } = hasLimit
       ? await this.countRecentDeliveries(ownerUserId, channel, at)
       : { recentHourCount: 0, recentDayCount: 0 };
@@ -141,10 +154,20 @@ export class PreferenceService {
     const dayAgo = new Date(at.getTime() - 24 * 60 * 60 * 1000);
     const [recentHourCount, recentDayCount] = await Promise.all([
       this.prisma.notificationMessage.count({
-        where: { ownerUserId, channel, status: { not: 'SUPPRESSED' }, createdAt: { gte: hourAgo, lte: at } },
+        where: {
+          ownerUserId,
+          channel,
+          status: { not: 'SUPPRESSED' },
+          createdAt: { gte: hourAgo, lte: at },
+        },
       }),
       this.prisma.notificationMessage.count({
-        where: { ownerUserId, channel, status: { not: 'SUPPRESSED' }, createdAt: { gte: dayAgo, lte: at } },
+        where: {
+          ownerUserId,
+          channel,
+          status: { not: 'SUPPRESSED' },
+          createdAt: { gte: dayAgo, lte: at },
+        },
       }),
     ]);
     return { recentHourCount, recentDayCount };

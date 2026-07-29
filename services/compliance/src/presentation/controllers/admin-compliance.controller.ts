@@ -15,10 +15,19 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import { IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class RejectKycDto {
   @IsString()
@@ -179,9 +188,7 @@ export class AdminComplianceController {
   @Get('alerts')
   @Permissions(PERMISSION_COMPLIANCE_ADMIN)
   async alerts(@Query('skip') skip?: string, @Query('take') take?: string) {
-    return successResponse(
-      await this.dashboard.listAlerts(Number(skip ?? 0), Number(take ?? 50)),
-    );
+    return successResponse(await this.dashboard.listAlerts(Number(skip ?? 0), Number(take ?? 50)));
   }
 
   @Get('risk')
@@ -299,7 +306,9 @@ export class AdminComplianceController {
   @Post('risk/:ownerUserId/recompute')
   @Permissions(PERMISSION_COMPLIANCE_ADMIN)
   async recomputeRisk(@Param('ownerUserId') ownerUserId: string, @Body() dto: ScoreCustomerDto) {
-    return successResponse(await this.riskService.scoreCustomer({ ownerUserId, factors: dto.factors }));
+    return successResponse(
+      await this.riskService.scoreCustomer({ ownerUserId, factors: dto.factors }),
+    );
   }
 
   @Get('providers')

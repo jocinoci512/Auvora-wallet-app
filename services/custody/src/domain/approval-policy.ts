@@ -29,7 +29,10 @@ export function requiredApprovalsForPolicy(policy: ApprovalRequirement): number 
   }
 }
 
-export function isApprovalSatisfied(policy: ApprovalRequirement, approvalsReceived: number): boolean {
+export function isApprovalSatisfied(
+  policy: ApprovalRequirement,
+  approvalsReceived: number,
+): boolean {
   return approvalsReceived >= requiredApprovalsForPolicy(policy);
 }
 
@@ -50,8 +53,15 @@ export function multiApprovalPolicy(threshold: number): ApprovalRequirement {
   return { kind: 'MULTI', threshold: Math.max(1, threshold) };
 }
 
-export function thresholdApprovalPolicy(threshold: number, totalSigners: number): ApprovalRequirement {
-  return { kind: 'THRESHOLD', threshold: Math.max(1, threshold), totalSigners: Math.max(threshold, totalSigners) };
+export function thresholdApprovalPolicy(
+  threshold: number,
+  totalSigners: number,
+): ApprovalRequirement {
+  return {
+    kind: 'THRESHOLD',
+    threshold: Math.max(1, threshold),
+    totalSigners: Math.max(threshold, totalSigners),
+  };
 }
 
 export function validateThreshold(threshold: number, totalSigners: number): boolean {

@@ -1,0 +1,458 @@
+/* Task 031 — Premium NFT / Digital Assets experience */
+
+.nx {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+  animation: nx-fade 280ms var(--auvora-motion-easing, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+@keyframes nx-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nx__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.nx__header h1 {
+  margin: 0.15rem 0 0.35rem;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  letter-spacing: -0.03em;
+}
+
+.nx__eyebrow {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.nx__eyebrow a {
+  color: var(--auvora-color-primary);
+  text-decoration: none;
+}
+
+.nx__sub {
+  margin: 0;
+  color: var(--auvora-color-text-muted);
+  max-width: 58ch;
+  line-height: 1.45;
+}
+
+.nx__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.nx__tab {
+  border: 1px solid var(--auvora-color-border);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.nx__tab--on,
+.nx__tab:hover,
+.nx__tab:focus-visible {
+  border-color: var(--auvora-color-primary);
+  background: color-mix(in srgb, var(--auvora-color-primary) 12%, transparent);
+}
+
+.nx-panel {
+  background: var(--auvora-color-surface);
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 12px);
+  padding: 1.05rem 1.15rem;
+  margin-bottom: 0.85rem;
+}
+
+.nx-panel h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.05rem;
+}
+
+.nx-kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+
+.nx-kpi__card {
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 12px);
+  padding: 0.85rem;
+  background: var(--auvora-color-surface);
+}
+
+.nx-kpi__card span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--auvora-color-text-muted);
+}
+
+.nx-kpi__card strong {
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.nx-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.nx-hub-card {
+  display: grid;
+  gap: 0.35rem;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 12px);
+  padding: 1rem;
+  background: var(--auvora-color-surface);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.nx-hub-card:hover,
+.nx-hub-card:focus-visible {
+  border-color: var(--auvora-color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--auvora-color-primary) 12%, transparent);
+  outline: none;
+}
+
+.nx-hub-card p {
+  margin: 0;
+  color: var(--auvora-color-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.nx-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: flex-end;
+  margin-bottom: 0.85rem;
+}
+
+.nx-field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.86rem;
+}
+
+.nx-field span {
+  color: var(--auvora-color-text-muted);
+}
+
+.nx-field input,
+.nx-field select {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--auvora-radius-sm, 8px);
+  border: 1px solid var(--auvora-color-border);
+  background: var(--auvora-color-surface);
+  color: inherit;
+  min-width: 9rem;
+}
+
+.nx-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.86rem;
+}
+
+.nx-gallery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  content-visibility: auto;
+}
+
+.nx-gallery--grid {
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+}
+
+.nx-gallery--large {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.nx-gallery--compact {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.45rem;
+}
+
+.nx-gallery--list {
+  grid-template-columns: 1fr;
+}
+
+.nx-card {
+  position: relative;
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 12px);
+  overflow: hidden;
+  background: var(--auvora-color-surface);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 220px;
+}
+
+.nx-card:hover,
+.nx-card:focus-within {
+  transform: translateY(-2px);
+  border-color: var(--auvora-color-primary);
+}
+
+.nx-card a {
+  color: inherit;
+  text-decoration: none;
+  display: grid;
+}
+
+.nx-card__media {
+  aspect-ratio: 1;
+  background: color-mix(in srgb, var(--auvora-color-border) 45%, transparent);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.nx-card__media img,
+.nx-card__media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nx-gallery--list .nx-card {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 2.5rem 0.55rem 0.55rem;
+}
+
+.nx-gallery--list .nx-card__link {
+  display: contents;
+}
+
+.nx-gallery--list .nx-card__media {
+  aspect-ratio: 1;
+  width: 88px;
+  border-radius: var(--auvora-radius-sm, 8px);
+}
+
+.nx-card__body {
+  padding: 0.65rem 0.75rem 0.8rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.nx-gallery--list .nx-card__body {
+  padding: 0;
+}
+
+.nx-card__body strong {
+  font-size: 0.92rem;
+}
+
+.nx-meta {
+  margin: 0;
+  color: var(--auvora-color-text-muted);
+  font-size: 0.8rem;
+}
+
+.nx-fav {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--auvora-color-surface) 88%, transparent);
+  color: inherit;
+}
+
+.nx-fav--on {
+  color: var(--auvora-color-primary);
+}
+
+.nx-fav:focus-visible {
+  outline: 2px solid var(--auvora-color-primary);
+  outline-offset: 2px;
+}
+
+.nx-detail {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .nx-detail {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: start;
+  }
+}
+
+.nx-media {
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 12px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--auvora-color-border) 35%, transparent);
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+}
+
+.nx-media img,
+.nx-media video,
+.nx-media iframe {
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border: 0;
+}
+
+.nx-media__fallback {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: var(--auvora-color-text-muted);
+}
+
+.nx-traits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nx-traits li {
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-sm, 8px);
+  padding: 0.55rem 0.65rem;
+}
+
+.nx-traits span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--auvora-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nx-banner {
+  position: relative;
+  border-radius: var(--auvora-radius-md, 12px);
+  overflow: hidden;
+  min-height: 140px;
+  margin-bottom: 0.85rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--auvora-color-primary) 28%, transparent), transparent),
+    var(--auvora-color-surface);
+  border: 1px solid var(--auvora-color-border);
+  display: flex;
+  align-items: flex-end;
+  padding: 1rem;
+  gap: 0.85rem;
+}
+
+.nx-banner img {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--auvora-radius-sm, 8px);
+  object-fit: cover;
+  background: var(--auvora-color-surface);
+}
+
+.nx-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.nx-timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 10px);
+}
+
+.nx-skeleton {
+  border-radius: var(--auvora-radius-md, 12px);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--auvora-color-border) 55%, transparent),
+    color-mix(in srgb, var(--auvora-color-border) 20%, transparent),
+    color-mix(in srgb, var(--auvora-color-border) 55%, transparent)
+  );
+  background-size: 200% 100%;
+  animation: nx-shimmer 1.2s ease-in-out infinite;
+  min-height: 160px;
+}
+
+@keyframes nx-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .nx {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx,
+  .nx-card,
+  .nx-hub-card,
+  .nx-skeleton {
+    animation: none !important;
+    transition: none !important;
+  }
+}

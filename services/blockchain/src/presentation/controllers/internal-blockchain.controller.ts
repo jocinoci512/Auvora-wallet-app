@@ -4,7 +4,7 @@ import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validato
 import { ChainNetwork } from '@auvora/database';
 import { BlockchainService } from '../../application/services/blockchain.service';
 import { SyncService } from '../../application/services/sync.service';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 

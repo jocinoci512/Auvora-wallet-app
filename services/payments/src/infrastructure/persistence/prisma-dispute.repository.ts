@@ -43,7 +43,10 @@ export class PrismaDisputeRepository implements DisputeRepositoryPort {
       data: {
         paymentId: data.paymentId,
         reason: data.reason ?? null,
-        amount: data.amount !== undefined && data.amount !== null ? new Prisma.Decimal(data.amount) : undefined,
+        amount:
+          data.amount !== undefined && data.amount !== null
+            ? new Prisma.Decimal(data.amount)
+            : undefined,
         currency: data.currency ?? null,
         metadata: data.metadata,
       },

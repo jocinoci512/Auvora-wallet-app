@@ -14,7 +14,9 @@ function isNotificationsProxyPath(pathname: string): boolean {
   );
 }
 
-export function createNotificationsProxyMiddleware(notificationsServiceUrl: string): RequestHandler {
+export function createNotificationsProxyMiddleware(
+  notificationsServiceUrl: string,
+): RequestHandler {
   return createProxyMiddleware({
     target: notificationsServiceUrl.replace(/\/$/, ''),
     changeOrigin: true,

@@ -6,21 +6,29 @@ function makeService(rules: Array<Record<string, unknown>> = []) {
   const prisma = {
     complianceRule: {
       findMany: jest.fn().mockImplementation(() => Promise.resolve(Array.from(store.values()))),
-      findUnique: jest.fn().mockImplementation(({ where }: { where: { id?: string; code?: string } }) => {
-        if (where.id) return Promise.resolve(store.get(where.id) ?? null);
-        return Promise.resolve(Array.from(store.values()).find((r) => r.code === where.code) ?? null);
-      }),
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where }: { where: { id?: string; code?: string } }) => {
+          if (where.id) return Promise.resolve(store.get(where.id) ?? null);
+          return Promise.resolve(
+            Array.from(store.values()).find((r) => r.code === where.code) ?? null,
+          );
+        }),
       create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
         const created = { id: `rule-${store.size + 1}`, ...data };
         store.set(created.id, created);
         return Promise.resolve(created);
       }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const existing = store.get(where.id) ?? {};
-        const updated = { ...existing, ...data };
-        store.set(where.id, updated);
-        return Promise.resolve(updated);
-      }),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+            const existing = store.get(where.id) ?? {};
+            const updated = { ...existing, ...data };
+            store.set(where.id, updated);
+            return Promise.resolve(updated);
+          },
+        ),
     },
   };
   const service = new RulesService(prisma as never);

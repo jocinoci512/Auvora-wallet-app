@@ -24,9 +24,11 @@ export default function AdminNotificationsPage(): ReactElement {
       setMetrics(m);
       setProviders(p);
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 
@@ -50,8 +52,8 @@ export default function AdminNotificationsPage(): ReactElement {
       {error ? <div className="alert alert--error">{error}</div> : null}
       {metrics ? (
         <p>
-          Queue: {metrics.queueLength} · Sent: {metrics.sent} · Delivered: {metrics.delivered} · Failed:{' '}
-          {metrics.failed} · Dead letter: {metrics.deadLetter} · Avg latency:{' '}
+          Queue: {metrics.queueLength} · Sent: {metrics.sent} · Delivered: {metrics.delivered} ·
+          Failed: {metrics.failed} · Dead letter: {metrics.deadLetter} · Avg latency:{' '}
           {Math.round(metrics.averageLatencyMs)}ms · Success:{' '}
           {Math.round(metrics.successRate * 100)}%
         </p>

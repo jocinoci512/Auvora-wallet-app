@@ -19,7 +19,11 @@ const ALLOWED_TRANSITIONS: Record<PaymentStatus, readonly PaymentStatus[]> = {
     PaymentStatus.FAILED,
     PaymentStatus.EXPIRED,
   ],
-  [PaymentStatus.AUTHORIZED]: [PaymentStatus.PROCESSING, PaymentStatus.CANCELLED, PaymentStatus.FAILED],
+  [PaymentStatus.AUTHORIZED]: [
+    PaymentStatus.PROCESSING,
+    PaymentStatus.CANCELLED,
+    PaymentStatus.FAILED,
+  ],
   [PaymentStatus.PROCESSING]: [
     PaymentStatus.SETTLED,
     PaymentStatus.COMPLETED,
@@ -39,7 +43,11 @@ const ALLOWED_TRANSITIONS: Record<PaymentStatus, readonly PaymentStatus[]> = {
     PaymentStatus.DISPUTED,
     PaymentStatus.CHARGEBACK,
   ],
-  [PaymentStatus.DISPUTED]: [PaymentStatus.CHARGEBACK, PaymentStatus.COMPLETED, PaymentStatus.REFUNDED],
+  [PaymentStatus.DISPUTED]: [
+    PaymentStatus.CHARGEBACK,
+    PaymentStatus.COMPLETED,
+    PaymentStatus.REFUNDED,
+  ],
   // Terminal states: no further transitions are permitted out of them.
   [PaymentStatus.CANCELLED]: [],
   [PaymentStatus.FAILED]: [],
@@ -76,8 +84,6 @@ export function getAllowedTransitions(from: PaymentStatus): readonly PaymentStat
 /** Throws InvalidStatusTransitionError when `to` is not reachable from `from`. */
 export function assertTransition(from: PaymentStatus, to: PaymentStatus): void {
   if (!canTransition(from, to)) {
-    throw new InvalidStatusTransitionError(
-      `Cannot transition payment from ${from} to ${to}`,
-    );
+    throw new InvalidStatusTransitionError(`Cannot transition payment from ${from} to ${to}`);
   }
 }

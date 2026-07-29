@@ -27,7 +27,9 @@ export class EnvSecretProvider implements SecretProviderPort {
 }
 
 export class KubernetesSecretProvider implements SecretProviderPort {
-  constructor(private readonly basePath = process.env['K8S_SECRETS_PATH'] ?? DEFAULT_K8S_SECRETS_PATH) {}
+  constructor(
+    private readonly basePath = process.env['K8S_SECRETS_PATH'] ?? DEFAULT_K8S_SECRETS_PATH,
+  ) {}
 
   async getSecret(key: string): Promise<string | undefined> {
     const filePath = join(this.basePath, key);
@@ -76,7 +78,9 @@ export class VaultSecretProvider implements SecretProviderPort {
     if (this.isTest) {
       return;
     }
-    throw new Error(`VaultSecretProvider HTTP client is not implemented (key=${key}, len=${value.length})`);
+    throw new Error(
+      `VaultSecretProvider HTTP client is not implemented (key=${key}, len=${value.length})`,
+    );
   }
 
   async listKeys(): Promise<string[]> {

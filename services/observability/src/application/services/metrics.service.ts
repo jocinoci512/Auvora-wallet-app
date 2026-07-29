@@ -26,7 +26,9 @@ export class MetricsService {
   }
 
   async summaryByDomain() {
-    const definitions = await this.prisma.obsMetricDefinition.findMany({ where: { isEnabled: true } });
+    const definitions = await this.prisma.obsMetricDefinition.findMany({
+      where: { isEnabled: true },
+    });
     const grouped = new Map<string, number>();
     for (const def of definitions) {
       grouped.set(def.domain, (grouped.get(def.domain) ?? 0) + 1);

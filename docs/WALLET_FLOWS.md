@@ -13,20 +13,20 @@
 
 ## Entry points
 
-| Flow | Route | Component |
-|------|-------|-----------|
-| Onboarding hub | `/wallets/onboarding` | `OnboardingExperience` |
-| Create | `/wallets/create` | `CreateWalletExperience` |
-| Import | `/wallets/import` | `ImportWalletExperience` |
-| Restore | `/wallets/restore` | `RestoreWalletExperience` |
-| Watch-only | `/wallets/watch` | `WatchOnlyExperience` |
-| Hardware | `/wallets/hardware` | `HardwareWalletExperience` |
-| Recovery rehearsal | `/wallets/recovery` | `RecoveryPhraseExperience` |
-| Send | `/send` | `SendExperience` |
-| Receive | `/receive` | `ReceiveExperience` |
-| Address book | `/address-book` | `AddressBookExperience` |
-| Activity | `/activity` | `TransactionHistoryExperience` |
-| Security | `/security` | `SecurityExperience` |
+| Flow               | Route                 | Component                      |
+| ------------------ | --------------------- | ------------------------------ |
+| Onboarding hub     | `/wallets/onboarding` | `OnboardingExperience`         |
+| Create             | `/wallets/create`     | `CreateWalletExperience`       |
+| Import             | `/wallets/import`     | `ImportWalletExperience`       |
+| Restore            | `/wallets/restore`    | `RestoreWalletExperience`      |
+| Watch-only         | `/wallets/watch`      | `WatchOnlyExperience`          |
+| Hardware           | `/wallets/hardware`   | `HardwareWalletExperience`     |
+| Recovery rehearsal | `/wallets/recovery`   | `RecoveryPhraseExperience`     |
+| Send               | `/send`               | `SendExperience`               |
+| Receive            | `/receive`            | `ReceiveExperience`            |
+| Address book       | `/address-book`       | `AddressBookExperience`        |
+| Activity           | `/activity`           | `TransactionHistoryExperience` |
+| Security           | `/security`           | `SecurityExperience`           |
 
 Legacy `/wallets/new` redirects to `/wallets/create`.
 

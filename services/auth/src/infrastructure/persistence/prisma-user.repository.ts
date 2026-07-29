@@ -61,7 +61,9 @@ function mapUser(record: {
   const roles = record.roles.map((r) => r.role.name);
   const permissions = [
     ...new Set(
-      record.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.code as PermissionCode)),
+      record.roles.flatMap((r) =>
+        r.role.permissions.map((p) => p.permission.code as PermissionCode),
+      ),
     ),
   ];
   return {
@@ -126,9 +128,7 @@ export class PrismaUserRepository implements UserRepositoryPort {
         firstName: input.firstName,
         lastName: input.lastName,
         status: PrismaUserStatus.PENDING_VERIFICATION,
-        roles: defaultRole
-          ? { create: [{ roleId: defaultRole.id }] }
-          : undefined,
+        roles: defaultRole ? { create: [{ roleId: defaultRole.id }] } : undefined,
       },
       include: userInclude,
     });
@@ -189,7 +189,10 @@ export class PrismaUserRepository implements UserRepositoryPort {
         data: roles.map((role) => ({ userId, roleId: role.id })),
       });
     }
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, include: userInclude });
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: userInclude,
+    });
     return mapUser(user);
   }
 
@@ -209,7 +212,11 @@ export class PrismaUserRepository implements UserRepositoryPort {
     });
   }
 
-  async recordFailedLogin(userId: string, failedCount: number, lockedUntil: Date | null): Promise<void> {
+  async recordFailedLogin(
+    userId: string,
+    failedCount: number,
+    lockedUntil: Date | null,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -261,7 +268,11 @@ export class PrismaUserRepository implements UserRepositoryPort {
     return { users: users.map(mapUser), total };
   }
 
-  async createEmailVerificationToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+  async createEmailVerificationToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
     await this.prisma.emailVerificationToken.deleteMany({ where: { userId, consumedAt: null } });
     await this.prisma.emailVerificationToken.create({
       data: { userId, tokenHash, expiresAt },
@@ -280,7 +291,11 @@ export class PrismaUserRepository implements UserRepositoryPort {
     return token.userId;
   }
 
-  async createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+  async createPasswordResetToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
     await this.prisma.passwordResetToken.deleteMany({ where: { userId, consumedAt: null } });
     await this.prisma.passwordResetToken.create({
       data: { userId, tokenHash, expiresAt },

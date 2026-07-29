@@ -7,12 +7,7 @@ export {
   UnauthorizedError,
   ProviderUnavailableError,
 } from './errors';
-export {
-  CustodyEventType,
-  EVENT_BUS,
-  type DomainEvent,
-  type EventBusPort,
-} from './events';
+export { CustodyEventType, EVENT_BUS, type DomainEvent, type EventBusPort } from './events';
 export {
   evaluateExpression,
   evaluatePolicySet,

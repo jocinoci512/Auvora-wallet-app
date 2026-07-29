@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '@auvora/database';
 import { ConfigModule } from '../config/config.module';
 import { CLOCK, ID_GENERATOR, RATE_LIMITER } from '../application/ports/clock.port';
-import { LEDGER_REPOSITORY, TRANSACTION_REPOSITORY } from '../application/ports/ledger-repository.port';
+import {
+  LEDGER_REPOSITORY,
+  TRANSACTION_REPOSITORY,
+} from '../application/ports/ledger-repository.port';
 import { WALLET_REPOSITORY } from '../application/ports/wallet-repository.port';
 import {
   BLOCKCHAIN_PROVIDER_REGISTRY,
@@ -12,12 +15,22 @@ import {
 import { BLOCKCHAIN_HTTP_CLIENT } from './blockchain/blockchain-client.port';
 import { BlockchainHttpClientAdapter } from './blockchain/blockchain-http-client.adapter';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
+import {
+  MARKET_DATA_HTTP_CLIENT,
+  MarketDataHttpClientAdapter,
+} from './market-data/market-data-http.client';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,
 } from './observability/observability-publisher.adapter';
-import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  NotificationsPublisherAdapter,
+} from './notifications/notifications-publisher.adapter';
 import { PrismaLedgerRepository } from './persistence/prisma-ledger.repository';
 import { PrismaTransactionRepository } from './persistence/prisma-transaction.repository';
 import { PrismaWalletRepository } from './persistence/prisma-wallet.repository';
@@ -36,6 +49,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     PrismaLedgerRepository,
     PrismaTransactionRepository,
     BlockchainHttpClientAdapter,
+    MarketDataHttpClientAdapter,
     NotificationsPublisherAdapter,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
@@ -85,6 +99,10 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
       useExisting: BlockchainHttpClientAdapter,
     },
     {
+      provide: MARKET_DATA_HTTP_CLIENT,
+      useExisting: MarketDataHttpClientAdapter,
+    },
+    {
       provide: NOTIFICATIONS_PUBLISHER,
       useExisting: NotificationsPublisherAdapter,
     },
@@ -111,6 +129,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     TRANSACTION_REPOSITORY,
     BLOCKCHAIN_PROVIDER_REGISTRY,
     BLOCKCHAIN_HTTP_CLIENT,
+    MARKET_DATA_HTTP_CLIENT,
     NOTIFICATIONS_PUBLISHER,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,

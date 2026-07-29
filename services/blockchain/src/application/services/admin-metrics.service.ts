@@ -31,9 +31,11 @@ export interface BlockchainMetrics {
 export class AdminMetricsService {
   constructor(
     @Inject(CHAIN_ADDRESS_REPOSITORY) private readonly addresses: ChainAddressRepositoryPort,
-    @Inject(CHAIN_TRANSACTION_REPOSITORY) private readonly transactions: ChainTransactionRepositoryPort,
+    @Inject(CHAIN_TRANSACTION_REPOSITORY)
+    private readonly transactions: ChainTransactionRepositoryPort,
     @Inject(SYNC_JOB_REPOSITORY) private readonly syncJobs: SyncJobRepositoryPort,
-    @Inject(PROVIDER_HEALTH_REPOSITORY) private readonly providerHealth: ProviderHealthRepositoryPort,
+    @Inject(PROVIDER_HEALTH_REPOSITORY)
+    private readonly providerHealth: ProviderHealthRepositoryPort,
     @Inject(PROVIDER_FACTORY) private readonly providerFactory: ProviderFactoryPort,
   ) {}
 

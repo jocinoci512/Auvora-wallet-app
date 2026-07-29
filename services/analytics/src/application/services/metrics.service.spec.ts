@@ -121,7 +121,9 @@ describe('MetricsService', () => {
       },
       metricValue: {
         findMany: jest.fn(),
-        findFirst: jest.fn().mockResolvedValue({ value: 100, sampleCount: 2, bucketStart: new Date() }),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ value: 100, sampleCount: 2, bucketStart: new Date() }),
         upsert: jest.fn(),
       },
     };

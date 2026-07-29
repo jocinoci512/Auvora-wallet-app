@@ -78,11 +78,11 @@ flowchart LR
 
 ## Interface contracts
 
-| From | To | Contract |
-|------|----|----------|
-| Web/Admin | Gateway → AI | REST `/api/v1/ai/*`, `/api/v1/admin/ai/*` + JWT + permission codes `ai:*` |
-| Domain services | AI | REST `/api/v1/internal/ai/events\|complete\|summarize` + `x-internal-api-key` |
-| AI | LLM vendors | Provider ports (OpenAI/Anthropic/Gemini/Azure/Local/Simulator) via env credentials |
-| AI | Postgres/Redis | Prisma models + Redis response cache |
+| From            | To             | Contract                                                                           |
+| --------------- | -------------- | ---------------------------------------------------------------------------------- |
+| Web/Admin       | Gateway → AI   | REST `/api/v1/ai/*`, `/api/v1/admin/ai/*` + JWT + permission codes `ai:*`          |
+| Domain services | AI             | REST `/api/v1/internal/ai/events\|complete\|summarize` + `x-internal-api-key`      |
+| AI              | LLM vendors    | Provider ports (OpenAI/Anthropic/Gemini/Azure/Local/Simulator) via env credentials |
+| AI              | Postgres/Redis | Prisma models + Redis response cache                                               |
 
 No service imports another service's Nest modules or domain packages across boundaries.

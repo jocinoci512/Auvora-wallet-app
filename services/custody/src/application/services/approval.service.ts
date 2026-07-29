@@ -20,10 +20,14 @@ export class ApprovalService {
   ) {}
 
   async approve(signingRequestId: string, approver: JwtAccessClaims, note?: string) {
-    const request = await this.prisma.signingRequest.findUnique({ where: { id: signingRequestId } });
+    const request = await this.prisma.signingRequest.findUnique({
+      where: { id: signingRequestId },
+    });
     if (!request) throw new NotFoundError('Signing request not found');
     if (request.status !== 'AWAITING_APPROVAL') {
-      throw new ConflictError(`Signing request is not awaiting approval (status: ${request.status})`);
+      throw new ConflictError(
+        `Signing request is not awaiting approval (status: ${request.status})`,
+      );
     }
 
     const policy = request.approvalPolicyId
@@ -59,7 +63,10 @@ export class ApprovalService {
 
     const receivedApprovals = request.receivedApprovals + 1;
     const satisfied = isApprovalSatisfied(
-      { kind: policy?.kind ?? 'SINGLE', threshold: policy?.threshold ?? (request.requiredApprovals || 1) },
+      {
+        kind: policy?.kind ?? 'SINGLE',
+        threshold: policy?.threshold ?? (request.requiredApprovals || 1),
+      },
       receivedApprovals,
     );
 
@@ -81,10 +88,14 @@ export class ApprovalService {
   }
 
   async reject(signingRequestId: string, approver: JwtAccessClaims, reason: string) {
-    const request = await this.prisma.signingRequest.findUnique({ where: { id: signingRequestId } });
+    const request = await this.prisma.signingRequest.findUnique({
+      where: { id: signingRequestId },
+    });
     if (!request) throw new NotFoundError('Signing request not found');
     if (request.status !== 'AWAITING_APPROVAL') {
-      throw new ConflictError(`Signing request is not awaiting approval (status: ${request.status})`);
+      throw new ConflictError(
+        `Signing request is not awaiting approval (status: ${request.status})`,
+      );
     }
 
     await this.prisma.approvalRequest.create({
@@ -116,7 +127,9 @@ export class ApprovalService {
     return this.prisma.signingRequest.findMany({
       where: {
         status: 'AWAITING_APPROVAL',
-        ownerUserId: approver.permissions.includes(PERMISSION_CUSTODY_ADMIN) ? undefined : approver.sub,
+        ownerUserId: approver.permissions.includes(PERMISSION_CUSTODY_ADMIN)
+          ? undefined
+          : approver.sub,
       },
       orderBy: { createdAt: 'asc' },
     });

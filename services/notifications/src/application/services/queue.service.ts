@@ -1,8 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService, type NotificationStatus, type Prisma } from '@auvora/database';
-import {
-  CHANNEL_PROVIDER_REGISTRY,
-} from '../ports/provider.tokens';
+import { CHANNEL_PROVIDER_REGISTRY } from '../ports/provider.tokens';
 import {
   ConflictError,
   EVENT_BUS,
@@ -15,10 +13,7 @@ import {
   type NotificationChannelCode,
   type NotificationPriorityCode,
 } from '../../domain';
-import {
-  AI_PUBLISHER,
-  type AiPublisherPort,
-} from '../../infrastructure/ai/ai-publisher.adapter';
+import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
@@ -79,7 +74,12 @@ export class QueueService {
     for (const candidate of ordered) {
       const locked = await this.prisma.notificationQueueItem.updateMany({
         where: { id: candidate.id, status: 'QUEUED' },
-        data: { status: 'SENDING', lockedAt: now, lockedBy: workerId, attemptCount: { increment: 1 } },
+        data: {
+          status: 'SENDING',
+          lockedAt: now,
+          lockedBy: workerId,
+          attemptCount: { increment: 1 },
+        },
       });
       if (locked.count === 0) {
         continue;
@@ -101,9 +101,14 @@ export class QueueService {
     const notification = queueItem.notification;
 
     try {
-      const provider = await this.providers.resolve(notification.channel as NotificationChannelCode);
+      const provider = await this.providers.resolve(
+        notification.channel as NotificationChannelCode,
+      );
       const metadata = (notification.metadata ?? {}) as Record<string, unknown>;
-      const recipient = typeof metadata['recipient'] === 'string' ? (metadata['recipient'] as string) : (notification.ownerUserId ?? '');
+      const recipient =
+        typeof metadata['recipient'] === 'string'
+          ? (metadata['recipient'] as string)
+          : (notification.ownerUserId ?? '');
 
       const result = await provider.send({
         notificationId: notification.id,
@@ -131,9 +136,17 @@ export class QueueService {
 
       await this.prisma.notificationMessage.update({
         where: { id: notification.id },
-        data: { status: 'SENT', sentAt: new Date(), providerCode: result.providerCode, providerRef: result.providerRef },
+        data: {
+          status: 'SENT',
+          sentAt: new Date(),
+          providerCode: result.providerCode,
+          providerRef: result.providerRef,
+        },
       });
-      await this.prisma.notificationQueueItem.update({ where: { id: queueItem.id }, data: { status: 'SENT' } });
+      await this.prisma.notificationQueueItem.update({
+        where: { id: queueItem.id },
+        data: { status: 'SENT' },
+      });
 
       await this.events.publish({
         type: NotificationEventType.NotificationSent,
@@ -166,7 +179,12 @@ export class QueueService {
   private async handleFailure(
     queueItemId: string,
     attemptCount: number,
-    notification: { id: string; channel: string; maxAttempts: number; correlationId?: string | null },
+    notification: {
+      id: string;
+      channel: string;
+      maxAttempts: number;
+      correlationId?: string | null;
+    },
     error: unknown,
   ): Promise<QueueProcessResult> {
     const message = error instanceof Error ? error.message : String(error);
@@ -190,7 +208,11 @@ export class QueueService {
     } else {
       await this.prisma.notificationQueueItem.update({
         where: { id: queueItemId },
-        data: { status: 'QUEUED', availableAt: outcome.nextAttemptAt, nextAttemptAt: outcome.nextAttemptAt },
+        data: {
+          status: 'QUEUED',
+          availableAt: outcome.nextAttemptAt,
+          nextAttemptAt: outcome.nextAttemptAt,
+        },
       });
       await this.prisma.notificationMessage.update({
         where: { id: notification.id },
@@ -204,12 +226,16 @@ export class QueueService {
       });
     }
 
-    this.logger.warn(`Notification ${notification.id} delivery failed on ${notification.channel}: ${message}`);
+    this.logger.warn(
+      `Notification ${notification.id} delivery failed on ${notification.channel}: ${message}`,
+    );
     return { processed: true, queueItemId, success: false, errorMessage: message };
   }
 
   async deadLetter(queueItemId: string, reason?: string) {
-    const queueItem = await this.prisma.notificationQueueItem.findUnique({ where: { id: queueItemId } });
+    const queueItem = await this.prisma.notificationQueueItem.findUnique({
+      where: { id: queueItemId },
+    });
     if (!queueItem) throw new NotFoundError('Queue item not found');
     const updated = await this.prisma.notificationQueueItem.update({
       where: { id: queueItemId },
@@ -217,20 +243,32 @@ export class QueueService {
     });
     await this.prisma.notificationMessage.update({
       where: { id: queueItem.notificationId },
-      data: { status: 'DEAD_LETTER', failedAt: new Date(), failureReason: reason ?? 'Manually dead-lettered' },
+      data: {
+        status: 'DEAD_LETTER',
+        failedAt: new Date(),
+        failureReason: reason ?? 'Manually dead-lettered',
+      },
     });
     return updated;
   }
 
   async requeue(queueItemId: string) {
-    const queueItem = await this.prisma.notificationQueueItem.findUnique({ where: { id: queueItemId } });
+    const queueItem = await this.prisma.notificationQueueItem.findUnique({
+      where: { id: queueItemId },
+    });
     if (!queueItem) throw new NotFoundError('Queue item not found');
     if (queueItem.status !== 'DEAD_LETTER' && queueItem.status !== 'FAILED') {
       throw new ConflictError(`Cannot requeue a queue item in status ${queueItem.status}`);
     }
     const updated = await this.prisma.notificationQueueItem.update({
       where: { id: queueItemId },
-      data: { status: 'QUEUED', availableAt: new Date(), attemptCount: 0, deadLetteredAt: null, nextAttemptAt: null },
+      data: {
+        status: 'QUEUED',
+        availableAt: new Date(),
+        attemptCount: 0,
+        deadLetteredAt: null,
+        nextAttemptAt: null,
+      },
     });
     await this.prisma.notificationMessage.update({
       where: { id: queueItem.notificationId },
@@ -246,7 +284,12 @@ export class QueueService {
       ? { status: filters.status }
       : { status: { in: ACTIVE_QUEUE_STATUSES } };
     const [items, total] = await Promise.all([
-      this.prisma.notificationQueueItem.findMany({ where, orderBy: { createdAt: 'asc' }, skip, take }),
+      this.prisma.notificationQueueItem.findMany({
+        where,
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take,
+      }),
       this.prisma.notificationQueueItem.count({ where }),
     ]);
     return { items, total, skip, take };
@@ -255,7 +298,12 @@ export class QueueService {
   async listDeadLetter(skip = 0, take = 50) {
     const where: Prisma.NotificationQueueItemWhereInput = { status: 'DEAD_LETTER' };
     const [items, total] = await Promise.all([
-      this.prisma.notificationQueueItem.findMany({ where, orderBy: { deadLetteredAt: 'desc' }, skip, take: Math.min(take, 200) }),
+      this.prisma.notificationQueueItem.findMany({
+        where,
+        orderBy: { deadLetteredAt: 'desc' },
+        skip,
+        take: Math.min(take, 200),
+      }),
       this.prisma.notificationQueueItem.count({ where }),
     ]);
     return { items, total, skip, take };

@@ -55,7 +55,10 @@ export default function PlatformStatusPage(): ReactElement {
           </p>
           <h2>Maintenance</h2>
           {status.maintenanceNotices.length === 0 ? (
-            <EmptyState title="No active maintenance" description="There are no scheduled notices right now." />
+            <EmptyState
+              title="No active maintenance"
+              description="There are no scheduled notices right now."
+            />
           ) : (
             <ul className="stack">
               {status.maintenanceNotices.map((notice) => (
@@ -67,7 +70,10 @@ export default function PlatformStatusPage(): ReactElement {
           )}
           <h2>Incidents</h2>
           {status.incidents.length === 0 ? (
-            <EmptyState title="No public incidents" description="No open incidents are published." />
+            <EmptyState
+              title="No public incidents"
+              description="No open incidents are published."
+            />
           ) : (
             <ul className="stack">
               {status.incidents.map((incident) => (
@@ -79,7 +85,10 @@ export default function PlatformStatusPage(): ReactElement {
           )}
           <h2>Services</h2>
           {status.services.length === 0 ? (
-            <EmptyState title="No service samples" description="Health samples have not arrived yet." />
+            <EmptyState
+              title="No service samples"
+              description="Health samples have not arrived yet."
+            />
           ) : (
             <ul className="stack">
               {status.services.map((service) => (

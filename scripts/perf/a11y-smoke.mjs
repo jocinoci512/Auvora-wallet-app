@@ -6,6 +6,18 @@
 const targets = [
   { name: 'web', url: process.env.WEB_URL || 'http://localhost:3000' },
   { name: 'admin', url: process.env.ADMIN_URL || 'http://localhost:3001' },
+  {
+    name: 'web-design-system',
+    url: process.env.WEB_DS_URL || 'http://localhost:3000/design-system',
+  },
+  {
+    name: 'web-settings',
+    url: process.env.WEB_SETTINGS_URL || 'http://localhost:3000/settings',
+  },
+  {
+    name: 'web-web3',
+    url: process.env.WEB_WEB3_URL || 'http://localhost:3000/web3',
+  },
 ];
 
 const results = [];
@@ -17,10 +29,15 @@ for (const target of targets) {
     const checks = {
       statusOk: res.ok,
       hasHtmlLang: /<html[^>]*lang=/i.test(html),
-      hasMainOrRole: /<(main|nav|header|footer)\b/i.test(html) || /role=["'](main|navigation)/i.test(html),
+      hasMainOrRole:
+        /<(main|nav|header|footer)\b/i.test(html) || /role=["'](main|navigation)/i.test(html),
       hasViewport: /name=["']viewport["']/i.test(html),
       hasSkipLink: /skip to content/i.test(html),
       hasMainTarget: /id=["']main-content["']/i.test(html),
+      hasThemeAttr:
+        /data-theme=["'](light|dark)["']/i.test(html) ||
+        /auvora-theme-(light|dark)/i.test(html) ||
+        /localStorage\.getItem\(['"]auvora-theme['"]\)/i.test(html),
       avoidsAutoplayAudio: !/<audio[^>]+autoplay/i.test(html),
       contentTypeOptions:
         (res.headers.get('x-content-type-options') || '').toLowerCase() === 'nosniff',
@@ -30,7 +47,9 @@ for (const target of targets) {
       checks.hasHtmlLang &&
       checks.hasViewport &&
       checks.hasSkipLink &&
-      checks.hasMainTarget;
+      checks.hasMainTarget &&
+      checks.hasMainOrRole &&
+      checks.hasThemeAttr;
     results.push({ target: target.name, url: target.url, ok, checks });
   } catch (error) {
     results.push({

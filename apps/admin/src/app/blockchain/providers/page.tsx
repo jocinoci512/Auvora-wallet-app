@@ -53,7 +53,9 @@ export default function AdminBlockchainProvidersPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Providers</h1>
-          <p className="page-subtitle">{providers.length} configured provider{providers.length === 1 ? '' : 's'}</p>
+          <p className="page-subtitle">
+            {providers.length} configured provider{providers.length === 1 ? '' : 's'}
+          </p>
         </div>
         <Link href="/blockchain">
           <Button variant="ghost">Back</Button>

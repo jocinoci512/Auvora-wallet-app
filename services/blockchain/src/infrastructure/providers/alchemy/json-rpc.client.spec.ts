@@ -69,6 +69,6 @@ describe('JsonRpcClient', () => {
       timeoutMs: 40,
       maxRetries: 0,
     });
-    await expect(client.call('eth_blockNumber')).rejects.toThrow(/abort/i);
+    await expect(client.call('eth_blockNumber')).rejects.toThrow(/timeout/i);
   });
 });

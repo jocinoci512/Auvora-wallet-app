@@ -31,7 +31,9 @@ export class NotificationsPublisherAdapter implements NotificationsPublisherPort
     const baseUrl = this.env.NOTIFICATIONS_SERVICE_URL;
     const apiKey = this.env.INTERNAL_API_KEY;
     if (!baseUrl || !apiKey) {
-      this.logger.debug(`Notifications publisher not configured; skipping event ${input.eventType}`);
+      this.logger.debug(
+        `Notifications publisher not configured; skipping event ${input.eventType}`,
+      );
       return;
     }
 

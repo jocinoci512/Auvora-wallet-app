@@ -15,6 +15,12 @@ import { createNotificationsProxyMiddleware } from './infrastructure/proxy/notif
 import { createAnalyticsProxyMiddleware } from './infrastructure/proxy/analytics-proxy.middleware';
 import { createAiProxyMiddleware } from './infrastructure/proxy/ai-proxy.middleware';
 import { createObservabilityProxyMiddleware } from './infrastructure/proxy/observability-proxy.middleware';
+import { createMarketDataProxyMiddleware } from './infrastructure/proxy/market-data-proxy.middleware';
+import { createSwapProxyMiddleware } from './infrastructure/proxy/swap-proxy.middleware';
+import { createNftProxyMiddleware } from './infrastructure/proxy/nft-proxy.middleware';
+import { createStakingProxyMiddleware } from './infrastructure/proxy/staking-proxy.middleware';
+import { createConnectionsProxyMiddleware } from './infrastructure/proxy/connections-proxy.middleware';
+import { createBridgeProxyMiddleware } from './infrastructure/proxy/bridge-proxy.middleware';
 import { createSecurityHeadersMiddleware } from './infrastructure/security/security-headers.middleware';
 import { createInternalRouteDenyMiddleware } from './infrastructure/security/internal-route-deny.middleware';
 import { createGatewayRateLimitMiddleware } from './infrastructure/security/rate-limit.middleware';
@@ -69,6 +75,12 @@ async function bootstrap(): Promise<void> {
   app.use(createAnalyticsProxyMiddleware(env.ANALYTICS_SERVICE_URL));
   app.use(createAiProxyMiddleware(env.AI_SERVICE_URL));
   app.use(createObservabilityProxyMiddleware(env.OBSERVABILITY_SERVICE_URL));
+  app.use(createMarketDataProxyMiddleware(env.MARKET_DATA_SERVICE_URL));
+  app.use(createSwapProxyMiddleware(env.SWAP_SERVICE_URL));
+  app.use(createNftProxyMiddleware(env.NFT_SERVICE_URL));
+  app.use(createStakingProxyMiddleware(env.STAKING_SERVICE_URL));
+  app.use(createConnectionsProxyMiddleware(env.CONNECTIONS_SERVICE_URL));
+  app.use(createBridgeProxyMiddleware(env.BRIDGE_SERVICE_URL));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Auvora Gateway')
@@ -83,9 +95,14 @@ async function bootstrap(): Promise<void> {
         'routes under `/api/v1/notifications` and `/api/v1/admin/notifications` are proxied to the notifications service; ' +
         'routes under `/api/v1/analytics` and `/api/v1/admin/analytics` are proxied to the analytics service; ' +
         'routes under `/api/v1/ai` and `/api/v1/admin/ai` are proxied to the AI service; ' +
-        'routes under `/api/v1/observability` and `/api/v1/admin/observability` are proxied to the observability service. ' +
+        'routes under `/api/v1/observability` and `/api/v1/admin/observability` are proxied to the observability service; ' +
+        'routes under `/api/v1/market-data` and `/api/v1/admin/market-data` are proxied to the market-data service; ' +
+        'routes under `/api/v1/swaps` and `/api/v1/admin/swaps` are proxied to the swap service; ' +
+        'routes under `/api/v1/nfts` and `/api/v1/admin/nfts` are proxied to the NFT service; ' +
+        'routes under `/api/v1/staking` and `/api/v1/admin/staking` are proxied to the staking service; ' +
+        'routes under `/api/v1/connections` and `/api/v1/admin/connections` are proxied to the connections service. ' +
         'See tagged proxy endpoints below. Each downstream service owns request validation and business logic. ' +
-        'For full OpenAPI documents, refer to the auth, wallet, blockchain, payments, compliance, custody, notifications, analytics, AI, and observability services directly.',
+        'For full OpenAPI documents, refer to the auth, wallet, blockchain, payments, compliance, custody, notifications, analytics, AI, observability, market-data, swap, NFT, staking, and connections services directly.',
     )
     .setVersion(env.SERVICE_VERSION)
     .addServer(`http://localhost:${env.PORT}`, 'Local gateway')
@@ -104,13 +121,35 @@ async function bootstrap(): Promise<void> {
     .addTag('custody-proxy', 'Custody — proxied to custody service')
     .addTag('custody-admin-proxy', 'Custody administration — proxied to custody service')
     .addTag('notifications-proxy', 'Notifications — proxied to notifications service')
-    .addTag('notifications-admin-proxy', 'Notification administration — proxied to notifications service')
+    .addTag(
+      'notifications-admin-proxy',
+      'Notification administration — proxied to notifications service',
+    )
     .addTag('analytics-proxy', 'Analytics — proxied to analytics service')
     .addTag('analytics-admin-proxy', 'Analytics administration — proxied to analytics service')
     .addTag('ai-proxy', 'AI platform — proxied to AI service')
     .addTag('ai-admin-proxy', 'AI platform administration — proxied to AI service')
     .addTag('observability-proxy', 'Observability — proxied to observability service')
-    .addTag('observability-admin-proxy', 'Observability administration — proxied to observability service')
+    .addTag(
+      'observability-admin-proxy',
+      'Observability administration — proxied to observability service',
+    )
+    .addTag('market-data-proxy', 'Market data — proxied to market-data service')
+    .addTag(
+      'market-data-admin-proxy',
+      'Market data administration — proxied to market-data service',
+    )
+    .addTag('swap-proxy', 'Swaps — proxied to swap service')
+    .addTag('swap-admin-proxy', 'Swap administration — proxied to swap service')
+    .addTag('nft-proxy', 'NFTs — proxied to NFT service')
+    .addTag('nft-admin-proxy', 'NFT administration — proxied to NFT service')
+    .addTag('staking-proxy', 'Staking — proxied to staking service')
+    .addTag('staking-admin-proxy', 'Staking administration — proxied to staking service')
+    .addTag('connections-proxy', 'Connections — proxied to connections service')
+    .addTag(
+      'connections-admin-proxy',
+      'Connections administration — proxied to connections service',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   document.paths = {
@@ -145,7 +184,7 @@ async function bootstrap(): Promise<void> {
   });
 }
 bootstrap().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
   console.error(message);
   process.exit(1);
 });

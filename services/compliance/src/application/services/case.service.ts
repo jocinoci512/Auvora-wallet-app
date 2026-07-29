@@ -11,7 +11,10 @@ import {
   PERMISSION_COMPLIANCE_CASES,
 } from '../../domain';
 import { ID_GENERATOR, type IdGeneratorPort } from '../ports/clock.port';
-import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../../infrastructure/crypto/field-encryption.adapter';
+import {
+  FIELD_ENCRYPTION,
+  type FieldEncryptionPort,
+} from '../../infrastructure/crypto/field-encryption.adapter';
 
 @Injectable()
 export class CaseService {
@@ -125,7 +128,12 @@ export class CaseService {
     return updated;
   }
 
-  private async audit(caseId: string, actorUserId: string, action: string, details?: Record<string, unknown>) {
+  private async audit(
+    caseId: string,
+    actorUserId: string,
+    action: string,
+    details?: Record<string, unknown>,
+  ) {
     await this.prisma.complianceCaseAudit.create({
       data: {
         caseId,

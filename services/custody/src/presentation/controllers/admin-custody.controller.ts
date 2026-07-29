@@ -44,7 +44,7 @@ import {
   ROLE_SUPER_ADMIN,
   type PolicyContext,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -335,7 +335,9 @@ export class AdminCustodyController {
   @Get('policy-violations')
   @Permissions(PERMISSION_CUSTODY_ADMIN)
   async violations(@Query('skip') skip?: string, @Query('take') take?: string) {
-    return successResponse(await this.dashboard.policyViolations(Number(skip ?? 0), Number(take ?? 50)));
+    return successResponse(
+      await this.dashboard.policyViolations(Number(skip ?? 0), Number(take ?? 50)),
+    );
   }
 
   @Get('keys')
@@ -345,7 +347,9 @@ export class AdminCustodyController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ) {
-    return successResponse(await this.keys.list({ status, skip: Number(skip ?? 0), take: Number(take ?? 50) }));
+    return successResponse(
+      await this.keys.list({ status, skip: Number(skip ?? 0), take: Number(take ?? 50) }),
+    );
   }
 
   @Get('keys/:id')
@@ -362,7 +366,11 @@ export class AdminCustodyController {
 
   @Post('keys/:id/revoke')
   @Permissions(PERMISSION_CUSTODY_ADMIN)
-  async revokeKey(@Param('id') id: string, @Body() dto: RejectDto, @CurrentUser() user: JwtAccessClaims) {
+  async revokeKey(
+    @Param('id') id: string,
+    @Body() dto: RejectDto,
+    @CurrentUser() user: JwtAccessClaims,
+  ) {
     return successResponse(await this.keys.revoke(id, user, dto.reason));
   }
 
@@ -404,14 +412,24 @@ export class AdminCustodyController {
 
   @Post('approvals/:id/approve')
   @Permissions(PERMISSION_CUSTODY_APPROVE)
-  async approve(@Param('id') id: string, @Body('note') note: string | undefined, @CurrentUser() user: JwtAccessClaims) {
+  async approve(
+    @Param('id') id: string,
+    @Body('note') note: string | undefined,
+    @CurrentUser() user: JwtAccessClaims,
+  ) {
     return successResponse(await this.approvals.approve(id, user, note));
   }
 
   @Post('approvals/:id/reject')
   @Permissions(PERMISSION_CUSTODY_APPROVE)
-  async rejectApproval(@Param('id') id: string, @Body() dto: RejectDto, @CurrentUser() user: JwtAccessClaims) {
-    return successResponse(await this.approvals.reject(id, user, dto.reason ?? 'Rejected by approver'));
+  async rejectApproval(
+    @Param('id') id: string,
+    @Body() dto: RejectDto,
+    @CurrentUser() user: JwtAccessClaims,
+  ) {
+    return successResponse(
+      await this.approvals.reject(id, user, dto.reason ?? 'Rejected by approver'),
+    );
   }
 
   @Get('recovery/queue')
@@ -434,7 +452,11 @@ export class AdminCustodyController {
 
   @Post('recovery/:id/reject')
   @Permissions(PERMISSION_CUSTODY_RECOVERY)
-  async rejectRecovery(@Param('id') id: string, @Body() dto: RejectDto, @CurrentUser() user: JwtAccessClaims) {
+  async rejectRecovery(
+    @Param('id') id: string,
+    @Body() dto: RejectDto,
+    @CurrentUser() user: JwtAccessClaims,
+  ) {
     return successResponse(await this.recovery.reject(id, user, dto.reason));
   }
 
@@ -513,7 +535,9 @@ export class AdminCustodyController {
   @Post('policy/evaluate')
   @Permissions(PERMISSION_CUSTODY_POLICIES)
   async evaluatePolicy(@Body() dto: EvaluatePolicyDto) {
-    return successResponse(await this.policies.evaluateTransactionContext(dto as unknown as PolicyContext));
+    return successResponse(
+      await this.policies.evaluateTransactionContext(dto as unknown as PolicyContext),
+    );
   }
 
   @Get('signer-groups')

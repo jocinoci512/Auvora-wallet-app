@@ -1,7 +1,7 @@
 global:
   namespace: auvora-disaster-recovery
   environment: disaster-recovery
-  imageTag: "1.2.0"
+  imageTag: '1.2.0'
   deploymentStrategy: rolling
   hpa:
     minReplicas: 2
@@ -13,12 +13,12 @@ ingress:
 config:
   NODE_ENV: production
   LOG_LEVEL: warn
-  OTEL_ENABLED: "true"
+  OTEL_ENABLED: 'true'
 
 backup:
   cronJob:
     enabled: true
-    schedule: "0 2 * * *"
+    schedule: '0 2 * * *'
 
 secrets:
   create: false

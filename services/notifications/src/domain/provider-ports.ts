@@ -1,12 +1,5 @@
 export type NotificationChannelCode =
-  | 'EMAIL'
-  | 'SMS'
-  | 'PUSH'
-  | 'IN_APP'
-  | 'BROWSER'
-  | 'WEBHOOK'
-  | 'SLACK'
-  | 'TEAMS';
+  'EMAIL' | 'SMS' | 'PUSH' | 'IN_APP' | 'BROWSER' | 'WEBHOOK' | 'SLACK' | 'TEAMS';
 
 export interface ChannelSendRequest {
   notificationId: string;

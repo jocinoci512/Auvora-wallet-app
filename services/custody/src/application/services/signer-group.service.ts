@@ -30,11 +30,17 @@ export class SignerGroupService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async list() {
-    return this.prisma.signerGroup.findMany({ orderBy: { createdAt: 'desc' }, include: { members: true } });
+    return this.prisma.signerGroup.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { members: true },
+    });
   }
 
   async get(id: string) {
-    const group = await this.prisma.signerGroup.findUnique({ where: { id }, include: { members: true } });
+    const group = await this.prisma.signerGroup.findUnique({
+      where: { id },
+      include: { members: true },
+    });
     if (!group) throw new NotFoundError('Signer group not found');
     return group;
   }
@@ -81,7 +87,11 @@ export class SignerGroupService {
     if (existing) {
       return this.prisma.signerGroupMember.update({
         where: { id: existing.id },
-        data: { isActive: true, role: input.role ?? existing.role, weight: input.weight ?? existing.weight },
+        data: {
+          isActive: true,
+          role: input.role ?? existing.role,
+          weight: input.weight ?? existing.weight,
+        },
       });
     }
     return this.prisma.signerGroupMember.create({
@@ -99,6 +109,9 @@ export class SignerGroupService {
       where: { groupId_userId: { groupId, userId } },
     });
     if (!member) throw new NotFoundError('Signer group member not found');
-    return this.prisma.signerGroupMember.update({ where: { id: member.id }, data: { isActive: false } });
+    return this.prisma.signerGroupMember.update({
+      where: { id: member.id },
+      data: { isActive: false },
+    });
   }
 }

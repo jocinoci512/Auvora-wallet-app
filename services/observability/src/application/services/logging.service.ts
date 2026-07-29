@@ -5,13 +5,15 @@ import { PrismaService } from '@auvora/database';
 export class LoggingService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async search(filters: {
-    serviceName?: string;
-    level?: string;
-    correlationId?: string;
-    take?: number;
-    skip?: number;
-  } = {}) {
+  async search(
+    filters: {
+      serviceName?: string;
+      level?: string;
+      correlationId?: string;
+      take?: number;
+      skip?: number;
+    } = {},
+  ) {
     const where = {
       ...(filters.serviceName ? { serviceName: filters.serviceName } : {}),
       ...(filters.level ? { level: filters.level } : {}),

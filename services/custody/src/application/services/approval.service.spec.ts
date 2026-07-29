@@ -18,13 +18,23 @@ function buildPrisma(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     signingRequest: {
       findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow()),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...buildSigningRequestRow(), ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...buildSigningRequestRow(), ...data }),
+        ),
     },
-    approvalPolicy: { findUnique: jest.fn().mockResolvedValue({ id: 'policy-1', kind: 'SINGLE', threshold: 1, signerGroupId: null }) },
+    approvalPolicy: {
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'policy-1', kind: 'SINGLE', threshold: 1, signerGroupId: null }),
+    },
     signerGroupMember: { findFirst: jest.fn().mockResolvedValue({ isActive: true }) },
-    approvalRequest: { create: jest.fn().mockResolvedValue({}), findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
+    approvalRequest: {
+      create: jest.fn().mockResolvedValue({}),
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     ...overrides,
   };
 }
@@ -39,7 +49,9 @@ const approver: JwtAccessClaims = {
 
 describe('ApprovalService', () => {
   it('throws NotFoundError for a missing signing request', async () => {
-    const prisma = buildPrisma({ signingRequest: { findUnique: jest.fn().mockResolvedValue(null) } });
+    const prisma = buildPrisma({
+      signingRequest: { findUnique: jest.fn().mockResolvedValue(null) },
+    });
     const service = new ApprovalService(prisma as never, { publish: jest.fn() } as never);
 
     await expect(service.approve('missing', approver)).rejects.toThrow(NotFoundError);
@@ -47,7 +59,9 @@ describe('ApprovalService', () => {
 
   it('throws ConflictError when the request is not awaiting approval', async () => {
     const prisma = buildPrisma({
-      signingRequest: { findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow({ status: 'SIGNED' })) },
+      signingRequest: {
+        findUnique: jest.fn().mockResolvedValue(buildSigningRequestRow({ status: 'SIGNED' })),
+      },
     });
     const service = new ApprovalService(prisma as never, { publish: jest.fn() } as never);
 
@@ -56,7 +70,14 @@ describe('ApprovalService', () => {
 
   it('rejects approval from a user outside the required signer group', async () => {
     const prisma = buildPrisma({
-      approvalPolicy: { findUnique: jest.fn().mockResolvedValue({ id: 'policy-1', kind: 'MULTI', threshold: 2, signerGroupId: 'group-1' }) },
+      approvalPolicy: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'policy-1',
+          kind: 'MULTI',
+          threshold: 2,
+          signerGroupId: 'group-1',
+        }),
+      },
       signerGroupMember: { findFirst: jest.fn().mockResolvedValue(null) },
     });
     const service = new ApprovalService(prisma as never, { publish: jest.fn() } as never);
@@ -66,7 +87,11 @@ describe('ApprovalService', () => {
 
   it('prevents the same approver from approving twice', async () => {
     const prisma = buildPrisma({
-      approvalRequest: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue({ id: 'existing' }), findMany: jest.fn() },
+      approvalRequest: {
+        create: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: 'existing' }),
+        findMany: jest.fn(),
+      },
     });
     const service = new ApprovalService(prisma as never, { publish: jest.fn() } as never);
 
@@ -85,7 +110,11 @@ describe('ApprovalService', () => {
 
   it('keeps a dual-approval policy awaiting after only one approval', async () => {
     const prisma = buildPrisma({
-      approvalPolicy: { findUnique: jest.fn().mockResolvedValue({ id: 'policy-1', kind: 'DUAL', threshold: 2, signerGroupId: null }) },
+      approvalPolicy: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'policy-1', kind: 'DUAL', threshold: 2, signerGroupId: null }),
+      },
     });
     const service = new ApprovalService(prisma as never, { publish: jest.fn() } as never);
 

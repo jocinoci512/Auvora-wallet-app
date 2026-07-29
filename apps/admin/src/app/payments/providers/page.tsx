@@ -61,9 +61,7 @@ export default function AdminProvidersPage(): ReactElement {
                 <td>{provider.name}</td>
                 <td>{provider.providerType}</td>
                 <td>{provider.isEnabled ? 'yes' : 'no'}</td>
-                <td>
-                  {latest ? `${latest.status} (${latest.latencyMs ?? '—'}ms)` : '—'}
-                </td>
+                <td>{latest ? `${latest.status} (${latest.latencyMs ?? '—'}ms)` : '—'}</td>
               </tr>
             );
           })}

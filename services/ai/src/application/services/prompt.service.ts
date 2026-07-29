@@ -38,7 +38,9 @@ export class PromptService {
   async list(filters: { category?: AiPromptCategory; skip?: number; take?: number } = {}) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 200);
-    const where: Prisma.AiPromptTemplateWhereInput = filters.category ? { category: filters.category } : {};
+    const where: Prisma.AiPromptTemplateWhereInput = filters.category
+      ? { category: filters.category }
+      : {};
     const [items, total] = await Promise.all([
       this.prisma.aiPromptTemplate.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
       this.prisma.aiPromptTemplate.count({ where }),
@@ -154,23 +156,38 @@ export class PromptService {
 
   async listVersions(templateId: string) {
     await this.get(templateId);
-    return this.prisma.aiPromptVersion.findMany({ where: { templateId }, orderBy: { version: 'desc' } });
+    return this.prisma.aiPromptVersion.findMany({
+      where: { templateId },
+      orderBy: { version: 'desc' },
+    });
   }
 
   async preview(templateId: string, variables: Record<string, unknown>) {
     const { version } = await this.getActiveVersion(templateId);
-    return renderPromptParts({ systemPrompt: version.systemPrompt, userPrompt: version.userPrompt }, variables);
+    return renderPromptParts(
+      { systemPrompt: version.systemPrompt, userPrompt: version.userPrompt },
+      variables,
+    );
   }
 
-  previewRaw(input: { systemPrompt?: string; userPrompt: string; variables: Record<string, unknown> }) {
-    return renderPromptParts({ systemPrompt: input.systemPrompt, userPrompt: input.userPrompt }, input.variables);
+  previewRaw(input: {
+    systemPrompt?: string;
+    userPrompt: string;
+    variables: Record<string, unknown>;
+  }) {
+    return renderPromptParts(
+      { systemPrompt: input.systemPrompt, userPrompt: input.userPrompt },
+      input.variables,
+    );
   }
 
   /** Moves a DRAFT template into the approval queue. */
   async submitForApproval(templateId: string, actorUserId?: string) {
     const template = await this.get(templateId);
     if (template.status !== 'DRAFT') {
-      throw new ValidationError(`Cannot submit a template with status ${template.status} for approval`);
+      throw new ValidationError(
+        `Cannot submit a template with status ${template.status} for approval`,
+      );
     }
     const updated = await this.prisma.aiPromptTemplate.update({
       where: { id: templateId },
@@ -190,7 +207,10 @@ export class PromptService {
     if (template.status !== 'PENDING_APPROVAL' && template.status !== 'DRAFT') {
       throw new ValidationError(`Cannot approve a template with status ${template.status}`);
     }
-    const updated = await this.prisma.aiPromptTemplate.update({ where: { id: templateId }, data: { status: 'APPROVED' } });
+    const updated = await this.prisma.aiPromptTemplate.update({
+      where: { id: templateId },
+      data: { status: 'APPROVED' },
+    });
     await this.audit.record('ai.prompt.approved', {
       actorUserId,
       resourceType: 'AiPromptTemplate',
@@ -205,7 +225,10 @@ export class PromptService {
     if (template.status !== 'PENDING_APPROVAL') {
       throw new ValidationError('Only templates pending approval can be rejected');
     }
-    const updated = await this.prisma.aiPromptTemplate.update({ where: { id: templateId }, data: { status: 'DRAFT' } });
+    const updated = await this.prisma.aiPromptTemplate.update({
+      where: { id: templateId },
+      data: { status: 'DRAFT' },
+    });
     await this.audit.record('ai.prompt.rejected', {
       actorUserId,
       resourceType: 'AiPromptTemplate',
@@ -230,7 +253,10 @@ export class PromptService {
 
   async setEnabled(templateId: string, isEnabled: boolean, actorUserId?: string) {
     await this.get(templateId);
-    const updated = await this.prisma.aiPromptTemplate.update({ where: { id: templateId }, data: { isEnabled } });
+    const updated = await this.prisma.aiPromptTemplate.update({
+      where: { id: templateId },
+      data: { isEnabled },
+    });
     await this.audit.record('ai.prompt.enabled_changed', {
       actorUserId,
       resourceType: 'AiPromptTemplate',

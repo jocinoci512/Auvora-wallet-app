@@ -47,7 +47,9 @@ export class AdminQueryService {
     return this.providers.listAll();
   }
 
-  listHealth(filters: ProviderHealthFilters): Promise<{ items: ProviderHealthRecord[]; total: number }> {
+  listHealth(
+    filters: ProviderHealthFilters,
+  ): Promise<{ items: ProviderHealthRecord[]; total: number }> {
     return this.health.list(filters);
   }
 

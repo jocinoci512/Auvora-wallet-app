@@ -6,12 +6,23 @@ function buildPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     notificationMessage: {
       findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'notif-1', createdAt: new Date(), ...data }),
-      ),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
-        Promise.resolve({ id: where.id, ownerUserId: 'user-1', status: 'QUEUED', metadata: {}, ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'notif-1', createdAt: new Date(), ...data }),
+        ),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
+            Promise.resolve({
+              id: where.id,
+              ownerUserId: 'user-1',
+              status: 'QUEUED',
+              metadata: {},
+              ...data,
+            }),
+        ),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
     },
@@ -59,7 +70,13 @@ describe('NotificationService', () => {
 
   it('creates and enqueues an immediate notification', async () => {
     const prisma = buildPrismaMock();
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     const result = await service.send({
       ownerUserId: 'user-1',
@@ -70,13 +87,22 @@ describe('NotificationService', () => {
     });
 
     expect(result).toMatchObject({ status: 'QUEUED', body: 'Your code is 123456' });
-    expect(queueMock.enqueue).toHaveBeenCalledWith('notif-1', expect.objectContaining({ priority: 'NORMAL' }));
+    expect(queueMock.enqueue).toHaveBeenCalledWith(
+      'notif-1',
+      expect.objectContaining({ priority: 'NORMAL' }),
+    );
     expect(eventsMock.publish).toHaveBeenCalled();
   });
 
   it('always assigns a correlationId, generating one when the caller does not supply it', async () => {
     const prisma = buildPrismaMock();
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     const result = await service.send({
       ownerUserId: 'user-1',
@@ -88,12 +114,20 @@ describe('NotificationService', () => {
 
     expect(result.correlationId).toBeDefined();
     expect(typeof result.correlationId).toBe('string');
-    expect(eventsMock.publish).toHaveBeenCalledWith(expect.objectContaining({ correlationId: result.correlationId }));
+    expect(eventsMock.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ correlationId: result.correlationId }),
+    );
   });
 
   it('preserves a caller-supplied correlationId and links source event metadata', async () => {
     const prisma = buildPrismaMock();
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     const result = await service.send({
       ownerUserId: 'user-1',
@@ -122,7 +156,13 @@ describe('NotificationService', () => {
     const existing = { id: 'existing-1', dedupeKey: 'dedupe-a' };
     const prisma = buildPrismaMock();
     prisma.notificationMessage.findUnique.mockResolvedValueOnce(existing);
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     const result = await service.send({
       ownerUserId: 'user-1',
@@ -146,7 +186,13 @@ describe('NotificationService', () => {
       format: 'TEXT',
     });
     const prisma = buildPrismaMock();
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     await service.send({
       ownerUserId: 'user-1',
@@ -158,14 +204,25 @@ describe('NotificationService', () => {
     });
 
     expect(prisma.notificationMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ subject: 'Hi Ada', body: 'Welcome Ada!' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ subject: 'Hi Ada', body: 'Welcome Ada!' }),
+      }),
     );
   });
 
   it('suppresses a notification and skips enqueue when preferences block it', async () => {
-    preferencesMock.evaluateSuppression.mockResolvedValueOnce({ suppressed: true, reason: 'QUIET_HOURS' });
+    preferencesMock.evaluateSuppression.mockResolvedValueOnce({
+      suppressed: true,
+      reason: 'QUIET_HOURS',
+    });
     const prisma = buildPrismaMock();
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     const result = await service.send({
       ownerUserId: 'user-1',
@@ -181,7 +238,13 @@ describe('NotificationService', () => {
 
   it('throws a ValidationError when neither body nor template is provided', async () => {
     const prisma = buildPrismaMock();
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     await expect(
       service.send({
@@ -195,10 +258,23 @@ describe('NotificationService', () => {
 
   it('allows the owner to mark their own notification as read but forbids strangers', async () => {
     const prisma = buildPrismaMock();
-    prisma.notificationMessage.findUnique.mockResolvedValue({ id: 'notif-1', ownerUserId: 'user-1', status: 'SENT', metadata: {} });
-    const service = new NotificationService(prisma as never, eventsMock as never, templatesMock as never, preferencesMock as never, queueMock as never);
+    prisma.notificationMessage.findUnique.mockResolvedValue({
+      id: 'notif-1',
+      ownerUserId: 'user-1',
+      status: 'SENT',
+      metadata: {},
+    });
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
 
     await expect(service.markRead('notif-1', stranger)).rejects.toThrow(ForbiddenError);
-    await expect(service.markRead('notif-1', owner)).resolves.toMatchObject({ status: 'DELIVERED' });
+    await expect(service.markRead('notif-1', owner)).resolves.toMatchObject({
+      status: 'DELIVERED',
+    });
   });
 });

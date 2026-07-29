@@ -14,9 +14,11 @@ export default function AdminTemplatesPage(): ReactElement {
       const client = createApiClient();
       setItems(await client.adminListNotificationTemplates());
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

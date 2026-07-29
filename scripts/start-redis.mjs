@@ -11,7 +11,9 @@ const redis = new RedisMemoryServer({
 
 const host = await redis.getHost();
 const port = await redis.getPort();
-process.stdout.write(JSON.stringify({ level: 'info', msg: 'redis ready', redisUrl: `redis://${host}:${port}` }) + '\n');
+process.stdout.write(
+  JSON.stringify({ level: 'info', msg: 'redis ready', redisUrl: `redis://${host}:${port}` }) + '\n',
+);
 
 process.on('SIGINT', async () => {
   await redis.stop();

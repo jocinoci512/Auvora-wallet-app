@@ -34,7 +34,12 @@ export class AutomationService {
       rendered = renderPrompt(fallbackTemplate, variables);
     }
 
-    const result = await this.chat.chat({ ownerUserId, assistantType, message: rendered, correlationId });
+    const result = await this.chat.chat({
+      ownerUserId,
+      assistantType,
+      message: rendered,
+      correlationId,
+    });
     return {
       text: result.assistantMessage.content,
       conversationId: result.conversation.id,
@@ -42,7 +47,11 @@ export class AutomationService {
     };
   }
 
-  async summarizeCase(ownerUserId: string, caseText: string, correlationId?: string): Promise<AutomationResult> {
+  async summarizeCase(
+    ownerUserId: string,
+    caseText: string,
+    correlationId?: string,
+  ): Promise<AutomationResult> {
     return this.run(
       ownerUserId,
       'COMPLIANCE',
@@ -53,7 +62,11 @@ export class AutomationService {
     );
   }
 
-  async explainTransaction(ownerUserId: string, transactionText: string, correlationId?: string): Promise<AutomationResult> {
+  async explainTransaction(
+    ownerUserId: string,
+    transactionText: string,
+    correlationId?: string,
+  ): Promise<AutomationResult> {
     return this.run(
       ownerUserId,
       'WALLET',
@@ -64,7 +77,11 @@ export class AutomationService {
     );
   }
 
-  async draftSupportTicket(ownerUserId: string, summary: string, correlationId?: string): Promise<AutomationResult> {
+  async draftSupportTicket(
+    ownerUserId: string,
+    summary: string,
+    correlationId?: string,
+  ): Promise<AutomationResult> {
     return this.run(
       ownerUserId,
       'CUSTOMER_SUPPORT',
@@ -75,7 +92,11 @@ export class AutomationService {
     );
   }
 
-  async riskInsight(ownerUserId: string, riskContext: string, correlationId?: string): Promise<AutomationResult> {
+  async riskInsight(
+    ownerUserId: string,
+    riskContext: string,
+    correlationId?: string,
+  ): Promise<AutomationResult> {
     return this.run(
       ownerUserId,
       'FRAUD_ANALYST',

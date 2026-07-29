@@ -78,7 +78,11 @@ describe('WalletEngineService', () => {
       listChains: jest.fn().mockResolvedValue(['ETHEREUM']),
     };
 
-    const engine = new WalletEngineService(walletService as never, repo as never, blockchain as never);
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      blockchain as never,
+    );
     const result = await engine.createWallet({
       ownerUserId: userId,
       assetCode: 'ETH',
@@ -114,7 +118,11 @@ describe('WalletEngineService', () => {
       createAddress: jest.fn(),
       listChains: jest.fn(),
     };
-    const engine = new WalletEngineService(walletService as never, repo as never, blockchain as never);
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      blockchain as never,
+    );
     await expect(
       engine.importPublicAddress(
         { ownerUserId: userId, assetCode: 'ETH', address: 'bad' },
@@ -153,9 +161,13 @@ describe('WalletEngineService', () => {
         preferences: data.preferences,
       })),
     };
-    const engine = new WalletEngineService(walletService as never, repo as never, {
-      listChains: jest.fn(),
-    } as never);
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      {
+        listChains: jest.fn(),
+      } as never,
+    );
 
     const switched = await engine.switchNetwork(walletId, 'BNB_SMART_CHAIN', requester());
     expect((switched.preferences as { activeNetwork?: string }).activeNetwork).toBe(
@@ -175,9 +187,13 @@ describe('WalletEngineService', () => {
     const repo = {
       update: jest.fn().mockResolvedValue(baseWallet),
     };
-    const engine = new WalletEngineService(walletService as never, repo as never, {
-      listChains: jest.fn(),
-    } as never);
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      {
+        listChains: jest.fn(),
+      } as never,
+    );
     const accounts = await engine.discoverAccounts(walletId, requester(), 3);
     expect(accounts).toHaveLength(3);
     expect(accounts[0]?.derivationPath).toContain("44'");
@@ -247,7 +263,12 @@ describe('WalletSyncService + retry', () => {
   });
 
   it('detects balance conflicts', () => {
-    const sync = new WalletSyncService({} as never, {} as never, {} as never, new WalletRetryQueue());
+    const sync = new WalletSyncService(
+      {} as never,
+      {} as never,
+      {} as never,
+      new WalletRetryQueue(),
+    );
     expect(sync.detectConflict('1', '100')).toBe(true);
     expect(sync.detectConflict('1', '1.1')).toBe(false);
   });

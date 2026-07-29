@@ -133,8 +133,8 @@ export default function CustodyPage(): ReactElement {
         <ul>
           {keys.map((key) => (
             <li key={key.id}>
-              <strong>{key.label ?? key.id.slice(0, 8)}</strong> — {key.algorithm} / {key.custodyModel} /{' '}
-              {key.status}
+              <strong>{key.label ?? key.id.slice(0, 8)}</strong> — {key.algorithm} /{' '}
+              {key.custodyModel} / {key.status}
             </li>
           ))}
           {!keys.length && !loading ? <li>No keys yet.</li> : null}

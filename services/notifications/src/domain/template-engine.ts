@@ -55,10 +55,13 @@ export function renderTemplate(
   variables: TemplateVariables,
   format: TemplateFormatCode = 'TEXT',
 ): string {
-  const withConditionals = template.replace(CONDITIONAL_PATTERN, (_match, condition: string, inner: string) => {
-    const value = readPath(variables, condition);
-    return isTruthy(value) ? inner : '';
-  });
+  const withConditionals = template.replace(
+    CONDITIONAL_PATTERN,
+    (_match, condition: string, inner: string) => {
+      const value = readPath(variables, condition);
+      return isTruthy(value) ? inner : '';
+    },
+  );
 
   return withConditionals.replace(VARIABLE_PATTERN, (_match, name: string) => {
     const value = readPath(variables, name);

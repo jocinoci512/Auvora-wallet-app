@@ -26,7 +26,9 @@ export class FeeEngine {
   async getFeeSchedule(chain: ChainNetwork): Promise<Record<FeePriority, FeeEstimate>> {
     const provider = this.providerFactory.getProvider(chain);
     const entries = await Promise.all(
-      PRIORITY_ORDER.map(async (priority) => [priority, await provider.estimateFee(priority)] as const),
+      PRIORITY_ORDER.map(
+        async (priority) => [priority, await provider.estimateFee(priority)] as const,
+      ),
     );
     return Object.fromEntries(entries) as Record<FeePriority, FeeEstimate>;
   }

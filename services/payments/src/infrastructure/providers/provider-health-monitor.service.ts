@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import {
   PROVIDER_FACTORY,
   type ProviderFactoryPort,
@@ -21,7 +27,8 @@ export class ProviderHealthMonitor implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(PROVIDER_FACTORY) private readonly providerFactory: ProviderFactoryPort,
-    @Inject(PROVIDER_RECORD_REPOSITORY) private readonly providerRecords: ProviderRecordRepositoryPort,
+    @Inject(PROVIDER_RECORD_REPOSITORY)
+    private readonly providerRecords: ProviderRecordRepositoryPort,
     @Inject(PROVIDER_HEALTH_REPOSITORY) private readonly healthRepo: ProviderHealthRepositoryPort,
     @Inject(EVENT_BUS) private readonly eventBus: EventBusPort,
     @Inject(ENV) private readonly env: ServiceEnv,
@@ -33,7 +40,9 @@ export class ProviderHealthMonitor implements OnModuleInit, OnModuleDestroy {
     }
     this.timer = setInterval(() => {
       this.runCheck().catch((error: unknown) => {
-        this.logger.error(`Provider health sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `Provider health sweep failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
       });
     }, this.env.SETTLEMENT_INTERVAL_MS);
     this.timer.unref();
@@ -61,7 +70,10 @@ export class ProviderHealthMonitor implements OnModuleInit, OnModuleDestroy {
       if (!result.healthy) {
         await this.eventBus.publish({
           type: PaymentEventType.ProviderUnavailable,
-          payload: { providerCode: provider.getCode(), message: result.message ?? 'provider unhealthy' },
+          payload: {
+            providerCode: provider.getCode(),
+            message: result.message ?? 'provider unhealthy',
+          },
         });
       }
     }

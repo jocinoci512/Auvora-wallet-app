@@ -1,23 +1,11 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import type { JwtAccessClaims } from '@auvora/types';
 import { WalletService } from '../../application/services/wallet.service';
-import {
-  PERMISSION_WALLETS_READ,
-  PERMISSION_WALLETS_WRITE,
-} from '../../domain/permission-codes';
+import { PERMISSION_WALLETS_READ, PERMISSION_WALLETS_WRITE } from '../../domain/permission-codes';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import {
   CreateWalletDto,
   ListUserWalletsQueryDto,

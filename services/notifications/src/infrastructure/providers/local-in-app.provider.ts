@@ -31,7 +31,9 @@ export class LocalInAppProvider implements ChannelProviderPort {
 
   async send(input: ChannelSendRequest): Promise<ChannelSendResult> {
     const startedAt = Date.now();
-    this.logger.log(`IN-PLATFORM DELIVERY -> notificationId=${input.notificationId} recipient=${input.recipient}`);
+    this.logger.log(
+      `IN-PLATFORM DELIVERY -> notificationId=${input.notificationId} recipient=${input.recipient}`,
+    );
     return Promise.resolve({
       providerCode: this.getCode(),
       success: true,

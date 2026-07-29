@@ -67,7 +67,11 @@ describe('ProviderHealthMonitor', () => {
     await monitor.runCheck();
 
     expect(healthRepo.record).toHaveBeenCalledWith(
-      expect.objectContaining({ providerCode: 'crypto-bridge', status: 'UNHEALTHY', errorMessage: 'timeout' }),
+      expect.objectContaining({
+        providerCode: 'crypto-bridge',
+        status: 'UNHEALTHY',
+        errorMessage: 'timeout',
+      }),
     );
     expect(eventBus.publish).toHaveBeenCalledWith(
       expect.objectContaining({

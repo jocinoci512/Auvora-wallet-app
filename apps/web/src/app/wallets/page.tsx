@@ -49,9 +49,17 @@ export default function WalletsPage(): ReactElement {
         title="Wallets"
         subtitle={loading ? 'Loading…' : `${total} wallet${total === 1 ? '' : 's'}`}
         actions={
-          <Link href="/wallets/new">
-            <Button>New wallet</Button>
-          </Link>
+          <>
+            <Link href="/wallets/onboarding">
+              <Button variant="secondary">Onboarding</Button>
+            </Link>
+            <Link href="/activity">
+              <Button variant="ghost">Activity</Button>
+            </Link>
+            <Link href="/wallets/create">
+              <Button>New wallet</Button>
+            </Link>
+          </>
         }
       />
 
@@ -72,7 +80,12 @@ export default function WalletsPage(): ReactElement {
       {error ? (
         <Alert tone="error" title="Could not load wallets">
           <p>{error}</p>
-          <Button type="button" variant="secondary" onClick={() => void load()} style={{ marginTop: '0.75rem' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void load()}
+            style={{ marginTop: '0.75rem' }}
+          >
             Retry
           </Button>
         </Alert>
@@ -83,8 +96,8 @@ export default function WalletsPage(): ReactElement {
           title="No wallets yet"
           description="Create your first wallet to hold balances and start payments."
           action={
-            <Link href="/wallets/new">
-              <Button>Create wallet</Button>
+            <Link href="/wallets/onboarding">
+              <Button>Start onboarding</Button>
             </Link>
           }
         />

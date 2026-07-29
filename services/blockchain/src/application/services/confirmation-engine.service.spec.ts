@@ -3,7 +3,10 @@ import type {
   ChainTransactionRecord,
   ChainTransactionRepositoryPort,
 } from '../ports/chain-transaction-repository.port';
-import type { NetworkConfigRecord, NetworkConfigRepositoryPort } from '../ports/network-config-repository.port';
+import type {
+  NetworkConfigRecord,
+  NetworkConfigRepositoryPort,
+} from '../ports/network-config-repository.port';
 import type { EventBusPort } from '../../domain';
 import { ConfirmationEngine } from './confirmation-engine.service';
 
@@ -76,7 +79,14 @@ describe('ConfirmationEngine', () => {
     };
     const eventBus: EventBusPort = { publish: jest.fn().mockResolvedValue(undefined) };
 
-    const engine = new ConfirmationEngine(transactions, networkConfig, eventBus, notifications as never, ai as never, analytics as never);
+    const engine = new ConfirmationEngine(
+      transactions,
+      networkConfig,
+      eventBus,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
     const tx = buildTx({ blockNumber: '100', requiredConfirmations: 6 });
 
     const belowThreshold = await engine.updateTransactionConfirmations(tx, 102n, 6);
@@ -111,7 +121,14 @@ describe('ConfirmationEngine', () => {
     };
     const eventBus: EventBusPort = { publish: jest.fn() };
 
-    const engine = new ConfirmationEngine(transactions, networkConfig, eventBus, notifications as never, ai as never, analytics as never);
+    const engine = new ConfirmationEngine(
+      transactions,
+      networkConfig,
+      eventBus,
+      notifications as never,
+      ai as never,
+      analytics as never,
+    );
     const mempoolTx = buildTx({ blockNumber: null, status: ChainTxStatus.MEMPOOL });
 
     const result = await engine.updateTransactionConfirmations(mempoolTx, 10n, 3);

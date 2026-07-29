@@ -3,9 +3,10 @@
  * Chaos / failure behavior checks against a running platform.
  * Usage: node scripts/perf/chaos-test.mjs --base http://localhost:4000
  */
-const base = (process.argv.includes('--base')
-  ? process.argv[process.argv.indexOf('--base') + 1]
-  : 'http://localhost:4000'
+const base = (
+  process.argv.includes('--base')
+    ? process.argv[process.argv.indexOf('--base') + 1]
+    : 'http://localhost:4000'
 ).replace(/\/$/, '');
 
 const results = [];
@@ -89,5 +90,11 @@ await check('resilience_metrics_endpoint', async () => {
 });
 
 const failed = results.filter((r) => !r.ok);
-console.log(JSON.stringify({ base, passed: results.length - failed.length, failed: failed.length, results }, null, 2));
+console.log(
+  JSON.stringify(
+    { base, passed: results.length - failed.length, failed: failed.length, results },
+    null,
+    2,
+  ),
+);
 process.exitCode = failed.length ? 1 : 0;

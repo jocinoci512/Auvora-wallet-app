@@ -24,17 +24,24 @@ export function isWithinQuietHours(
   return hourOfDay >= quietHoursStart || hourOfDay < quietHoursEnd;
 }
 
-export function isChannelEnabled(toggles: ChannelToggleMap | null | undefined, channel: string): boolean {
+export function isChannelEnabled(
+  toggles: ChannelToggleMap | null | undefined,
+  channel: string,
+): boolean {
   if (!toggles) return true;
   return toggles[channel] !== false;
 }
 
-export function isCategoryEnabled(toggles: CategoryToggleMap | null | undefined, category: string): boolean {
+export function isCategoryEnabled(
+  toggles: CategoryToggleMap | null | undefined,
+  category: string,
+): boolean {
   if (!toggles) return true;
   return toggles[category] !== false;
 }
 
-export type SuppressionReason = 'CHANNEL_DISABLED' | 'CATEGORY_DISABLED' | 'QUIET_HOURS' | 'FREQUENCY_LIMIT';
+export type SuppressionReason =
+  'CHANNEL_DISABLED' | 'CATEGORY_DISABLED' | 'QUIET_HOURS' | 'FREQUENCY_LIMIT';
 
 export interface SuppressionDecision {
   suppressed: boolean;
@@ -76,7 +83,11 @@ function resolveFrequencyLimit(
 }
 
 /** True when either the hourly or daily cap for the resolved limit has already been reached. */
-export function evaluateFrequencyLimit(limit: FrequencyLimit | undefined, recentHourCount = 0, recentDayCount = 0): boolean {
+export function evaluateFrequencyLimit(
+  limit: FrequencyLimit | undefined,
+  recentHourCount = 0,
+  recentDayCount = 0,
+): boolean {
   if (!limit) return false;
   if (limit.maxPerHour !== undefined && recentHourCount >= limit.maxPerHour) return true;
   if (limit.maxPerDay !== undefined && recentDayCount >= limit.maxPerDay) return true;
@@ -89,7 +100,9 @@ export function evaluateFrequencyLimit(limit: FrequencyLimit | undefined, recent
  * suppression (but not explicit channel/category opt-outs) since they represent
  * security-relevant alerts that must not be throttled.
  */
-export function evaluatePreferenceSuppression(ctx: PreferenceEvaluationContext): SuppressionDecision {
+export function evaluatePreferenceSuppression(
+  ctx: PreferenceEvaluationContext,
+): SuppressionDecision {
   if (!isChannelEnabled(ctx.channelToggles, ctx.channel)) {
     return { suppressed: true, reason: 'CHANNEL_DISABLED' };
   }

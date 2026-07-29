@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  AuvoraClientError,
-  type ChainAddress,
-  type ChainNetwork,
-} from '@auvora/sdk';
+import { AuvoraClientError, type ChainAddress, type ChainNetwork } from '@auvora/sdk';
 import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react';
@@ -158,7 +154,12 @@ export default function BlockchainAddressesPage(): ReactElement {
       {error ? (
         <div className="alert alert--error">
           {error}
-          <Button type="button" variant="secondary" onClick={() => void load()} style={{ marginTop: '0.75rem' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void load()}
+            style={{ marginTop: '0.75rem' }}
+          >
             Retry
           </Button>
         </div>

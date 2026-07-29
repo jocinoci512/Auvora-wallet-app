@@ -16,9 +16,12 @@ function buildPrismaMock() {
     notificationChannelProvider: {
       findMany: jest.fn().mockResolvedValue([{ id: 'p1', priority: 100 }]),
       findUnique: jest.fn().mockResolvedValue({ id: 'p1', priority: 100, isEnabled: true }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
-        Promise.resolve({ id: where.id, ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
+            Promise.resolve({ id: where.id, ...data }),
+        ),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     notificationAuditRecord: {
@@ -33,7 +36,13 @@ describe('DashboardService', () => {
     const prisma = buildPrismaMock();
     const providers = {
       listAll: jest.fn().mockReturnValue([
-        { health: jest.fn().mockResolvedValue({ healthy: true, providerCode: 'sim-email', checkedAt: new Date() }) },
+        {
+          health: jest.fn().mockResolvedValue({
+            healthy: true,
+            providerCode: 'sim-email',
+            checkedAt: new Date(),
+          }),
+        },
       ]),
     };
     const service = new DashboardService(prisma as never, providers as never);
@@ -83,7 +92,9 @@ describe('DashboardService', () => {
       listAll: jest.fn().mockReturnValue([
         {
           getChannel: () => 'EMAIL',
-          health: jest.fn().mockResolvedValue({ healthy: true, providerCode: 'sim-email', checkedAt: new Date() }),
+          health: jest
+            .fn()
+            .mockResolvedValue({ healthy: true, providerCode: 'sim-email', checkedAt: new Date() }),
         },
       ]),
     };
@@ -92,7 +103,10 @@ describe('DashboardService', () => {
     const results = await service.refreshHealth();
     expect(results).toHaveLength(1);
     expect(prisma.notificationChannelProvider.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { channel: 'EMAIL' }, data: expect.objectContaining({ healthStatus: 'HEALTHY' }) }),
+      expect.objectContaining({
+        where: { channel: 'EMAIL' },
+        data: expect.objectContaining({ healthStatus: 'HEALTHY' }),
+      }),
     );
   });
 });

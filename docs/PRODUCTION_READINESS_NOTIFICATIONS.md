@@ -8,14 +8,14 @@ See also: [`docs/diagrams/notification-communication-flow.md`](./diagrams/notifi
 
 ## A. Channel enable/disable without code changes
 
-| Claim | Implementation | How to verify |
-|---|---|---|
-| Channels can be disabled at runtime without a deploy | `ChannelProviderRegistry.resolve()` checks an env kill-switch first, then queries `notification_channel_providers` (`isEnabled`, ordered by `priority`) | `provider-registry.spec.ts` |
-| Two independent disable mechanisms | (1) Env flags `NOTIFICATIONS_CHANNEL_{EMAIL,SMS,PUSH,IN_APP,BROWSER,WEBHOOK,SLACK,TEAMS}_ENABLED` (default `true`) — hard kill-switch, checked before DB. (2) DB `isEnabled` column, toggled via Admin API | Set flag to `false` and restart, or call the admin endpoint below |
-| No enabled provider → safe failure | Throws `ProviderUnavailableError` (never silently drops or crashes the worker) | `provider-registry.spec.ts` — "throws when no enabled provider" cases |
-| Real HTTP backends | `HttpChannelProvider` POSTs `{notificationId, recipient, subject, body, metadata}` with optional `Authorization: Bearer <token>` to `NOTIFICATIONS_{CHANNEL}_PROVIDER_URL` | `http-channel.provider.ts` + provider-registry tests |
-| In-platform channels | `LocalInAppProvider` marks `IN_APP`/`BROWSER` deliveries successful without an external call (in-app inbox is platform-owned) | `local-in-app.provider.ts` |
-| Admin operability | `DashboardService.setProviderEnabled(id, enabled)`, `refreshHealth()`; `POST /providers/:id/enable`, `POST /providers/:id/disable`, `POST /providers/refresh-health` | `dashboard.service.spec.ts`, `admin-notifications.controller.ts` |
+| Claim                                                | Implementation                                                                                                                                                                                             | How to verify                                                         |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Channels can be disabled at runtime without a deploy | `ChannelProviderRegistry.resolve()` checks an env kill-switch first, then queries `notification_channel_providers` (`isEnabled`, ordered by `priority`)                                                    | `provider-registry.spec.ts`                                           |
+| Two independent disable mechanisms                   | (1) Env flags `NOTIFICATIONS_CHANNEL_{EMAIL,SMS,PUSH,IN_APP,BROWSER,WEBHOOK,SLACK,TEAMS}_ENABLED` (default `true`) — hard kill-switch, checked before DB. (2) DB `isEnabled` column, toggled via Admin API | Set flag to `false` and restart, or call the admin endpoint below     |
+| No enabled provider → safe failure                   | Throws `ProviderUnavailableError` (never silently drops or crashes the worker)                                                                                                                             | `provider-registry.spec.ts` — "throws when no enabled provider" cases |
+| Real HTTP backends                                   | `HttpChannelProvider` POSTs `{notificationId, recipient, subject, body, metadata}` with optional `Authorization: Bearer <token>` to `NOTIFICATIONS_{CHANNEL}_PROVIDER_URL`                                 | `http-channel.provider.ts` + provider-registry tests                  |
+| In-platform channels                                 | `LocalInAppProvider` marks `IN_APP`/`BROWSER` deliveries successful without an external call (in-app inbox is platform-owned)                                                                              | `local-in-app.provider.ts`                                            |
+| Admin operability                                    | `DashboardService.setProviderEnabled(id, enabled)`, `refreshHealth()`; `POST /providers/:id/enable`, `POST /providers/:id/disable`, `POST /providers/refresh-health`                                       | `dashboard.service.spec.ts`, `admin-notifications.controller.ts`      |
 
 ### How to disable a channel in production
 
@@ -68,14 +68,14 @@ Every producing service (`auth`, `wallet`, `payments`, `compliance`, `custody`,
   configured, it logs at `debug` and returns immediately.
 - **Wired into a real completion path in each service:**
 
-| Service | Wired call site | Event type |
-|---|---|---|
-| Auth | `NotificationsMailAdapter.send` | (mail dispatch, not a domain event) |
-| Wallet | `WalletService.createInternalTransfer` | `wallet.transfer.completed` |
-| Payments | `PaymentOrchestratorService` (wallet + provider routes) | `payment.completed` |
-| Compliance | `KycService.approve` | `compliance.kyc.approved` |
-| Custody | `SigningService.execute` (successful sign) | `custody.signing.completed` |
-| Blockchain | `ConfirmationEngine.updateTransactionConfirmations` (threshold reached) | `blockchain.transaction.confirmed` |
+| Service    | Wired call site                                                         | Event type                          |
+| ---------- | ----------------------------------------------------------------------- | ----------------------------------- |
+| Auth       | `NotificationsMailAdapter.send`                                         | (mail dispatch, not a domain event) |
+| Wallet     | `WalletService.createInternalTransfer`                                  | `wallet.transfer.completed`         |
+| Payments   | `PaymentOrchestratorService` (wallet + provider routes)                 | `payment.completed`                 |
+| Compliance | `KycService.approve`                                                    | `compliance.kyc.approved`           |
+| Custody    | `SigningService.execute` (successful sign)                              | `custody.signing.completed`         |
+| Blockchain | `ConfirmationEngine.updateTransactionConfirmations` (threshold reached) | `blockchain.transaction.confirmed`  |
 
 ## G. Documentation
 

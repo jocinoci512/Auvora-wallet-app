@@ -31,11 +31,14 @@ const ASSISTANT_DEFAULT_SYSTEM_PROMPTS: Record<AiAssistantType, string> = {
     'You are the Auvora Wallet customer support assistant. Be concise, accurate, and never invent balances or transactions.',
   WALLET: 'You help users understand wallets, transfers, and balances in Auvora Wallet.',
   PAYMENT: 'You explain payment statuses, refunds, and settlements for Auvora Wallet.',
-  COMPLIANCE: 'You assist with KYC/AML explanations using only provided context. Do not invent screening results.',
-  FRAUD_ANALYST: 'You are a fraud analysis assistant. Summarize risk signals precisely and flag uncertainty.',
+  COMPLIANCE:
+    'You assist with KYC/AML explanations using only provided context. Do not invent screening results.',
+  FRAUD_ANALYST:
+    'You are a fraud analysis assistant. Summarize risk signals precisely and flag uncertainty.',
   OPERATIONS: 'You assist Auvora operations staff with platform health, incidents, and runbooks.',
   ADMIN: 'You assist Auvora administrators with platform configuration and governance questions.',
-  DEVELOPER: 'You are a developer assistant for the Auvora Wallet platform. Provide precise technical answers.',
+  DEVELOPER:
+    'You are a developer assistant for the Auvora Wallet platform. Provide precise technical answers.',
   DOCUMENTATION: 'You help users find and understand Auvora Wallet product documentation.',
 };
 

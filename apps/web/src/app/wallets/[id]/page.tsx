@@ -79,9 +79,7 @@ export default function WalletDetailPage(): ReactElement {
     }
   }
 
-  async function runAction(
-    action: 'suspend' | 'archive' | 'restore' | 'activate',
-  ): Promise<void> {
+  async function runAction(action: 'suspend' | 'archive' | 'restore' | 'activate'): Promise<void> {
     setActing(true);
     setActionError(null);
     try {
@@ -194,11 +192,19 @@ export default function WalletDetailPage(): ReactElement {
         <form className="form-inline" onSubmit={(e) => void handleSave(e)}>
           <label className="field">
             <span className="field-label">Label</span>
-            <input className="field-input" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <input
+              className="field-input"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
           </label>
           <label className="field">
             <span className="field-label">Alias</span>
-            <input className="field-input" value={alias} onChange={(e) => setAlias(e.target.value)} />
+            <input
+              className="field-input"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+            />
           </label>
           <Button type="submit" disabled={saving}>
             {saving ? 'Saving…' : 'Save changes'}
@@ -216,10 +222,20 @@ export default function WalletDetailPage(): ReactElement {
           ) : null}
           {wallet.status === 'ACTIVE' ? (
             <>
-              <Button type="button" variant="secondary" disabled={acting} onClick={() => void runAction('suspend')}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={acting}
+                onClick={() => void runAction('suspend')}
+              >
                 Suspend
               </Button>
-              <Button type="button" variant="ghost" disabled={acting} onClick={() => void runAction('archive')}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={acting}
+                onClick={() => void runAction('archive')}
+              >
                 Archive
               </Button>
             </>
@@ -229,7 +245,12 @@ export default function WalletDetailPage(): ReactElement {
               <Button type="button" disabled={acting} onClick={() => void runAction('restore')}>
                 Restore
               </Button>
-              <Button type="button" variant="ghost" disabled={acting} onClick={() => void runAction('archive')}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={acting}
+                onClick={() => void runAction('archive')}
+              >
                 Archive
               </Button>
             </>

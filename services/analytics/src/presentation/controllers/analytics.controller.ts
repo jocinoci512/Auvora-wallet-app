@@ -2,15 +2,7 @@ import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/commo
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AnalyticsDomain, ReportFormat } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
-import {
-  IsInt,
-  IsObject,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-  MinLength,
-} from 'class-validator';
+import { IsInt, IsObject, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 import { DashboardService } from '../../application/services/dashboard.service';
 import { ForecastService } from '../../application/services/forecast.service';
 import { InsightsService } from '../../application/services/insights.service';
@@ -24,7 +16,7 @@ import {
   PERMISSION_ANALYTICS_REPORTS,
   PERMISSION_ANALYTICS_WRITE,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions } from '../decorators/auth.decorators';
 import { CorrelationId, CurrentUser } from '../decorators/current-user.decorator';
 
@@ -127,7 +119,10 @@ export class AnalyticsController {
 
   @Get('dashboards')
   @Permissions(PERMISSION_ANALYTICS_READ)
-  async listDashboards(@CurrentUser() user: JwtAccessClaims, @Query('domain') domain?: AnalyticsDomain) {
+  async listDashboards(
+    @CurrentUser() user: JwtAccessClaims,
+    @Query('domain') domain?: AnalyticsDomain,
+  ) {
     return successResponse(await this.dashboards.listForUser(user.sub, { domain }));
   }
 
@@ -191,7 +186,9 @@ export class AnalyticsController {
   @Permissions(PERMISSION_ANALYTICS_READ)
   async runForecast(@Param('code') code: string, @Query('horizon') horizon?: string) {
     const parsedHorizon = horizon ? Number.parseInt(horizon, 10) : 7;
-    return successResponse(await this.forecasts.run(code, Number.isFinite(parsedHorizon) ? parsedHorizon : 7));
+    return successResponse(
+      await this.forecasts.run(code, Number.isFinite(parsedHorizon) ? parsedHorizon : 7),
+    );
   }
 
   @Get('insights')

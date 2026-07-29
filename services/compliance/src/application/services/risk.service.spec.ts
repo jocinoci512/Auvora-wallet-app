@@ -6,13 +6,17 @@ function makeService(overrides: { profile?: unknown } = {}) {
     kycProfile: {
       findUnique: jest
         .fn()
-        .mockResolvedValue(overrides.profile !== undefined ? overrides.profile : { id: 'profile-1' }),
+        .mockResolvedValue(
+          overrides.profile !== undefined ? overrides.profile : { id: 'profile-1' },
+        ),
       update: jest.fn().mockResolvedValue({}),
     },
     riskScoreRecord: {
-      create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'risk-1', ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'risk-1', ...data }),
+        ),
       findFirst: jest.fn().mockResolvedValue({ id: 'risk-1', score: 42 }),
       findMany: jest.fn().mockResolvedValue([{ id: 'risk-1', score: 42 }]),
     },
@@ -53,7 +57,10 @@ describe('RiskService', () => {
     const { service, events } = makeService();
     await service.scoreCustomer({ ownerUserId: 'user-1', factors: {} });
     expect(events.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'RiskScoreUpdated', payload: expect.objectContaining({ ownerUserId: 'user-1' }) }),
+      expect.objectContaining({
+        type: 'RiskScoreUpdated',
+        payload: expect.objectContaining({ ownerUserId: 'user-1' }),
+      }),
     );
   });
 

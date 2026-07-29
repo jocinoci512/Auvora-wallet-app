@@ -21,6 +21,12 @@ COPY services/analytics/package.json ./services/analytics/
 COPY services/ai/package.json ./services/ai/
 COPY services/custody/package.json ./services/custody/
 COPY services/observability/package.json ./services/observability/
+COPY services/market-data/package.json ./services/market-data/
+COPY services/swap/package.json ./services/swap/
+COPY services/nft/package.json ./services/nft/
+COPY services/staking/package.json ./services/staking/
+COPY services/connections/package.json ./services/connections/
+COPY services/bridge/package.json ./services/bridge/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build

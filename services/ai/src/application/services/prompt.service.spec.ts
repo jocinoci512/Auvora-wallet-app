@@ -7,26 +7,37 @@ function buildPrismaMock() {
 
   return {
     aiPromptTemplate: {
-      findUnique: jest.fn().mockImplementation(({ where }: { where: { id?: string; code?: string } }) => {
-        if (where.id) return Promise.resolve(templates.get(where.id) ?? null);
-        const found = [...templates.values()].find((t) => t['code'] === where.code);
-        return Promise.resolve(found ?? null);
-      }),
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where }: { where: { id?: string; code?: string } }) => {
+          if (where.id) return Promise.resolve(templates.get(where.id) ?? null);
+          const found = [...templates.values()].find((t) => t['code'] === where.code);
+          return Promise.resolve(found ?? null);
+        }),
       create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
         const id = `tpl-${templates.size + 1}`;
         const { versions: versionCreate, ...rest } = data;
         const record = { id, createdAt: new Date(), updatedAt: new Date(), ...rest };
         templates.set(id, record);
         const versionData = (versionCreate as { create: Record<string, unknown> }).create;
-        versions.set(`${id}:${versionData['version']}`, { id: `ver-${id}-1`, templateId: id, createdAt: new Date(), ...versionData });
+        versions.set(`${id}:${versionData['version']}`, {
+          id: `ver-${id}-1`,
+          templateId: id,
+          createdAt: new Date(),
+          ...versionData,
+        });
         return Promise.resolve(record);
       }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const existing = templates.get(where.id) ?? {};
-        const updated = { ...existing, ...data };
-        templates.set(where.id, updated);
-        return Promise.resolve(updated);
-      }),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+            const existing = templates.get(where.id) ?? {};
+            const updated = { ...existing, ...data };
+            templates.set(where.id, updated);
+            return Promise.resolve(updated);
+          },
+        ),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
     },
@@ -37,12 +48,18 @@ function buildPrismaMock() {
         versions.set(key, record);
         return Promise.resolve(record);
       }),
-      findUnique: jest.fn().mockImplementation(
-        ({ where }: { where: { templateId_version: { templateId: string; version: number } } }) => {
-          const key = `${where.templateId_version.templateId}:${where.templateId_version.version}`;
-          return Promise.resolve(versions.get(key) ?? null);
-        },
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(
+          ({
+            where,
+          }: {
+            where: { templateId_version: { templateId: string; version: number } };
+          }) => {
+            const key = `${where.templateId_version.templateId}:${where.templateId_version.version}`;
+            return Promise.resolve(versions.get(key) ?? null);
+          },
+        ),
       findMany: jest.fn().mockResolvedValue([]),
     },
     __templates: templates,
@@ -73,17 +90,32 @@ describe('PromptService', () => {
   it('throws ConflictError when creating a template with a duplicate code', async () => {
     const prisma = buildPrismaMock();
     const service = new PromptService(prisma as never, buildAuditMock() as never);
-    await service.create({ code: 'dup', name: 'Dup', category: 'SUPPORT' as never, userPrompt: 'hi' });
+    await service.create({
+      code: 'dup',
+      name: 'Dup',
+      category: 'SUPPORT' as never,
+      userPrompt: 'hi',
+    });
 
     await expect(
-      service.create({ code: 'dup', name: 'Dup 2', category: 'SUPPORT' as never, userPrompt: 'hi' }),
+      service.create({
+        code: 'dup',
+        name: 'Dup 2',
+        category: 'SUPPORT' as never,
+        userPrompt: 'hi',
+      }),
     ).rejects.toThrow(ConflictError);
   });
 
   it('creates a new version and bumps currentVersion back to DRAFT', async () => {
     const prisma = buildPrismaMock();
     const service = new PromptService(prisma as never, buildAuditMock() as never);
-    const template = await service.create({ code: 'v-test', name: 'V', category: 'SUPPORT' as never, userPrompt: 'v1' });
+    const template = await service.create({
+      code: 'v-test',
+      name: 'V',
+      category: 'SUPPORT' as never,
+      userPrompt: 'v1',
+    });
 
     const updated = await service.createVersion(template['id'] as string, { userPrompt: 'v2' });
     expect(updated.currentVersion).toBe(2);
@@ -109,11 +141,19 @@ describe('PromptService', () => {
     const prisma = buildPrismaMock();
     const audit = buildAuditMock();
     const service = new PromptService(prisma as never, audit as never);
-    const template = await service.create({ code: 'lifecycle', name: 'L', category: 'SUPPORT' as never, userPrompt: 'hi' });
+    const template = await service.create({
+      code: 'lifecycle',
+      name: 'L',
+      category: 'SUPPORT' as never,
+      userPrompt: 'hi',
+    });
 
     const approved = await service.approve(template['id'] as string, 'admin-1');
     expect(approved.status).toBe('APPROVED');
-    expect(audit.record).toHaveBeenCalledWith('ai.prompt.approved', expect.objectContaining({ actorUserId: 'admin-1' }));
+    expect(audit.record).toHaveBeenCalledWith(
+      'ai.prompt.approved',
+      expect.objectContaining({ actorUserId: 'admin-1' }),
+    );
 
     const archived = await service.archive(template['id'] as string);
     expect(archived.status).toBe('ARCHIVED');
@@ -123,7 +163,12 @@ describe('PromptService', () => {
   it('rolls back to a historic version by creating a new version with the old content', async () => {
     const prisma = buildPrismaMock();
     const service = new PromptService(prisma as never, buildAuditMock() as never);
-    const template = await service.create({ code: 'rollback-test', name: 'R', category: 'SUPPORT' as never, userPrompt: 'v1 content' });
+    const template = await service.create({
+      code: 'rollback-test',
+      name: 'R',
+      category: 'SUPPORT' as never,
+      userPrompt: 'v1 content',
+    });
     await service.createVersion(template['id'] as string, { userPrompt: 'v2 content' });
 
     const rolledBack = await service.rollback(template['id'] as string, 1);
@@ -137,7 +182,12 @@ describe('PromptService', () => {
   it('rejects rolling back to the currently active version', async () => {
     const prisma = buildPrismaMock();
     const service = new PromptService(prisma as never, buildAuditMock() as never);
-    const template = await service.create({ code: 'noop-rollback', name: 'N', category: 'SUPPORT' as never, userPrompt: 'v1' });
+    const template = await service.create({
+      code: 'noop-rollback',
+      name: 'N',
+      category: 'SUPPORT' as never,
+      userPrompt: 'v1',
+    });
 
     await expect(service.rollback(template['id'] as string, 1)).rejects.toThrow(ValidationError);
   });
@@ -152,7 +202,12 @@ describe('PromptService', () => {
     it('moves a DRAFT template to PENDING_APPROVAL via submitForApproval', async () => {
       const prisma = buildPrismaMock();
       const service = new PromptService(prisma as never, buildAuditMock() as never);
-      const template = await service.create({ code: 'submit-test', name: 'S', category: 'SUPPORT' as never, userPrompt: 'hi' });
+      const template = await service.create({
+        code: 'submit-test',
+        name: 'S',
+        category: 'SUPPORT' as never,
+        userPrompt: 'hi',
+      });
 
       const submitted = await service.submitForApproval(template['id'] as string);
       expect(submitted.status).toBe('PENDING_APPROVAL');
@@ -161,16 +216,28 @@ describe('PromptService', () => {
     it('rejects submitting a template that is not in DRAFT', async () => {
       const prisma = buildPrismaMock();
       const service = new PromptService(prisma as never, buildAuditMock() as never);
-      const template = await service.create({ code: 'submit-twice', name: 'S', category: 'SUPPORT' as never, userPrompt: 'hi' });
+      const template = await service.create({
+        code: 'submit-twice',
+        name: 'S',
+        category: 'SUPPORT' as never,
+        userPrompt: 'hi',
+      });
       await service.submitForApproval(template['id'] as string);
 
-      await expect(service.submitForApproval(template['id'] as string)).rejects.toThrow(ValidationError);
+      await expect(service.submitForApproval(template['id'] as string)).rejects.toThrow(
+        ValidationError,
+      );
     });
 
     it('rejects a PENDING_APPROVAL template back to DRAFT', async () => {
       const prisma = buildPrismaMock();
       const service = new PromptService(prisma as never, buildAuditMock() as never);
-      const template = await service.create({ code: 'reject-test', name: 'R', category: 'SUPPORT' as never, userPrompt: 'hi' });
+      const template = await service.create({
+        code: 'reject-test',
+        name: 'R',
+        category: 'SUPPORT' as never,
+        userPrompt: 'hi',
+      });
       await service.submitForApproval(template['id'] as string);
 
       const rejected = await service.reject(template['id'] as string);
@@ -180,7 +247,12 @@ describe('PromptService', () => {
     it('rejects calling reject on a template that is not pending approval', async () => {
       const prisma = buildPrismaMock();
       const service = new PromptService(prisma as never, buildAuditMock() as never);
-      const template = await service.create({ code: 'reject-invalid', name: 'R', category: 'SUPPORT' as never, userPrompt: 'hi' });
+      const template = await service.create({
+        code: 'reject-invalid',
+        name: 'R',
+        category: 'SUPPORT' as never,
+        userPrompt: 'hi',
+      });
 
       await expect(service.reject(template['id'] as string)).rejects.toThrow(ValidationError);
     });
@@ -188,7 +260,12 @@ describe('PromptService', () => {
     it('getActiveVersionByCode only serves APPROVED and enabled templates (the chat/automation gate)', async () => {
       const prisma = buildPrismaMock();
       const service = new PromptService(prisma as never, buildAuditMock() as never);
-      const template = await service.create({ code: 'gate-test', name: 'G', category: 'SUPPORT' as never, userPrompt: 'hi' });
+      const template = await service.create({
+        code: 'gate-test',
+        name: 'G',
+        category: 'SUPPORT' as never,
+        userPrompt: 'hi',
+      });
 
       // Still DRAFT: not servable to the live chat path.
       await expect(service.getActiveVersionByCode('gate-test')).rejects.toThrow(NotFoundError);
@@ -205,7 +282,12 @@ describe('PromptService', () => {
     it('createVersion and rollback reset an APPROVED template back to DRAFT, closing the gate', async () => {
       const prisma = buildPrismaMock();
       const service = new PromptService(prisma as never, buildAuditMock() as never);
-      const template = await service.create({ code: 'regate-test', name: 'G', category: 'SUPPORT' as never, userPrompt: 'v1' });
+      const template = await service.create({
+        code: 'regate-test',
+        name: 'G',
+        category: 'SUPPORT' as never,
+        userPrompt: 'v1',
+      });
       await service.approve(template['id'] as string);
       await expect(service.getActiveVersionByCode('regate-test')).resolves.toBeDefined();
 

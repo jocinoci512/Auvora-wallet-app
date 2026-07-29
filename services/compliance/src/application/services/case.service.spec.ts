@@ -24,19 +24,25 @@ function makeService() {
     complianceCase: {
       findMany: jest.fn().mockImplementation(() => Promise.resolve(Array.from(cases.values()))),
       count: jest.fn().mockResolvedValue(0),
-      findUnique: jest.fn().mockImplementation(({ where }: { where: { id: string } }) =>
-        Promise.resolve(cases.get(where.id) ?? null),
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where }: { where: { id: string } }) =>
+          Promise.resolve(cases.get(where.id) ?? null),
+        ),
       create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
         const created = { id: 'case-1', status: 'OPEN', ...data };
         cases.set(created.id, created);
         return Promise.resolve(created);
       }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const updated = { ...(cases.get(where.id) ?? {}), ...data };
-        cases.set(where.id, updated);
-        return Promise.resolve(updated);
-      }),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+            const updated = { ...(cases.get(where.id) ?? {}), ...data };
+            cases.set(where.id, updated);
+            return Promise.resolve(updated);
+          },
+        ),
     },
     complianceCaseNote: { create: jest.fn().mockResolvedValue({ id: 'note-1' }) },
     complianceCaseAttachment: { create: jest.fn().mockResolvedValue({ id: 'attachment-1' }) },
@@ -44,7 +50,11 @@ function makeService() {
   };
   const ids = { uuid: () => 'generated-id' };
   const events = { publish: jest.fn() };
-  const crypto = { encrypt: (v: string) => `enc:${v}`, decrypt: (v: string) => v, hash: (v: string) => `hash:${v}` };
+  const crypto = {
+    encrypt: (v: string) => `enc:${v}`,
+    decrypt: (v: string) => v,
+    hash: (v: string) => `hash:${v}`,
+  };
   const service = new CaseService(prisma as never, ids as never, events as never, crypto as never);
   return { service, prisma, events };
 }
@@ -55,12 +65,16 @@ describe('CaseService', () => {
     const opened = await service.open({ title: 'Suspicious wire transfer' }, CASE_MANAGER);
     expect(opened.title).toBe('Suspicious wire transfer');
     expect(prisma.complianceCaseAudit.create).toHaveBeenCalled();
-    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'ComplianceCaseOpened' }));
+    expect(events.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ComplianceCaseOpened' }),
+    );
   });
 
   it('rejects case creation without the cases permission', async () => {
     const { service } = makeService();
-    await expect(service.open({ title: 'No permission' }, PLAIN_USER)).rejects.toThrow(ForbiddenError);
+    await expect(service.open({ title: 'No permission' }, PLAIN_USER)).rejects.toThrow(
+      ForbiddenError,
+    );
   });
 
   it('assigns a case to an investigator', async () => {
@@ -73,13 +87,19 @@ describe('CaseService', () => {
   it('adds a note to an existing case', async () => {
     const { service } = makeService();
     const opened = await service.open({ title: 'Case with notes' }, CASE_MANAGER);
-    const note = await service.addNote(opened.id as string, 'Reviewed transaction history', CASE_MANAGER);
+    const note = await service.addNote(
+      opened.id as string,
+      'Reviewed transaction history',
+      CASE_MANAGER,
+    );
     expect(note).toMatchObject({ id: 'note-1' });
   });
 
   it('throws when adding a note to a missing case', async () => {
     const { service } = makeService();
-    await expect(service.addNote('missing-case', 'note', CASE_MANAGER)).rejects.toThrow(NotFoundError);
+    await expect(service.addNote('missing-case', 'note', CASE_MANAGER)).rejects.toThrow(
+      NotFoundError,
+    );
   });
 
   it('resolves a case and publishes a closed event', async () => {
@@ -87,6 +107,8 @@ describe('CaseService', () => {
     const opened = await service.open({ title: 'Resolvable case' }, CASE_MANAGER);
     const resolved = await service.resolve(opened.id as string, 'False positive', CASE_MANAGER);
     expect(resolved).toMatchObject({ status: 'RESOLVED', resolution: 'False positive' });
-    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'ComplianceCaseClosed' }));
+    expect(events.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ComplianceCaseClosed' }),
+    );
   });
 });

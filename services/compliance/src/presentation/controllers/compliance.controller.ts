@@ -6,7 +6,7 @@ import { KycService } from '../../application/services/kyc.service';
 import { RiskService } from '../../application/services/risk.service';
 import { DashboardService } from '../../application/services/dashboard.service';
 import { PERMISSION_COMPLIANCE_READ, PERMISSION_COMPLIANCE_WRITE } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';

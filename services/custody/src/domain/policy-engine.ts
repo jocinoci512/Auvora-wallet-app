@@ -81,7 +81,10 @@ export interface EvaluatedPolicy {
   matched: boolean;
 }
 
-export function evaluatePolicySet(policies: PolicyDefinition[], ctx: PolicyContext): EvaluatedPolicy[] {
+export function evaluatePolicySet(
+  policies: PolicyDefinition[],
+  ctx: PolicyContext,
+): EvaluatedPolicy[] {
   return policies
     .filter((policy) => policy.isEnabled)
     .sort((a, b) => a.priority - b.priority)

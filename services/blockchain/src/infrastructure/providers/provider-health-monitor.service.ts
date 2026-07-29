@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import {
   PROVIDER_FACTORY,
   type ProviderFactoryPort,
@@ -26,7 +32,8 @@ export class ProviderHealthMonitor implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(PROVIDER_FACTORY) private readonly providerFactory: ProviderFactoryPort,
     @Inject(NETWORK_CONFIG_REPOSITORY) private readonly networkConfig: NetworkConfigRepositoryPort,
-    @Inject(PROVIDER_RECORD_REPOSITORY) private readonly providerRecords: ProviderRecordRepositoryPort,
+    @Inject(PROVIDER_RECORD_REPOSITORY)
+    private readonly providerRecords: ProviderRecordRepositoryPort,
     @Inject(PROVIDER_HEALTH_REPOSITORY) private readonly healthRepo: ProviderHealthRepositoryPort,
     @Inject(EVENT_BUS) private readonly eventBus: EventBusPort,
     @Inject(ENV) private readonly env: ServiceEnv,
@@ -36,7 +43,9 @@ export class ProviderHealthMonitor implements OnModuleInit, OnModuleDestroy {
     const intervalMs = this.env.BLOCKCHAIN_SYNC_INTERVAL_MS * 3;
     this.timer = setInterval(() => {
       this.runCheck().catch((error: unknown) => {
-        this.logger.error(`Provider health sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `Provider health sweep failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
       });
     }, intervalMs);
     this.timer.unref();

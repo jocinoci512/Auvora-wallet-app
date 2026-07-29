@@ -64,8 +64,8 @@ export default function AdminSettlementsPage(): ReactElement {
       <ul>
         {batches.map((batch) => (
           <li key={batch.id}>
-            {batch.reference} — {batch.mode} / {batch.status} — {batch.totalAmount} {batch.currency} (
-            {batch.paymentCount} payments)
+            {batch.reference} — {batch.mode} / {batch.status} — {batch.totalAmount} {batch.currency}{' '}
+            ({batch.paymentCount} payments)
           </li>
         ))}
       </ul>

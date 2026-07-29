@@ -43,7 +43,11 @@ describe('BroadcastService', () => {
     });
 
     expect(prisma.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ roles: { some: { role: { name: { in: ['compliance_officer'] } } } } }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          roles: { some: { role: { name: { in: ['compliance_officer'] } } } },
+        }),
+      }),
     );
   });
 
@@ -53,7 +57,11 @@ describe('BroadcastService', () => {
     const service = new BroadcastService(prisma as never, notifications as never);
 
     await expect(
-      service.broadcast('admin-1', { category: 'ADMIN' as never, channel: 'EMAIL' as never, body: 'x' }),
+      service.broadcast('admin-1', {
+        category: 'ADMIN' as never,
+        channel: 'EMAIL' as never,
+        body: 'x',
+      }),
     ).rejects.toThrow(ValidationError);
   });
 });

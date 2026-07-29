@@ -8,12 +8,18 @@ import { AesFieldEncryptionAdapter, FIELD_ENCRYPTION } from './crypto/field-encr
 import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,
 } from './observability/observability-publisher.adapter';
-import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  NotificationsPublisherAdapter,
+} from './notifications/notifications-publisher.adapter';
 import { CustodyProviderRegistry } from './providers/provider-registry';
 import { SimulatorCustodyProvider } from './providers/simulator.provider';
 import { UnavailableCustodyProvider } from './providers/unavailable.provider';

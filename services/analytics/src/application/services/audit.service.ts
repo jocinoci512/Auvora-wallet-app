@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  PrismaService,
-  type AnalyticsAuditRecord,
-  type Prisma,
-} from '@auvora/database';
+import { PrismaService, type AnalyticsAuditRecord, type Prisma } from '@auvora/database';
 
 export interface AuditRecordOptions {
   actorUserId?: string;

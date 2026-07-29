@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  PrismaService,
-  type ReportFormat,
-  type Prisma,
-} from '@auvora/database';
+import { PrismaService, type ReportFormat, type Prisma } from '@auvora/database';
 import {
   AnalyticsEventType,
   EVENT_BUS,
@@ -13,7 +9,10 @@ import {
   type EventBusPort,
   type ReportRow,
 } from '../../domain';
-import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../../infrastructure/crypto/field-encryption.adapter';
+import {
+  FIELD_ENCRYPTION,
+  type FieldEncryptionPort,
+} from '../../infrastructure/crypto/field-encryption.adapter';
 import { CLOCK, type ClockPort } from '../ports/clock.port';
 import { AuditService } from './audit.service';
 import { MetricsService } from './metrics.service';
@@ -115,8 +114,7 @@ export class ReportService {
       const format = input.format ?? 'JSON';
       const rows = await this.buildRows(querySpec);
       const exported = exportReport(format, rows);
-      const serialized =
-        typeof exported === 'string' ? exported : JSON.stringify(exported);
+      const serialized = typeof exported === 'string' ? exported : JSON.stringify(exported);
       const encrypted = this.encryption.encrypt(serialized);
       const checksum = this.encryption.hash(serialized);
       const now = this.clock.now();

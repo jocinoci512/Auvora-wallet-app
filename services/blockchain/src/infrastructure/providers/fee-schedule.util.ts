@@ -14,7 +14,9 @@ export const DEFAULT_FEE_MULTIPLIERS: Record<FeePriority, number> = {
 };
 
 /** Reads the optional `{ fees: { base, unit, multipliers } }` shape from BlockchainNetworkConfig.metadata. */
-export function extractFeeMetadata(metadata: Prisma.JsonValue | null | undefined): FeeScheduleMetadata | null {
+export function extractFeeMetadata(
+  metadata: Prisma.JsonValue | null | undefined,
+): FeeScheduleMetadata | null {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return null;
   }

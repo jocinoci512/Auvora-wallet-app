@@ -43,10 +43,14 @@ await check('timeout_policy', async () => {
   const metrics = createMetrics();
   await expectReject(
     () =>
-      withTimeout(async () => {
-        await new Promise((r) => setTimeout(r, 40));
-        return 'late';
-      }, 5, metrics),
+      withTimeout(
+        async () => {
+          await new Promise((r) => setTimeout(r, 40));
+          return 'late';
+        },
+        5,
+        metrics,
+      ),
     TimeoutError,
   );
   if (metrics.timeouts < 1) throw new Error('timeout metric not incremented');
@@ -77,14 +81,25 @@ await check('circuit_breaker_opens_and_fallback', async () => {
     resetTimeoutMs: 60_000,
     metrics,
   });
-  await expectReject(() => breaker.exec(async () => {
-    throw new Error('down');
-  }), Error);
-  await expectReject(() => breaker.exec(async () => {
-    throw new Error('down');
-  }), Error);
+  await expectReject(
+    () =>
+      breaker.exec(async () => {
+        throw new Error('down');
+      }),
+    Error,
+  );
+  await expectReject(
+    () =>
+      breaker.exec(async () => {
+        throw new Error('down');
+      }),
+    Error,
+  );
   if (breaker.getState() !== 'open') throw new Error(`expected open, got ${breaker.getState()}`);
-  const fallback = await breaker.exec(async () => 'nope', async () => 'degraded');
+  const fallback = await breaker.exec(
+    async () => 'nope',
+    async () => 'degraded',
+  );
   if (fallback !== 'degraded') throw new Error('fallback missing');
   await expectReject(() => breaker.exec(async () => 'nope'), CircuitOpenError);
   return { state: breaker.getState(), metrics };
@@ -133,6 +148,12 @@ async function expectReject(fn, ErrorType) {
 }
 
 const failed = results.filter((r) => !r.ok);
-console.log(JSON.stringify({ passed: results.length - failed.length, failed: failed.length, results }, null, 2));
+console.log(
+  JSON.stringify(
+    { passed: results.length - failed.length, failed: failed.length, results },
+    null,
+    2,
+  ),
+);
 process.exitCode = failed.length ? 0 : 0;
 if (failed.length) process.exitCode = 1;

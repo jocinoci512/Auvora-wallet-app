@@ -77,14 +77,17 @@ export class AdminPaymentsService {
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: PaymentRepositoryPort,
     @Inject(PROVIDER_RECORD_REPOSITORY) private readonly providers: ProviderRecordRepositoryPort,
-    @Inject(PROVIDER_HEALTH_REPOSITORY) private readonly providerHealth: ProviderHealthRepositoryPort,
+    @Inject(PROVIDER_HEALTH_REPOSITORY)
+    private readonly providerHealth: ProviderHealthRepositoryPort,
     @Inject(REFUND_REPOSITORY) private readonly refunds: RefundRepositoryPort,
     @Inject(DISPUTE_REPOSITORY) private readonly disputes: DisputeRepositoryPort,
     @Inject(CHARGEBACK_REPOSITORY) private readonly chargebacks: ChargebackRepositoryPort,
     @Inject(LIMIT_REPOSITORY) private readonly limits: LimitRepositoryPort,
-    @Inject(RECONCILIATION_REPOSITORY) private readonly reconciliations: ReconciliationRepositoryPort,
+    @Inject(RECONCILIATION_REPOSITORY)
+    private readonly reconciliations: ReconciliationRepositoryPort,
     @Inject(SETTLEMENT_REPOSITORY) private readonly settlements: SettlementRepositoryPort,
-    @Inject(SETTLEMENT_BATCH_REPOSITORY) private readonly settlementBatches: SettlementBatchRepositoryPort,
+    @Inject(SETTLEMENT_BATCH_REPOSITORY)
+    private readonly settlementBatches: SettlementBatchRepositoryPort,
   ) {}
 
   async getMetrics(): Promise<AdminMetrics> {
@@ -127,7 +130,9 @@ export class AdminPaymentsService {
     return this.providers.listAll();
   }
 
-  listHealth(filters: ProviderHealthFilters): Promise<{ items: ProviderHealthRecord[]; total: number }> {
+  listHealth(
+    filters: ProviderHealthFilters,
+  ): Promise<{ items: ProviderHealthRecord[]; total: number }> {
     return this.providerHealth.list(filters);
   }
 
@@ -143,27 +148,39 @@ export class AdminPaymentsService {
     return this.disputes.list(filters);
   }
 
-  listChargebacks(filters: ChargebackFilters): Promise<{ items: ChargebackRecord[]; total: number }> {
+  listChargebacks(
+    filters: ChargebackFilters,
+  ): Promise<{ items: ChargebackRecord[]; total: number }> {
     return this.chargebacks.list(filters);
   }
 
-  listReconciliation(filters: ReconciliationFilters): Promise<{ items: ReconciliationRecord[]; total: number }> {
+  listReconciliation(
+    filters: ReconciliationFilters,
+  ): Promise<{ items: ReconciliationRecord[]; total: number }> {
     return this.reconciliations.list(filters);
   }
 
-  listSettlements(filters: SettlementFilters): Promise<{ items: SettlementRecord[]; total: number }> {
+  listSettlements(
+    filters: SettlementFilters,
+  ): Promise<{ items: SettlementRecord[]; total: number }> {
     return this.settlements.list(filters);
   }
 
-  listSettlementBatches(filters: SettlementBatchFilters): Promise<{ items: SettlementBatchRecord[]; total: number }> {
+  listSettlementBatches(
+    filters: SettlementBatchFilters,
+  ): Promise<{ items: SettlementBatchRecord[]; total: number }> {
     return this.settlementBatches.list(filters);
   }
 
-  getSettlementReports(filters: SettlementBatchFilters): Promise<{ items: SettlementBatchRecord[]; total: number }> {
+  getSettlementReports(
+    filters: SettlementBatchFilters,
+  ): Promise<{ items: SettlementBatchRecord[]; total: number }> {
     return this.settlementBatches.list(filters);
   }
 
-  listLimits(filters: PaymentLimitFilters): Promise<{ items: PaymentLimitRecord[]; total: number }> {
+  listLimits(
+    filters: PaymentLimitFilters,
+  ): Promise<{ items: PaymentLimitRecord[]; total: number }> {
     return this.limits.list(filters);
   }
 

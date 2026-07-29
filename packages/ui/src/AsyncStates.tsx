@@ -47,7 +47,12 @@ export function AsyncStates({
       <Alert tone="error" title={errorTitle}>
         <p>{error}</p>
         {onRetry ? (
-          <Button type="button" variant="secondary" onClick={onRetry} style={{ marginTop: '0.75rem' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onRetry}
+            style={{ marginTop: '0.75rem' }}
+          >
             Retry
           </Button>
         ) : null}

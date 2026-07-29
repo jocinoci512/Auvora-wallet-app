@@ -34,8 +34,16 @@ export function buildCustodyProxyOpenApiPaths(): OpenAPIObject['paths'] {
       ...proxyPath('post', 'Create signing request', userTag),
     },
     '/api/v1/custody/signing-requests/{id}': proxyPath('get', 'Get signing request', userTag),
-    '/api/v1/custody/signing-requests/{id}/approve': proxyPath('post', 'Approve signing request', userTag),
-    '/api/v1/custody/signing-requests/{id}/reject': proxyPath('post', 'Reject signing request', userTag),
+    '/api/v1/custody/signing-requests/{id}/approve': proxyPath(
+      'post',
+      'Approve signing request',
+      userTag,
+    ),
+    '/api/v1/custody/signing-requests/{id}/reject': proxyPath(
+      'post',
+      'Reject signing request',
+      userTag,
+    ),
     '/api/v1/custody/recovery/contacts': {
       ...proxyPath('get', 'List recovery contacts', userTag),
       ...proxyPath('post', 'Add recovery contact', userTag),

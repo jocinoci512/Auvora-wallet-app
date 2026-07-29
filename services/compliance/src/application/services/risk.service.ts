@@ -35,7 +35,9 @@ export class RiskService {
       factors: input.factors as Record<string, number>,
     });
 
-    const profile = await this.prisma.kycProfile.findUnique({ where: { ownerUserId: input.ownerUserId } });
+    const profile = await this.prisma.kycProfile.findUnique({
+      where: { ownerUserId: input.ownerUserId },
+    });
 
     const record = await this.prisma.riskScoreRecord.create({
       data: {
@@ -85,7 +87,10 @@ export class RiskService {
   }
 
   private assertSelfOrAdmin(ownerUserId: string, requester: JwtAccessClaims): void {
-    if (ownerUserId !== requester.sub && !requester.permissions.includes(PERMISSION_COMPLIANCE_ADMIN)) {
+    if (
+      ownerUserId !== requester.sub &&
+      !requester.permissions.includes(PERMISSION_COMPLIANCE_ADMIN)
+    ) {
       throw new ForbiddenError('Access denied');
     }
   }

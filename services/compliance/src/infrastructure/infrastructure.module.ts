@@ -19,12 +19,18 @@ import { AesFieldEncryptionAdapter, FIELD_ENCRYPTION } from './crypto/field-encr
 import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,
 } from './observability/observability-publisher.adapter';
-import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  NotificationsPublisherAdapter,
+} from './notifications/notifications-publisher.adapter';
 import {
   AddressRiskSimulatorProvider,
   BlockchainAnalyticsSimulatorProvider,
@@ -82,7 +88,10 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
       { provide: SANCTIONS_PROVIDER, useExisting: UnavailableSanctionsProvider },
       { provide: PEP_PROVIDER, useExisting: UnavailablePepProvider },
       { provide: ADDRESS_RISK_PROVIDER, useExisting: UnavailableAddressRiskProvider },
-      { provide: BLOCKCHAIN_ANALYTICS_PROVIDER, useExisting: UnavailableBlockchainAnalyticsProvider },
+      {
+        provide: BLOCKCHAIN_ANALYTICS_PROVIDER,
+        useExisting: UnavailableBlockchainAnalyticsProvider,
+      },
       { provide: FRAUD_PROVIDER, useExisting: UnavailableFraudProvider },
       { provide: RISK_SCORING_PROVIDER, useExisting: LocalRiskScoringProvider },
       { provide: TRAVEL_RULE_PROVIDER, useExisting: UnavailableTravelRuleProvider },

@@ -36,7 +36,9 @@ async function bootstrap(): Promise<void> {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Auvora Notification Platform')
-    .setDescription('Multi-channel notification delivery, templates, preferences, webhooks, and broadcast API')
+    .setDescription(
+      'Multi-channel notification delivery, templates, preferences, webhooks, and broadcast API',
+    )
     .setVersion(env.SERVICE_VERSION)
     .addBearerAuth()
     .build();
@@ -65,7 +67,7 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
   console.error(message);
   process.exit(1);
 });

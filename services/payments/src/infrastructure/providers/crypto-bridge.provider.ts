@@ -15,7 +15,10 @@ export class CryptoBridgeProvider extends BasePaymentSimulatorProvider {
   private readonly logger = new Logger(CryptoBridgeProvider.name);
 
   constructor(@Inject(ENV) private readonly env: ServiceEnv) {
-    super('CRYPTO_BRIDGE', 'Crypto Bridge', [PaymentType.CRYPTO_DEPOSIT, PaymentType.CRYPTO_WITHDRAWAL]);
+    super('CRYPTO_BRIDGE', 'Crypto Bridge', [
+      PaymentType.CRYPTO_DEPOSIT,
+      PaymentType.CRYPTO_WITHDRAWAL,
+    ]);
   }
 
   override async healthCheck(): Promise<ProviderHealthResult> {
@@ -33,7 +36,11 @@ export class CryptoBridgeProvider extends BasePaymentSimulatorProvider {
       this.logger.warn(
         `Blockchain service health check failed: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return { healthy: false, latencyMs: Date.now() - start, message: 'blockchain service unreachable' };
+      return {
+        healthy: false,
+        latencyMs: Date.now() - start,
+        message: 'blockchain service unreachable',
+      };
     }
   }
 }

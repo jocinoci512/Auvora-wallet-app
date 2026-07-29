@@ -52,14 +52,14 @@ flowchart LR
 
 Every producer must send:
 
-| Field | Required | Notes |
-|-------|----------|-------|
-| `eventType` | yes | e.g. `wallet.transfer.completed` |
-| `domain` | yes | `AUTH`, `WALLET`, `PAYMENTS`, … |
-| `payload` | yes | opaque JSON |
-| `metrics` | optional | map of `MetricDefinition.code` → numeric delta |
-| `sourceService` | recommended | defaults per adapter |
-| `correlationId` | recommended | tracing |
+| Field           | Required    | Notes                                          |
+| --------------- | ----------- | ---------------------------------------------- |
+| `eventType`     | yes         | e.g. `wallet.transfer.completed`               |
+| `domain`        | yes         | `AUTH`, `WALLET`, `PAYMENTS`, …                |
+| `payload`       | yes         | opaque JSON                                    |
+| `metrics`       | optional    | map of `MetricDefinition.code` → numeric delta |
+| `sourceService` | recommended | defaults per adapter                           |
+| `correlationId` | recommended | tracing                                        |
 
 ## Scheduled reports
 

@@ -51,7 +51,9 @@ export class PolicyGateService {
   ) {}
 
   async evaluatePayment(input: PolicyEvaluateInput): Promise<PolicyEvaluateResult> {
-    const profile = await this.prisma.kycProfile.findUnique({ where: { ownerUserId: input.ownerUserId } });
+    const profile = await this.prisma.kycProfile.findUnique({
+      where: { ownerUserId: input.ownerUserId },
+    });
     const amount = Number(input.amount);
     const dailyCount = await this.prisma.amlAlert.count({
       where: {
@@ -167,7 +169,11 @@ export class PolicyGateService {
       await this.events.publish({
         type: ComplianceEventType.FraudDetected,
         aggregateId: input.paymentId,
-        payload: { ownerUserId: input.ownerUserId, reasons: fraud.reasons, riskScore: fraud.riskScore },
+        payload: {
+          ownerUserId: input.ownerUserId,
+          reasons: fraud.reasons,
+          riskScore: fraud.riskScore,
+        },
       });
     }
 

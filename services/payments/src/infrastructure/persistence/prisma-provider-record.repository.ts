@@ -41,7 +41,9 @@ export class PrismaProviderRecordRepository implements ProviderRecordRepositoryP
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listAll(): Promise<ProviderRecord[]> {
-    const records = await this.prisma.paymentProviderRecord.findMany({ orderBy: { priority: 'asc' } });
+    const records = await this.prisma.paymentProviderRecord.findMany({
+      orderBy: { priority: 'asc' },
+    });
     return records.map(mapProvider);
   }
 

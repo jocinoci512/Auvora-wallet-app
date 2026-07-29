@@ -42,7 +42,7 @@ export class AnthropicHttpProvider implements AiProviderPort {
   }
 
   private get fetchImpl(): FetchLike {
-    return globalThis.fetch as unknown as FetchLike;
+    return globalThis.fetch.bind(globalThis) as unknown as FetchLike;
   }
 
   async chat(request: ChatRequest): Promise<ChatResult> {
@@ -51,29 +51,34 @@ export class AnthropicHttpProvider implements AiProviderPort {
     const systemMessage = request.messages.find((m) => m.role === 'SYSTEM')?.content;
     const conversational = request.messages.filter((m) => m.role !== 'SYSTEM');
     try {
-      const response = await this.fetchImpl(`${(this.config.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': this.config.apiKey,
-          'anthropic-version': this.config.apiVersion ?? '2023-06-01',
+      const response = await this.fetchImpl(
+        `${(this.config.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': this.config.apiKey,
+            'anthropic-version': this.config.apiVersion ?? '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            system: systemMessage,
+            max_tokens: request.maxTokens ?? 1024,
+            temperature: request.temperature,
+            messages: conversational.map((m) => ({
+              role: m.role === 'ASSISTANT' ? 'assistant' : 'user',
+              content: m.content,
+            })),
+          }),
+          signal: AbortSignal.timeout(this.config.timeoutMs ?? 30_000),
         },
-        body: JSON.stringify({
-          model,
-          system: systemMessage,
-          max_tokens: request.maxTokens ?? 1024,
-          temperature: request.temperature,
-          messages: conversational.map((m) => ({
-            role: m.role === 'ASSISTANT' ? 'assistant' : 'user',
-            content: m.content,
-          })),
-        }),
-        signal: AbortSignal.timeout(this.config.timeoutMs ?? 30_000),
-      });
+      );
       const latencyMs = Date.now() - startedAt;
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new ProviderUnavailableError(`${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`);
+        throw new ProviderUnavailableError(
+          `${this.code} HTTP ${response.status}: ${text.slice(0, 300)}`,
+        );
       }
       const body = (await response.json()) as AnthropicMessageResponse;
       const content = (body.content ?? []).map((block) => block.text ?? '').join('');

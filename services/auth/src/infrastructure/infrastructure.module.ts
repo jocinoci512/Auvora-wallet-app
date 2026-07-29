@@ -20,7 +20,10 @@ import { LoggerInfrastructureModule } from './logging/logger.module';
 import { ConsoleMailAdapter } from './mail/console-mail.adapter';
 import { SmtpMailAdapter } from './mail/smtp-mail.adapter';
 import { NotificationsMailAdapter } from './mail/notifications-mail.adapter';
-import { AnalyticsPublisherAdapter, ANALYTICS_PUBLISHER } from './analytics/analytics-publisher.adapter';
+import {
+  AnalyticsPublisherAdapter,
+  ANALYTICS_PUBLISHER,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,
@@ -36,12 +39,7 @@ import { RedisAdapter } from './redis/redis.adapter';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
 
 @Module({
-  imports: [
-    ConfigModule,
-    PrismaModule,
-    LoggerInfrastructureModule,
-    JwtModule.register({}),
-  ],
+  imports: [ConfigModule, PrismaModule, LoggerInfrastructureModule, JwtModule.register({})],
   providers: [
     RedisAdapter,
     Argon2PasswordHasherAdapter,

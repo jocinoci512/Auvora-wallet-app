@@ -10,7 +10,10 @@ import {
 } from '../ports/payment-method-repository.port';
 import { ForbiddenError, NotFoundError, PERMISSION_PAYMENT_ADMIN } from '../../domain';
 
-export interface CreatePaymentMethodInput extends Omit<CreatePaymentMethodData, 'ownerUserId' | 'metadata'> {
+export interface CreatePaymentMethodInput extends Omit<
+  CreatePaymentMethodData,
+  'ownerUserId' | 'metadata'
+> {
   metadata?: Record<string, unknown>;
 }
 
@@ -36,7 +39,10 @@ export class PaymentMethodsService {
     });
   }
 
-  async listForUser(ownerUserId: string, filters: PaymentMethodFilters = {}): Promise<{ items: PaymentMethodRecord[]; total: number }> {
+  async listForUser(
+    ownerUserId: string,
+    filters: PaymentMethodFilters = {},
+  ): Promise<{ items: PaymentMethodRecord[]; total: number }> {
     return this.methods.list({ ...filters, ownerUserId });
   }
 
@@ -61,7 +67,10 @@ export class PaymentMethodsService {
   }
 
   private assertOwnershipOrAdmin(method: PaymentMethodRecord, requester: JwtAccessClaims): void {
-    if (method.ownerUserId !== requester.sub && !requester.permissions.includes(PERMISSION_PAYMENT_ADMIN as PermissionCode)) {
+    if (
+      method.ownerUserId !== requester.sub &&
+      !requester.permissions.includes(PERMISSION_PAYMENT_ADMIN as PermissionCode)
+    ) {
       throw new ForbiddenError('Access denied');
     }
   }

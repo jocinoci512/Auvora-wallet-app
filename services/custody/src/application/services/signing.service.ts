@@ -20,11 +20,11 @@ import {
   type CustodyProviderRegistryPort,
   type PolicyContext,
 } from '../../domain';
-import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../../infrastructure/crypto/field-encryption.adapter';
 import {
-  AI_PUBLISHER,
-  type AiPublisherPort,
-} from '../../infrastructure/ai/ai-publisher.adapter';
+  FIELD_ENCRYPTION,
+  type FieldEncryptionPort,
+} from '../../infrastructure/crypto/field-encryption.adapter';
+import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
@@ -46,7 +46,12 @@ export interface CreateSigningRequestInput {
   metadata?: Record<string, unknown>;
 }
 
-const ACTIVE_QUEUE_STATUSES: SigningRequestStatus[] = ['QUEUED', 'SCHEDULED', 'AWAITING_APPROVAL', 'APPROVED'];
+const ACTIVE_QUEUE_STATUSES: SigningRequestStatus[] = [
+  'QUEUED',
+  'SCHEDULED',
+  'AWAITING_APPROVAL',
+  'APPROVED',
+];
 
 type CryptographicKeyRecord = Prisma.CryptographicKeyGetPayload<Record<string, never>>;
 
@@ -108,16 +113,28 @@ export class SigningService {
     const payloadEncrypted = this.crypto.encrypt(input.payload);
 
     const velocity = await this.prisma.signingRequest.count({
-      where: { ownerUserId: key.ownerUserId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      where: {
+        ownerUserId: key.ownerUserId,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
     });
 
     const ctx: PolicyContext = {
       asset: input.asset,
       amount: Number(input.amount ?? 0),
       destination: input.destination,
-      country: typeof input.metadata?.['country'] === 'string' ? (input.metadata['country'] as string) : undefined,
-      riskScore: typeof input.metadata?.['riskScore'] === 'number' ? (input.metadata['riskScore'] as number) : 0,
-      walletType: typeof input.metadata?.['walletType'] === 'string' ? (input.metadata['walletType'] as string) : undefined,
+      country:
+        typeof input.metadata?.['country'] === 'string'
+          ? (input.metadata['country'] as string)
+          : undefined,
+      riskScore:
+        typeof input.metadata?.['riskScore'] === 'number'
+          ? (input.metadata['riskScore'] as number)
+          : 0,
+      walletType:
+        typeof input.metadata?.['walletType'] === 'string'
+          ? (input.metadata['walletType'] as string)
+          : undefined,
       userRole,
       time: new Date().getHours(),
       velocity,
@@ -224,12 +241,19 @@ export class SigningService {
   }
 
   async execute(id: string) {
-    const request = await this.prisma.signingRequest.findUnique({ where: { id }, include: { key: true } });
+    const request = await this.prisma.signingRequest.findUnique({
+      where: { id },
+      include: { key: true },
+    });
     if (!request) throw new NotFoundError('Signing request not found');
     if (request.status === 'AWAITING_APPROVAL') {
       throw new ConflictError('Signing request is awaiting approval');
     }
-    if (request.status !== 'QUEUED' && request.status !== 'SCHEDULED' && request.status !== 'APPROVED') {
+    if (
+      request.status !== 'QUEUED' &&
+      request.status !== 'SCHEDULED' &&
+      request.status !== 'APPROVED'
+    ) {
       throw new ConflictError(`Cannot execute signing in status ${request.status}`);
     }
     if (request.scheduledAt && request.scheduledAt.getTime() > Date.now()) {
@@ -255,7 +279,12 @@ export class SigningService {
 
       const updated = await this.prisma.signingRequest.update({
         where: { id },
-        data: { status: 'SIGNED', signature: result.signature, signatureAlg: result.signatureAlg, completedAt: new Date() },
+        data: {
+          status: 'SIGNED',
+          signature: result.signature,
+          signatureAlg: result.signatureAlg,
+          completedAt: new Date(),
+        },
       });
 
       await this.prisma.signingSession.update({
@@ -307,7 +336,10 @@ export class SigningService {
   }
 
   async verifySignature(id: string) {
-    const request = await this.prisma.signingRequest.findUnique({ where: { id }, include: { key: true } });
+    const request = await this.prisma.signingRequest.findUnique({
+      where: { id },
+      include: { key: true },
+    });
     if (!request) throw new NotFoundError('Signing request not found');
     if (!request.signature) {
       throw new ConflictError('Signing request has not been signed yet');
@@ -321,7 +353,10 @@ export class SigningService {
     });
   }
 
-  async history(ownerUserId: string, filters: { status?: SigningRequestStatus; skip?: number; take?: number } = {}) {
+  async history(
+    ownerUserId: string,
+    filters: { status?: SigningRequestStatus; skip?: number; take?: number } = {},
+  ) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 100);
     const where: Prisma.SigningRequestWhereInput = {

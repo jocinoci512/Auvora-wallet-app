@@ -14,7 +14,10 @@ function buildNotification(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function buildQueueItem(notification: ReturnType<typeof buildNotification>, overrides: Partial<Record<string, unknown>> = {}) {
+function buildQueueItem(
+  notification: ReturnType<typeof buildNotification>,
+  overrides: Partial<Record<string, unknown>> = {},
+) {
   return {
     id: 'queue-1',
     notificationId: notification.id,
@@ -35,9 +38,11 @@ function buildPrismaMock(queueItem: ReturnType<typeof buildQueueItem>) {
       findMany: jest.fn().mockResolvedValue([queueItem]),
       findUnique: jest.fn().mockImplementation(() => Promise.resolve(queueItem)),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...queueItem, ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...queueItem, ...data }),
+        ),
       count: jest.fn().mockResolvedValue(0),
     },
     notificationMessage: {
@@ -64,11 +69,19 @@ describe('QueueService', () => {
     const queueItem = buildQueueItem(notification);
     const prisma = buildPrismaMock(queueItem);
     const providers = { resolve: jest.fn(), listAll: jest.fn() };
-    const service = new QueueService(prisma as never, providers as never, eventsMock as never, aiMock as never, analyticsMock as never);
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
 
     await service.enqueue('notif-1', { priority: 'NORMAL' as never });
     expect(prisma.notificationQueueItem.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ notificationId: 'notif-1', status: 'QUEUED' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ notificationId: 'notif-1', status: 'QUEUED' }),
+      }),
     );
   });
 
@@ -78,7 +91,13 @@ describe('QueueService', () => {
     const prisma = buildPrismaMock(queueItem);
     prisma.notificationQueueItem.findMany.mockResolvedValueOnce([]);
     const providers = { resolve: jest.fn(), listAll: jest.fn() };
-    const service = new QueueService(prisma as never, providers as never, eventsMock as never, aiMock as never, analyticsMock as never);
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
 
     const result = await service.processNext();
     expect(result).toEqual({ processed: false });
@@ -88,9 +107,17 @@ describe('QueueService', () => {
     const notification = buildNotification();
     const queueItem = buildQueueItem(notification);
     const prisma = buildPrismaMock(queueItem);
-    const provider = { send: jest.fn().mockResolvedValue({ providerCode: 'sim-email', success: true, latencyMs: 5 }) };
+    const provider = {
+      send: jest.fn().mockResolvedValue({ providerCode: 'sim-email', success: true, latencyMs: 5 }),
+    };
     const providers = { resolve: jest.fn().mockReturnValue(provider), listAll: jest.fn() };
-    const service = new QueueService(prisma as never, providers as never, eventsMock as never, aiMock as never, analyticsMock as never);
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
 
     const result = await service.processNext('worker-1');
 
@@ -108,7 +135,13 @@ describe('QueueService', () => {
     const prisma = buildPrismaMock(queueItem);
     const provider = { send: jest.fn().mockRejectedValue(new Error('smtp down')) };
     const providers = { resolve: jest.fn().mockReturnValue(provider), listAll: jest.fn() };
-    const service = new QueueService(prisma as never, providers as never, eventsMock as never, aiMock as never, analyticsMock as never);
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
 
     const result = await service.processNext();
 
@@ -124,7 +157,13 @@ describe('QueueService', () => {
     const prisma = buildPrismaMock(queueItem);
     const provider = { send: jest.fn().mockRejectedValue(new Error('permanent failure')) };
     const providers = { resolve: jest.fn().mockReturnValue(provider), listAll: jest.fn() };
-    const service = new QueueService(prisma as never, providers as never, eventsMock as never, aiMock as never, analyticsMock as never);
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
 
     await service.processNext();
 
@@ -138,7 +177,13 @@ describe('QueueService', () => {
     const queueItem = buildQueueItem(notification, { status: 'SENT' });
     const prisma = buildPrismaMock(queueItem);
     const providers = { resolve: jest.fn(), listAll: jest.fn() };
-    const service = new QueueService(prisma as never, providers as never, eventsMock as never, aiMock as never, analyticsMock as never);
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
 
     await expect(service.requeue('queue-1')).rejects.toThrow(ConflictError);
   });

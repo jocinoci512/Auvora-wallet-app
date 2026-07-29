@@ -8,12 +8,16 @@ export type GatewayRateLimitOptions = {
   skipPaths?: string[];
 };
 
-export function createGatewayRateLimitMiddleware(
-  options: GatewayRateLimitOptions,
-): RequestHandler {
+export function createGatewayRateLimitMiddleware(options: GatewayRateLimitOptions): RequestHandler {
   const limiter = new FixedWindowRateLimiter(options.limit, options.windowSeconds * 1000);
   const skip = new Set(
-    options.skipPaths ?? ['/health', '/ready', '/api/docs', '/api/docs-json', '/metrics/resilience'],
+    options.skipPaths ?? [
+      '/health',
+      '/ready',
+      '/api/docs',
+      '/api/docs-json',
+      '/metrics/resilience',
+    ],
   );
 
   return (req, res, next) => {

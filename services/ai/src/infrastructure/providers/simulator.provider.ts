@@ -39,7 +39,10 @@ export class SimulatorAiProvider implements AiProviderPort {
     const startedAt = Date.now();
     const lastUserMessage = [...request.messages].reverse().find((m) => m.role === 'USER');
     const content = `[simulator] ${lastUserMessage?.content ?? 'Hello from the Auvora AI simulator.'}`;
-    const inputTokens = Math.max(1, Math.ceil(request.messages.reduce((sum, m) => sum + m.content.length, 0) / 4));
+    const inputTokens = Math.max(
+      1,
+      Math.ceil(request.messages.reduce((sum, m) => sum + m.content.length, 0) / 4),
+    );
     const outputTokens = Math.max(1, Math.ceil(content.length / 4));
     return Promise.resolve({
       providerCode: this.code,
@@ -64,6 +67,11 @@ export class SimulatorAiProvider implements AiProviderPort {
   }
 
   async health(): Promise<ProviderHealthResult> {
-    return Promise.resolve({ healthy: true, providerCode: this.code, checkedAt: new Date(), latencyMs: 0 });
+    return Promise.resolve({
+      healthy: true,
+      providerCode: this.code,
+      checkedAt: new Date(),
+      latencyMs: 0,
+    });
   }
 }

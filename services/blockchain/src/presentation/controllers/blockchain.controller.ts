@@ -6,8 +6,11 @@ import { BlockchainService } from '../../application/services/blockchain.service
 import { FeeEngine } from '../../application/services/fee-engine.service';
 import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { TransactionEngine } from '../../application/services/transaction-engine.service';
-import { PERMISSION_BLOCKCHAIN_READ, PERMISSION_BLOCKCHAIN_WRITE } from '../../domain/permission-codes';
-import { successResponse } from '../common/api-response';
+import {
+  PERMISSION_BLOCKCHAIN_READ,
+  PERMISSION_BLOCKCHAIN_WRITE,
+} from '../../domain/permission-codes';
+import { successResponse } from '@auvora/nest-common';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { Permissions } from '../decorators/auth.decorators';
 import {
@@ -138,7 +141,10 @@ export class BlockchainController {
 
   @Post('addresses/:id/primary')
   @Permissions(PERMISSION_BLOCKCHAIN_WRITE)
-  async setPrimaryAddress(@CurrentUser() user: JwtAccessClaims, @Param() params: AddressIdParamDto) {
+  async setPrimaryAddress(
+    @CurrentUser() user: JwtAccessClaims,
+    @Param() params: AddressIdParamDto,
+  ) {
     const data = await this.blockchainService.setPrimary(params.id, user);
     return successResponse(data);
   }
@@ -152,7 +158,10 @@ export class BlockchainController {
 
   @Get('transactions')
   @Permissions(PERMISSION_BLOCKCHAIN_READ)
-  async listTransactions(@CurrentUser() user: JwtAccessClaims, @Query() query: ListTransactionsQueryDto) {
+  async listTransactions(
+    @CurrentUser() user: JwtAccessClaims,
+    @Query() query: ListTransactionsQueryDto,
+  ) {
     const data = await this.transactionEngine.listTransactions({
       chain: query.chain,
       status: query.status,

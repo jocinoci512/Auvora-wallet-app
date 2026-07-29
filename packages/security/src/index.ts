@@ -10,6 +10,15 @@ export const SECURITY_HEADERS = {
   crossOriginResourcePolicy: 'same-site',
 } as const;
 
+/**
+ * Recommended baseline CSP for GA / edge termination (not enforced in RC1).
+ * Gateway + Next emit this as Content-Security-Policy-Report-Only in RC1.
+ * Promote to enforced CSP at the ingress after validating NFT media, Swagger, and analytics.
+ * `script-src` may need `'unsafe-inline'` for Next.js until nonces are wired.
+ */
+export const CONTENT_SECURITY_POLICY_RECOMMENDED =
+  "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https: wss:;";
+
 export const REQUEST_ID_HEADER = 'x-request-id';
 export const CORRELATION_ID_HEADER = 'x-correlation-id';
 

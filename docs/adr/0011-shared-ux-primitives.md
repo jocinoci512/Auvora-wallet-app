@@ -16,6 +16,8 @@ Web and Admin grew many domain screens with duplicated loading/error/empty patte
 4. Stay **light-theme-first** for RC; dark mode remains deferred (document, do not half-implement).
 5. Expand `a11y-smoke.mjs` to assert skip-link and `#main-content` without claiming full WCAG coverage.
 
+> **Supersession (Phase 27):** Dark mode is no longer deferred. `@auvora/ui` now ships light / dark / system theming with persistence. See `docs/THEMING.md` and `docs/DESIGN_SYSTEM.md`. Decision points 1–3 and 5 remain in force.
+
 ## Consequences
 
 - Faster, safer UI consistency work across 90+ routes.

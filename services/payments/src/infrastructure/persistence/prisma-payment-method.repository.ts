@@ -65,7 +65,9 @@ export class PrismaPaymentMethodRepository implements PaymentMethodRepositoryPor
     return record ? mapMethod(record) : null;
   }
 
-  async list(filters: PaymentMethodFilters): Promise<{ items: PaymentMethodRecord[]; total: number }> {
+  async list(
+    filters: PaymentMethodFilters,
+  ): Promise<{ items: PaymentMethodRecord[]; total: number }> {
     const where = {
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
       ...(filters.isActive !== undefined ? { isActive: filters.isActive } : {}),

@@ -155,8 +155,7 @@ const improvement = {
       : {
           beforeTargetMs: before.gatewayHealthP95Ms,
           afterMeasuredMs: after.gatewayHealthP95MsMeasured,
-          improvedVsTarget:
-            after.gatewayHealthP95MsMeasured < before.gatewayHealthP95Ms,
+          improvedVsTarget: after.gatewayHealthP95MsMeasured < before.gatewayHealthP95Ms,
           deltaMs: Number(
             (before.gatewayHealthP95Ms - after.gatewayHealthP95MsMeasured).toFixed(2),
           ),

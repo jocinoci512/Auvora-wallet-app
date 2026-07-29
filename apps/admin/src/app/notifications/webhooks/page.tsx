@@ -14,9 +14,11 @@ export default function AdminWebhooksPage(): ReactElement {
       const client = createApiClient();
       setItems(await client.adminListWebhookEndpoints());
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

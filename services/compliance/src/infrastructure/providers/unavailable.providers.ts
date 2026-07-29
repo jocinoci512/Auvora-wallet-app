@@ -90,7 +90,12 @@ export class UnavailableBlockchainAnalyticsProvider implements BlockchainAnalyti
     return 'unavailable-chain-analytics';
   }
   async analyze() {
-    return { score: 100, mixerExposure: false, darknetExposure: false, flags: ['provider_unavailable'] };
+    return {
+      score: 100,
+      mixerExposure: false,
+      darknetExposure: false,
+      flags: ['provider_unavailable'],
+    };
   }
 }
 

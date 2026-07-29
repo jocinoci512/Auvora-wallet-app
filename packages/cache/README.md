@@ -7,7 +7,7 @@ In-memory / Redis-ready cache primitives for cross-service reuse. Not yet wired 
 ## Usage
 
 ```ts
-import { /* exports from package */ } from '@auvora/cache';
+import {} from /* exports from package */ '@auvora/cache';
 ```
 
 See `src/index.ts` and unit tests for the supported surface.

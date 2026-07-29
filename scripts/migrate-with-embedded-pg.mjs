@@ -67,7 +67,11 @@ async function main() {
   }
 
   process.stdout.write(
-    JSON.stringify({ level: 'info', msg: 'migrate+seed complete; postgres still running', databaseUrl }) + '\n',
+    JSON.stringify({
+      level: 'info',
+      msg: 'migrate+seed complete; postgres still running',
+      databaseUrl,
+    }) + '\n',
   );
 
   // Keep postgres alive until killed

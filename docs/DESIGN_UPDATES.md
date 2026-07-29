@@ -1,6 +1,7 @@
 # Design Updates — Task 028
 
-**Status:** Implementation follows this design contract.  
+**Status:** Implementation follows this design contract.
+
 ## Figma MCP status (Task 028)
 
 Figma MCP (`plugin-figma-figma`) was **not available** in the Cursor session during Task 028 implementation. Design-first contract is captured in this document; sync checklist remains for when MCP reconnects to the canonical library:
@@ -51,12 +52,12 @@ Implementation stayed synchronized with the Phase 27 design system tokens and th
 
 ## Responsive
 
-| Breakpoint | Behavior |
-|------------|----------|
-| ≥1280 (wide) | 12-col grid; charts span 5+4; actions 3 |
-| 900–1279 | 8-col; stack tertiary widgets |
-| 640–899 | 4-col; hero metrics wrap; actions 2-col |
-| <640 | Single column; sticky quick-actions strip optional |
+| Breakpoint   | Behavior                                           |
+| ------------ | -------------------------------------------------- |
+| ≥1280 (wide) | 12-col grid; charts span 5+4; actions 3            |
+| 900–1279     | 8-col; stack tertiary widgets                      |
+| 640–899      | 4-col; hero metrics wrap; actions 2-col            |
+| <640         | Single column; sticky quick-actions strip optional |
 
 ## Figma sync checklist (when MCP returns)
 
@@ -68,11 +69,11 @@ Implementation stayed synchronized with the Phase 27 design system tokens and th
 
 ## Token usage
 
-| Role | Token |
-|------|-------|
-| Primary CTA | `--auvora-color-primary` |
-| Surfaces | `--auvora-color-surface` / `surface-solid` |
-| Positive P/L | `--auvora-color-success` |
-| Negative P/L | `--auvora-color-error` |
-| Muted | `--auvora-color-text-muted` |
-| Border | `--auvora-color-border` |
+| Role         | Token                                      |
+| ------------ | ------------------------------------------ |
+| Primary CTA  | `--auvora-color-primary`                   |
+| Surfaces     | `--auvora-color-surface` / `surface-solid` |
+| Positive P/L | `--auvora-color-success`                   |
+| Negative P/L | `--auvora-color-error`                     |
+| Muted        | `--auvora-color-text-muted`                |
+| Border       | `--auvora-color-border`                    |

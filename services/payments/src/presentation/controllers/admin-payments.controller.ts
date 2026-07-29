@@ -14,7 +14,7 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain/permission-codes';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import {
   AdminListChargebacksQueryDto,
   AdminListDisputesQueryDto,
@@ -60,7 +60,8 @@ export class AdminPaymentsController {
     @Inject(AdminPaymentsService) private readonly admin: AdminPaymentsService,
     @Inject(PaymentOrchestratorService) private readonly orchestrator: PaymentOrchestratorService,
     @Inject(SettlementEngineService) private readonly settlementEngine: SettlementEngineService,
-    @Inject(ReconciliationEngineService) private readonly reconciliationEngine: ReconciliationEngineService,
+    @Inject(ReconciliationEngineService)
+    private readonly reconciliationEngine: ReconciliationEngineService,
   ) {}
 
   @Get('metrics')

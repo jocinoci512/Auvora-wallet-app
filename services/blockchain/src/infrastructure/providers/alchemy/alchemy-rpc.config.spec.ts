@@ -1,9 +1,5 @@
 import { ChainNetwork } from '@auvora/database';
-import {
-  isAlchemyConfigured,
-  redactRpcUrl,
-  resolveAlchemyRpcUrls,
-} from './alchemy-rpc.config';
+import { isAlchemyConfigured, redactRpcUrl, resolveAlchemyRpcUrls } from './alchemy-rpc.config';
 import type { ServiceEnv } from '../../../config/env.schema';
 
 function env(partial: Partial<ServiceEnv>): ServiceEnv {

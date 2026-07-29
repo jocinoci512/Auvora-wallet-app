@@ -4,7 +4,10 @@ import { ConfigModule } from '../config/config.module';
 import { CLOCK, ID_GENERATOR, RATE_LIMITER } from '../application/ports/clock.port';
 import { MODEL_ROUTER, REQUEST_CACHE } from '../application/ports/provider.tokens';
 import { EVENT_BUS } from '../domain';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,

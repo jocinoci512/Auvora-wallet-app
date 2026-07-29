@@ -41,7 +41,12 @@ export class UnavailableCustodyProvider implements CustodyProviderPort {
     // Verification only requires the public key, so it remains safe to perform even
     // when generation/signing backends are unavailable.
     return {
-      valid: verifySimulatedSignature(input.algorithm, input.publicKey, input.payloadHash, input.signature),
+      valid: verifySimulatedSignature(
+        input.algorithm,
+        input.publicKey,
+        input.payloadHash,
+        input.signature,
+      ),
     };
   }
 

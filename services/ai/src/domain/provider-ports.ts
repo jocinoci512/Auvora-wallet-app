@@ -1,4 +1,5 @@
-export type AiProviderTypeCode = 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'AZURE_OPENAI' | 'LOCAL' | 'SIMULATOR';
+export type AiProviderTypeCode =
+  'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'AZURE_OPENAI' | 'LOCAL' | 'SIMULATOR';
 
 export const ALL_AI_PROVIDER_TYPES: AiProviderTypeCode[] = [
   'OPENAI',

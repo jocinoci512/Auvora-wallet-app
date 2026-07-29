@@ -36,7 +36,9 @@ async function bootstrap(): Promise<void> {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Auvora Enterprise AI Platform')
-    .setDescription('Chat, prompts, knowledge/RAG, provider routing, and automation API for the Auvora Wallet platform')
+    .setDescription(
+      'Chat, prompts, knowledge/RAG, provider routing, and automation API for the Auvora Wallet platform',
+    )
     .setVersion(env.SERVICE_VERSION)
     .addBearerAuth()
     .build();
@@ -65,7 +67,7 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
   console.error(message);
   process.exit(1);
 });

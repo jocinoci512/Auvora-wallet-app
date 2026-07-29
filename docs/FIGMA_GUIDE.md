@@ -6,18 +6,18 @@
 
 ## Sync status
 
-| Item | Status |
-|------|--------|
-| Figma Sync Status | **Partial** — file + light color variables published; dark mode vars blocked by Starter (1 mode); component frames + Code Connect still pending |
-| Authenticated MCP user | *(connect your own Figma account / MCP session)* |
-| Master library file URL | *(set after publishing your design-system file)* |
-| Wallet Experience page | Added for Task 029 (onboarding / send / receive / activity / security contract) |
-| Trading Experience page | Added for Task 030 (swap / bridge / buy / sell / staking contract) |
-| NFT Experience frame | Task 031 frame on Trading Experience page (Starter plan max 3 pages) |
-| Web3 Hub frame | Task 032 frame on Trading Experience page (hub / browser / permissions / signing) |
-| Security Center frame | Task 033 — add frame on Trading Experience when Figma MCP Editor available (Starter max 3 pages) |
-| Mobile / offline polish | Task 034 — code-owned responsive + offline + a11y; no new Figma pages (Starter limit) |
-| RC1 release engineering | Task 035 — no new UX frames; security/ops docs only |
+| Item                    | Status                                                                                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Figma Sync Status       | **Partial** — file + light color variables published; dark mode vars blocked by Starter (1 mode); component frames + Code Connect still pending |
+| Authenticated MCP user  | _(connect your own Figma account / MCP session)_                                                                                                |
+| Master library file URL | _(set after publishing your design-system file)_                                                                                                |
+| Wallet Experience page  | Added for Task 029 (onboarding / send / receive / activity / security contract)                                                                 |
+| Trading Experience page | Added for Task 030 (swap / bridge / buy / sell / staking contract)                                                                              |
+| NFT Experience frame    | Task 031 frame on Trading Experience page (Starter plan max 3 pages)                                                                            |
+| Web3 Hub frame          | Task 032 frame on Trading Experience page (hub / browser / permissions / signing)                                                               |
+| Security Center frame   | Task 033 — add frame on Trading Experience when Figma MCP Editor available (Starter max 3 pages)                                                |
+| Mobile / offline polish | Task 034 — code-owned responsive + offline + a11y; no new Figma pages (Starter limit)                                                           |
+| RC1 release engineering | Task 035 — no new UX frames; security/ops docs only                                                                                             |
 
 > **Canonical file:** publish one design-system file for your org, then paste its URL above. Prefer a single library file; archive duplicates.
 

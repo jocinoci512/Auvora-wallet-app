@@ -10,7 +10,10 @@ import {
   NotFoundError,
   PERMISSION_CUSTODY_ADMIN,
 } from '../../domain';
-import { FIELD_ENCRYPTION, type FieldEncryptionPort } from '../../infrastructure/crypto/field-encryption.adapter';
+import {
+  FIELD_ENCRYPTION,
+  type FieldEncryptionPort,
+} from '../../infrastructure/crypto/field-encryption.adapter';
 
 export interface AddRecoveryContactInput {
   policyId: string;
@@ -92,7 +95,10 @@ export class RecoveryService {
       if (!key) throw new NotFoundError('Cryptographic key not found');
       if (key.ownerUserId !== ownerUserId) throw new ForbiddenError('Access denied');
       if (key.status === 'DESTROYED') throw new ConflictError('Cannot recover a destroyed key');
-      await this.prisma.cryptographicKey.update({ where: { id: input.keyId }, data: { status: 'RECOVERING' } });
+      await this.prisma.cryptographicKey.update({
+        where: { id: input.keyId },
+        data: { status: 'RECOVERING' },
+      });
     }
 
     const requiresApproval = policy.requiredApprovals > 0;
@@ -119,7 +125,9 @@ export class RecoveryService {
   async approve(requestId: string, approver: JwtAccessClaims) {
     const request = await this.getOrThrow(requestId);
     if (request.status !== 'AWAITING_APPROVAL') {
-      throw new ConflictError(`Recovery request is not awaiting approval (status: ${request.status})`);
+      throw new ConflictError(
+        `Recovery request is not awaiting approval (status: ${request.status})`,
+      );
     }
     const policy = await this.prisma.recoveryPolicy.findUnique({ where: { id: request.policyId } });
     const approvalsCount = request.approvalsCount + 1;
@@ -148,7 +156,10 @@ export class RecoveryService {
     this.assertAdmin(actor);
     const request = await this.getOrThrow(requestId);
     if (request.keyId) {
-      await this.prisma.cryptographicKey.update({ where: { id: request.keyId }, data: { status: 'ACTIVE' } });
+      await this.prisma.cryptographicKey.update({
+        where: { id: request.keyId },
+        data: { status: 'ACTIVE' },
+      });
     }
     return this.prisma.recoveryRequest.update({
       where: { id: requestId },
@@ -159,25 +170,37 @@ export class RecoveryService {
   async complete(requestId: string, actor: JwtAccessClaims) {
     const request = await this.getOrThrow(requestId);
     if (request.status !== 'APPROVED') {
-      throw new ConflictError(`Recovery request must be approved before completion (status: ${request.status})`);
+      throw new ConflictError(
+        `Recovery request must be approved before completion (status: ${request.status})`,
+      );
     }
     const updated = await this.prisma.recoveryRequest.update({
       where: { id: requestId },
       data: { status: 'COMPLETED', completedAt: new Date() },
     });
     if (request.keyId) {
-      await this.prisma.cryptographicKey.update({ where: { id: request.keyId }, data: { status: 'ACTIVE' } });
+      await this.prisma.cryptographicKey.update({
+        where: { id: request.keyId },
+        data: { status: 'ACTIVE' },
+      });
     }
     await this.events.publish({
       type: CustodyEventType.RecoveryCompleted,
       aggregateId: requestId,
-      payload: { ownerUserId: request.ownerUserId, keyId: request.keyId, completedByUserId: actor.sub },
+      payload: {
+        ownerUserId: request.ownerUserId,
+        keyId: request.keyId,
+        completedByUserId: actor.sub,
+      },
     });
     return updated;
   }
 
   async listOwn(ownerUserId: string) {
-    return this.prisma.recoveryRequest.findMany({ where: { ownerUserId }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.recoveryRequest.findMany({
+      where: { ownerUserId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async listQueue(filters: { status?: RecoveryRequestStatus; skip?: number; take?: number } = {}) {

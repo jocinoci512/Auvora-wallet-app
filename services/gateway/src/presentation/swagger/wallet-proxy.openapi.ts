@@ -38,7 +38,11 @@ export function buildWalletProxyOpenApiPaths(): OpenAPIObject['paths'] {
     ),
     '/api/v1/wallets/{walletId}/suspend': proxyPath('post', 'Suspend a wallet', walletTag),
     '/api/v1/wallets/{walletId}/archive': proxyPath('post', 'Archive a wallet', walletTag),
-    '/api/v1/wallets/{walletId}/restore': proxyPath('post', 'Restore an archived wallet', walletTag),
+    '/api/v1/wallets/{walletId}/restore': proxyPath(
+      'post',
+      'Restore an archived wallet',
+      walletTag,
+    ),
     '/api/v1/wallets/{walletId}/balance': proxyPath('get', 'Get wallet balance', walletTag),
     '/api/v1/wallets/{walletId}/transactions': proxyPath(
       'get',
@@ -51,11 +55,7 @@ export function buildWalletProxyOpenApiPaths(): OpenAPIObject['paths'] {
       'Get balance history',
       walletTag,
     ),
-    '/api/v1/wallets/{walletId}/balance-audits': proxyPath(
-      'get',
-      'Get balance audits',
-      walletTag,
-    ),
+    '/api/v1/wallets/{walletId}/balance-audits': proxyPath('get', 'Get balance audits', walletTag),
     '/api/v1/wallets/{walletId}/status-history': proxyPath(
       'get',
       'Get wallet status history',
@@ -78,11 +78,7 @@ export function buildWalletProxyOpenApiPaths(): OpenAPIObject['paths'] {
       'Archive wallet (admin)',
       adminTag,
     ),
-    '/api/v1/admin/wallets/{walletId}/credit': proxyPath(
-      'post',
-      'Credit wallet (admin)',
-      adminTag,
-    ),
+    '/api/v1/admin/wallets/{walletId}/credit': proxyPath('post', 'Credit wallet (admin)', adminTag),
     '/api/v1/admin/wallets/{walletId}/debit': proxyPath('post', 'Debit wallet (admin)', adminTag),
     '/api/v1/admin/wallets/{walletId}/transfer': proxyPath(
       'post',

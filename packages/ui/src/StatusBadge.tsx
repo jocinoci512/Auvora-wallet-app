@@ -7,8 +7,13 @@ export interface StatusBadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 /** Status pill with normalized CSS modifier from status string. */
 export function StatusBadge({ status, label, className, ...rest }: StatusBadgeProps): ReactElement {
-  const modifier = status.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const classes = ['status-badge', `status-badge--${modifier}`, className].filter(Boolean).join(' ');
+  const modifier = status
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
+  const classes = ['status-badge', `status-badge--${modifier}`, className]
+    .filter(Boolean)
+    .join(' ');
   return (
     <span className={classes} {...rest}>
       {label ?? status}

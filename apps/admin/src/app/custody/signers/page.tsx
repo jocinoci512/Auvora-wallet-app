@@ -14,9 +14,11 @@ export default function AdminSignersPage(): ReactElement {
       const client = createApiClient();
       setGroups(await client.adminListSignerGroups());
     } catch (err) {
-      setError(err instanceof AuvoraClientError && err.status === 401
-        ? 'Unauthorized — save a JWT access token above.'
-        : formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save a JWT access token above.'
+          : formatApiError(err),
+      );
     }
   }, []);
 

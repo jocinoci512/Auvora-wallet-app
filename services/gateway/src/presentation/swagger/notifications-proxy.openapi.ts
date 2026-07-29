@@ -40,7 +40,11 @@ export function buildNotificationsProxyOpenApiPaths(): OpenAPIObject['paths'] {
       ...proxyPath('post', 'Create template', adminTag),
     },
     '/api/v1/admin/notifications/queue': proxyPath('get', 'Queue monitor', adminTag),
-    '/api/v1/admin/notifications/failed': proxyPath('get', 'Failed / dead-letter deliveries', adminTag),
+    '/api/v1/admin/notifications/failed': proxyPath(
+      'get',
+      'Failed / dead-letter deliveries',
+      adminTag,
+    ),
     '/api/v1/admin/notifications/providers': proxyPath('get', 'Channel providers', adminTag),
     '/api/v1/admin/notifications/broadcast': proxyPath('post', 'Admin broadcast', adminTag),
     '/api/v1/admin/notifications/webhooks': proxyPath('get', 'Admin webhook manager', adminTag),

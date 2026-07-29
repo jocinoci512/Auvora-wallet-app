@@ -1,0 +1,537 @@
+/* Task 029 — Premium wallet experience */
+
+.wx {
+  --wx-gap: 0.85rem;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+  animation: wx-fade 280ms var(--auvora-motion-easing, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+@keyframes wx-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wx__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.wx__header h1 {
+  margin: 0.15rem 0 0.35rem;
+  font-size: clamp(1.65rem, 3vw, 2.1rem);
+  letter-spacing: -0.03em;
+}
+
+.wx__eyebrow {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.wx__eyebrow a {
+  color: var(--auvora-color-primary);
+  text-decoration: none;
+}
+
+.wx__sub {
+  margin: 0;
+  color: var(--auvora-color-text-muted);
+  max-width: 52ch;
+  line-height: 1.45;
+}
+
+.wx__progress {
+  width: min(220px, 100%);
+  height: 6px;
+  border-radius: 999px;
+  background: var(--auvora-color-border);
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+
+.wx__progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--auvora-color-primary), var(--auvora-color-info, #84caff));
+  transition: width 220ms ease;
+}
+
+.wx__steps {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  padding: 0;
+  margin: 0 0 1.15rem;
+}
+
+.wx__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--auvora-color-text-muted);
+}
+
+.wx__step-dot {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--auvora-color-border);
+  font-size: 0.7rem;
+}
+
+.wx__step--current {
+  color: var(--auvora-color-text);
+  font-weight: 600;
+}
+
+.wx__step--current .wx__step-dot,
+.wx__step--done .wx__step-dot {
+  background: var(--auvora-color-primary);
+  border-color: transparent;
+  color: var(--auvora-color-on-primary, #04120c);
+}
+
+.wx__body {
+  display: grid;
+  gap: var(--wx-gap);
+}
+
+.wx__footer,
+.wx__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.1rem;
+}
+
+.wx-panel {
+  background: var(--auvora-color-surface);
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-md, 12px);
+  padding: 1.1rem 1.15rem;
+  margin-bottom: 0.85rem;
+}
+
+.wx-panel--center {
+  text-align: center;
+}
+
+.wx-panel h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.1rem;
+}
+
+.wx-field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.wx-field span {
+  color: var(--auvora-color-text-muted);
+}
+
+.wx-field input,
+.wx-field select,
+.wx-field textarea,
+.wx-toolbar input,
+.wx-toolbar select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--auvora-radius-sm, 8px);
+  border: 1px solid var(--auvora-color-border);
+  background: var(--auvora-color-surface-solid, var(--auvora-color-surface));
+  color: var(--auvora-color-text);
+}
+
+.wx-field--grow {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.wx-field--narrow {
+  width: 5.5rem;
+  margin: 0;
+}
+
+.wx-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+}
+
+.wx-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.55rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.wx-choice {
+  text-align: left;
+  padding: 0.75rem 0.8rem;
+  border-radius: var(--auvora-radius-sm, 8px);
+  border: 1px solid var(--auvora-color-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.wx-choice strong {
+  display: block;
+}
+
+.wx-choice span {
+  font-size: 0.8rem;
+  color: var(--auvora-color-text-muted);
+}
+
+.wx-choice:hover {
+  border-color: var(--auvora-color-primary);
+}
+
+.wx-choice--on {
+  border-color: var(--auvora-color-primary);
+  background: color-mix(in srgb, var(--auvora-color-primary) 12%, transparent);
+}
+
+.wx-choice:focus-visible {
+  outline: 2px solid var(--auvora-color-primary);
+  outline-offset: 2px;
+}
+
+.wx-onboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.wx-onboard-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.wx-help {
+  margin-top: 1.5rem;
+  color: var(--auvora-color-text-muted);
+}
+
+.wx-kv {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.75rem 0;
+}
+
+.wx-kv > div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.5rem;
+}
+
+.wx-kv dt {
+  color: var(--auvora-color-text-muted);
+  margin: 0;
+}
+
+.wx-kv dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.wx-checklist,
+.wx-bullets,
+.wx-account-list,
+.wx-contact-list,
+.wx-tx-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.wx-bullets {
+  list-style: disc;
+  padding-left: 1.2rem;
+}
+
+.wx-account-list li,
+.wx-contact-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--auvora-color-border);
+  border-radius: var(--auvora-radius-sm, 8px);
+}
+
+.wx-contact-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.wx-challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+}
+
+.wx-phrase-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+
+.wx-phrase-grid li {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: var(--auvora-color-surface-solid, var(--auvora-color-surface));
+  border: 1px solid var(--auvora-color-border);
+  font-family: var(--font-auvora-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+}
+
+.wx-phrase-num {
+  color: var(--auvora-color-text-muted);
+  min-width: 1.25rem;
+}
+
+.wx-phrase-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wx-phrase-inline {
+  display: block;
+  margin-top: 0.35rem;
+  word-break: break-word;
+}
+
+.wx-qr {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.wx-qr__frame {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--auvora-color-border);
+  background: #fff; /* QR quiet zone — keep high contrast in dark theme */
+}
+
+.wx-qr__skel {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--auvora-color-text-muted);
+  font-size: 0.85rem;
+}
+
+.wx-qr__value code {
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.wx-qr__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.wx-inline-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--auvora-color-success);
+  font-size: 0.85rem;
+}
+
+.wx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.wx-chip {
+  border: 1px solid var(--auvora-color-border);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.wx-chip:hover,
+.wx-chip:focus-visible {
+  border-color: var(--auvora-color-primary);
+}
+
+.wx-chip-block {
+  margin: 0.85rem 0;
+}
+
+.wx-chip-block h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.wx-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+
+.wx-meta {
+  margin: 0.25rem 0;
+  color: var(--auvora-color-text-muted);
+  font-size: 0.82rem;
+}
+
+.wx-text-link {
+  color: var(--auvora-color-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.wx-form-stack {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.wx-setting-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--auvora-color-border);
+}
+
+.wx-tx-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  border: 1px solid var(--auvora-color-border);
+  background: transparent;
+  color: inherit;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+}
+
+.wx-tx-row:hover,
+.wx-tx-row:focus-visible {
+  border-color: var(--auvora-color-primary);
+}
+
+.wx-tx-right {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+}
+
+.wx-tx-detail__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wx-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.5rem 0;
+}
+
+.wx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+@media (min-width: 768px) {
+  .wx {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .wx-phrase-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .wx-kv > div {
+    grid-template-columns: 1fr;
+  }
+
+  .wx-phrase-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wx__actions {
+    justify-content: stretch;
+  }
+
+  .wx__actions > * {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx,
+  .wx__progress-bar,
+  .wx-choice {
+    animation: none !important;
+    transition: none !important;
+  }
+}

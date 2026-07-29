@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CustodyModelCode, CustodyProviderPort, CustodyProviderRegistryPort } from '../../domain';
+import type {
+  CustodyModelCode,
+  CustodyProviderPort,
+  CustodyProviderRegistryPort,
+} from '../../domain';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { SimulatorCustodyProvider } from './simulator.provider';
 import { UnavailableCustodyProvider } from './unavailable.provider';

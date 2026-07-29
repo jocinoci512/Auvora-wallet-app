@@ -16,12 +16,18 @@ import { EVENT_BUS } from '../domain';
 import { EventBusService } from './events/event-bus.service';
 import { LoggerInfrastructureModule } from './logging/logger.module';
 import { AI_PUBLISHER, AiPublisherAdapter } from './ai/ai-publisher.adapter';
-import { ANALYTICS_PUBLISHER, AnalyticsPublisherAdapter } from './analytics/analytics-publisher.adapter';
+import {
+  ANALYTICS_PUBLISHER,
+  AnalyticsPublisherAdapter,
+} from './analytics/analytics-publisher.adapter';
 import {
   OBSERVABILITY_PUBLISHER,
   ObservabilityPublisherAdapter,
 } from './observability/observability-publisher.adapter';
-import { NOTIFICATIONS_PUBLISHER, NotificationsPublisherAdapter } from './notifications/notifications-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  NotificationsPublisherAdapter,
+} from './notifications/notifications-publisher.adapter';
 import { PrismaChainAddressRepository } from './persistence/prisma-chain-address.repository';
 import { PrismaChainBlockRepository } from './persistence/prisma-chain-block.repository';
 import { PrismaChainTransactionRepository } from './persistence/prisma-chain-transaction.repository';
@@ -30,13 +36,26 @@ import { PrismaNetworkConfigRepository } from './persistence/prisma-network-conf
 import { PrismaProviderHealthRepository } from './persistence/prisma-provider-health.repository';
 import { PrismaProviderRecordRepository } from './persistence/prisma-provider-record.repository';
 import { PrismaSyncJobRepository } from './persistence/prisma-sync-job.repository';
-import { CHAIN_PROVIDERS, PROVIDER_REGISTRY, type ProviderRegistry } from './providers/provider-registry';
+import {
+  CHAIN_PROVIDERS,
+  PROVIDER_REGISTRY,
+  type ProviderRegistry,
+} from './providers/provider-registry';
 import { ProviderFactory } from './providers/provider-factory.service';
 import { ProviderHealthMonitor } from './providers/provider-health-monitor.service';
 import { ProviderResolver } from './providers/provider-resolver.service';
 import { SimulatorLedgerAdapter } from './providers/simulator-ledger.adapter';
 import { createAlchemyProviders } from './providers/alchemy/create-alchemy-providers';
-import { isAlchemyConfigured, redactRpcUrl, resolveAlchemyRpcUrls } from './providers/alchemy/alchemy-rpc.config';
+import {
+  isAlchemyConfigured,
+  redactRpcUrl,
+  resolveAlchemyRpcUrls,
+} from './providers/alchemy/alchemy-rpc.config';
+import {
+  MULTI_CHAIN_PROVIDER_MANAGER,
+  MultiChainProviderManager,
+} from './providers/multi-chain-provider.manager';
+import { assertAlchemyReadyForPrimary, resolveBlockchainConfig } from '../config/blockchain.config';
 import { RedisAdapter } from './redis/redis.adapter';
 import { REDIS_PORT } from './redis/redis.port';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
@@ -67,6 +86,7 @@ import { Logger } from '@nestjs/common';
     ProviderFactory,
     ProviderResolver,
     ProviderHealthMonitor,
+    MultiChainProviderManager,
     EventBusService,
     NotificationsPublisherAdapter,
     AiPublisherAdapter,
@@ -76,38 +96,58 @@ import { Logger } from '@nestjs/common';
     NoopCustodySigningAdapter,
     {
       provide: CUSTODY_SIGNING_CLIENT,
-      useFactory: (env: ServiceEnv, http: CustodySigningHttpClient, noop: NoopCustodySigningAdapter) =>
-        env.CUSTODY_SERVICE_URL && env.INTERNAL_API_KEY ? http : noop,
+      useFactory: (
+        env: ServiceEnv,
+        http: CustodySigningHttpClient,
+        noop: NoopCustodySigningAdapter,
+      ) => (env.CUSTODY_SERVICE_URL && env.INTERNAL_API_KEY ? http : noop),
       inject: [ENV, CustodySigningHttpClient, NoopCustodySigningAdapter],
     },
     {
       provide: PROVIDER_REGISTRY,
-      useFactory: (env: ServiceEnv, ...providers: InstanceType<(typeof CHAIN_PROVIDERS)[number]>[]) => {
+      useFactory: (
+        env: ServiceEnv,
+        ...providers: InstanceType<(typeof CHAIN_PROVIDERS)[number]>[]
+      ) => {
+        assertAlchemyReadyForPrimary(env);
         const registry: ProviderRegistry = new Map();
         for (const provider of providers) {
           registry.set(provider.getChain(), provider);
         }
+        const policy = resolveBlockchainConfig(env);
         const alchemy = createAlchemyProviders(env);
-        for (const [chain, live] of alchemy) {
-          registry.set(chain, live);
+        // Alchemy is the primary provider for every configured live chain.
+        if (policy.primaryProvider === 'alchemy') {
+          for (const [chain, live] of alchemy) {
+            registry.set(chain, live);
+          }
+        } else if (alchemy.size > 0 && env.BLOCKCHAIN_PRIMARY_PROVIDER !== 'simulator') {
+          for (const [chain, live] of alchemy) {
+            registry.set(chain, live);
+          }
         }
         const log = new Logger('ProviderRegistry');
-        if (alchemy.size > 0) {
+        if (alchemy.size > 0 && policy.primaryProvider === 'alchemy') {
           const urls = resolveAlchemyRpcUrls(env);
           const summary = [...alchemy.keys()].map((chain) => {
             const url = urls.get(chain);
             return `${chain}@${url ? redactRpcUrl(url) : 'alchemy'}`;
           });
-          log.log(`Alchemy live providers active: ${summary.join(', ')}`);
+          log.log(`Alchemy primary providers active: ${summary.join(', ')}`);
         } else if (!isAlchemyConfigured(env)) {
           log.warn(
-            'No Alchemy RPC configured — using simulator providers. Set ALCHEMY_API_KEY or ALCHEMY_*_RPC_URL for live chains.',
+            'No Alchemy RPC configured — using simulator providers. Set ALCHEMY_API_KEY (primary) for Ethereum, BSC, Solana, Tron, Bitcoin.',
+          );
+        } else if (policy.primaryProvider === 'simulator') {
+          log.warn(
+            'BLOCKCHAIN_PRIMARY_PROVIDER=simulator — Alchemy credentials present but not activated',
           );
         }
         return registry;
       },
       inject: [ENV, ...CHAIN_PROVIDERS],
     },
+    { provide: MULTI_CHAIN_PROVIDER_MANAGER, useExisting: MultiChainProviderManager },
     { provide: REDIS_PORT, useExisting: RedisAdapter },
     { provide: RATE_LIMITER, useExisting: RedisAdapter },
     { provide: CLOCK, useExisting: SystemClockAdapter },
@@ -145,6 +185,8 @@ import { Logger } from '@nestjs/common';
     EVENT_LOG_REPOSITORY,
     PROVIDER_FACTORY,
     PROVIDER_RESOLVER,
+    MULTI_CHAIN_PROVIDER_MANAGER,
+    MultiChainProviderManager,
     EVENT_BUS,
     NOTIFICATIONS_PUBLISHER,
     AI_PUBLISHER,

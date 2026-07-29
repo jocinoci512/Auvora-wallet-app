@@ -30,7 +30,8 @@ export default function AdminComplianceRulesPage(): ReactElement {
       <ul>
         {items.map((r) => (
           <li key={r.id}>
-            {r.code} — {r.name} — {r.action} (priority {r.priority}) {r.isEnabled ? '' : '[disabled]'}
+            {r.code} — {r.name} — {r.action} (priority {r.priority}){' '}
+            {r.isEnabled ? '' : '[disabled]'}
           </li>
         ))}
       </ul>

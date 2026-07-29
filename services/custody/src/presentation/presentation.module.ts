@@ -6,7 +6,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { AdminCustodyController } from './controllers/admin-custody.controller';
 import { CustodyController } from './controllers/custody.controller';
 import { InternalCustodyController } from './controllers/internal-custody.controller';
-import { DomainExceptionFilter } from './filters/domain-exception.filter';
+import { DomainExceptionFilter } from '@auvora/nest-common';
 import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './guards/jwt.strategy';
@@ -17,8 +17,17 @@ import { ObservabilityMetricsInterceptor } from './interceptors/observability-me
 import { RequestContextMiddleware } from './middleware/request-context.middleware';
 
 @Module({
-  imports: [InfrastructureModule, ApplicationModule, PassportModule.register({ defaultStrategy: 'jwt' })],
-  controllers: [HealthController, CustodyController, AdminCustodyController, InternalCustodyController],
+  imports: [
+    InfrastructureModule,
+    ApplicationModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+  ],
+  controllers: [
+    HealthController,
+    CustodyController,
+    AdminCustodyController,
+    InternalCustodyController,
+  ],
   providers: [
     JwtStrategy,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

@@ -31,7 +31,7 @@ on:
         description: Type "deploy-production" to allow production / DR deploys
         required: false
         type: string
-        default: ""
+        default: ''
       run_migrations:
         description: Run prisma migrate deploy before Helm upgrade (requires migrate job secret)
         required: true

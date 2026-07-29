@@ -1,8 +1,4 @@
-import {
-  shouldLock,
-  computeLockedUntil,
-  isCurrentlyLocked,
-} from '../../src/domain/lockout-policy';
+import { shouldLock, computeLockedUntil, isCurrentlyLocked } from '../../src/domain/lockout-policy';
 
 describe('lockout-policy', () => {
   it('shouldLock when failed count reaches max', () => {

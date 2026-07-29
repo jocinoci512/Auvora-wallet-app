@@ -27,7 +27,7 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -193,7 +193,9 @@ export class AdminAnalyticsController {
   @Post('metrics')
   @Permissions(PERMISSION_ANALYTICS_ADMIN)
   async createMetric(@Body() dto: CreateMetricDto) {
-    return successResponse(await this.metrics.create({ ...dto, valueType: dto.valueType as never }));
+    return successResponse(
+      await this.metrics.create({ ...dto, valueType: dto.valueType as never }),
+    );
   }
 
   @Patch('metrics/:code')

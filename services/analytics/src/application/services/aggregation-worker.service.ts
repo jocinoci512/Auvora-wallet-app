@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { AggregationService } from './aggregation.service';
 import { ScheduledReportService } from './scheduled-report.service';

@@ -23,9 +23,11 @@ describe('ProviderRpcHealthService', () => {
     const service = new ProviderRpcHealthService(factory as never);
     const result = await service.getOne(ChainNetwork.ETHEREUM);
     expect(result.backend).toBe('alchemy');
+    expect(result.syncMode).toBe('live-backed');
     expect(result.status).toBe('up');
     expect(result.latestBlockHeight).toBe('100');
     expect(result.endpoint).toBe('ETHEREUM-alchemy');
+    expect(result.errorState).toBeNull();
   });
 
   it('reports simulator backend without live metrics', async () => {
@@ -41,6 +43,7 @@ describe('ProviderRpcHealthService', () => {
     const service = new ProviderRpcHealthService(factory as never);
     const all = await service.getAll();
     expect(all[0]?.backend).toBe('simulator');
+    expect(all[0]?.syncMode).toBe('simulator-only');
     expect(all[0]?.status).toBe('up');
   });
 });

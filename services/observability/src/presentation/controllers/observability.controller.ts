@@ -4,7 +4,7 @@ import { IncidentService } from '../../application/services/incident.service';
 import { MaintenanceService } from '../../application/services/maintenance.service';
 import { OpsDashboardService } from '../../application/services/ops-dashboard.service';
 import { PERMISSION_OBSERVABILITY_READ } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Public } from '../decorators/auth.decorators';
 
 @ApiTags('observability')

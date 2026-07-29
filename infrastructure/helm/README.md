@@ -81,18 +81,18 @@ Runtime apps may also resolve secrets via `@auvora/secrets` (env / k8s / vault /
 
 ## Services
 
-| Service        | Port | Package                    |
-|----------------|------|----------------------------|
-| gateway        | 4000 | @auvora/gateway-service    |
-| auth           | 4001 | @auvora/auth-service       |
-| wallet         | 3002 | @auvora/wallet-service     |
-| blockchain     | 3003 | @auvora/blockchain-service |
-| payments       | 3004 | @auvora/payments-service   |
-| compliance     | 3005 | @auvora/compliance-service |
-| notifications  | 3006 | @auvora/notifications-service |
-| analytics      | 3007 | @auvora/analytics-service  |
-| ai             | 3008 | @auvora/ai-service         |
-| custody        | 3009 | @auvora/custody-service    |
-| observability  | 3010 | @auvora/observability-service |
-| web            | 3000 | (app)                      |
-| admin          | 3001 | (app)                      |
+| Service       | Port | Package                       |
+| ------------- | ---- | ----------------------------- |
+| gateway       | 4000 | @auvora/gateway-service       |
+| auth          | 4001 | @auvora/auth-service          |
+| wallet        | 3002 | @auvora/wallet-service        |
+| blockchain    | 3003 | @auvora/blockchain-service    |
+| payments      | 3004 | @auvora/payments-service      |
+| compliance    | 3005 | @auvora/compliance-service    |
+| notifications | 3006 | @auvora/notifications-service |
+| analytics     | 3007 | @auvora/analytics-service     |
+| ai            | 3008 | @auvora/ai-service            |
+| custody       | 3009 | @auvora/custody-service       |
+| observability | 3010 | @auvora/observability-service |
+| web           | 3000 | (app)                         |
+| admin         | 3001 | (app)                         |

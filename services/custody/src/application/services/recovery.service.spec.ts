@@ -3,7 +3,14 @@ import { ConflictError, ForbiddenError, NotFoundError } from '../../domain';
 import { RecoveryService } from './recovery.service';
 
 function buildPolicy(overrides: Partial<Record<string, unknown>> = {}) {
-  return { id: 'policy-1', ownerUserId: null, requiredApprovals: 1, timeoutHours: 72, isEnabled: true, ...overrides };
+  return {
+    id: 'policy-1',
+    ownerUserId: null,
+    requiredApprovals: 1,
+    timeoutHours: 72,
+    isEnabled: true,
+    ...overrides,
+  };
 }
 
 function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
@@ -26,22 +33,30 @@ function buildPrisma(overrides: Partial<Record<string, unknown>> = {}) {
     },
     recoveryContact: {
       findMany: jest.fn().mockResolvedValue([]),
-      create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(data)),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(data)),
       findUnique: jest.fn().mockResolvedValue({ id: 'contact-1', ownerUserId: 'user-1' }),
       update: jest.fn().mockResolvedValue({ isActive: false }),
     },
     cryptographicKey: {
-      findUnique: jest.fn().mockResolvedValue({ id: 'key-1', ownerUserId: 'user-1', status: 'ACTIVE' }),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'key-1', ownerUserId: 'user-1', status: 'ACTIVE' }),
       update: jest.fn().mockResolvedValue({}),
     },
     recoveryRequest: {
-      create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'rr-1', approvalsCount: 0, ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'rr-1', approvalsCount: 0, ...data }),
+        ),
       findUnique: jest.fn().mockResolvedValue(buildRequest()),
-      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ ...buildRequest(), ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...buildRequest(), ...data }),
+        ),
       findMany: jest.fn().mockResolvedValue([]),
     },
     custodyAuditRecord: { create: jest.fn().mockResolvedValue({}) },
@@ -49,7 +64,11 @@ function buildPrisma(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-const crypto = { encrypt: (v: string) => `enc:${v}`, decrypt: (v: string) => v, hash: (v: string) => v };
+const crypto = {
+  encrypt: (v: string) => `enc:${v}`,
+  decrypt: (v: string) => v,
+  hash: (v: string) => v,
+};
 
 const actor: JwtAccessClaims = {
   sub: 'admin-1',
@@ -62,12 +81,24 @@ const actor: JwtAccessClaims = {
 describe('RecoveryService', () => {
   it('encrypts contact email and phone before persisting', async () => {
     const prisma = buildPrisma();
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
-    await service.addContact('user-1', { policyId: 'policy-1', label: 'Mom', email: 'mom@example.com', phone: '555-1234' });
+    await service.addContact('user-1', {
+      policyId: 'policy-1',
+      label: 'Mom',
+      email: 'mom@example.com',
+      phone: '555-1234',
+    });
     expect(prisma.recoveryContact.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ emailEncrypted: 'enc:mom@example.com', phoneEncrypted: 'enc:555-1234' }),
+        data: expect.objectContaining({
+          emailEncrypted: 'enc:mom@example.com',
+          phoneEncrypted: 'enc:555-1234',
+        }),
       }),
     );
   });
@@ -92,7 +123,11 @@ describe('RecoveryService', () => {
         findFirst: jest.fn(),
       },
     });
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
     const result = await service.startRecovery('user-1', { policyId: 'policy-1' });
     expect((result as { status: string }).status).toBe('APPROVED');
@@ -100,11 +135,21 @@ describe('RecoveryService', () => {
 
   it('refuses to start recovery for a key owned by another user', async () => {
     const prisma = buildPrisma({
-      cryptographicKey: { findUnique: jest.fn().mockResolvedValue({ id: 'key-1', ownerUserId: 'someone-else', status: 'ACTIVE' }) },
+      cryptographicKey: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'key-1', ownerUserId: 'someone-else', status: 'ACTIVE' }),
+      },
     });
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
-    await expect(service.startRecovery('user-1', { keyId: 'key-1', policyId: 'policy-1' })).rejects.toThrow(ForbiddenError);
+    await expect(
+      service.startRecovery('user-1', { keyId: 'key-1', policyId: 'policy-1' }),
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('throws ConflictError when approving a request that is not awaiting approval', async () => {
@@ -114,14 +159,22 @@ describe('RecoveryService', () => {
         update: jest.fn(),
       },
     });
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.approve('rr-1', actor)).rejects.toThrow(ConflictError);
   });
 
   it('marks a recovery request APPROVED once required approvals are met', async () => {
     const prisma = buildPrisma();
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
     const result = await service.approve('rr-1', actor);
     expect((result as { status: string }).status).toBe('APPROVED');
@@ -129,9 +182,16 @@ describe('RecoveryService', () => {
 
   it('refuses to complete a recovery request that is not approved', async () => {
     const prisma = buildPrisma({
-      recoveryRequest: { findUnique: jest.fn().mockResolvedValue(buildRequest({ status: 'AWAITING_APPROVAL' })), update: jest.fn() },
+      recoveryRequest: {
+        findUnique: jest.fn().mockResolvedValue(buildRequest({ status: 'AWAITING_APPROVAL' })),
+        update: jest.fn(),
+      },
     });
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.complete('rr-1', actor)).rejects.toThrow(ConflictError);
   });
@@ -140,9 +200,11 @@ describe('RecoveryService', () => {
     const prisma = buildPrisma({
       recoveryRequest: {
         findUnique: jest.fn().mockResolvedValue(buildRequest({ status: 'APPROVED' })),
-        update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-          Promise.resolve({ ...buildRequest({ status: 'APPROVED' }), ...data }),
-        ),
+        update: jest
+          .fn()
+          .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+            Promise.resolve({ ...buildRequest({ status: 'APPROVED' }), ...data }),
+          ),
       },
     });
     const events = { publish: jest.fn().mockResolvedValue(undefined) };
@@ -157,8 +219,14 @@ describe('RecoveryService', () => {
   });
 
   it('throws NotFoundError for an unknown recovery request', async () => {
-    const prisma = buildPrisma({ recoveryRequest: { findUnique: jest.fn().mockResolvedValue(null) } });
-    const service = new RecoveryService(prisma as never, crypto as never, { publish: jest.fn() } as never);
+    const prisma = buildPrisma({
+      recoveryRequest: { findUnique: jest.fn().mockResolvedValue(null) },
+    });
+    const service = new RecoveryService(
+      prisma as never,
+      crypto as never,
+      { publish: jest.fn() } as never,
+    );
 
     await expect(service.complete('missing', actor)).rejects.toThrow(NotFoundError);
   });

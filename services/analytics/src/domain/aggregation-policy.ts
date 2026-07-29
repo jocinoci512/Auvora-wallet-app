@@ -1,7 +1,13 @@
 import type { AggregationWindow } from '@auvora/database';
 import { ValidationError } from './errors';
 
-const AGGREGATION_WINDOWS: AggregationWindow[] = ['REALTIME', 'HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY'];
+const AGGREGATION_WINDOWS: AggregationWindow[] = [
+  'REALTIME',
+  'HOURLY',
+  'DAILY',
+  'WEEKLY',
+  'MONTHLY',
+];
 
 export function isAggregationWindow(value: string): value is AggregationWindow {
   return AGGREGATION_WINDOWS.includes(value as AggregationWindow);

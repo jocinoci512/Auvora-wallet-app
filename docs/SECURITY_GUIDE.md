@@ -41,10 +41,10 @@ When `BLOCKCHAIN_SERVICE_URL` is unset, wallet uses **local format validation** 
 
 ## Accepted risks (signed for RC)
 
-| Risk | Mitigation |
-|------|------------|
+| Risk                                                            | Mitigation                                                                  |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | OTEL auto-instrumentations / sdk-node / jaeger propagator highs | Health/ready independent of Prometheus exporter; upgrade train Phase 14 GA+ |
-| brace-expansion advisory range FP on 1.1.16 | Scoped overrides; do not global-pin 5.x onto ESLint |
+| brace-expansion advisory range FP on 1.1.16                     | Scoped overrides; do not global-pin 5.x onto ESLint                         |
 
 ## Container / infrastructure
 

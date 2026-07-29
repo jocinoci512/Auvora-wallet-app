@@ -1,20 +1,11 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Inject,
-  Param,
-  Patch,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from '../../application/services/auth.service';
 import { CurrentUser, extractRequestContext } from '../decorators/current-user.decorator';
 import type { JwtAccessClaims } from '@auvora/types';
 import { Req } from '@nestjs/common';
 import type { Request } from 'express';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { UpdateProfileDto } from '../dto/profile.dto';
 import { DeviceIdParamDto, SessionIdParamDto } from '../dto/admin.dto';
 

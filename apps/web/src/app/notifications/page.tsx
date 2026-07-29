@@ -1,6 +1,10 @@
 'use client';
 
-import { AuvoraClientError, type NotificationItem, type NotificationPreferences } from '@auvora/sdk';
+import {
+  AuvoraClientError,
+  type NotificationItem,
+  type NotificationPreferences,
+} from '@auvora/sdk';
 import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';

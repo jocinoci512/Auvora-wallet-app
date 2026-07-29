@@ -46,7 +46,10 @@ export class HealthController {
   @ApiOkResponse({ description: 'Readiness probe' })
   async getReady(): Promise<HealthCheckResponse> {
     const started = Date.now();
-    const [dbHealthy, redisHealthy] = await Promise.all([this.prisma.isHealthy(), this.redis.ping()]);
+    const [dbHealthy, redisHealthy] = await Promise.all([
+      this.prisma.isHealthy(),
+      this.redis.ping(),
+    ]);
     const worker = this.aggregationWorker?.status();
     const workerHealthy = !worker || !worker.enabled || worker.running;
     const checks: Record<string, HealthStatus> = {

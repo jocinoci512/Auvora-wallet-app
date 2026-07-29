@@ -77,7 +77,8 @@ export class AlertingService {
         comparison: input.comparison,
         windowSeconds: input.windowSeconds,
         isEnabled: input.isEnabled,
-        metadata: input.metadata === undefined ? undefined : (input.metadata as Prisma.InputJsonValue),
+        metadata:
+          input.metadata === undefined ? undefined : (input.metadata as Prisma.InputJsonValue),
       },
     });
     await this.audit.record('alert_rule.updated', {
@@ -122,7 +123,9 @@ export class AlertingService {
       if (!rule.metricCode || rule.threshold == null) {
         continue;
       }
-      const metric = await this.prisma.obsMetricDefinition.findUnique({ where: { code: rule.metricCode } });
+      const metric = await this.prisma.obsMetricDefinition.findUnique({
+        where: { code: rule.metricCode },
+      });
       if (!metric) {
         continue;
       }

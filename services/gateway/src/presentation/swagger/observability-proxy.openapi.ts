@@ -50,7 +50,11 @@ export function buildObservabilityProxyOpenApiPaths(): OpenAPIObject['paths'] {
       adminTag,
     ),
     '/api/v1/admin/observability/capacity': proxyPath('get', 'Capacity overview', adminTag),
-    '/api/v1/admin/infrastructure/dashboard': proxyPath('get', 'Infrastructure dashboard', adminTag),
+    '/api/v1/admin/infrastructure/dashboard': proxyPath(
+      'get',
+      'Infrastructure dashboard',
+      adminTag,
+    ),
     '/api/v1/admin/infrastructure/cluster-health': proxyPath(
       'get',
       'Cluster health summary',

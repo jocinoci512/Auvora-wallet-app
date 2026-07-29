@@ -53,7 +53,10 @@ export function signWithSimulatedKey(
     type: 'pkcs8',
   });
   const data = Buffer.from(payloadHashHex, 'hex');
-  const signature = family === 'ed25519' ? cryptoSign(null, data, privateKey) : cryptoSign('sha256', data, privateKey);
+  const signature =
+    family === 'ed25519'
+      ? cryptoSign(null, data, privateKey)
+      : cryptoSign('sha256', data, privateKey);
   return signature.toString('base64');
 }
 

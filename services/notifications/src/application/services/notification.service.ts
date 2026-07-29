@@ -59,7 +59,9 @@ export class NotificationService {
 
   async send(input: SendNotificationInput) {
     if (input.dedupeKey) {
-      const existing = await this.prisma.notificationMessage.findUnique({ where: { dedupeKey: input.dedupeKey } });
+      const existing = await this.prisma.notificationMessage.findUnique({
+        where: { dedupeKey: input.dedupeKey },
+      });
       if (existing) {
         return existing;
       }
@@ -75,7 +77,9 @@ export class NotificationService {
         : await this.templates.getByCode(
             input.templateCode as string,
             input.channel,
-            typeof input.metadata?.['locale'] === 'string' ? (input.metadata['locale'] as string) : 'en',
+            typeof input.metadata?.['locale'] === 'string'
+              ? (input.metadata['locale'] as string)
+              : 'en',
           );
       const rendered = renderTemplateParts(
         { subject: template.subject ?? undefined, body: template.body },
@@ -107,7 +111,11 @@ export class NotificationService {
     }
 
     const availableAt = input.scheduledAt ?? input.delayUntil;
-    const status: NotificationStatus = suppressed ? 'SUPPRESSED' : availableAt ? 'SCHEDULED' : 'QUEUED';
+    const status: NotificationStatus = suppressed
+      ? 'SUPPRESSED'
+      : availableAt
+        ? 'SCHEDULED'
+        : 'QUEUED';
     // Every notification carries a correlationId so it can be traced end-to-end (delivery logs,
     // webhook fan-out, upstream service logs) even when the caller does not supply one.
     const correlationId = input.correlationId ?? randomUUID();
@@ -162,7 +170,10 @@ export class NotificationService {
     return results;
   }
 
-  async history(ownerUserId: string, filters: { status?: NotificationStatus; skip?: number; take?: number } = {}) {
+  async history(
+    ownerUserId: string,
+    filters: { status?: NotificationStatus; skip?: number; take?: number } = {},
+  ) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 100);
     const where: Prisma.NotificationMessageWhereInput = {
@@ -170,20 +181,27 @@ export class NotificationService {
       ...(filters.status ? { status: filters.status } : {}),
     };
     const [items, total] = await Promise.all([
-      this.prisma.notificationMessage.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.notificationMessage.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
       this.prisma.notificationMessage.count({ where }),
     ]);
     return { items, total, skip, take };
   }
 
-  async search(filters: {
-    status?: NotificationStatus;
-    channel?: NotificationChannel;
-    category?: NotificationCategory;
-    ownerUserId?: string;
-    skip?: number;
-    take?: number;
-  } = {}) {
+  async search(
+    filters: {
+      status?: NotificationStatus;
+      channel?: NotificationChannel;
+      category?: NotificationCategory;
+      ownerUserId?: string;
+      skip?: number;
+      take?: number;
+    } = {},
+  ) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 200);
     const where: Prisma.NotificationMessageWhereInput = {
@@ -193,7 +211,12 @@ export class NotificationService {
       ...(filters.ownerUserId ? { ownerUserId: filters.ownerUserId } : {}),
     };
     const [items, total] = await Promise.all([
-      this.prisma.notificationMessage.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.notificationMessage.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
       this.prisma.notificationMessage.count({ where }),
     ]);
     return { items, total, skip, take };
@@ -215,11 +238,18 @@ export class NotificationService {
   async markRead(id: string, actor: JwtAccessClaims) {
     const notification = await this.getOrThrow(id);
     this.assertSelfOrAdmin(notification.ownerUserId, actor);
-    const metadata = { ...((notification.metadata as Record<string, unknown>) ?? {}), read: true, readAt: new Date().toISOString() };
+    const metadata = {
+      ...((notification.metadata as Record<string, unknown>) ?? {}),
+      read: true,
+      readAt: new Date().toISOString(),
+    };
     return this.prisma.notificationMessage.update({
       where: { id },
       data: {
-        status: notification.status === 'FAILED' || notification.status === 'DEAD_LETTER' ? notification.status : 'DELIVERED',
+        status:
+          notification.status === 'FAILED' || notification.status === 'DEAD_LETTER'
+            ? notification.status
+            : 'DELIVERED',
         deliveredAt: notification.deliveredAt ?? new Date(),
         metadata: metadata as Prisma.InputJsonValue,
       },
@@ -237,7 +267,10 @@ export class NotificationService {
   }
 
   private assertSelfOrAdmin(ownerUserId: string | null, requester: JwtAccessClaims) {
-    if (ownerUserId !== requester.sub && !requester.permissions.includes(PERMISSION_NOTIFICATION_ADMIN)) {
+    if (
+      ownerUserId !== requester.sub &&
+      !requester.permissions.includes(PERMISSION_NOTIFICATION_ADMIN)
+    ) {
       throw new ForbiddenError('Access denied');
     }
   }

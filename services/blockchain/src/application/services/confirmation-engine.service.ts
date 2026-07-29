@@ -5,12 +5,12 @@ import {
   type ChainTransactionRecord,
   type ChainTransactionRepositoryPort,
 } from '../ports/chain-transaction-repository.port';
-import { NETWORK_CONFIG_REPOSITORY, type NetworkConfigRepositoryPort } from '../ports/network-config-repository.port';
-import { BlockchainEventType, EVENT_BUS, type EventBusPort } from '../../domain';
 import {
-  AI_PUBLISHER,
-  type AiPublisherPort,
-} from '../../infrastructure/ai/ai-publisher.adapter';
+  NETWORK_CONFIG_REPOSITORY,
+  type NetworkConfigRepositoryPort,
+} from '../ports/network-config-repository.port';
+import { BlockchainEventType, EVENT_BUS, type EventBusPort } from '../../domain';
+import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
@@ -23,7 +23,8 @@ import {
 @Injectable()
 export class ConfirmationEngine {
   constructor(
-    @Inject(CHAIN_TRANSACTION_REPOSITORY) private readonly transactions: ChainTransactionRepositoryPort,
+    @Inject(CHAIN_TRANSACTION_REPOSITORY)
+    private readonly transactions: ChainTransactionRepositoryPort,
     @Inject(NETWORK_CONFIG_REPOSITORY) private readonly networkConfig: NetworkConfigRepositoryPort,
     @Inject(EVENT_BUS) private readonly eventBus: EventBusPort,
     @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
@@ -57,7 +58,11 @@ export class ConfirmationEngine {
     }
 
     const confirmations = Math.max(0, Number(currentHeight - BigInt(tx.blockNumber)) + 1);
-    const updated = await this.transactions.updateConfirmations(tx.id, confirmations, tx.blockNumber);
+    const updated = await this.transactions.updateConfirmations(
+      tx.id,
+      confirmations,
+      tx.blockNumber,
+    );
 
     if (confirmations >= requiredConfirmations) {
       const confirmed = await this.transactions.updateStatus(tx.id, ChainTxStatus.CONFIRMED, {

@@ -43,7 +43,9 @@ export default function AdminBlockchainEventsPage(): ReactElement {
       <header className="page-header">
         <div>
           <h1>Event log</h1>
-          <p className="page-subtitle">{total} event{total === 1 ? '' : 's'}</p>
+          <p className="page-subtitle">
+            {total} event{total === 1 ? '' : 's'}
+          </p>
         </div>
         <Link href="/blockchain">
           <Button variant="ghost">Back</Button>
@@ -90,8 +92,12 @@ export default function AdminBlockchainEventsPage(): ReactElement {
               <tr key={event.id}>
                 <td>{event.eventType}</td>
                 <td>{event.chain ? event.chain.replace(/_/g, ' ') : '—'}</td>
-                <td className="mono">{event.aggregateId ? `${event.aggregateId.slice(0, 8)}…` : '—'}</td>
-                <td className="mono">{event.correlationId ? `${event.correlationId.slice(0, 8)}…` : '—'}</td>
+                <td className="mono">
+                  {event.aggregateId ? `${event.aggregateId.slice(0, 8)}…` : '—'}
+                </td>
+                <td className="mono">
+                  {event.correlationId ? `${event.correlationId.slice(0, 8)}…` : '—'}
+                </td>
                 <td>{new Date(event.createdAt).toLocaleString()}</td>
               </tr>
             ))}

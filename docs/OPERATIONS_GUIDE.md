@@ -4,17 +4,17 @@
 
 ## Day-2 ownership
 
-| Domain | Primary surface |
-|--------|-----------------|
-| Edge traffic | Gateway `:4000` — health, ready, rate limits, proxies |
-| Identity | Auth `:4001` |
-| Money movement | Wallet, payments, ledger |
-| Chain | Blockchain, custody signing |
-| Trust | Compliance KYC/AML/risk |
-| Comms | Notifications workers/queues |
-| Intelligence | AI, analytics |
-| SRE | Observability service + Admin `/observability` |
-| Infra portal | Admin `/infrastructure` |
+| Domain         | Primary surface                                       |
+| -------------- | ----------------------------------------------------- |
+| Edge traffic   | Gateway `:4000` — health, ready, rate limits, proxies |
+| Identity       | Auth `:4001`                                          |
+| Money movement | Wallet, payments, ledger                              |
+| Chain          | Blockchain, custody signing                           |
+| Trust          | Compliance KYC/AML/risk                               |
+| Comms          | Notifications workers/queues                          |
+| Intelligence   | AI, analytics                                         |
+| SRE            | Observability service + Admin `/observability`        |
+| Infra portal   | Admin `/infrastructure`                               |
 
 ## Health model
 

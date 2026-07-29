@@ -12,16 +12,16 @@ Domain services ──x-internal-api-key──▶ Analytics /internal/events
 Browser ──JWT──▶ Gateway :4000 ──proxy──▶ Analytics :3007
 ```
 
-| Producer | Event examples |
-|----------|----------------|
-| Auth | `auth.login.completed` |
-| Wallet | `wallet.transfer.completed` |
-| Payments | `payment.completed` |
-| Compliance | `compliance.kyc.approved` |
-| Custody | `custody.signing.completed` |
-| Blockchain | `blockchain.transaction.confirmed` |
-| Notifications | `notification.sent` |
-| AI | `ai.chat.completed` |
+| Producer      | Event examples                     |
+| ------------- | ---------------------------------- |
+| Auth          | `auth.login.completed`             |
+| Wallet        | `wallet.transfer.completed`        |
+| Payments      | `payment.completed`                |
+| Compliance    | `compliance.kyc.approved`          |
+| Custody       | `custody.signing.completed`        |
+| Blockchain    | `blockchain.transaction.confirmed` |
+| Notifications | `notification.sent`                |
+| AI            | `ai.chat.completed`                |
 
 ## Boundaries
 

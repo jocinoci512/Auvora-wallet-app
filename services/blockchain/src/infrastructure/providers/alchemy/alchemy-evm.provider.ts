@@ -57,7 +57,10 @@ export class AlchemyEvmProvider implements BlockchainProvider {
 
   async createAddress(): Promise<{ address: string; metadata?: Record<string, unknown> }> {
     const generated = generateEvmAddress();
-    return { address: generated.address, metadata: { publicKey: generated.publicKey, backend: 'alchemy' } };
+    return {
+      address: generated.address,
+      metadata: { publicKey: generated.publicKey, backend: 'alchemy' },
+    };
   }
 
   validateAddress(address: string): boolean {
@@ -83,6 +86,75 @@ export class AlchemyEvmProvider implements BlockchainProvider {
   async getBlockHeight(): Promise<bigint> {
     const hex = await this.client.call<string>('eth_blockNumber', []);
     return hexToBigInt(hex);
+  }
+
+  /** EIP-155 chain id from eth_chainId (hex → number string). */
+  async getChainId(): Promise<string> {
+    const hex = await this.client.call<string>('eth_chainId', []);
+    return hexToBigInt(hex).toString();
+  }
+
+  async getGasPriceWei(): Promise<bigint> {
+    const gasPriceHex = await this.client.call<string>('eth_gasPrice', []);
+    return hexToBigInt(gasPriceHex);
+  }
+
+  /** eth_estimateGas for a simple transfer or arbitrary call object. */
+  async estimateGas(tx: {
+    from?: string;
+    to?: string;
+    value?: string;
+    data?: string;
+  }): Promise<bigint> {
+    const hex = await this.client.call<string>('eth_estimateGas', [tx]);
+    return hexToBigInt(hex);
+  }
+
+  /**
+   * Alchemy Enhanced API — asset transfer history for an address.
+   * Falls back to an empty list when the method is unavailable on the endpoint.
+   */
+  async getAssetTransfers(
+    address: string,
+    maxCount = 25,
+  ): Promise<
+    Array<{
+      hash: string;
+      from: string;
+      to: string;
+      value: number | null;
+      asset: string | null;
+      category: string;
+      blockNum: string;
+    }>
+  > {
+    try {
+      const result = await this.client.call<{
+        transfers?: Array<{
+          hash: string;
+          from: string;
+          to: string;
+          value: number | null;
+          asset: string | null;
+          category: string;
+          blockNum: string;
+        }>;
+      }>('alchemy_getAssetTransfers', [
+        {
+          fromBlock: '0x0',
+          toBlock: 'latest',
+          fromAddress: address,
+          category: ['external', 'erc20', 'erc721', 'erc1155', 'internal'],
+          withMetadata: false,
+          excludeZeroValue: true,
+          maxCount: `0x${maxCount.toString(16)}`,
+          order: 'desc',
+        },
+      ]);
+      return result.transfers ?? [];
+    } catch {
+      return [];
+    }
   }
 
   async getTransaction(txHash: string): Promise<ProviderTx | null> {
@@ -155,8 +227,12 @@ export class AlchemyEvmProvider implements BlockchainProvider {
   async healthCheck(): Promise<{ healthy: boolean; latencyMs: number; message?: string }> {
     const start = Date.now();
     try {
-      await this.getBlockHeight();
-      return { healthy: true, latencyMs: Date.now() - start, message: 'alchemy_evm_ok' };
+      const [height, chainId] = await Promise.all([this.getBlockHeight(), this.getChainId()]);
+      return {
+        healthy: true,
+        latencyMs: Date.now() - start,
+        message: `alchemy_evm_ok tip=${height.toString()} chainId=${chainId}`,
+      };
     } catch (error) {
       return {
         healthy: false,

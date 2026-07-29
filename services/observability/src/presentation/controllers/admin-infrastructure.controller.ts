@@ -2,14 +2,7 @@ import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestj
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { InfraEnvironmentCode } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
-import {
-  IsBoolean,
-  IsNumber,
-  IsObject,
-  IsOptional,
-  IsString,
-  MinLength,
-} from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 import { InfrastructureService } from '../../application/services/infrastructure.service';
 import {
   PERMISSION_INFRASTRUCTURE_ADMIN,
@@ -19,7 +12,7 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -69,7 +62,9 @@ void _infraDtoRuntime;
 @Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
 @Controller('api/v1/admin/infrastructure')
 export class AdminInfrastructureController {
-  constructor(@Inject(InfrastructureService) private readonly infrastructure: InfrastructureService) {}
+  constructor(
+    @Inject(InfrastructureService) private readonly infrastructure: InfrastructureService,
+  ) {}
 
   @Get('dashboard')
   @Permissions(PERMISSION_INFRASTRUCTURE_READ)

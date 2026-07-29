@@ -1,6 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService, type AiProvider } from '@auvora/database';
-import { NotFoundError, type AiProviderPort, type AiProviderTypeCode, type ModelRouterPort } from '../../domain';
+import {
+  NotFoundError,
+  type AiProviderPort,
+  type AiProviderTypeCode,
+  type ModelRouterPort,
+} from '../../domain';
 import { MODEL_ROUTER } from '../ports/provider.tokens';
 import { AuditService } from './audit.service';
 

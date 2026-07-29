@@ -34,7 +34,7 @@ import {
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
 } from '../../domain';
-import { successResponse } from '../common/api-response';
+import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
@@ -244,7 +244,11 @@ export class AdminNotificationsController {
 
   @Patch('templates/:id')
   @Permissions(PERMISSION_NOTIFICATION_TEMPLATES)
-  async updateTemplate(@Param('id') id: string, @Body() dto: UpdateTemplateDto, @CurrentUser() user: JwtAccessClaims) {
+  async updateTemplate(
+    @Param('id') id: string,
+    @Body() dto: UpdateTemplateDto,
+    @CurrentUser() user: JwtAccessClaims,
+  ) {
     return successResponse(await this.templates.update(id, { ...dto, createdBy: user.sub }));
   }
 
@@ -274,7 +278,10 @@ export class AdminNotificationsController {
 
   @Get('queue')
   @Permissions(PERMISSION_NOTIFICATION_ADMIN)
-  async listQueue(@Query('status') status: NotificationStatus | undefined, @Query() query: PageQueryDto) {
+  async listQueue(
+    @Query('status') status: NotificationStatus | undefined,
+    @Query() query: PageQueryDto,
+  ) {
     return successResponse(await this.queue.listQueue({ status, ...query }));
   }
 
@@ -334,7 +341,10 @@ export class AdminNotificationsController {
 
   @Get('webhooks/logs')
   @Permissions(PERMISSION_NOTIFICATION_WEBHOOKS)
-  async webhookLogs(@Query('status') status: WebhookDeliveryStatus | undefined, @Query() query: PageQueryDto) {
+  async webhookLogs(
+    @Query('status') status: WebhookDeliveryStatus | undefined,
+    @Query() query: PageQueryDto,
+  ) {
     return successResponse(await this.webhooks.listLogs({ status, ...query }));
   }
 }

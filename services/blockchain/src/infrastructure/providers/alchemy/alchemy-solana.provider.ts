@@ -39,7 +39,10 @@ export class AlchemySolanaProvider implements BlockchainProvider {
 
   async createAddress(): Promise<{ address: string; metadata?: Record<string, unknown> }> {
     const generated = generateSolanaAddress();
-    return { address: generated.address, metadata: { publicKey: generated.publicKey, backend: 'alchemy' } };
+    return {
+      address: generated.address,
+      metadata: { publicKey: generated.publicKey, backend: 'alchemy' },
+    };
   }
 
   validateAddress(address: string): boolean {
@@ -54,12 +57,10 @@ export class AlchemySolanaProvider implements BlockchainProvider {
 
   async getTokenBalance(mint: string, owner: string): Promise<string> {
     const result = await this.client.call<{
-      value: Array<{ account: { data: { parsed?: { info?: { tokenAmount?: { amount?: string } } } } } }>;
-    }>('getTokenAccountsByOwner', [
-      owner,
-      { mint },
-      { encoding: 'jsonParsed' },
-    ]);
+      value: Array<{
+        account: { data: { parsed?: { info?: { tokenAmount?: { amount?: string } } } } };
+      }>;
+    }>('getTokenAccountsByOwner', [owner, { mint }, { encoding: 'jsonParsed' }]);
     const amount = result.value[0]?.account?.data?.parsed?.info?.tokenAmount?.amount;
     return amount ?? '0';
   }
@@ -70,8 +71,21 @@ export class AlchemySolanaProvider implements BlockchainProvider {
   }
 
   async getRecentBlockhash(): Promise<string> {
-    const result = await this.client.call<{ value: { blockhash: string } }>('getLatestBlockhash', []);
+    const result = await this.client.call<{ value: { blockhash: string } }>(
+      'getLatestBlockhash',
+      [],
+    );
     return result.value.blockhash;
+  }
+
+  /** Signature confirmation status (Alchemy / Solana JSON-RPC). */
+  async getSignatureStatuses(
+    signatures: string[],
+  ): Promise<Array<{ confirmationStatus?: string; err?: unknown; slot?: number } | null>> {
+    const result = await this.client.call<{
+      value: Array<{ confirmationStatus?: string; err?: unknown; slot?: number } | null>;
+    }>('getSignatureStatuses', [signatures, { searchTransactionHistory: true }]);
+    return result.value ?? [];
   }
 
   async getTransaction(txHash: string): Promise<ProviderTx | null> {
@@ -128,11 +142,28 @@ export class AlchemySolanaProvider implements BlockchainProvider {
 
   async watchAddress(_address: string): Promise<void> {}
 
+  /**
+   * Alchemy DAS (Digital Asset Standard) NFT helpers are not wired in Phase 25.
+   * Callers must use the NFT service ports instead of inventing a parallel RPC path.
+   */
+  async getDasAsset(_assetId: string): Promise<never> {
+    throw new Error(
+      'Alchemy DAS getAsset is not enabled on BlockchainProvider — use NFT service abstractions',
+    );
+  }
+
   async healthCheck(): Promise<{ healthy: boolean; latencyMs: number; message?: string }> {
     const start = Date.now();
     try {
-      await this.getRecentBlockhash();
-      return { healthy: true, latencyMs: Date.now() - start, message: 'alchemy_solana_ok' };
+      const [blockhash, slot] = await Promise.all([
+        this.getRecentBlockhash(),
+        this.getBlockHeight(),
+      ]);
+      return {
+        healthy: true,
+        latencyMs: Date.now() - start,
+        message: `alchemy_solana_ok slot=${slot.toString()} blockhash=${blockhash.slice(0, 8)}…`,
+      };
     } catch (error) {
       return {
         healthy: false,

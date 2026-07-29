@@ -43,15 +43,15 @@ flowchart TB
 
 ## Environments
 
-| Environment | Namespace | Values file | Secrets |
-|-------------|-----------|-------------|---------|
-| local | `auvora-local` | `values-local.yaml` | Chart Secret (local only) |
-| development | `auvora-development` | `values-development.yaml` | External Secrets |
-| qa | `auvora-qa` | `values-qa.yaml` | External Secrets |
-| testing | `auvora-testing` | `values-testing.yaml` | External Secrets |
-| staging | `auvora-staging` | `values-staging.yaml` | External Secrets |
-| production | `auvora-production` | `values-production.yaml` | External Secrets |
-| disaster-recovery | `auvora-disaster-recovery` | `values-disaster-recovery.yaml` | External Secrets |
+| Environment       | Namespace                  | Values file                     | Secrets                   |
+| ----------------- | -------------------------- | ------------------------------- | ------------------------- |
+| local             | `auvora-local`             | `values-local.yaml`             | Chart Secret (local only) |
+| development       | `auvora-development`       | `values-development.yaml`       | External Secrets          |
+| qa                | `auvora-qa`                | `values-qa.yaml`                | External Secrets          |
+| testing           | `auvora-testing`           | `values-testing.yaml`           | External Secrets          |
+| staging           | `auvora-staging`           | `values-staging.yaml`           | External Secrets          |
+| production        | `auvora-production`        | `values-production.yaml`        | External Secrets          |
+| disaster-recovery | `auvora-disaster-recovery` | `values-disaster-recovery.yaml` | External Secrets          |
 
 Each environment is isolated (namespace, secrets, config). No shared credentials across envs.
 
@@ -59,11 +59,11 @@ Each environment is isolated (namespace, secrets, config). No shared credentials
 
 Set `global.deploymentStrategy` (or Deploy workflow input):
 
-| Strategy | Cutover |
-|----------|---------|
-| `rolling` | Default Kubernetes RollingUpdate (`maxUnavailable: 0`) |
-| `blue-green` | Deploy to `global.blueGreen.slot`; flip `activeSlot` to cut traffic |
-| `canary` | Stable + `{service}-canary` Deployment/Service for progressive validation |
+| Strategy     | Cutover                                                                   |
+| ------------ | ------------------------------------------------------------------------- |
+| `rolling`    | Default Kubernetes RollingUpdate (`maxUnavailable: 0`)                    |
+| `blue-green` | Deploy to `global.blueGreen.slot`; flip `activeSlot` to cut traffic       |
+| `canary`     | Stable + `{service}-canary` Deployment/Service for progressive validation |
 
 ```bash
 # Blue/green deploy into green slot (traffic stays on blue until flip)
@@ -150,27 +150,27 @@ terraform validate
 
 ## Secrets
 
-| Backend | When |
-|---------|------|
-| Chart Secret (`secrets.create=true`) | Local only (`values-local.yaml`) |
-| External Secrets Operator | Development → DR (default) |
-| `existingSecretName` | Pre-provisioned K8s Secret |
-| `@auvora/secrets` | Runtime provider abstraction (env / k8s / vault / cloud SM) |
+| Backend                              | When                                                        |
+| ------------------------------------ | ----------------------------------------------------------- |
+| Chart Secret (`secrets.create=true`) | Local only (`values-local.yaml`)                            |
+| External Secrets Operator            | Development → DR (default)                                  |
+| `existingSecretName`                 | Pre-provisioned K8s Secret                                  |
+| `@auvora/secrets`                    | Runtime provider abstraction (env / k8s / vault / cloud SM) |
 
 Production values set `secrets.create: false`. Never commit real credentials.
 
 ## CI/CD workflows
 
-| Workflow | Purpose |
-|----------|---------|
-| `ci.yml` | lint, typecheck, test, build + deployment artifact validation + PR security gates |
-| `security-scan.yml` | dependency review, audit, gitleaks |
-| `build-images.yml` | multi-service container build/push |
-| `sign-images.yml` | Cosign signing |
-| `image-scan.yml` | Trivy filesystem scan |
-| `infra-validate.yml` | terraform validate, helm lint, kustomize |
-| `deploy.yml` | manual Helm deploy (rolling/blue-green/canary) + rollback |
-| `release.yml` | tagged GitHub releases |
+| Workflow             | Purpose                                                                           |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `ci.yml`             | lint, typecheck, test, build + deployment artifact validation + PR security gates |
+| `security-scan.yml`  | dependency review, audit, gitleaks                                                |
+| `build-images.yml`   | multi-service container build/push                                                |
+| `sign-images.yml`    | Cosign signing                                                                    |
+| `image-scan.yml`     | Trivy filesystem scan                                                             |
+| `infra-validate.yml` | terraform validate, helm lint, kustomize                                          |
+| `deploy.yml`         | manual Helm deploy (rolling/blue-green/canary) + rollback                         |
+| `release.yml`        | tagged GitHub releases                                                            |
 
 Validate locally:
 

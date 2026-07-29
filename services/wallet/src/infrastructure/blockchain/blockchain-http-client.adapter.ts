@@ -42,13 +42,7 @@ export function localFormatValidateAddress(chain: string, address: string): bool
   }
 }
 
-const PHASE18_CHAINS = [
-  'ETHEREUM',
-  'BNB_SMART_CHAIN',
-  'BITCOIN',
-  'SOLANA',
-  'TRON',
-] as const;
+const PHASE18_CHAINS = ['ETHEREUM', 'BNB_SMART_CHAIN', 'BITCOIN', 'SOLANA', 'TRON'] as const;
 
 /**
  * Calls blockchain service internal APIs when `BLOCKCHAIN_SERVICE_URL` +

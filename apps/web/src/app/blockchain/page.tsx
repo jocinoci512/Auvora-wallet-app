@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  AuvoraClientError,
-  type NetworkStatus,
-  type SupportedChain,
-} from '@auvora/sdk';
+import { AuvoraClientError, type NetworkStatus, type SupportedChain } from '@auvora/sdk';
 import { Button } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
@@ -63,7 +59,12 @@ export default function BlockchainPage(): ReactElement {
       {error ? (
         <div className="alert alert--error">
           {error}
-          <Button type="button" variant="secondary" onClick={() => void load()} style={{ marginTop: '0.75rem' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void load()}
+            style={{ marginTop: '0.75rem' }}
+          >
             Retry
           </Button>
         </div>
@@ -83,7 +84,9 @@ export default function BlockchainPage(): ReactElement {
                   <span>
                     {status ? (
                       <>
-                        <span className={`dot ${status.isHealthy ? 'dot--healthy' : 'dot--unhealthy'}`} />
+                        <span
+                          className={`dot ${status.isHealthy ? 'dot--healthy' : 'dot--unhealthy'}`}
+                        />
                         {status.isHealthy ? 'Healthy' : 'Degraded'}
                         {status.blockHeight ? ` · block ${status.blockHeight}` : ''}
                       </>

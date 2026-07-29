@@ -6,7 +6,9 @@ import { getProxyTimeoutMs } from './proxy-timeout';
 export const AI_PROXY_PREFIXES = ['/api/v1/ai', '/api/v1/admin/ai'] as const;
 
 function isAiProxyPath(pathname: string): boolean {
-  return AI_PROXY_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return AI_PROXY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 export function createAiProxyMiddleware(aiServiceUrl: string): RequestHandler {

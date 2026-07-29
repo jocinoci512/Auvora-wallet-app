@@ -64,7 +64,9 @@ export default function PaymentDetailPage(): ReactElement {
             Amount: {payment.amount} {payment.currency} (fee {payment.feeAmount})
           </p>
           <p>Settled: {payment.settledAt ? new Date(payment.settledAt).toLocaleString() : '—'}</p>
-          <p>Completed: {payment.completedAt ? new Date(payment.completedAt).toLocaleString() : '—'}</p>
+          <p>
+            Completed: {payment.completedAt ? new Date(payment.completedAt).toLocaleString() : '—'}
+          </p>
           <Button type="button" onClick={downloadReceipt}>
             Download receipt (JSON)
           </Button>

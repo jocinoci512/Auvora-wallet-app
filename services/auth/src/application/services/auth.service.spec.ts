@@ -62,7 +62,9 @@ function createAuthService(deps: {
     (deps.rateLimiter ?? {
       consume: jest.fn().mockResolvedValue({ allowed: true, remaining: 99 }),
     }) as never,
-    (deps.clock ?? { now: jest.fn().mockReturnValue(new Date('2026-01-01T00:00:00.000Z')) }) as never,
+    (deps.clock ?? {
+      now: jest.fn().mockReturnValue(new Date('2026-01-01T00:00:00.000Z')),
+    }) as never,
     (deps.ids ?? { uuid: jest.fn().mockReturnValue('family-uuid') }) as never,
     (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
   );
@@ -117,10 +119,7 @@ describe('AuthService', () => {
     const service = createAuthService({ users, passwordHasher });
 
     await expect(
-      service.login(
-        { email: 'a@b.com', password: 'wrong', deviceFingerprint: 'fp-12345678' },
-        {},
-      ),
+      service.login({ email: 'a@b.com', password: 'wrong', deviceFingerprint: 'fp-12345678' }, {}),
     ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });

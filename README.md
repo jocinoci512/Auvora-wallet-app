@@ -4,18 +4,18 @@ Enterprise cryptocurrency wallet platform monorepo. This repository contains sha
 
 **Current product version:** `1.0.0-rc.1` — Phases 1–14 (Release Candidate). GA cut remains gated by staging soak and remaining checklist items.
 
-| Doc | Purpose |
-|-----|---------|
-| [`BUILD_STATUS.md`](BUILD_STATUS.md) | Latest lint/test/build/perf verification |
-| [`docs/RELEASE_CANDIDATE_v1.0.md`](docs/RELEASE_CANDIDATE_v1.0.md) | Phase 14 RC dossier (19 sections) |
-| [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) | RC release notes |
-| [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) | Documentation map |
-| [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md) | Maintainability audit findings |
-| [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md) | Tracked debt and deferred upgrades |
-| [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md) | Pre-GA gate checklist |
-| [`DEPLOYMENT.md`](DEPLOYMENT.md) | GitHub → Vercel + backend auto-deploy setup |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture overview |
-| [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md) | ADR index (0001–0010) |
+| Doc                                                                | Purpose                                     |
+| ------------------------------------------------------------------ | ------------------------------------------- |
+| [`BUILD_STATUS.md`](BUILD_STATUS.md)                               | Latest lint/test/build/perf verification    |
+| [`docs/RELEASE_CANDIDATE_v1.0.md`](docs/RELEASE_CANDIDATE_v1.0.md) | Phase 14 RC dossier (19 sections)           |
+| [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)                   | RC release notes                            |
+| [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md)       | Documentation map                           |
+| [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md)                 | Maintainability audit findings              |
+| [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md)             | Tracked debt and deferred upgrades          |
+| [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md)         | Pre-GA gate checklist                       |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md)                                   | GitHub → Vercel + backend auto-deploy setup |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                     | Architecture overview                       |
+| [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md)           | ADR index (0001–0010)                       |
 
 ## Architecture
 
@@ -60,18 +60,18 @@ pnpm perf:journeys    # critical API journey contracts
 
 ## Phase overview
 
-| Phase | Scope | Status |
-|-------|--------|--------|
-| 1–2 | Foundation, gateway, auth | Complete |
-| 3–5 | Wallet, blockchain, payments | Complete |
-| 6–8 | Compliance, custody, notifications | Complete |
-| 9–11 | AI, analytics, observability | Complete |
-| 12 | Production infrastructure | Complete |
-| 13 | Performance / security / resilience | Complete |
-| ERV | Enterprise readiness verification | Complete |
-| Audit | Code quality / technical debt | Complete |
+| Phase  | Scope                                           | Status            |
+| ------ | ----------------------------------------------- | ----------------- |
+| 1–2    | Foundation, gateway, auth                       | Complete          |
+| 3–5    | Wallet, blockchain, payments                    | Complete          |
+| 6–8    | Compliance, custody, notifications              | Complete          |
+| 9–11   | AI, analytics, observability                    | Complete          |
+| 12     | Production infrastructure                       | Complete          |
+| 13     | Performance / security / resilience             | Complete          |
+| ERV    | Enterprise readiness verification               | Complete          |
+| Audit  | Code quality / technical debt                   | Complete          |
 | **14** | Final production readiness & **RC v1.0.0-rc.1** | **Complete (RC)** |
-| GA | Production GA | Not started |
+| GA     | Production GA                                   | Not started       |
 
 Historical phase runbooks remain below for local bring-up of early services.
 
@@ -99,12 +99,12 @@ Browser (web :3000, admin :3001)
 ### Ports (Phase 2)
 
 | Component | Port |
-|-----------|------|
-| gateway | 4000 |
-| auth | 4001 |
-| web | 3000 |
-| admin | 3001 |
-| docs | 3011 |
+| --------- | ---- |
+| gateway   | 4000 |
+| auth      | 4001 |
+| web       | 3000 |
+| admin     | 3001 |
+| docs      | 3011 |
 
 Swagger (gateway proxy contract): [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
@@ -161,12 +161,12 @@ Browser (web :3000, admin :3001)
 ### Ports (Phase 3)
 
 | Component | Port |
-|-----------|------|
-| gateway | 4000 |
-| auth | 4001 |
-| wallet | 3002 |
-| web | 3000 |
-| admin | 3001 |
+| --------- | ---- |
+| gateway   | 4000 |
+| auth      | 4001 |
+| wallet    | 3002 |
+| web       | 3000 |
+| admin     | 3001 |
 
 Gateway Swagger (includes wallet proxy paths): [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
@@ -187,10 +187,10 @@ Set `WALLET_SERVICE_URL=http://127.0.0.1:3002` in `.env` for the gateway.
 
 ### Wallet API (via gateway)
 
-| Area | Endpoints |
-|------|-----------|
-| User | `GET/POST /api/v1/wallets`, `GET/PATCH /api/v1/wallets/:id`, balance, transactions, activate/suspend/archive/restore |
-| Admin | `GET /api/v1/admin/wallets`, `GET /api/v1/admin/wallets/:id`, suspend/restore/archive |
+| Area  | Endpoints                                                                                                            |
+| ----- | -------------------------------------------------------------------------------------------------------------------- |
+| User  | `GET/POST /api/v1/wallets`, `GET/PATCH /api/v1/wallets/:id`, balance, transactions, activate/suspend/archive/restore |
+| Admin | `GET /api/v1/admin/wallets`, `GET /api/v1/admin/wallets/:id`, suspend/restore/archive                                |
 
 ### UI authentication
 
@@ -224,14 +224,14 @@ Browser (web :3000, admin :3001)
 
 ### Ports (Phase 4)
 
-| Component | Port |
-|-----------|------|
-| gateway | 4000 |
-| auth | 4001 |
-| wallet | 3002 |
+| Component  | Port |
+| ---------- | ---- |
+| gateway    | 4000 |
+| auth       | 4001 |
+| wallet     | 3002 |
 | blockchain | 3003 |
-| web | 3000 |
-| admin | 3001 |
+| web        | 3000 |
+| admin      | 3001 |
 
 Gateway Swagger (includes blockchain proxy paths): [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
@@ -253,12 +253,12 @@ Set `BLOCKCHAIN_SERVICE_URL=http://127.0.0.1:3003` in `.env` for the gateway (an
 
 ### Blockchain API (via gateway)
 
-| Area | Endpoints |
-|------|-----------|
-| Chains & network | `GET /api/v1/blockchain/chains`, `GET /api/v1/blockchain/network-status` |
-| Addresses | `GET/POST /api/v1/blockchain/addresses`, `GET/PATCH /api/v1/blockchain/addresses/:id`, activate/archive/set-primary, `POST /api/v1/blockchain/addresses/validate`, `GET /api/v1/blockchain/addresses/:id/balance` |
-| Transactions & fees | `GET /api/v1/blockchain/transactions`, `GET /api/v1/blockchain/transactions/:id`, `POST /api/v1/blockchain/fees/estimate` |
-| Admin | `GET /api/v1/admin/blockchain/providers`, `GET /api/v1/admin/blockchain/health`, `GET /api/v1/admin/blockchain/sync-jobs`, `POST /api/v1/admin/blockchain/sync-jobs/trigger`, `GET /api/v1/admin/blockchain/blocks`, `GET /api/v1/admin/blockchain/transactions`, `GET /api/v1/admin/blockchain/addresses`, `GET /api/v1/admin/blockchain/metrics`, `GET /api/v1/admin/blockchain/events` |
+| Area                | Endpoints                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chains & network    | `GET /api/v1/blockchain/chains`, `GET /api/v1/blockchain/network-status`                                                                                                                                                                                                                                                                                                                  |
+| Addresses           | `GET/POST /api/v1/blockchain/addresses`, `GET/PATCH /api/v1/blockchain/addresses/:id`, activate/archive/set-primary, `POST /api/v1/blockchain/addresses/validate`, `GET /api/v1/blockchain/addresses/:id/balance`                                                                                                                                                                         |
+| Transactions & fees | `GET /api/v1/blockchain/transactions`, `GET /api/v1/blockchain/transactions/:id`, `POST /api/v1/blockchain/fees/estimate`                                                                                                                                                                                                                                                                 |
+| Admin               | `GET /api/v1/admin/blockchain/providers`, `GET /api/v1/admin/blockchain/health`, `GET /api/v1/admin/blockchain/sync-jobs`, `POST /api/v1/admin/blockchain/sync-jobs/trigger`, `GET /api/v1/admin/blockchain/blocks`, `GET /api/v1/admin/blockchain/transactions`, `GET /api/v1/admin/blockchain/addresses`, `GET /api/v1/admin/blockchain/metrics`, `GET /api/v1/admin/blockchain/events` |
 
 ### Providers & confirmation thresholds
 
@@ -309,40 +309,40 @@ Phase 8 adds the **notifications service** (email/SMS/push/in-app/webhooks, temp
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `pnpm dev` | Start all packages in parallel via Turbo |
-| `pnpm build` | Build all packages and apps |
-| `pnpm lint` | ESLint across the monorepo |
-| `pnpm typecheck` | TypeScript project references check |
-| `pnpm test` | Jest unit and integration tests |
-| `pnpm db:generate` | Generate Prisma client |
-| `pnpm db:migrate` | Run database migrations |
-| `pnpm db:seed` | Seed schema metadata |
-| `pnpm docs:api` | Generate TypeDoc API reference |
+| Script             | Description                              |
+| ------------------ | ---------------------------------------- |
+| `pnpm dev`         | Start all packages in parallel via Turbo |
+| `pnpm build`       | Build all packages and apps              |
+| `pnpm lint`        | ESLint across the monorepo               |
+| `pnpm typecheck`   | TypeScript project references check      |
+| `pnpm test`        | Jest unit and integration tests          |
+| `pnpm db:generate` | Generate Prisma client                   |
+| `pnpm db:migrate`  | Run database migrations                  |
+| `pnpm db:seed`     | Seed schema metadata                     |
+| `pnpm docs:api`    | Generate TypeDoc API reference           |
 
 ## Service ports
 
-| Service | Port |
-|---------|------|
-| gateway | 4000 |
-| auth | 4001 |
-| wallet | 3002 |
-| blockchain | 3003 |
-| payments | 3004 |
-| compliance | 3005 |
-| custody | 3009 |
+| Service       | Port |
+| ------------- | ---- |
+| gateway       | 4000 |
+| auth          | 4001 |
+| wallet        | 3002 |
+| blockchain    | 3003 |
+| payments      | 3004 |
+| compliance    | 3005 |
+| custody       | 3009 |
 | notifications | 3006 |
-| analytics | 3007 |
-| ai | 3008 |
+| analytics     | 3007 |
+| ai            | 3008 |
 
 ## App ports
 
-| App | Port |
-|-----|------|
-| web | 3000 |
+| App   | Port |
+| ----- | ---- |
+| web   | 3000 |
 | admin | 3001 |
-| docs | 3011 |
+| docs  | 3011 |
 
 ## Architecture
 

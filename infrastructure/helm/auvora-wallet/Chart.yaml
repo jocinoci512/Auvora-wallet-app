@@ -3,7 +3,7 @@ name: auvora-wallet
 description: Umbrella Helm chart for Auvora Wallet microservices and apps
 type: application
 version: 1.2.0
-appVersion: "1.2.0"
+appVersion: '1.2.0'
 keywords:
   - auvora
   - wallet

@@ -43,9 +43,17 @@ export function buildAnalyticsProxyOpenApiPaths(): OpenAPIObject['paths'] {
       ...proxyPath('get', 'List metric definitions', adminTag),
       ...proxyPath('post', 'Create metric definition', adminTag),
     },
-    '/api/v1/admin/analytics/metrics/{code}': proxyPath('patch', 'Update metric definition', adminTag),
+    '/api/v1/admin/analytics/metrics/{code}': proxyPath(
+      'patch',
+      'Update metric definition',
+      adminTag,
+    ),
     '/api/v1/admin/analytics/forecasts': proxyPath('get', 'List forecast models', adminTag),
-    '/api/v1/admin/analytics/forecasts/{code}/run': proxyPath('post', 'Run forecast model', adminTag),
+    '/api/v1/admin/analytics/forecasts/{code}/run': proxyPath(
+      'post',
+      'Run forecast model',
+      adminTag,
+    ),
     '/api/v1/admin/analytics/aggregate/run': proxyPath('post', 'Trigger aggregation run', adminTag),
     '/api/v1/admin/analytics/dashboards': proxyPath('get', 'List all dashboards', adminTag),
     '/api/v1/admin/analytics/kpis': {

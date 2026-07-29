@@ -5,25 +5,41 @@ function buildPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     aiConversation: {
       create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'conv-1', createdAt: new Date(), updatedAt: new Date(), status: 'ACTIVE', ...data }),
+        Promise.resolve({
+          id: 'conv-1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          status: 'ACTIVE',
+          ...data,
+        }),
       ),
-      findUnique: jest.fn().mockResolvedValue({ id: 'conv-1', ownerUserId: 'user-1', status: 'ACTIVE' }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
-        Promise.resolve({ id: where.id, ownerUserId: 'user-1', status: 'ACTIVE', ...data }),
-      ),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'conv-1', ownerUserId: 'user-1', status: 'ACTIVE' }),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
+            Promise.resolve({ id: where.id, ownerUserId: 'user-1', status: 'ACTIVE', ...data }),
+        ),
       updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
     },
     aiMessage: {
-      create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'msg-1', createdAt: new Date(), ...data }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'msg-1', createdAt: new Date(), ...data }),
+        ),
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue({ id: 'msg-1', conversationId: 'conv-1' }),
-      update: jest.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
-        Promise.resolve({ id: where.id, ...data }),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation(
+          ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
+            Promise.resolve({ id: where.id, ...data }),
+        ),
     },
     ...overrides,
   };
@@ -38,9 +54,14 @@ describe('ConversationService', () => {
     const prisma = buildPrismaMock();
     const service = new ConversationService(prisma as never, eventsMock as never);
 
-    const conversation = await service.create({ ownerUserId: 'user-1', assistantType: 'WALLET' as never });
+    const conversation = await service.create({
+      ownerUserId: 'user-1',
+      assistantType: 'WALLET' as never,
+    });
     expect(conversation).toMatchObject({ ownerUserId: 'user-1', assistantType: 'WALLET' });
-    expect(eventsMock.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'ConversationCreated' }));
+    expect(eventsMock.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ConversationCreated' }),
+    );
   });
 
   it('appends a message and bumps lastMessageAt', async () => {
@@ -73,17 +94,23 @@ describe('ConversationService', () => {
   });
 
   it('throws NotFoundError when recording feedback on a missing message', async () => {
-    const prisma = buildPrismaMock({ aiMessage: { findUnique: jest.fn().mockResolvedValue(null) } });
+    const prisma = buildPrismaMock({
+      aiMessage: { findUnique: jest.fn().mockResolvedValue(null) },
+    });
     const service = new ConversationService(prisma as never, eventsMock as never);
     const actor = { sub: 'user-1', permissions: [] as string[] };
-    await expect(service.recordFeedback('missing', 1, actor as never)).rejects.toThrow(NotFoundError);
+    await expect(service.recordFeedback('missing', 1, actor as never)).rejects.toThrow(
+      NotFoundError,
+    );
   });
 
   it('rejects feedback from a user who does not own the conversation and lacks ai:admin', async () => {
     const prisma = buildPrismaMock();
     const service = new ConversationService(prisma as never, eventsMock as never);
     const actor = { sub: 'someone-else', permissions: [] as string[] };
-    await expect(service.recordFeedback('msg-1', 1, actor as never)).rejects.toThrow(ForbiddenError);
+    await expect(service.recordFeedback('msg-1', 1, actor as never)).rejects.toThrow(
+      ForbiddenError,
+    );
   });
 
   it('allows feedback from an admin holding ai:admin even without ownership', async () => {

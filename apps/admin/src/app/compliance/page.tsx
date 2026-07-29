@@ -71,8 +71,8 @@ export default function AdminCompliancePage(): ReactElement {
     <main>
       <h1>Compliance admin</h1>
       <p>
-        <Link href="/compliance/alerts">AML alerts</Link> · <Link href="/compliance/cases">Cases</Link> ·{' '}
-        <Link href="/compliance/rules">Rules</Link>
+        <Link href="/compliance/alerts">AML alerts</Link> ·{' '}
+        <Link href="/compliance/cases">Cases</Link> · <Link href="/compliance/rules">Rules</Link>
       </p>
       {error ? <p role="alert">{error}</p> : null}
       {message ? <p>{message}</p> : null}
