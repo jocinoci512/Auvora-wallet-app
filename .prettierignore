@@ -1,14 +1,25 @@
-/**/*.js
-/**/*.cjs
-/**/*.mjs
-/**/*.ts
-/**/*.tsx
-/**/*.json
-/**/*.yml
-/**/*.yaml
-/**/*.md
-!pnpm-lock.yaml
-!**/dist/**
-!**/.next/**
-!**/coverage/**
-!**/node_modules/**
+# Dependencies & package manager
+node_modules/
+pnpm-lock.yaml
+
+# Build outputs
+**/dist/
+**/.next/
+**/out/
+**/coverage/
+**/.turbo/
+**/generated/
+
+# Local verification / tooling noise
+.verify-logs/
+.tools/
+
+# Generated / vendor
+**/*.min.js
+**/CHANGELOG.md
+
+# Helm Go templates are not plain YAML — Prettier cannot parse them
+infrastructure/helm/**/templates/**
+
+# One-off scaffold generators may embed non-strict JS snippets
+scripts/scaffold*.mjs

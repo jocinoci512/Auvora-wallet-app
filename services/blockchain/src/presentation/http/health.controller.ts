@@ -85,11 +85,11 @@ export class HealthController {
     const providers = await this.providerHealth.getAll();
     const alchemyConfigured = Boolean(
       this.env.ALCHEMY_API_KEY ||
-        this.env.ALCHEMY_ETHEREUM_RPC_URL ||
-        this.env.ALCHEMY_BSC_RPC_URL ||
-        this.env.ALCHEMY_SOLANA_RPC_URL ||
-        this.env.ALCHEMY_TRON_RPC_URL ||
-        this.env.ALCHEMY_BITCOIN_RPC_URL,
+      this.env.ALCHEMY_ETHEREUM_RPC_URL ||
+      this.env.ALCHEMY_BSC_RPC_URL ||
+      this.env.ALCHEMY_SOLANA_RPC_URL ||
+      this.env.ALCHEMY_TRON_RPC_URL ||
+      this.env.ALCHEMY_BITCOIN_RPC_URL,
     );
     return {
       service: this.env.SERVICE_NAME,
