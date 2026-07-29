@@ -20,16 +20,21 @@ After secrets are configured once, **each push to `main`/`master` runs Continuou
 
 ---
 
-## 0. Push the repository to GitHub
+## 0. Connect to a **new** GitHub repository
 
-This workspace may not have `origin` yet. From the repo root:
+Do not reuse an old remote. Point `origin` at the brand-new empty repo:
 
 ```bash
-git remote add origin https://github.com/<YOUR_ORG>/auvora-wallet.git
-git push -u origin HEAD:main
+# If origin already points at an old repository, replace it:
+git remote remove origin
+git remote add origin https://github.com/<YOUR_ORG>/<YOUR_NEW_REPO>.git
+git branch -M main
+git push -u origin main
 ```
 
 Use `main` or `master` consistently — CD triggers on both.
+
+Vercel: create **new** projects (do not link an old Vercel project). Root directories: `apps/web`, `apps/admin`, optional `apps/docs`. Set `NEXT_PUBLIC_*` from `.env.production.example` after replacing `example.com` with your domain.
 
 Create GitHub Environments named **`staging`** and **`production`**  
 (Settings → Environments). Add required reviewers on `production`.

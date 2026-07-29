@@ -29,9 +29,9 @@ Mirror production topology for closed-beta soak: frontend, API gateway, WebSocke
 
 | Plane | Staging target |
 |-------|----------------|
-| Marketing / app | `https://staging.auvorawallet.com`, `https://app.staging.auvorawallet.com` |
-| API / WebSocket edge | `https://api.staging.auvorawallet.com` → gateway `:4000` |
-| Admin | `https://admin.staging.auvorawallet.com` |
+| Marketing / app | `https://staging.example.com`, `https://app.staging.example.com` |
+| API / WebSocket edge | `https://api.staging.example.com` → gateway `:4000` |
+| Admin | `https://admin.staging.example.com` |
 | Docs / status | `docs` / `status` staging hosts |
 | PostgreSQL | Managed (Helm `postgres.enabled: false`) |
 | Redis | Managed (Helm `redis.enabled: false`) |
@@ -40,7 +40,7 @@ Mirror production topology for closed-beta soak: frontend, API gateway, WebSocke
 | Workers | Enabled (wallet, market-data, swap, nft, staking, bridge, connections, notifications) |
 | Blockchain | Alchemy primary; simulator **off** |
 
-Ingress includes TLS (cert-manager), HSTS, SSL redirect, and RPS limits. CORS and cookie domain scoped to `.staging.auvorawallet.com`.
+Ingress includes TLS (cert-manager), HSTS, SSL redirect, and RPS limits. CORS and cookie domain scoped to `.staging.example.com`.
 
 ---
 
@@ -68,7 +68,7 @@ Ingress includes TLS (cert-manager), HSTS, SSL redirect, and RPS limits. CORS an
 3. `helm upgrade --install auvora-wallet ./infrastructure/helm/auvora-wallet -n auvora-staging -f values-staging.yaml`.  
 4. Confirm TLS certificates and DNS for staging hosts.  
 5. `NAMESPACE=auvora-staging ./infrastructure/scripts/smoke-health.sh --in-cluster`.  
-6. From a workstation with staging API reachable: `API_URL=https://api.staging.auvorawallet.com node scripts/staging-validate.mjs`.  
+6. From a workstation with staging API reachable: `API_URL=https://api.staging.example.com node scripts/staging-validate.mjs`.  
 7. Soak: backups CronJob (`0 3 * * *`), OTEL collector, mail path, Alchemy RPC.
 
 ---

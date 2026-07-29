@@ -1,4 +1,4 @@
-global:
+﻿global:
   namespace: auvora-staging
   environment: staging
   imageTag: staging
@@ -15,33 +15,33 @@ global:
       memory: 1Gi
 
 ingress:
-  host: app.staging.auvorawallet.com
+  host: app.staging.example.com
   hosts:
-    - host: staging.auvorawallet.com
+    - host: staging.example.com
       backend: web
       port: 3000
       path: /
-    - host: app.staging.auvorawallet.com
+    - host: app.staging.example.com
       backend: web
       port: 3000
       path: /
-    - host: api.staging.auvorawallet.com
+    - host: api.staging.example.com
       backend: gateway
       port: 4000
       path: /
-    - host: admin.staging.auvorawallet.com
+    - host: admin.staging.example.com
       backend: admin
       port: 3001
       path: /
-    - host: docs.staging.auvorawallet.com
+    - host: docs.staging.example.com
       backend: docs
       port: 3011
       path: /
-    - host: status.staging.auvorawallet.com
+    - host: status.staging.example.com
       backend: web
       port: 3000
       path: /
-    - host: status.staging.auvorawallet.com
+    - host: status.staging.example.com
       backend: web
       port: 3000
       path: /status
@@ -62,17 +62,17 @@ config:
   LOG_LEVEL: info
   OTEL_ENABLED: "true"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
-  APP_PUBLIC_URL: "https://app.staging.auvorawallet.com"
-  NEXT_PUBLIC_API_URL: "https://api.staging.auvorawallet.com"
-  NEXT_PUBLIC_APP_URL: "https://app.staging.auvorawallet.com"
-  NEXT_PUBLIC_ADMIN_URL: "https://admin.staging.auvorawallet.com"
-  NEXT_PUBLIC_DOCS_URL: "https://docs.staging.auvorawallet.com"
-  NEXT_PUBLIC_STATUS_URL: "https://status.staging.auvorawallet.com"
-  NEXT_PUBLIC_MARKETING_URL: "https://staging.auvorawallet.com"
-  CORS_ORIGINS: "https://staging.auvorawallet.com,https://app.staging.auvorawallet.com,https://admin.staging.auvorawallet.com,https://docs.staging.auvorawallet.com,https://status.staging.auvorawallet.com"
+  APP_PUBLIC_URL: "https://app.staging.example.com"
+  NEXT_PUBLIC_API_URL: "https://api.staging.example.com"
+  NEXT_PUBLIC_APP_URL: "https://app.staging.example.com"
+  NEXT_PUBLIC_ADMIN_URL: "https://admin.staging.example.com"
+  NEXT_PUBLIC_DOCS_URL: "https://docs.staging.example.com"
+  NEXT_PUBLIC_STATUS_URL: "https://status.staging.example.com"
+  NEXT_PUBLIC_MARKETING_URL: "https://staging.example.com"
+  CORS_ORIGINS: "https://staging.example.com,https://app.staging.example.com,https://admin.staging.example.com,https://docs.staging.example.com,https://status.staging.example.com"
   COOKIE_SECURE: "true"
-  COOKIE_DOMAIN: ".staging.auvorawallet.com"
-  CDN_ASSET_BASE_URL: "https://cdn.staging.auvorawallet.com"
+  COOKIE_DOMAIN: ".staging.example.com"
+  CDN_ASSET_BASE_URL: "https://cdn.staging.example.com"
   OBJECT_STORAGE_BUCKET: "auvora-wallet-staging-assets"
   OBJECT_STORAGE_REGION: "us-east-1"
   # In-cluster service mesh (Kubernetes DNS)
