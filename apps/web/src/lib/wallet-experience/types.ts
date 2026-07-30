@@ -1,6 +1,8 @@
 /** Shared types for Task 029 premium wallet experience (client UX layer). */
 
 export type WalletNetwork = 'bitcoin' | 'ethereum' | 'solana' | 'polygon' | 'bnb' | 'tron';
+export type WalletChainId =
+  'bitcoin' | 'ethereum' | 'solana' | 'bnb-smart-chain' | 'tron' | 'polygon';
 
 export type WalletAsset = 'BTC' | 'ETH' | 'SOL' | 'MATIC' | 'BNB' | 'TRX' | 'USDC' | 'USDT';
 
@@ -42,6 +44,45 @@ export interface ActivityTx {
   walletLabel?: string;
 }
 
+export interface WalletAddress {
+  chain: WalletChainId;
+  network: WalletNetwork;
+  address: string;
+  derivationPath: string;
+  label?: string;
+}
+
+export interface WalletAccount {
+  id: string;
+  name: string;
+  index: number;
+  preferredChain: WalletChainId;
+  addresses: WalletAddress[];
+}
+
+export type WalletSyncState = 'idle' | 'syncing' | 'degraded' | 'offline';
+
+export interface EndpointHealth {
+  chain: WalletChainId;
+  label: string;
+  endpoint: string;
+  latencyMs: number;
+  state: 'healthy' | 'degraded' | 'offline';
+  lastCheckedAt: string;
+  failoverCount: number;
+}
+
+export interface WalletEngineSnapshot {
+  walletId: string;
+  activeAccountId: string;
+  supportedChains: WalletChainId[];
+  accounts: WalletAccount[];
+  syncState: WalletSyncState;
+  offline: boolean;
+  preview: boolean;
+  updatedAt: string;
+}
+
 export interface SecurityPrefs {
   pinEnabled: boolean;
   /** SHA-256 hex of PIN — never store raw PIN */
@@ -53,6 +94,14 @@ export interface SecurityPrefs {
   lastBackupReminderAt: string | null;
   suspiciousAddressWarnings: boolean;
   lastUnlockedAt: string | null;
+  requireAuthForSend: boolean;
+  requireAuthForSettings: boolean;
+  requireAuthForRecoveryPhrase: boolean;
+  hideSensitiveInfo: boolean;
+  notificationPrivacy: boolean;
+  clipboardTimeoutSeconds: number;
+  lastSecurityReviewAt: string | null;
+  emergencyNotificationsMuted: boolean;
 }
 
 export const NETWORKS: { id: WalletNetwork; label: string; asset: WalletAsset }[] = [
@@ -60,7 +109,7 @@ export const NETWORKS: { id: WalletNetwork; label: string; asset: WalletAsset }[
   { id: 'ethereum', label: 'Ethereum', asset: 'ETH' },
   { id: 'solana', label: 'Solana', asset: 'SOL' },
   { id: 'polygon', label: 'Polygon', asset: 'MATIC' },
-  { id: 'bnb', label: 'BNB Chain', asset: 'BNB' },
+  { id: 'bnb', label: 'BNB Smart Chain', asset: 'BNB' },
   { id: 'tron', label: 'Tron', asset: 'TRX' },
 ];
 

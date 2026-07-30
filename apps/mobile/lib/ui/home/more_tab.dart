@@ -5,6 +5,7 @@ import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../address_book_screen.dart';
+import '../security/security_center_screen.dart';
 import 'home_shared.dart';
 
 class MoreTab extends StatelessWidget {
@@ -34,23 +35,24 @@ class MoreTab extends StatelessWidget {
           child: Text('Copy $short'),
         ),
         const SizedBox(height: 28),
-        Text('Privacy', style: Theme.of(context).textTheme.titleMedium),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Hide balances'),
-          subtitle: const Text('Remembered on this device'),
-          value: p.hideBalances,
-          onChanged: p.setHideBalances,
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Hide zero balances'),
-          subtitle: const Text('Keeps the asset list focused'),
-          value: p.hideZeroBalances,
-          onChanged: p.setHideZero,
-        ),
-        const SizedBox(height: 16),
         Text('Security', style: Theme.of(context).textTheme.titleMedium),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.shield_outlined, color: AetherColors.lagoon),
+          title: const Text('Security Center'),
+          subtitle: const Text('Review recovery, devices, sessions, connected apps, and privacy'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SecurityCenterScreen()),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 16),
+          child: Text(
+            'Privacy controls now live inside Security Center so protection settings stay in one place.',
+            style: TextStyle(color: AetherColors.muted, height: 1.4),
+          ),
+        ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.contacts_outlined, color: AetherColors.lagoon),

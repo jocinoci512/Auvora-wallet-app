@@ -14,7 +14,6 @@ class BackupScreen extends StatefulWidget {
 }
 
 class _BackupScreenState extends State<BackupScreen> {
-  bool _written = false;
   bool _revealed = true;
 
   @override
@@ -69,9 +68,9 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
-            value: _written,
+            value: c.draftBackupConfirmed,
             onChanged: words.length == 12
-                ? (v) => setState(() => _written = v ?? false)
+                ? (v) => c.setDraftBackupConfirmed(v ?? false)
                 : null,
             controlAffinity: ListTileControlAffinity.leading,
             title: const Text(
@@ -82,7 +81,7 @@ class _BackupScreenState extends State<BackupScreen> {
         ],
       ),
       footer: FilledButton(
-        onPressed: _written && words.length == 12 ? c.continueToVerify : null,
+        onPressed: c.draftBackupConfirmed && words.length == 12 ? c.continueToVerify : null,
         child: const Text('Continue to confirmation'),
       ),
     );

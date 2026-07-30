@@ -12,6 +12,14 @@ const DEFAULTS: SecurityPrefs = {
   lastBackupReminderAt: null,
   suspiciousAddressWarnings: true,
   lastUnlockedAt: null,
+  requireAuthForSend: true,
+  requireAuthForSettings: true,
+  requireAuthForRecoveryPhrase: true,
+  hideSensitiveInfo: false,
+  notificationPrivacy: true,
+  clipboardTimeoutSeconds: 30,
+  lastSecurityReviewAt: null,
+  emergencyNotificationsMuted: false,
 };
 
 export function getSecurityPrefs(): SecurityPrefs {

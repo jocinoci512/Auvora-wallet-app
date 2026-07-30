@@ -13,7 +13,7 @@ import {
   type SecurityScoreFactor,
 } from '../../lib/settings/demo';
 import { getBackupPrefs } from '../../lib/settings/prefs';
-import { getSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
+import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
 
@@ -23,6 +23,7 @@ const WHY: Record<string, string> = {
   biometric: 'Biometrics speed unlock without weakening your PIN or phrase.',
   devices: 'Unknown or untrusted devices are a common path to account takeover.',
   dapps: 'Open dApp permissions can move funds without another prompt.',
+  review: 'A recent review helps you catch drift before it turns into risk.',
   reminders: 'Gentle reminders keep recovery hygiene from drifting.',
 };
 
@@ -37,6 +38,14 @@ export function SecurityCenterExperience(): ReactElement {
   const [biometric, setBiometric] = useState(false);
   const [backupOk, setBackupOk] = useState(false);
   const [backupReminders, setBackupReminders] = useState(true);
+  const [lastReviewAt, setLastReviewAt] = useState<string | null>(null);
+  const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
+  const [notificationPrivacy, setNotificationPrivacy] = useState(true);
+  const [clipboardTimeoutSeconds, setClipboardTimeoutSeconds] = useState(30);
+  const [requireAuthForSend, setRequireAuthForSend] = useState(true);
+  const [requireAuthForSettings, setRequireAuthForSettings] = useState(true);
+  const [requireAuthForRecoveryPhrase, setRequireAuthForRecoveryPhrase] = useState(true);
+  const [emergencyNotificationsMuted, setEmergencyNotificationsMuted] = useState(false);
 
   useEffect(() => {
     const sec = getSecurityPrefs();
@@ -45,6 +54,14 @@ export function SecurityCenterExperience(): ReactElement {
     setBiometric(sec.biometricEnabled);
     setBackupOk(backup.phraseVerified);
     setBackupReminders(backup.reminderEnabled || sec.backupReminderEnabled);
+    setLastReviewAt(sec.lastSecurityReviewAt);
+    setHideSensitiveInfo(sec.hideSensitiveInfo);
+    setNotificationPrivacy(sec.notificationPrivacy);
+    setClipboardTimeoutSeconds(sec.clipboardTimeoutSeconds);
+    setRequireAuthForSend(sec.requireAuthForSend);
+    setRequireAuthForSettings(sec.requireAuthForSettings);
+    setRequireAuthForRecoveryPhrase(sec.requireAuthForRecoveryPhrase);
+    setEmergencyNotificationsMuted(sec.emergencyNotificationsMuted);
 
     let cancelled = false;
     void (async () => {
@@ -107,7 +124,9 @@ export function SecurityCenterExperience(): ReactElement {
       {
         id: 'devices',
         label: 'No untrusted devices',
-        ok: deviceCount > 0 && live,
+        ok: live
+          ? deviceCount <= 2
+          : DEMO_DEVICES.every((device) => device.trusted || device.current),
         weight: 15,
         href: '/settings/devices',
         action: 'Review devices',
@@ -115,25 +134,60 @@ export function SecurityCenterExperience(): ReactElement {
       {
         id: 'dapps',
         label: 'dApp permissions reviewed',
-        ok: live ? dappCount === 0 : false,
+        ok: live ? dappCount <= 1 : DEMO_DAPPS.every((dapp) => dapp.permissions <= 2),
         weight: 15,
         href: '/web3/permissions',
-        action: dappCount === 0 ? 'Open Web3' : 'Review permissions',
+        action: dappCount <= 1 ? 'Open Web3' : 'Review permissions',
+      },
+      {
+        id: 'review',
+        label: 'Security review completed recently',
+        ok: !!lastReviewAt && Date.now() - new Date(lastReviewAt).getTime() <= 30 * 86_400_000,
+        weight: 10,
+        href: '/settings/security',
+        action: 'Mark review complete',
       },
       {
         id: 'reminders',
         label: 'Backup reminders on',
         ok: backupReminders,
-        weight: 10,
+        weight: 5,
         href: '/settings/backup',
         action: 'Backup settings',
       },
     ],
-    [pinEnabled, backupOk, biometric, deviceCount, dappCount, backupReminders, live],
+    [pinEnabled, backupOk, biometric, deviceCount, dappCount, backupReminders, live, lastReviewAt],
   );
 
   const score = computeSecurityScore(factors);
   const recommended = factors.filter((f) => !f.ok);
+  const statusLabel =
+    score >= 90 ? 'Excellent' : score >= 75 ? 'Good' : score >= 55 ? 'Fair' : 'Needs attention';
+
+  function markReviewNow(): void {
+    const next = new Date().toISOString();
+    setSecurityPrefs({ lastSecurityReviewAt: next });
+    setLastReviewAt(next);
+  }
+
+  function emergencyLock(): void {
+    setSecurityPrefs({
+      emergencyNotificationsMuted: true,
+      lastSecurityReviewAt: new Date().toISOString(),
+    });
+    setEmergencyNotificationsMuted(true);
+    setAlerts((prev) => [
+      {
+        id: `alert-${Date.now()}`,
+        title: 'Emergency mode enabled',
+        detail:
+          'Security-sensitive notifications were muted and the session should be re-authenticated next.',
+        severity: 'warn',
+        timestamp: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+  }
 
   return (
     <PlatformShell
@@ -183,6 +237,12 @@ export function SecurityCenterExperience(): ReactElement {
             <p className="cx-meta">
               Score reflects PIN, backup verification, biometrics, devices, and dApp hygiene.
             </p>
+            <p className="cx-meta" style={{ marginTop: '0.35rem' }}>
+              Status: {statusLabel} ·{' '}
+              {lastReviewAt
+                ? `Last review ${new Date(lastReviewAt).toLocaleString()}`
+                : 'No review logged yet'}
+            </p>
             <div className="cx-kpi" style={{ marginTop: '0.85rem' }}>
               <div className="cx-kpi__card">
                 <span>Sessions</span>
@@ -200,6 +260,11 @@ export function SecurityCenterExperience(): ReactElement {
                 <span>Alerts</span>
                 <strong>{alerts.length}</strong>
               </div>
+            </div>
+            <div className="cx-platform__actions" style={{ marginTop: '0.85rem' }}>
+              <button type="button" className="cx-btn cx-btn--ghost" onClick={markReviewNow}>
+                Mark review complete
+              </button>
             </div>
           </div>
         </div>
@@ -270,6 +335,11 @@ export function SecurityCenterExperience(): ReactElement {
           detail="Permissions · revoke · risk"
         />
         <PlatformCardLink
+          href="/settings/privacy"
+          title="Privacy controls"
+          detail={hideSensitiveInfo ? 'Sensitive info hidden' : 'Privacy review available'}
+        />
+        <PlatformCardLink
           href="/security"
           title="PIN · biometrics · lock"
           detail={pinEnabled ? 'PIN enabled' : 'PIN not enabled'}
@@ -295,6 +365,114 @@ export function SecurityCenterExperience(): ReactElement {
           detail="Sends, swaps, and signs"
         />
       </div>
+
+      <section className="cx-panel">
+        <h2>Authentication requirements</h2>
+        <ul className="cx-list">
+          <li>
+            <div>
+              <strong>Opening the app</strong>
+              <p className="cx-meta">
+                {biometric ? 'Biometric preference is on' : 'PIN or session unlock applies'}
+              </p>
+            </div>
+            <span className="cx-badge cx-badge--confirmed">
+              {biometric ? 'Biometric ready' : 'PIN fallback'}
+            </span>
+          </li>
+          <li>
+            <div>
+              <strong>Sending funds</strong>
+              <p className="cx-meta">Require confirmation before any high-risk transfer.</p>
+            </div>
+            <span
+              className={`cx-badge ${requireAuthForSend ? 'cx-badge--confirmed' : 'cx-badge--pending'}`}
+            >
+              {requireAuthForSend ? 'Required' : 'Relaxed'}
+            </span>
+          </li>
+          <li>
+            <div>
+              <strong>Changing settings</strong>
+              <p className="cx-meta">Protect sensitive settings from casual access.</p>
+            </div>
+            <span
+              className={`cx-badge ${requireAuthForSettings ? 'cx-badge--confirmed' : 'cx-badge--pending'}`}
+            >
+              {requireAuthForSettings ? 'Required' : 'Relaxed'}
+            </span>
+          </li>
+          <li>
+            <div>
+              <strong>Viewing the recovery phrase</strong>
+              <p className="cx-meta">The phrase should never be shown without re-authentication.</p>
+            </div>
+            <span
+              className={`cx-badge ${
+                requireAuthForRecoveryPhrase ? 'cx-badge--confirmed' : 'cx-badge--pending'
+              }`}
+            >
+              {requireAuthForRecoveryPhrase ? 'Required' : 'Relaxed'}
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <section className="cx-panel">
+        <h2>Privacy & emergency</h2>
+        <ul className="cx-list">
+          <li>
+            <div>
+              <strong>Sensitive information</strong>
+              <p className="cx-meta">
+                {hideSensitiveInfo
+                  ? 'Hidden on this device where possible.'
+                  : 'Visible until you turn on hiding.'}
+              </p>
+            </div>
+            <Link href="/settings/privacy" className="cx-btn cx-btn--ghost">
+              Review privacy
+            </Link>
+          </li>
+          <li>
+            <div>
+              <strong>Notification privacy</strong>
+              <p className="cx-meta">
+                {notificationPrivacy
+                  ? 'Balances stay out of previews.'
+                  : 'Notifications may show more detail.'}
+              </p>
+            </div>
+            <span className="cx-badge cx-badge--confirmed">
+              {notificationPrivacy ? 'Protected' : 'Open'}
+            </span>
+          </li>
+          <li>
+            <div>
+              <strong>Clipboard timeout</strong>
+              <p className="cx-meta">
+                Copied sensitive values are expected to clear after {clipboardTimeoutSeconds}s.
+              </p>
+            </div>
+            <Link href="/settings/privacy" className="cx-btn cx-btn--ghost">
+              Manage
+            </Link>
+          </li>
+          <li>
+            <div>
+              <strong>Emergency mode</strong>
+              <p className="cx-meta">
+                {emergencyNotificationsMuted
+                  ? 'Emergency notification muting is active.'
+                  : 'Lock quickly and mute sensitive notification previews if something feels wrong.'}
+              </p>
+            </div>
+            <button type="button" className="cx-btn cx-btn--primary" onClick={emergencyLock}>
+              {emergencyNotificationsMuted ? 'Emergency mode active' : 'Lock down now'}
+            </button>
+          </li>
+        </ul>
+      </section>
 
       <section className="cx-panel">
         <h2>Risk alerts & suspicious activity</h2>

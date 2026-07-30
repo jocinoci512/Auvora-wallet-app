@@ -5,17 +5,25 @@ import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { clearAssistantHistoryStorage } from '../../lib/insights/demo';
 import { getPrivacyPrefs, setPrivacyPrefs, type PrivacyPrefs } from '../../lib/settings/prefs';
+import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
 
 export function PrivacyCenterExperience(): ReactElement {
   const [prefs, setPrefs] = useState<PrivacyPrefs>(() => getPrivacyPrefs());
+  const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
+  const [notificationPrivacy, setNotificationPrivacy] = useState(true);
+  const [clipboardTimeoutSeconds, setClipboardTimeoutSeconds] = useState(30);
   const { toast, showToast } = useTimedToast(1600);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     setPrefs(getPrivacyPrefs());
+    const sec = getSecurityPrefs();
+    setHideSensitiveInfo(sec.hideSensitiveInfo);
+    setNotificationPrivacy(sec.notificationPrivacy);
+    setClipboardTimeoutSeconds(sec.clipboardTimeoutSeconds);
   }, []);
 
   function patch(next: Partial<PrivacyPrefs>): void {
@@ -38,6 +46,65 @@ export function PrivacyCenterExperience(): ReactElement {
           {toast}
         </Alert>
       ) : null}
+
+      <section className="cx-panel">
+        <h2>Wallet privacy</h2>
+        <div className="cx-row">
+          <div>
+            <strong>Hide sensitive information</strong>
+            <p className="cx-meta">Reduce visible account details on shared or public screens.</p>
+          </div>
+          <Switch
+            checked={hideSensitiveInfo}
+            onCheckedChange={(v) => {
+              setSecurityPrefs({ hideSensitiveInfo: v });
+              setHideSensitiveInfo(v);
+              showToast('Wallet privacy updated');
+            }}
+            aria-label="Hide sensitive information"
+          />
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Notification privacy</strong>
+            <p className="cx-meta">
+              Hide balances and detailed amounts in notifications when possible.
+            </p>
+          </div>
+          <Switch
+            checked={notificationPrivacy}
+            onCheckedChange={(v) => {
+              setSecurityPrefs({ notificationPrivacy: v });
+              setNotificationPrivacy(v);
+              showToast('Notification privacy updated');
+            }}
+            aria-label="Notification privacy"
+          />
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Clipboard timeout</strong>
+            <p className="cx-meta">Clear copied sensitive values after a short delay.</p>
+          </div>
+          <label className="cx-field" style={{ maxWidth: 108 }}>
+            <span className="cx-sr-only">Clipboard timeout seconds</span>
+            <input
+              type="number"
+              min={15}
+              max={120}
+              step={15}
+              value={clipboardTimeoutSeconds}
+              onChange={(e) => setClipboardTimeoutSeconds(Number(e.target.value) || 30)}
+              onBlur={() => {
+                const next = Math.min(120, Math.max(15, clipboardTimeoutSeconds));
+                setClipboardTimeoutSeconds(next);
+                setSecurityPrefs({ clipboardTimeoutSeconds: next });
+                showToast('Clipboard timeout updated');
+              }}
+            />
+          </label>
+        </div>
+      </section>
 
       <section className="cx-panel">
         <h2>Data preferences</h2>

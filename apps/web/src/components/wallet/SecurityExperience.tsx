@@ -21,7 +21,15 @@ export function SecurityExperience(): ReactElement {
 
   useEffect(() => {
     const current = getSecurityPrefs();
-    setPrefs(current);
+    if (!current.requireAuthForSettings || !current.requireAuthForRecoveryPhrase) {
+      const normalized = setSecurityPrefs({
+        requireAuthForSettings: true,
+        requireAuthForRecoveryPhrase: true,
+      });
+      setPrefs(normalized);
+    } else {
+      setPrefs(current);
+    }
     if (current.pinEnabled && current.lastUnlockedAt) {
       const elapsed = Date.now() - new Date(current.lastUnlockedAt).getTime();
       if (elapsed > current.autoLockMinutes * 60_000) setLocked(true);
@@ -33,9 +41,17 @@ export function SecurityExperience(): ReactElement {
     setPrefs(saved);
   }
 
+  function weakPin(value: string): boolean {
+    return ['0000', '1111', '1234', '123456', '654321', '121212', '112233'].includes(value);
+  }
+
   async function enablePin(): Promise<void> {
     if (!/^\d{4,8}$/.test(pin)) {
       setMessage('PIN must be 4–8 digits');
+      return;
+    }
+    if (weakPin(pin)) {
+      setMessage('Choose a less obvious PIN. Avoid repeats and simple sequences.');
       return;
     }
     if (pin !== pinConfirm) {
@@ -228,6 +244,36 @@ export function SecurityExperience(): ReactElement {
           >
             {prefs.biometricEnabled ? 'Preferred' : 'Not set'}
           </button>
+        </div>
+      </section>
+
+      <section className="cx-panel">
+        <h2>Require authentication for</h2>
+        <div className="cx-row">
+          <div>
+            <strong>Sending funds</strong>
+            <p className="cx-meta">Ask for confirmation before transfers and approvals.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={prefs.requireAuthForSend}
+            onChange={(e) => patch({ requireAuthForSend: e.target.checked })}
+            aria-label="Require authentication before sending funds"
+          />
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Changing settings</strong>
+            <p className="cx-meta">Protect sensitive security settings from casual access.</p>
+          </div>
+          <span className="cx-badge cx-badge--confirmed">Always required</span>
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Viewing the recovery phrase</strong>
+            <p className="cx-meta">Always re-authenticate before revealing recovery material.</p>
+          </div>
+          <span className="cx-badge cx-badge--confirmed">Always required</span>
         </div>
       </section>
 
