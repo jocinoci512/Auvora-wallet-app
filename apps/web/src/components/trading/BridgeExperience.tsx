@@ -5,12 +5,14 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
 import { DEMO_BRIDGE_HISTORY, pushTradingActivity } from '../../lib/trading/activity';
 import { formatSeconds, tradingFetch } from '../../lib/trading/api';
+import { ENGINE_STATUS_STAGES } from '../../lib/trading/quote-engine';
 import {
   CxActions,
   CxProgressTrack,
   humanizeError,
   TransactionShell,
 } from '../transaction/TransactionShell';
+import { QuoteChecklist } from './QuotePanel';
 import '../../app/core-experience.css';
 
 type NetworkCap = { network: string; bridgeSupported: boolean; reason?: string };
@@ -78,6 +80,9 @@ export function BridgeExperience(): ReactElement {
   const [live, setLive] = useState(false);
   const [progress, setProgress] = useState(0);
   const [transferId, setTransferId] = useState<string | null>(null);
+  const [feesOk, setFeesOk] = useState(false);
+  const [detailsOk, setDetailsOk] = useState(false);
+  const [irreversibleOk, setIrreversibleOk] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(
@@ -135,6 +140,14 @@ export function BridgeExperience(): ReactElement {
   }
 
   async function execute(): Promise<void> {
+    if (!feesOk || !detailsOk || !irreversibleOk) {
+      setError('Confirm the checklist before continuing.');
+      return;
+    }
+    const authorized = window.confirm(
+      `Authorize ${live ? '' : 'preview '}bridge of ${amount} ${asset} from ${source} to ${destination}?\n\nBridges usually cannot be cancelled once started.`,
+    );
+    if (!authorized) return;
     setScreen('progress');
     setProgress(8);
     try {
@@ -411,7 +424,16 @@ export function BridgeExperience(): ReactElement {
                     {humanizeError(error, 'Something went wrong fetching routes.')}
                   </div>
                 ) : null}
-                <CxActions onNext={() => setScreen('confirm')} nextLabel="Review bridge" />
+                <CxActions
+                  onNext={() => {
+                    setFeesOk(false);
+                    setDetailsOk(false);
+                    setIrreversibleOk(false);
+                    setError(null);
+                    setScreen('confirm');
+                  }}
+                  nextLabel="Review bridge"
+                />
               </>
             ) : null}
 
@@ -450,10 +472,31 @@ export function BridgeExperience(): ReactElement {
               </div>
             </dl>
           </div>
+          <QuoteChecklist
+            feesChecked={feesOk}
+            detailsChecked={detailsOk}
+            onFees={setFeesOk}
+            onDetails={setDetailsOk}
+            actionLabel="bridge"
+          />
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 10 }}>
+            <input
+              type="checkbox"
+              checked={irreversibleOk}
+              onChange={(e) => setIrreversibleOk(e.target.checked)}
+              style={{ width: 20, height: 20, marginTop: 2 }}
+            />
+            <span>I understand bridging usually can’t be cancelled once started</span>
+          </label>
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {humanizeError(error, 'Confirm the checklist before continuing.')}
+            </div>
+          ) : null}
           <CxActions
             onBack={() => setScreen('form')}
             onNext={() => void execute()}
-            nextLabel="Confirm & bridge"
+            nextLabel="Authorize bridge"
           />
         </section>
       ) : null}
@@ -462,11 +505,7 @@ export function BridgeExperience(): ReactElement {
         <CxProgressTrack
           progress={progress}
           label={live ? 'Bridging…' : 'Running bridge preview…'}
-          stages={
-            live
-              ? ['Lock', 'Relay', 'Mint', 'Completed']
-              : ['Queued', 'Simulated', 'Review', 'Done']
-          }
+          stages={[...ENGINE_STATUS_STAGES]}
         />
       ) : null}
 

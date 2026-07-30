@@ -10,12 +10,14 @@ import {
   pushTradingActivity,
 } from '../../lib/trading/activity';
 import { tradingFetch } from '../../lib/trading/api';
+import { ENGINE_STATUS_STAGES } from '../../lib/trading/quote-engine';
 import {
   CxActions,
   CxProgressTrack,
   humanizeError,
   TransactionShell,
 } from '../transaction/TransactionShell';
+import { QuoteChecklist } from './QuotePanel';
 import '../../app/core-experience.css';
 
 type Screen =
@@ -69,6 +71,8 @@ export function StakingExperience(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [live, setLive] = useState(false);
+  const [feesOk, setFeesOk] = useState(false);
+  const [detailsOk, setDetailsOk] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -116,10 +120,21 @@ export function StakingExperience(): ReactElement {
   }
 
   function goConfirm(): void {
+    setFeesOk(false);
+    setDetailsOk(false);
+    setError(null);
     setScreen('confirm');
   }
 
   function execute(): void {
+    if (!feesOk || !detailsOk) {
+      setError('Confirm the checklist before continuing.');
+      return;
+    }
+    const authorized = window.confirm(
+      `Authorize ${live ? '' : 'preview '}${action} of ${amount} with ${validator.name}?\n\n${live ? 'This may broadcast a transaction.' : 'Nothing moves on-chain in preview mode.'}`,
+    );
+    if (!authorized) return;
     setScreen('progress');
     setProgress(10);
     if (timer.current != null) window.clearInterval(timer.current);
@@ -420,7 +435,23 @@ export function StakingExperience(): ReactElement {
                 </div>
               </dl>
             </div>
-            <CxActions onBack={() => setScreen(action)} onNext={execute} nextLabel="Confirm" />
+            <QuoteChecklist
+              feesChecked={feesOk}
+              detailsChecked={detailsOk}
+              onFees={setFeesOk}
+              onDetails={setDetailsOk}
+              actionLabel={action}
+            />
+            {error ? (
+              <div className="cx-alert cx-alert--error" role="alert">
+                {humanizeError(error, 'Confirm the checklist before continuing.')}
+              </div>
+            ) : null}
+            <CxActions
+              onBack={() => setScreen(action)}
+              onNext={execute}
+              nextLabel={`Authorize ${action}`}
+            />
           </section>
         ) : null}
 
@@ -428,11 +459,7 @@ export function StakingExperience(): ReactElement {
           <CxProgressTrack
             progress={progress}
             label={live ? 'Submitting…' : 'Running staking preview…'}
-            stages={
-              live
-                ? ['Pending', 'Broadcast', 'Confirming', 'Confirmed']
-                : ['Queued', 'Simulated', 'Review', 'Done']
-            }
+            stages={[...ENGINE_STATUS_STAGES]}
           />
         ) : null}
 

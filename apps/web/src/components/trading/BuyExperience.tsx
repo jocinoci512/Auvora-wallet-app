@@ -1,9 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { DEMO_BUY_PROVIDERS, pushTradingActivity } from '../../lib/trading/activity';
+import {
+  ENGINE_STATUS_STAGES,
+  quoteBuy,
+  quoteExpired,
+  type AssetQuote,
+} from '../../lib/trading/quote-engine';
 import { CxActions, CxProgressTrack, TransactionShell } from '../transaction/TransactionShell';
+import { QuoteChecklist, QuotePanel } from './QuotePanel';
 import '../../app/core-experience.css';
 
 type Screen = 'form' | 'confirm' | 'progress' | 'success' | 'history';
@@ -25,7 +32,31 @@ export function BuyExperience(): ReactElement {
   const [providerId, setProviderId] = useState(DEMO_BUY_PROVIDERS[0]!.id);
   const [screen, setScreen] = useState<Screen>('form');
   const [progress, setProgress] = useState(0);
+  const [quote, setQuote] = useState<AssetQuote | null>(null);
+  const [feesOk, setFeesOk] = useState(false);
+  const [detailsOk, setDetailsOk] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const timer = useRef<number | null>(null);
+
+  const provider = DEMO_BUY_PROVIDERS.find((p) => p.id === providerId) ?? DEMO_BUY_PROVIDERS[0]!;
+
+  const refreshQuote = useCallback(() => {
+    const q = quoteBuy({
+      asset,
+      fiatUsd: Number(fiatAmount) || 0,
+      method,
+      providerCode: method === 'provider' ? provider.id : 'auvora-sim',
+    });
+    setQuote(q);
+    setFeesOk(false);
+    setDetailsOk(false);
+    setError(null);
+  }, [asset, fiatAmount, method, provider.id]);
+
+  useEffect(() => {
+    refreshQuote();
+  }, [refreshQuote]);
 
   useEffect(
     () => () => {
@@ -34,19 +65,26 @@ export function BuyExperience(): ReactElement {
     [],
   );
 
-  const provider = DEMO_BUY_PROVIDERS.find((p) => p.id === providerId) ?? DEMO_BUY_PROVIDERS[0]!;
-  const cryptoEst = useMemo(() => {
-    const usd = Number(fiatAmount) || 0;
-    const prices: Record<string, number> = { BTC: 68420, ETH: 3420, SOL: 148, USDC: 1 };
-    return (usd / (prices[asset] ?? 1)).toFixed(asset === 'USDC' ? 2 : 6);
-  }, [asset, fiatAmount]);
-
-  const feeLabel =
-    method === 'bank' ? '$0.50 ACH' : method === 'card' ? '2.9% + $0.30' : provider.fee;
-
   function execute(): void {
+    if (!quote) return;
+    if (quoteExpired(quote)) {
+      setError('This quote expired. Refresh for an updated price.');
+      refreshQuote();
+      return;
+    }
+    if (!feesOk || !detailsOk) {
+      setError('Confirm the checklist before continuing.');
+      return;
+    }
+    if (submitting) return;
+    const authorized = window.confirm(
+      `Authorize preview buy of ~${quote.toAmount.toFixed(6)} ${asset} for $${fiatAmount}?\n\nNo payment is charged in preview mode.`,
+    );
+    if (!authorized) return;
+    setSubmitting(true);
     setScreen('progress');
     setProgress(10);
+    setError(null);
     if (timer.current != null) window.clearInterval(timer.current);
     timer.current = window.setInterval(() => {
       setProgress((p) => {
@@ -58,11 +96,12 @@ export function BuyExperience(): ReactElement {
             title: `Buy ${asset} (preview)`,
             detail: `$${fiatAmount} via ${method} — simulator`,
             status: 'pending',
-            amount: cryptoEst,
+            amount: String(quote.toAmount),
             asset,
             href: '/buy',
           });
           setScreen('success');
+          setSubmitting(false);
           return 100;
         }
         return p + 20;
@@ -75,7 +114,7 @@ export function BuyExperience(): ReactElement {
   return (
     <TransactionShell
       title="Buy"
-      subtitle="Card, bank, or third-party providers — with fee transparency and compliance messaging."
+      subtitle="Fiat to crypto with every fee explained before you pay."
       reassure="Simulator until a buy provider is connected. No payment is charged in this mode."
       steps={tab === 'buy' ? [...STEPS] : undefined}
       currentStepId={stepId}
@@ -159,9 +198,6 @@ export function BuyExperience(): ReactElement {
                 inputMode="decimal"
               />
             </label>
-            <p className="cx-meta">
-              Est. receive ≈ {cryptoEst} {asset}
-            </p>
           </section>
 
           <section className="cx-panel">
@@ -203,18 +239,6 @@ export function BuyExperience(): ReactElement {
                 ))}
               </div>
             ) : null}
-            <div className="cx-confirm">
-              <dl>
-                <div>
-                  <dt>Provider fee</dt>
-                  <dd>{feeLabel}</dd>
-                </div>
-                <div>
-                  <dt>Network fee</dt>
-                  <dd>Included in quote</dd>
-                </div>
-              </dl>
-            </div>
             <div className="cx-alert cx-alert--info">
               <strong>Compliance</strong>
               <p>
@@ -223,43 +247,37 @@ export function BuyExperience(): ReactElement {
                 assets which can lose value.
               </p>
             </div>
-            <CxActions onNext={() => setScreen('confirm')} />
           </section>
+
+          {quote ? <QuotePanel quote={quote} onRefresh={refreshQuote} /> : null}
+          <CxActions
+            onNext={() => setScreen('confirm')}
+            nextDisabled={!quote || quoteExpired(quote)}
+          />
         </>
       ) : null}
 
-      {tab === 'buy' && screen === 'confirm' ? (
+      {tab === 'buy' && screen === 'confirm' && quote ? (
         <section className="cx-panel">
           <h2>Confirm purchase</h2>
-          <div className="cx-confirm">
-            <dl>
-              <div>
-                <dt>You pay</dt>
-                <dd>${fiatAmount} USD</dd>
-              </div>
-              <div>
-                <dt>You receive</dt>
-                <dd>
-                  ≈ {cryptoEst} {asset}
-                </dd>
-              </div>
-              <div>
-                <dt>Method</dt>
-                <dd>
-                  {method}
-                  {method === 'provider' ? ` · ${provider.label}` : ''}
-                </dd>
-              </div>
-              <div>
-                <dt>Fees</dt>
-                <dd>{feeLabel}</dd>
-              </div>
-            </dl>
-          </div>
+          <QuotePanel quote={quote} onRefresh={refreshQuote} />
+          <QuoteChecklist
+            feesChecked={feesOk}
+            detailsChecked={detailsOk}
+            onFees={setFeesOk}
+            onDetails={setDetailsOk}
+            actionLabel="buy"
+          />
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {error}
+            </div>
+          ) : null}
           <CxActions
             onBack={() => setScreen('form')}
             onNext={execute}
-            nextLabel="Confirm payment"
+            nextLabel="Authenticate & pay"
+            nextDisabled={quoteExpired(quote) || submitting}
           />
         </section>
       ) : null}
@@ -267,20 +285,20 @@ export function BuyExperience(): ReactElement {
       {tab === 'buy' && screen === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Running buy preview…"
-          stages={['Queued', 'Simulated', 'Review', 'Done']}
+          label="Processing purchase…"
+          stages={[...ENGINE_STATUS_STAGES]}
         />
       ) : null}
 
-      {tab === 'buy' && screen === 'success' ? (
+      {tab === 'buy' && screen === 'success' && quote ? (
         <div className="cx-success">
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
           <h2>Preview complete</h2>
           <p>
-            No payment was charged. This walkthrough estimated {cryptoEst} {asset} for ${fiatAmount}
-            .
+            No payment was charged. Estimated receive {quote.toAmount.toFixed(6)} {asset} for $
+            {fiatAmount}. Reference {quote.id}.
           </p>
           <div className="cx-success__cta">
             <Link href="/activity" className="cx-btn cx-btn--primary">

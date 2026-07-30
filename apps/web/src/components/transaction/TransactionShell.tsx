@@ -200,6 +200,12 @@ export function humanizeError(raw: string | null | undefined, fallback: string):
   if (t.includes('insufficient') || t.includes('balance')) {
     return 'There is not enough balance for this amount plus fees.';
   }
+  if (t.includes('expired') || t.includes('quote expired')) {
+    return 'This quote expired. Refresh for an updated price.';
+  }
+  if (t.includes('liquidity')) {
+    return 'There isn’t enough liquidity right now. Try a smaller amount or another pair.';
+  }
   if (t.includes('slippage') || t.includes('price impact')) {
     return 'The price moved beyond your slippage limit. Try again or widen slippage.';
   }

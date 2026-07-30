@@ -5,11 +5,21 @@ import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../../engine/models.dart';
 import '../asset_detail_screen.dart';
+import '../engine/digital_asset_flow.dart';
 import '../receive_flow_screen.dart';
 import '../send_flow_screen.dart';
 import '../transaction_detail_screen.dart';
 import 'home_shared.dart';
+
+void openDigitalAssetFlow(BuildContext context, EngineOp op, {String? initialFrom}) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => DigitalAssetFlowScreen(op: op, initialFrom: initialFrom),
+    ),
+  );
+}
 
 class HomeTab extends StatelessWidget {
   const HomeTab({
@@ -132,11 +142,7 @@ class _MobileHome extends StatelessWidget {
                   onReceive: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
                   ),
-                  onBuy: () => showActionSheet(
-                    context,
-                    title: 'Buy',
-                    body: 'Buy opens when a payment partner is connected. Until then, receive from an exchange you trust.',
-                  ),
+                  onBuy: () => openDigitalAssetFlow(context, EngineOp.buy),
                 )
               : _PortfolioHero(
                   portfolio: portfolio,
@@ -618,10 +624,10 @@ class _PrimaryActions extends StatelessWidget {
       context: context,
       showDragHandle: true,
       builder: (ctx) {
-        const more = [
-          (Icons.sell_outlined, 'Sell'),
-          (Icons.hub_outlined, 'Bridge'),
-          (Icons.savings_outlined, 'Stake'),
+        const more = <(IconData, String, EngineOp)>[
+          (Icons.sell_outlined, 'Sell', EngineOp.sell),
+          (Icons.hub_outlined, 'Bridge', EngineOp.bridge),
+          (Icons.savings_outlined, 'Stake', EngineOp.stake),
         ];
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
@@ -636,14 +642,10 @@ class _PrimaryActions extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(a.$1, color: AetherColors.lagoon),
                   title: Text(a.$2),
-                  subtitle: Text('${a.$2} opens when live networks are connected.'),
+                  subtitle: Text('${a.$2} with clear fees and status tracking'),
                   onTap: () {
                     Navigator.pop(ctx);
-                    showActionSheet(
-                      context,
-                      title: a.$2,
-                      body: '${a.$2} opens when live networks are connected. Your wallet stays protected on-device.',
-                    );
+                    openDigitalAssetFlow(context, a.$3);
                   },
                 ),
             ],
@@ -683,11 +685,14 @@ class _ActionButton extends StatelessWidget {
               );
               return;
             }
-            showActionSheet(
-              context,
-              title: label,
-              body: '$label opens when live networks are connected. Your wallet stays protected on-device.',
-            );
+            if (label == 'Swap') {
+              openDigitalAssetFlow(context, EngineOp.swap);
+              return;
+            }
+            if (label == 'Buy') {
+              openDigitalAssetFlow(context, EngineOp.buy);
+              return;
+            }
           },
           child: Ink(
             decoration: BoxDecoration(

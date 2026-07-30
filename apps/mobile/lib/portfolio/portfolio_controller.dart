@@ -294,6 +294,28 @@ class PortfolioController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void applyLocalSnapshot({
+    required List<AssetHolding> assets,
+    required PortfolioTx prependTx,
+  }) {
+    final snap = snapshot;
+    if (snap == null) return;
+    snapshot = PortfolioSnapshot(
+      assets: assets,
+      transactions: [prependTx, ...snap.transactions],
+      contacts: snap.contacts,
+      trend7d: snap.trend7d,
+      change24hUsd: snap.change24hUsd,
+      change24hPct: snap.change24hPct,
+      updatedAt: DateTime.now(),
+      isPreview: snap.isPreview,
+      offline: snap.offline,
+      priceError: snap.priceError,
+      syncDelayed: snap.syncDelayed,
+    );
+    notifyListeners();
+  }
+
   List<Object> get searchResults {
     final snap = snapshot;
     if (snap == null) return const [];

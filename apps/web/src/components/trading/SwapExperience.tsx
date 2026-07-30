@@ -7,12 +7,14 @@ import { LineChart } from '../charts/Charts';
 import { formatApiError } from '../../lib/api-client';
 import { DEMO_SWAP_HISTORY, pushTradingActivity } from '../../lib/trading/activity';
 import { formatSeconds, impactPct, tradingFetch } from '../../lib/trading/api';
+import { ENGINE_STATUS_STAGES } from '../../lib/trading/quote-engine';
 import {
   CxActions,
   CxProgressTrack,
   humanizeError,
   TransactionShell,
 } from '../transaction/TransactionShell';
+import { QuoteChecklist } from './QuotePanel';
 import '../../app/core-experience.css';
 
 type NetworkCap = { network: string; swapSupported: boolean; reason?: string };
@@ -97,6 +99,8 @@ export function SwapExperience(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [executionId, setExecutionId] = useState<string | null>(null);
+  const [feesOk, setFeesOk] = useState(false);
+  const [detailsOk, setDetailsOk] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(
@@ -176,10 +180,20 @@ export function SwapExperience(): ReactElement {
 
   async function confirmSwap(): Promise<void> {
     if (!quote) return;
+    setFeesOk(false);
+    setDetailsOk(false);
     setScreen('confirm');
   }
 
   async function execute(): Promise<void> {
+    if (!feesOk || !detailsOk) {
+      setError('Confirm the checklist before continuing.');
+      return;
+    }
+    const authorized = window.confirm(
+      `Authorize ${live ? '' : 'preview '}swap of ${sellAmount} ${sellToken} → ${buyToken}?\n\n${live ? 'This may broadcast a transaction.' : 'Nothing is swapped on-chain in preview mode.'}`,
+    );
+    if (!authorized) return;
     setScreen('progress');
     setProgress(10);
     let failedMessage: string | null = null;
@@ -577,6 +591,16 @@ export function SwapExperience(): ReactElement {
                 </dd>
               </div>
               <div>
+                <dt>Minimum received</dt>
+                <dd>
+                  {quote.minAmountOut} {buyToken}
+                </dd>
+              </div>
+              <div>
+                <dt>Network fee</dt>
+                <dd>{quote.estimatedFeeNative}</dd>
+              </div>
+              <div>
                 <dt>Slippage</dt>
                 <dd>{impactPct(slippageBps)}</dd>
               </div>
@@ -586,10 +610,22 @@ export function SwapExperience(): ReactElement {
               </div>
             </dl>
           </div>
+          <QuoteChecklist
+            feesChecked={feesOk}
+            detailsChecked={detailsOk}
+            onFees={setFeesOk}
+            onDetails={setDetailsOk}
+            actionLabel="swap"
+          />
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {humanizeError(error, 'Confirm the checklist before continuing.')}
+            </div>
+          ) : null}
           <CxActions
             onBack={() => setScreen('form')}
             onNext={() => void execute()}
-            nextLabel="Confirm & swap"
+            nextLabel="Authenticate & swap"
           />
         </section>
       ) : null}
@@ -598,11 +634,7 @@ export function SwapExperience(): ReactElement {
         <CxProgressTrack
           progress={progress}
           label={live ? 'Swapping…' : 'Running swap preview…'}
-          stages={
-            live
-              ? ['Pending', 'Broadcast', 'Confirming', 'Completed']
-              : ['Queued', 'Simulated', 'Review', 'Done']
-          }
+          stages={[...ENGINE_STATUS_STAGES]}
         />
       ) : null}
 

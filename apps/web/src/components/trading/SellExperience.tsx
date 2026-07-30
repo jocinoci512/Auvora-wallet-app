@@ -1,17 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { pushTradingActivity } from '../../lib/trading/activity';
+import {
+  ENGINE_STATUS_STAGES,
+  quoteExpired,
+  quoteSell,
+  type AssetQuote,
+} from '../../lib/trading/quote-engine';
 import { CxActions, CxProgressTrack, TransactionShell } from '../transaction/TransactionShell';
+import { QuoteChecklist, QuotePanel } from './QuotePanel';
 import '../../app/core-experience.css';
 
 type Screen = 'form' | 'confirm' | 'progress' | 'success' | 'history';
 
 const ASSETS = [
-  { id: 'BTC', balance: '0.42', price: 68420 },
-  { id: 'ETH', balance: '8.15', price: 3420 },
-  { id: 'SOL', balance: '126', price: 148 },
+  { id: 'BTC', balance: '0.42' },
+  { id: 'ETH', balance: '8.15' },
+  { id: 'SOL', balance: '126' },
 ] as const;
 
 const STEPS = [
@@ -28,7 +35,30 @@ export function SellExperience(): ReactElement {
   const [destination, setDestination] = useState<'bank' | 'card' | 'balance'>('bank');
   const [screen, setScreen] = useState<Screen>('form');
   const [progress, setProgress] = useState(0);
+  const [quote, setQuote] = useState<AssetQuote | null>(null);
+  const [feesOk, setFeesOk] = useState(false);
+  const [detailsOk, setDetailsOk] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const timer = useRef<number | null>(null);
+
+  const asset = ASSETS.find((a) => a.id === assetId) ?? ASSETS[1]!;
+
+  const refreshQuote = useCallback(() => {
+    const q = quoteSell({
+      asset: assetId,
+      cryptoAmount: Number(amount) || 0,
+      destination,
+    });
+    setQuote(q);
+    setFeesOk(false);
+    setDetailsOk(false);
+    setError(null);
+  }, [assetId, amount, destination]);
+
+  useEffect(() => {
+    refreshQuote();
+  }, [refreshQuote]);
 
   useEffect(
     () => () => {
@@ -37,25 +67,26 @@ export function SellExperience(): ReactElement {
     [],
   );
 
-  const asset = ASSETS.find((a) => a.id === assetId) ?? ASSETS[1];
-  const fiat = useMemo(() => {
-    const n = Number(amount) || 0;
-    return (n * asset.price * 0.991).toFixed(2);
-  }, [amount, asset]);
-  const fee = useMemo(() => {
-    const n = Number(amount) || 0;
-    return (n * asset.price * 0.009).toFixed(2);
-  }, [amount, asset]);
-  const settleEta =
-    destination === 'bank'
-      ? '1–3 business days'
-      : destination === 'card'
-        ? 'Instant–2h'
-        : 'Immediate';
-
   function execute(): void {
+    if (!quote) return;
+    if (quoteExpired(quote)) {
+      setError('This quote expired. Refresh for an updated price.');
+      refreshQuote();
+      return;
+    }
+    if (!feesOk || !detailsOk) {
+      setError('Confirm the checklist before continuing.');
+      return;
+    }
+    if (submitting) return;
+    const authorized = window.confirm(
+      `Authorize preview sell of ${amount} ${asset.id} for ≈ $${quote.toAmount.toFixed(2)}?\n\nNo funds move in preview mode.`,
+    );
+    if (!authorized) return;
+    setSubmitting(true);
     setScreen('progress');
     setProgress(12);
+    setError(null);
     if (timer.current != null) window.clearInterval(timer.current);
     timer.current = window.setInterval(() => {
       setProgress((p) => {
@@ -65,13 +96,14 @@ export function SellExperience(): ReactElement {
           pushTradingActivity({
             kind: 'sell',
             title: `Sell ${asset.id} (preview)`,
-            detail: `$${fiat} → ${destination} — simulator`,
+            detail: `$${quote.toAmount.toFixed(2)} → ${destination} — simulator`,
             status: 'pending',
             amount,
             asset: asset.id,
             href: '/sell',
           });
           setScreen('success');
+          setSubmitting(false);
           return 100;
         }
         return p + 18;
@@ -84,7 +116,7 @@ export function SellExperience(): ReactElement {
   return (
     <TransactionShell
       title="Sell"
-      subtitle="Choose an asset, destination, and review settlement before confirming."
+      subtitle="Crypto to cash with payout, fees, and settlement time before you confirm."
       reassure="Simulator until an off-ramp is connected. No sale settles in this mode."
       steps={tab === 'sell' ? [...STEPS] : undefined}
       currentStepId={stepId}
@@ -181,22 +213,6 @@ export function SellExperience(): ReactElement {
                 </button>
               ))}
             </div>
-            <div className="cx-confirm">
-              <dl>
-                <div>
-                  <dt>You receive</dt>
-                  <dd>≈ ${fiat}</dd>
-                </div>
-                <div>
-                  <dt>Fee breakdown</dt>
-                  <dd>≈ ${fee} (0.9%)</dd>
-                </div>
-                <div>
-                  <dt>Settlement estimate</dt>
-                  <dd>{settleEta}</dd>
-                </div>
-              </dl>
-            </div>
             <div className="cx-warn">
               <strong>Irreversible once settled</strong>
               <p>
@@ -204,56 +220,58 @@ export function SellExperience(): ReactElement {
                 amounts.
               </p>
             </div>
-            <CxActions onNext={() => setScreen('confirm')} />
           </section>
+
+          {quote ? <QuotePanel quote={quote} onRefresh={refreshQuote} /> : null}
+          <CxActions
+            onNext={() => setScreen('confirm')}
+            nextDisabled={!quote || quoteExpired(quote)}
+          />
         </>
       ) : null}
 
-      {tab === 'sell' && screen === 'confirm' ? (
+      {tab === 'sell' && screen === 'confirm' && quote ? (
         <section className="cx-panel">
           <h2>Confirm sale</h2>
-          <div className="cx-confirm">
-            <dl>
-              <div>
-                <dt>Sell</dt>
-                <dd>
-                  {amount} {asset.id}
-                </dd>
-              </div>
-              <div>
-                <dt>Receive</dt>
-                <dd>≈ ${fiat}</dd>
-              </div>
-              <div>
-                <dt>Destination</dt>
-                <dd>{destination}</dd>
-              </div>
-              <div>
-                <dt>Settlement</dt>
-                <dd>{settleEta}</dd>
-              </div>
-            </dl>
-          </div>
-          <CxActions onBack={() => setScreen('form')} onNext={execute} nextLabel="Confirm sell" />
+          <QuotePanel quote={quote} onRefresh={refreshQuote} />
+          <QuoteChecklist
+            feesChecked={feesOk}
+            detailsChecked={detailsOk}
+            onFees={setFeesOk}
+            onDetails={setDetailsOk}
+            actionLabel="sell"
+          />
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {error}
+            </div>
+          ) : null}
+          <CxActions
+            onBack={() => setScreen('form')}
+            onNext={execute}
+            nextLabel="Authenticate & sell"
+            nextDisabled={quoteExpired(quote) || submitting}
+          />
         </section>
       ) : null}
 
       {tab === 'sell' && screen === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Running sell preview…"
-          stages={['Queued', 'Simulated', 'Review', 'Done']}
+          label="Processing sale…"
+          stages={[...ENGINE_STATUS_STAGES]}
         />
       ) : null}
 
-      {tab === 'sell' && screen === 'success' ? (
+      {tab === 'sell' && screen === 'success' && quote ? (
         <div className="cx-success">
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
           <h2>Preview complete</h2>
           <p>
-            No sale was submitted. Estimated receive ≈ ${fiat} ({settleEta} when live).
+            No sale was submitted. Estimated receive ≈ ${quote.toAmount.toFixed(2)}. Reference{' '}
+            {quote.id}.
           </p>
           <div className="cx-success__cta">
             <Link href="/activity" className="cx-btn cx-btn--primary">
