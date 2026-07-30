@@ -71,11 +71,13 @@ export function Web3ActivityExperience(): ReactElement {
     >
       {offline ? (
         <Alert tone="warn" title="Offline">
-          Showing cached preview activity. Reconnect to sync live events.
+          Showing cached preview activity. Reconnect to sync live events — preview timelines are not
+          verified-safe attestations.
         </Alert>
       ) : ready && error ? (
         <Alert tone="info" title="Preview activity">
-          Live activity feed unavailable — curated timeline shown.
+          Live activity feed unavailable — curated timeline shown. Events may include simulated
+          pairing and lookalike warnings.
         </Alert>
       ) : null}
 

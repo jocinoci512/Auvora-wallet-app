@@ -29,14 +29,9 @@ export type DemoDevice = {
   location: string;
 };
 
-export type ConnectedDappRow = {
-  id: string;
-  name: string;
-  origin: string;
-  network: string;
-  permissions: number;
-  lastActivity: string;
-};
+import { demoConnectedRows, type ConnectedDappRow } from '../web3/sessions';
+
+export type { ConnectedDappRow };
 
 export type SecurityAlert = {
   id: string;
@@ -102,24 +97,7 @@ export const DEMO_DEVICES: DemoDevice[] = [
   },
 ];
 
-export const DEMO_DAPPS: ConnectedDappRow[] = [
-  {
-    id: 'd1',
-    name: 'Uniswap',
-    origin: 'https://app.uniswap.org',
-    network: 'ETHEREUM',
-    permissions: 3,
-    lastActivity: '2026-07-26T12:00:00.000Z',
-  },
-  {
-    id: 'd2',
-    name: 'OpenSea',
-    origin: 'https://opensea.io',
-    network: 'ETHEREUM',
-    permissions: 1,
-    lastActivity: '2026-07-25T09:00:00.000Z',
-  },
-];
+export const DEMO_DAPPS = demoConnectedRows();
 
 export const DEMO_ALERTS: SecurityAlert[] = [
   {

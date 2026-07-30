@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../connections/connections_controller.dart';
 import '../../crypto/wallet_crypto.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../security/security_controller.dart';
 import '../../security/security_models.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../connections/permission_center_screen.dart';
 import '../home/home_shared.dart';
 import '../widgets/passcode_entry.dart';
 
@@ -25,8 +27,10 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
     super.didChangeDependencies();
     if (_bootstrapped) return;
     _bootstrapped = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SecurityController>().bootstrap();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<ConnectionsController>().bootstrap();
+      if (!mounted) return;
+      await context.read<SecurityController>().bootstrap();
     });
   }
 
@@ -289,39 +293,50 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      _EntitySection<ConnectedDapp>(
+                      _SectionCard(
                         title: 'Connected apps',
-                        subtitle: 'Review who can ask this wallet for access.',
-                        items: snapshot.connectedDapps,
-                        itemBuilder: (dapp) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.hub_outlined, color: AetherColors.lagoon),
-                          title: Text(dapp.name),
-                          subtitle: Text(
-                            '${dapp.website}\n${dapp.permissions.join(' • ')}${dapp.warning == null ? '' : '\n${dapp.warning}'}',
-                          ),
-                          trailing: TextButton(
-                            onPressed: () async {
-                              final allowed = await _authenticateSensitive(
-                                wallet,
-                                reason: 'Confirm before disconnecting this app',
-                              );
-                              if (!allowed) return;
-                              await security.disconnectDapp(dapp.id);
-                            },
-                            child: const Text('Disconnect'),
-                          ),
-                        ),
-                        footer: TextButton(
-                          onPressed: () async {
-                            final allowed = await _authenticateSensitive(
-                              wallet,
-                              reason: 'Confirm before marking connected apps as reviewed',
-                            );
-                            if (!allowed) return;
-                            await security.markDappsReviewed();
-                          },
-                          child: const Text('Mark connected apps reviewed'),
+                        subtitle: 'Open Permission Center to manage sessions, grants, and pairing.',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              snapshot.connectedDapps.isEmpty
+                                  ? 'No active connected apps in this preview.'
+                                  : '${snapshot.connectedDapps.length} active app${snapshot.connectedDapps.length == 1 ? '' : 's'} · '
+                                      '${snapshot.connectedDapps.where((d) => d.warning != null).length} with elevated risk notes',
+                              style: const TextStyle(height: 1.4),
+                            ),
+                            const SizedBox(height: 8),
+                            for (final dapp in snapshot.connectedDapps.take(3))
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.hub_outlined, color: AetherColors.lagoon),
+                                title: Text(dapp.name),
+                                subtitle: Text(
+                                  '${dapp.website}${dapp.warning == null ? '' : '\n${dapp.warning}'}',
+                                  style: const TextStyle(height: 1.35),
+                                ),
+                              ),
+                            FilledButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(builder: (_) => const PermissionCenterScreen()),
+                                );
+                              },
+                              child: const Text('Open Permission Center'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final allowed = await _authenticateSensitive(
+                                  wallet,
+                                  reason: 'Confirm before marking connected apps as reviewed',
+                                );
+                                if (!allowed) return;
+                                await security.markDappsReviewed();
+                              },
+                              child: const Text('Mark connected apps reviewed'),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -495,6 +510,10 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
         await security.markDevicesReviewed();
         break;
       case 'dapps':
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PermissionCenterScreen()),
+        );
+        if (!mounted) return;
         await security.markDappsReviewed();
         break;
       case 'app':

@@ -3,7 +3,8 @@
 import { AuvoraClientError } from '@auvora/sdk';
 import { env } from '../../env';
 import { getStoredAccessToken } from '../api-client';
-import type { PermissionGrant, Web3ActivityItem } from './demo';
+import type { ConnectionRequest, PermissionGrant, Web3ActivityItem } from './demo';
+import { permissionRiskFor, permissionTitle } from './permissions';
 
 /** Shared JSON fetch for connections / Web3 gateway routes. */
 export async function web3Fetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -76,11 +77,6 @@ export function mapPermissionGrants(raw: unknown): PermissionGrant[] {
     const permission = String(r.permission ?? '');
     const origin = String(r.origin ?? '');
     if (!permission || !origin) return;
-    const risk: PermissionGrant['risk'] = permission.includes('TRANSACTION')
-      ? 'elevated'
-      : permission.includes('SIGNATURE')
-        ? 'medium'
-        : 'low';
     out.push({
       id: String(r.id ?? `p-${i}`),
       origin,
@@ -88,7 +84,40 @@ export function mapPermissionGrants(raw: unknown): PermissionGrant[] {
       permission,
       network: String(r.network ?? 'ETHEREUM'),
       lastActivity: String(r.updatedAt ?? r.createdAt ?? new Date().toISOString()),
-      risk,
+      risk: permissionRiskFor(permission),
+    });
+  });
+  return out;
+}
+
+/** Normalize pending connection requests (live or preview-shaped). */
+export function mapConnectionRequests(raw: unknown): ConnectionRequest[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ConnectionRequest[] = [];
+  raw.forEach((row, i) => {
+    if (!row || typeof row !== 'object') return;
+    const r = row as Record<string, unknown>;
+    const origin = String(r.origin ?? '');
+    if (!origin) return;
+    const permissions = Array.isArray(r.permissions) ? r.permissions.map((p) => String(p)) : [];
+    const networks = Array.isArray(r.networks) ? r.networks.map((n) => String(n)) : ['ETHEREUM'];
+    const statusRaw = String(r.status ?? 'pending').toLowerCase();
+    const status: ConnectionRequest['status'] =
+      statusRaw === 'approved' || statusRaw === 'rejected' ? statusRaw : 'pending';
+    out.push({
+      id: String(r.id ?? `req-${i}`),
+      origin,
+      name: String(r.name ?? origin),
+      networks,
+      permissions,
+      status,
+      createdAt: String(r.createdAt ?? new Date().toISOString()),
+      method:
+        typeof r.method === 'string'
+          ? (r.method as ConnectionRequest['method'])
+          : 'walletConnectUri',
+      account: r.account ? String(r.account) : undefined,
+      https: origin.startsWith('https://'),
     });
   });
   return out;
@@ -113,11 +142,19 @@ export function mapActivityItems(raw: unknown): Web3ActivityItem[] {
       id: String(r.id ?? `wa-${i}`),
       kind,
       title: String(r.summary ?? r.title ?? (eventType || 'Web3 event')),
-      detail: String(r.detail ?? r.eventType ?? ''),
+      detail: humanizeActivityDetail(String(r.detail ?? r.eventType ?? '')),
       origin: r.origin ? String(r.origin) : undefined,
       timestamp: String(r.createdAt ?? r.timestamp ?? new Date().toISOString()),
       status: 'confirmed',
     });
   });
   return out;
+}
+
+/** Replace wire permission codes in activity copy with plain-language titles. */
+function humanizeActivityDetail(detail: string): string {
+  return detail.replace(
+    /\b(VIEW_ADDRESSES|VIEW_BALANCES|REQUEST_SIGNATURES|REQUEST_TRANSACTIONS|NETWORK_SWITCH|SESSION_MANAGE)\b/g,
+    (code) => permissionTitle(code),
+  );
 }

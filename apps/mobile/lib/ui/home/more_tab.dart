@@ -5,7 +5,12 @@ import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../address_book_screen.dart';
+import '../connections/connect_dapp_screen.dart';
+import '../connections/permission_center_screen.dart';
+import '../connections/web3_activity_screen.dart';
 import '../security/security_center_screen.dart';
+import '../settings/notification_center_screen.dart';
+import '../settings/settings_home_screen.dart';
 import 'home_shared.dart';
 
 class MoreTab extends StatelessWidget {
@@ -35,6 +40,60 @@ class MoreTab extends StatelessWidget {
           child: Text('Copy $short'),
         ),
         const SizedBox(height: 28),
+        Text('Settings', style: Theme.of(context).textTheme.titleMedium),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.settings_outlined, color: AetherColors.lagoon),
+          title: const Text('Settings'),
+          subtitle: const Text('Account, appearance, notifications, privacy, and more'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SettingsHomeScreen()),
+          ),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.inbox_outlined, color: AetherColors.lagoon),
+          title: const Text('Notification center'),
+          subtitle: const Text('In-app alerts for this device'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const NotificationCenterScreen()),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text('Web3', style: Theme.of(context).textTheme.titleMedium),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.hub_outlined, color: AetherColors.lagoon),
+          title: const Text('Web3 & permissions'),
+          subtitle: const Text('Connected apps, pairing, and Permission Center'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PermissionCenterScreen()),
+          ),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.add_link_rounded, color: AetherColors.lagoon),
+          title: const Text('Connect dApp'),
+          subtitle: const Text('QR, WalletConnect URI, or pairing code (preview)'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const ConnectDappScreen()),
+          ),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.history_rounded, color: AetherColors.lagoon),
+          title: const Text('Web3 activity'),
+          subtitle: const Text('Connections, signatures, and dApp transactions'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const Web3ActivityScreen()),
+          ),
+        ),
+        const SizedBox(height: 20),
         Text('Security', style: Theme.of(context).textTheme.titleMedium),
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -61,17 +120,6 @@ class MoreTab extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AddressBookScreen()),
-          ),
-        ),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.notifications_none_rounded, color: AetherColors.lagoon),
-          title: const Text('Notifications'),
-          subtitle: const Text('No alerts right now'),
-          onTap: () => showActionSheet(
-            context,
-            title: 'Notifications',
-            body: 'You will see confirmations and security notices here when something needs attention.',
           ),
         ),
         ListTile(

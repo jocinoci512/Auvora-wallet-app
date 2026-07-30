@@ -6,9 +6,16 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, type CSSProperties, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
 import { web3Fetch } from '../../lib/web3/api';
-import { DEMO_SIGN, riskLabel, type SignPreview } from '../../lib/web3/demo';
+import { DEMO_PERMISSIONS, DEMO_SIGN, riskLabel, type SignPreview } from '../../lib/web3/demo';
+import {
+  DAPP_PERMISSION_CODES,
+  permissionTitle,
+  permissionsCanMoveFunds,
+} from '../../lib/web3/permissions';
 import { PlatformShell } from '../platform/PlatformShell';
 import { humanizeError } from '../transaction/TransactionShell';
+import { PermissionExplainList } from './PermissionExplainList';
+import { TrustIndicators } from './TrustIndicators';
 import { Web3SectionNav } from './Web3SectionNav';
 
 type SignKind = SignPreview['kind'];
@@ -31,6 +38,16 @@ const signGridStyle: CSSProperties = {
   alignItems: 'start',
 };
 
+function activeCodesForKind(kind: SignKind): string[] {
+  if (kind === 'transaction') {
+    return ['VIEW_ADDRESSES', 'REQUEST_TRANSACTIONS', 'NETWORK_SWITCH'];
+  }
+  if (kind === 'typed' || kind === 'message') {
+    return ['VIEW_ADDRESSES', 'REQUEST_SIGNATURES'];
+  }
+  return ['VIEW_ADDRESSES'];
+}
+
 export function SigningExperience(): ReactElement {
   const params = useSearchParams();
   const origin = params.get('origin') ?? 'https://app.uniswap.org';
@@ -43,11 +60,19 @@ export function SigningExperience(): ReactElement {
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const previouslyConnected = DEMO_PERMISSIONS.some((g) => g.origin === origin);
+  const activeCodes = activeCodesForKind(kind);
+
   useEffect(() => {
     setPreview({
       ...DEMO_SIGN,
       kind,
       network,
+      simulationPreview: true,
+      simulation:
+        kind === 'transaction'
+          ? 'Preview simulation — not live chain state. Expected out ≥ 840 USDC.'
+          : undefined,
       summary:
         kind === 'message'
           ? `Sign message for ${origin}`
@@ -126,7 +151,8 @@ export function SigningExperience(): ReactElement {
     >
       {status === 'approved' ? (
         <Alert tone="success" title="Approved">
-          Request recorded. Session persistence applies for trusted origins.
+          Request recorded when the signing service was reachable. Session persistence still depends
+          on your permission grants.
         </Alert>
       ) : null}
       {status === 'rejected' ? (
@@ -135,8 +161,9 @@ export function SigningExperience(): ReactElement {
         </Alert>
       ) : null}
       {offline ? (
-        <Alert tone="info" title="Offline preview">
-          Live sign endpoints unavailable — local approval flow still works.
+        <Alert tone="warn" title="Offline / simulation preview">
+          Live sign endpoints unavailable — local reject still works. Approvals are not broadcast as
+          live WalletConnect or on-chain actions in this mode.
         </Alert>
       ) : null}
       {error ? (
@@ -187,24 +214,39 @@ export function SigningExperience(): ReactElement {
           </div>
 
           <p className="cx-meta">Origin · {origin}</p>
+          <TrustIndicators
+            origin={origin}
+            permissions={activeCodes}
+            previouslyConnected={previouslyConnected}
+          />
           <p>
             <strong>{preview.summary}</strong>
           </p>
           <span className="cx-badge">{riskLabel(preview.risk)}</span>
+          {permissionsCanMoveFunds(activeCodes) ? (
+            <Alert tone="warn" title="Funds can move">
+              Approving this transaction request can move funds or assets after you confirm.
+            </Alert>
+          ) : (
+            <Alert tone="info" title="Signing scope">
+              This request asks for a signature. It does not send funds by itself, though some
+              signatures can approve spending later.
+            </Alert>
+          )}
 
           {kind === 'transaction' ? (
             <>
               <p className="cx-meta">Gas estimate · {preview.gasEstimate}</p>
               <p className="cx-meta">Fee breakdown · {preview.feeBreakdown}</p>
-              <Alert tone="info" title="Simulation placeholder">
+              <Alert tone="info" title="Preview simulation — not live chain state">
                 {preview.simulation}
               </Alert>
             </>
           ) : null}
 
           <Alert tone="warn" title="Unknown contract warning">
-            Contract labels are placeholders. Elevated permissions and phishing domain checks
-            surface before approve.
+            Contract labels are placeholders. We do not claim verified-safe without catalog
+            verification flags.
           </Alert>
 
           <pre style={preStyle}>{preview.payloadPreview}</pre>
@@ -214,6 +256,7 @@ export function SigningExperience(): ReactElement {
               type="button"
               disabled={busy || status !== 'idle'}
               onClick={() => void decide('approve')}
+              aria-label="Approve signing request"
             >
               Approve
             </Button>
@@ -222,6 +265,7 @@ export function SigningExperience(): ReactElement {
               variant="secondary"
               disabled={busy || status !== 'idle'}
               onClick={() => void decide('reject')}
+              aria-label="Reject signing request"
             >
               Reject
             </Button>
@@ -238,35 +282,30 @@ export function SigningExperience(): ReactElement {
 
         <section className="cx-panel">
           <h2>Permission summary</h2>
-          <ul className="cx-list">
-            <li>
-              <span>View addresses</span>
-              <StatusBadge status="active" label="Granted" />
-            </li>
-            <li>
-              <span>Request signatures</span>
-              <StatusBadge
-                status={kind === 'message' || kind === 'typed' ? 'pending' : 'archived'}
-                label={kind !== 'transaction' ? 'This request' : 'Idle'}
-              />
-            </li>
-            <li>
-              <span>Request transactions</span>
-              <StatusBadge
-                status={kind === 'transaction' ? 'pending' : 'archived'}
-                label={kind === 'transaction' ? 'This request' : 'Idle'}
-              />
-            </li>
-            <li>
-              <span>Network switch</span>
-              <StatusBadge status="active" label={network} />
-            </li>
+          <p className="cx-meta">Plain-language grants involved in this request:</p>
+          <PermissionExplainList codes={activeCodes} showCatalog={false} />
+          <ul className="cx-list" style={{ marginTop: '0.75rem' }}>
+            {DAPP_PERMISSION_CODES.map((code) => {
+              const on = activeCodes.includes(code);
+              return (
+                <li key={code}>
+                  <span>{permissionTitle(code)}</span>
+                  <StatusBadge
+                    status={on ? 'pending' : 'archived'}
+                    label={on ? 'This request' : 'Idle'}
+                  />
+                </li>
+              );
+            })}
           </ul>
           <EmptyState
-            title="Trusted dApps"
-            description="Mark origins as trusted from the advanced connections lab after first approval."
+            title="Manage grants"
+            description="Revoke or disconnect from the Permission center — settings Connected dApps uses the same session model."
           />
-          <Link href="/web3/permissions" className="cx-btn cx-btn--ghost">
+          <Link
+            href={`/web3/permissions?origin=${encodeURIComponent(origin)}`}
+            className="cx-btn cx-btn--ghost"
+          >
             Open permission center
           </Link>
         </section>

@@ -4,10 +4,12 @@ import { Alert, Button, EmptyState } from '@auvora/ui';
 import { Heart, ShieldAlert, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from 'react';
-import { web3Fetch } from '../../lib/web3/api';
+import { mapConnectionRequests, web3Fetch } from '../../lib/web3/api';
 import {
   DEMO_CATEGORIES,
   DEMO_DAPPS,
+  DEMO_PAIRING,
+  DEMO_PERMISSIONS,
   DEMO_REQUESTS,
   riskLabel,
   type ConnectionRequest,
@@ -16,6 +18,7 @@ import {
 } from '../../lib/web3/demo';
 import { listFavorites, toggleFavorite } from '../../lib/web3/prefs';
 import { PlatformShell } from '../platform/PlatformShell';
+import { ConnectionApprovalPanel } from './ConnectionApprovalPanel';
 import { Web3SectionNav } from './Web3SectionNav';
 
 type HubTab = 'featured' | 'recent' | 'favorites' | 'trending' | 'categories';
@@ -29,12 +32,17 @@ export function Web3HubExperience(): ReactElement {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [status, setStatus] = useState<{ connected: number; pending: number }>({
     connected: 2,
-    pending: DEMO_REQUESTS.length,
+    pending: DEMO_REQUESTS.filter((r) => r.status === 'pending').length,
   });
   const [requests, setRequests] = useState<ConnectionRequest[]>(DEMO_REQUESTS);
   const [live, setLive] = useState(false);
   const [ready, setReady] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const previouslyConnectedOrigins = useMemo(
+    () => new Set(DEMO_PERMISSIONS.map((g) => g.origin)),
+    [],
+  );
 
   useEffect(() => {
     setFavorites(listFavorites());
@@ -45,7 +53,7 @@ export function Web3HubExperience(): ReactElement {
           web3Fetch<{ activeSessions?: number; pendingRequests?: number }>(
             '/api/v1/connections/dapps/sessions/summary',
           ).catch(() => null),
-          web3Fetch<ConnectionRequest[]>('/api/v1/connections/dapps/requests').catch(() => null),
+          web3Fetch<unknown>('/api/v1/connections/dapps/requests').catch(() => null),
         ]);
         if (cancelled) return;
         if (summary) {
@@ -55,9 +63,13 @@ export function Web3HubExperience(): ReactElement {
           });
           setLive(true);
         }
-        if (Array.isArray(pending) && pending.length) {
-          setRequests(pending);
-          setStatus((s) => ({ ...s, pending: pending.length }));
+        const mapped = mapConnectionRequests(pending);
+        if (mapped.length) {
+          setRequests(mapped);
+          setStatus((s) => ({
+            ...s,
+            pending: mapped.filter((r) => r.status === 'pending').length,
+          }));
           setLive(true);
         }
       } finally {
@@ -106,9 +118,18 @@ export function Web3HubExperience(): ReactElement {
           r.id === id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r,
         ),
       );
-      setStatus((s) => ({ ...s, pending: Math.max(0, s.pending - 1) }));
-    } catch {
-      /* keep request pending on live failure */
+      setStatus((s) => ({
+        ...s,
+        pending: Math.max(0, s.pending - 1),
+        connected: action === 'approve' ? s.connected + 1 : s.connected,
+      }));
+    } catch (err) {
+      window.alert(
+        live
+          ? `Could not ${action} this request. Try again when the connections service is reachable.`
+          : `Preview ${action} failed unexpectedly.`,
+      );
+      void err;
     } finally {
       setBusyId(null);
     }
@@ -139,7 +160,8 @@ export function Web3HubExperience(): ReactElement {
     >
       {ready && !live ? (
         <Alert tone="warn" title="Preview Web3 data">
-          Live connections service unavailable — showing curated hub data.
+          Live connections service unavailable — showing curated hub data. Catalog badges are not
+          domain attestations and do not mean verified-safe.
         </Alert>
       ) : null}
 
@@ -162,50 +184,15 @@ export function Web3HubExperience(): ReactElement {
         </div>
       </div>
 
-      {requests.some((r) => r.status === 'pending') ? (
-        <section className="cx-panel">
-          <h2>Connection requests</h2>
-          <ul className="cx-list">
-            {requests
-              .filter((r) => r.status === 'pending')
-              .map((r) => (
-                <li key={r.id}>
-                  <div>
-                    <strong>{r.name}</strong>
-                    <p className="cx-meta">
-                      {r.origin} · {r.networks.join(', ')}
-                    </p>
-                    <p className="cx-meta">Permissions: {r.permissions.join(', ')}</p>
-                  </div>
-                  <div className="cx-platform__actions">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={busyId === r.id}
-                      onClick={() => void decide(r.id, 'approve')}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={busyId === r.id}
-                      onClick={() => void decide(r.id, 'reject')}
-                    >
-                      Reject
-                    </Button>
-                    <Link href={`/web3/sign?origin=${encodeURIComponent(r.origin)}`}>
-                      <Button type="button" size="sm" variant="ghost">
-                        Review
-                      </Button>
-                    </Link>
-                  </div>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ) : null}
+      <ConnectionApprovalPanel
+        requests={requests}
+        pairing={DEMO_PAIRING}
+        live={live}
+        preview={DEMO_PAIRING.preview === true}
+        busyId={busyId}
+        previouslyConnectedOrigins={previouslyConnectedOrigins}
+        onDecide={(id, action) => void decide(id, action)}
+      />
 
       <section className="cx-panel">
         <div className="cx-toolbar">
@@ -310,7 +297,7 @@ export function Web3HubExperience(): ReactElement {
                         </span>
                       ) : (
                         <span className="cx-meta">
-                          <ShieldAlert size={14} aria-hidden /> Unverified
+                          <ShieldAlert size={14} aria-hidden /> We can’t verify this site yet
                         </span>
                       )}
                     </strong>
@@ -340,9 +327,14 @@ export function Web3HubExperience(): ReactElement {
                       Open
                     </Button>
                   </Link>
-                  <Link href={`/web3/sign?origin=${encodeURIComponent(d.origin)}`}>
+                  <Link href="/web3#connection-approval-heading">
                     <Button type="button" size="sm" variant="secondary">
                       Connect
+                    </Button>
+                  </Link>
+                  <Link href={`/web3/sign?origin=${encodeURIComponent(d.origin)}`}>
+                    <Button type="button" size="sm" variant="ghost">
+                      Review signing
                     </Button>
                   </Link>
                 </div>
@@ -354,19 +346,20 @@ export function Web3HubExperience(): ReactElement {
 
       <section className="cx-panel">
         <h2>Security cues</h2>
-        <Alert tone="info" title="Domain verification architecture">
-          Verified badges and phishing warnings are placeholders wired for future domain
-          attestation. Unknown contracts and elevated permissions surface risk chips before
+        <Alert tone="info" title="Honest trust signals">
+          Trust chips appear only when data exists (verified domain, HTTPS, previously connected,
+          known project). Otherwise we say we can’t verify the site yet — never “verified safe”
+          without flags. Elevated permissions and lookalike origins surface calm risk notes before
           approval.
         </Alert>
         <div className="cx-platform__actions" style={{ marginTop: '0.75rem' }}>
           <Link href="/web3/activity" className="cx-link">
             Activity & alerts
           </Link>
-          <Link href="/notifications" className="cx-link">
-            Notifications
+          <Link href="/web3/permissions" className="cx-link">
+            Permission center
           </Link>
-          <Link href="/security" className="cx-link">
+          <Link href="/settings/security" className="cx-link">
             Wallet security
           </Link>
         </div>

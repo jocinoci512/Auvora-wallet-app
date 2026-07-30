@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'connections/connections_controller.dart';
 import 'portfolio/portfolio_controller.dart';
 import 'portfolio/portfolio_repository.dart';
+import 'preferences/preferences_controller.dart';
 import 'security/security_controller.dart';
 import 'state/wallet_controller.dart';
 import 'theme/aether_theme.dart';
@@ -119,27 +121,47 @@ class AuvoraApp extends StatelessWidget {
           create: (_) => PortfolioController(),
           update: (_, repository, controller) => controller!..attachRepository(repository),
         ),
-        ChangeNotifierProxyProvider2<WalletController, WalletEngine, SecurityController>(
+        ChangeNotifierProxyProvider<PortfolioController, PreferencesController>(
+          create: (_) {
+            final controller = PreferencesController();
+            // ignore: discarded_futures
+            controller.bootstrap();
+            return controller;
+          },
+          update: (_, portfolio, controller) => controller!..attachPortfolio(portfolio),
+        ),
+        ChangeNotifierProvider(create: (_) => ConnectionsController()),
+        ChangeNotifierProxyProvider3<WalletController, WalletEngine, ConnectionsController, SecurityController>(
           create: (_) => SecurityController(),
-          update: (_, walletController, walletEngine, controller) =>
-              controller!..attach(walletController: walletController, walletEngine: walletEngine),
+          update: (_, walletController, walletEngine, connections, controller) => controller!
+            ..attach(walletController: walletController, walletEngine: walletEngine)
+            ..attachConnections(connections),
         ),
         ChangeNotifierProvider(create: (_) => AddressBookStore()),
       ],
-      child: MaterialApp(
-        title: 'Auvora Wallet',
-        debugShowCheckedModeBanner: false,
-        theme: buildAetherTheme(brightness: Brightness.light),
-        darkTheme: buildAetherTheme(brightness: Brightness.dark),
-        themeMode: ThemeMode.system,
-        builder: (context, child) {
-          final media = MediaQuery.of(context);
-          return MediaQuery(
-            data: media.copyWith(textScaler: media.textScaler.clamp(minScaleFactor: 1.0, maxScaleFactor: 1.35)),
-            child: child ?? const SizedBox.shrink(),
+      child: Consumer<PreferencesController>(
+        builder: (context, prefs, _) {
+          final scale = prefs.accessibility.textScale.clamp(0.85, 1.35);
+          return MaterialApp(
+            title: 'Auvora Wallet',
+            debugShowCheckedModeBanner: false,
+            theme: buildAetherTheme(brightness: Brightness.light),
+            darkTheme: buildAetherTheme(brightness: Brightness.dark),
+            themeMode: prefs.materialThemeMode,
+            builder: (context, child) {
+              final media = MediaQuery.of(context);
+              return MediaQuery(
+                data: media.copyWith(
+                  textScaler: TextScaler.linear(
+                    (media.textScaler.scale(1.0) * scale).clamp(0.85, 1.6),
+                  ),
+                ),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+            home: const AppShell(),
           );
         },
-        home: const AppShell(),
       ),
     );
   }

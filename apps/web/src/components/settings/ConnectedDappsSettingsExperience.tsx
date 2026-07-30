@@ -2,8 +2,15 @@
 
 import { Alert, Button, EmptyState, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
-import { useDeferredValue, useMemo, useState, type ReactElement } from 'react';
-import { DEMO_DAPPS, type ConnectedDappRow } from '../../lib/settings/demo';
+import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { mapPermissionGrants, web3Fetch } from '../../lib/web3/api';
+import { DEMO_PERMISSIONS, riskLabel, type PermissionGrant } from '../../lib/web3/demo';
+import {
+  demoConnectedRows,
+  sessionToRow,
+  sessionsFromGrants,
+  type ConnectedDappRow,
+} from '../../lib/web3/sessions';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
@@ -12,8 +19,14 @@ type SortKey = 'name' | 'activity' | 'permissions';
 
 const SORT_KEYS: SortKey[] = ['name', 'activity', 'permissions'];
 
+/**
+ * Settings surface for connected dApps — composes the same grant/session model as
+ * `/web3/permissions` rather than maintaining a forked demo list.
+ */
 export function ConnectedDappsSettingsExperience(): ReactElement {
-  const [rows] = useState<ConnectedDappRow[]>(DEMO_DAPPS);
+  const [grants, setGrants] = useState<PermissionGrant[]>(DEMO_PERMISSIONS);
+  const [live, setLive] = useState(false);
+  const [ready, setReady] = useState(false);
   const [q, setQ] = useState('');
   const deferredQ = useDeferredValue(q);
   const [network, setNetwork] = useState('all');
@@ -21,13 +34,45 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
   const [disconnected, setDisconnected] = useState<string[]>([]);
   const { toast, showToast } = useTimedToast(2400);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await web3Fetch<unknown>('/api/v1/connections/dapps/permissions');
+        if (cancelled) return;
+        const mapped = mapPermissionGrants(data);
+        if (mapped.length) {
+          setGrants(mapped);
+          setLive(true);
+        }
+      } catch {
+        /* preview fallback */
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rows: ConnectedDappRow[] = useMemo(() => {
+    const mapped = grants.length
+      ? sessionsFromGrants(grants).map(sessionToRow)
+      : demoConnectedRows();
+    return mapped.filter((r) => !disconnected.includes(r.id));
+  }, [grants, disconnected]);
+
   const filtered = useMemo(() => {
-    let list = rows.filter((r) => !disconnected.includes(r.id));
+    let list = [...rows];
     if (network !== 'all') list = list.filter((r) => r.network === network);
     if (deferredQ.trim()) {
       const qq = deferredQ.trim().toLowerCase();
       list = list.filter(
-        (r) => r.name.toLowerCase().includes(qq) || r.origin.toLowerCase().includes(qq),
+        (r) =>
+          r.name.toLowerCase().includes(qq) ||
+          r.origin.toLowerCase().includes(qq) ||
+          r.permissionLabels.toLowerCase().includes(qq),
       );
     }
     list = [...list].sort((a, b) => {
@@ -36,18 +81,41 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
       return b.lastActivity.localeCompare(a.lastActivity);
     });
     return list;
-  }, [rows, disconnected, network, deferredQ, sort]);
+  }, [rows, network, deferredQ, sort]);
 
-  function disconnect(id: string): void {
-    setDisconnected((prev) => [...prev, id]);
-    showToast('dApp disconnected locally — open Web3 permissions to revoke live grants');
+  async function disconnect(row: ConnectedDappRow): Promise<void> {
+    try {
+      if (live) {
+        await Promise.all(
+          row.permissionCodes.map((permission) =>
+            web3Fetch('/api/v1/connections/dapps/permissions', {
+              method: 'POST',
+              body: JSON.stringify({
+                origin: row.origin,
+                permission,
+                allowed: false,
+              }),
+            }),
+          ),
+        );
+      }
+      setDisconnected((prev) => [...prev, row.id]);
+      setGrants((prev) => prev.filter((g) => g.origin !== row.origin));
+      showToast(
+        live
+          ? 'Disconnected — permissions revoked with the connections service'
+          : 'dApp disconnected in preview — open Permission center to manage grants',
+      );
+    } catch {
+      showToast('Disconnect failed — try again from Permission center');
+    }
   }
 
   return (
     <PlatformShell
       title="Connected dApps"
-      subtitle="Search, filter, sort, disconnect, edit permissions, and review activity."
-      reassure="Disconnecting here is local preview — use Permission center to revoke live grants."
+      subtitle="Search, filter, sort, disconnect, and manage permissions — same model as Web3 Permission center."
+      reassure="Disconnecting here updates the shared session view. Use Permission center to revoke individual grants."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/dapps" />}
@@ -57,6 +125,12 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
         </Link>
       }
     >
+      {ready && !live ? (
+        <Alert tone="warn" title="Preview sessions">
+          Showing curated connected apps while the connections service is offline. This list is not
+          a verified-safe attestation.
+        </Alert>
+      ) : null}
       {toast ? (
         <Alert tone="success" title="Updated">
           {toast}
@@ -113,22 +187,29 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
                     {r.origin} · {r.network}
                   </p>
                   <p className="cx-meta">
-                    {r.permissions} permissions · Last {new Date(r.lastActivity).toLocaleString()}
+                    {r.permissionLabels} · Last {new Date(r.lastActivity).toLocaleString()}
                   </p>
+                  <span className="cx-badge">{riskLabel(r.risk)}</span>
                 </div>
                 <div className="cx-platform__actions">
                   <StatusBadge status="active" label="Connected" />
-                  <Link href={`/web3/sign?origin=${encodeURIComponent(r.origin)}`}>
+                  <Link href={`/web3/permissions?origin=${encodeURIComponent(r.origin)}`}>
                     <Button type="button" size="sm" variant="secondary">
                       Edit permissions
                     </Button>
                   </Link>
-                  <Link href={`/web3/activity`}>
+                  <Link href="/web3/activity">
                     <Button type="button" size="sm" variant="ghost">
                       Activity
                     </Button>
                   </Link>
-                  <Button type="button" size="sm" variant="danger" onClick={() => disconnect(r.id)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="danger"
+                    onClick={() => void disconnect(r)}
+                    aria-label={`Disconnect ${r.name}`}
+                  >
                     Disconnect
                   </Button>
                 </div>
@@ -137,6 +218,11 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
           </ul>
         )}
       </section>
+
+      <Alert tone="info" title="Shared with Permission center">
+        This settings view composes the `/web3/permissions` grant model. Prefer the Permission
+        center for per-grant revoke and the full plain-language catalog.
+      </Alert>
     </PlatformShell>
   );
 }

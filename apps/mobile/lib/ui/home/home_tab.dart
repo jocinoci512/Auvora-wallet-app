@@ -7,6 +7,7 @@ import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../../engine/models.dart';
 import '../asset_detail_screen.dart';
+import '../connections/connect_dapp_screen.dart';
 import '../engine/digital_asset_flow.dart';
 import '../receive_flow_screen.dart';
 import '../send_flow_screen.dart';
@@ -637,6 +638,18 @@ class _PrimaryActions extends StatelessWidget {
             children: [
               Text('More actions', style: Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.add_link_rounded, color: AetherColors.lagoon),
+                title: const Text('Connect'),
+                subtitle: const Text('Pair a dApp with QR or WalletConnect URI (preview)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const ConnectDappScreen()),
+                  );
+                },
+              ),
               for (final a in more)
                 ListTile(
                   contentPadding: EdgeInsets.zero,

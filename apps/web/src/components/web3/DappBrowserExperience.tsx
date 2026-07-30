@@ -244,8 +244,9 @@ export function DappBrowserExperience(): ReactElement {
           <div style={stageStyle} role="alert">
             <EmptyState title="Cannot open page" description={error} />
             <Alert tone="warn" title="Suspicious / insecure URL">
-              Auvora blocks non-HTTPS and malformed origins. Phishing lookalikes use domain
-              verification placeholders before connect.
+              Auvora blocks non-HTTPS and malformed origins in this browser preview. There is no
+              injected wallet provider here — connect and sign from the Web3 Hub / Signing screens
+              instead. Lookalike warnings are advisory placeholders, not live phishing intel.
             </Alert>
           </div>
         ) : activeUrl ? (
@@ -253,13 +254,13 @@ export function DappBrowserExperience(): ReactElement {
             <iframe
               title={`dApp frame · ${originFromUrl(activeUrl)}`}
               src={activeUrl}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              sandbox="allow-scripts allow-forms allow-popups"
               referrerPolicy="no-referrer"
               style={iframeStyle}
             />
             <p className="cx-meta" style={{ marginTop: '0.75rem' }}>
-              Sandboxed preview · {originFromUrl(activeUrl)} · Unknown contract warnings appear on
-              sign
+              Sandboxed preview · {originFromUrl(activeUrl)} · No injected wallet provider — use Hub
+              Connect / Signing for approvals. Contract warnings appear only on signing screens.
             </p>
           </div>
         ) : (

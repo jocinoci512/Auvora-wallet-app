@@ -8,16 +8,19 @@ type NavLink = { href: string; label: string; exact?: boolean };
 /** Logical Settings IA — Security is a first-class category, not the home. */
 const LINKS: NavLink[] = [
   { href: '/settings', label: 'Home', exact: true },
-  { href: '/settings/security', label: 'Security' },
   { href: '/settings/account', label: 'Account' },
   { href: '/settings/preferences', label: 'Appearance' },
+  { href: '/settings/security', label: 'Security' },
   { href: '/settings/notifications', label: 'Alerts' },
+  { href: '/settings/alerts', label: 'Prices' },
+  { href: '/settings/privacy', label: 'Privacy' },
+  { href: '/settings/networks', label: 'Networks' },
   { href: '/settings/devices', label: 'Devices' },
   { href: '/settings/dapps', label: 'Apps' },
-  { href: '/settings/privacy', label: 'Privacy' },
   { href: '/settings/backup', label: 'Backup' },
   { href: '/settings/advanced', label: 'Advanced' },
   { href: '/settings/help', label: 'Help' },
+  { href: '/settings/about', label: 'About' },
 ];
 
 export function SettingsSectionNav({ current }: { current: string }): ReactElement {

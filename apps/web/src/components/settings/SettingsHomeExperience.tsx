@@ -6,37 +6,80 @@ import { SettingsSectionNav } from './SettingsSectionNav';
 
 const CATEGORIES = [
   {
-    href: '/settings/security',
-    title: 'Security',
-    detail: 'Score, recovery, devices, sessions, dApps',
+    href: '/settings/account',
+    title: 'Account',
+    detail: 'Wallet name, nickname, and preview wallet list',
   },
-  { href: '/settings/account', title: 'Account', detail: 'Profile, locale, wallet nickname' },
   {
     href: '/settings/preferences',
-    title: 'Appearance & personalization',
-    detail: 'Theme, currency, network, display, a11y',
+    title: 'Wallet & appearance',
+    detail: 'Theme, currency, sorting, formats, and accessibility',
+  },
+  {
+    href: '/settings/security',
+    title: 'Security',
+    detail: 'Score, recovery, devices, sessions, and protection',
   },
   {
     href: '/settings/notifications',
     title: 'Notifications',
-    detail: 'Transactions, smart alerts, insights, Web3',
+    detail: 'Choose which alerts matter — silence the rest',
   },
-  { href: '/settings/devices', title: 'Devices & sessions', detail: 'Trusted devices and logins' },
-  { href: '/settings/dapps', title: 'Connected apps', detail: 'dApp inventory from settings' },
-  { href: '/web3/permissions', title: 'Web3 permissions', detail: 'Revoke grants and sessions' },
+  {
+    href: '/settings/alerts',
+    title: 'Price alerts',
+    detail: 'Create, pause, and delete custom targets',
+  },
   {
     href: '/settings/privacy',
     title: 'Privacy',
-    detail: 'Analytics, Assistant, cookies, personalization',
+    detail: 'Balances, analytics, clipboard, and Assistant',
   },
-  { href: '/legal', title: 'Legal drafts', detail: 'Privacy, terms, trust & transparency' },
-  { href: '/settings/backup', title: 'Backup & recovery', detail: 'Phrase status and reminders' },
-  { href: '/settings/advanced', title: 'Advanced', detail: 'Developer options (gated)' },
-  { href: '/settings/help', title: 'Help & support', detail: 'FAQ, recovery, scam awareness' },
-  { href: '/assistant', title: 'Auvora Assistant', detail: 'Plain-language explanations' },
-  { href: '/learn', title: 'Education Hub', detail: 'Beginner guides and fundamentals' },
-  { href: '/insights', title: 'Insights', detail: 'Portfolio health and gentle tips' },
-  { href: '/notifications', title: 'Notification center', detail: 'Inbox and preferences' },
+  {
+    href: '/settings/networks',
+    title: 'Networks',
+    detail: 'Default network and preview RPC health',
+  },
+  {
+    href: '/settings/devices',
+    title: 'Devices & sessions',
+    detail: 'Trusted devices and active logins',
+  },
+  {
+    href: '/settings/dapps',
+    title: 'Connected apps',
+    detail: 'dApp inventory from settings',
+  },
+  {
+    href: '/web3/permissions',
+    title: 'Web3 permissions',
+    detail: 'Revoke grants and sessions',
+  },
+  {
+    href: '/settings/backup',
+    title: 'Backup & recovery',
+    detail: 'Phrase status and reminders',
+  },
+  {
+    href: '/settings/advanced',
+    title: 'Advanced',
+    detail: 'Developer options — gated until needed',
+  },
+  {
+    href: '/settings/help',
+    title: 'Support',
+    detail: 'FAQ, guides, and contact',
+  },
+  {
+    href: '/settings/about',
+    title: 'About',
+    detail: 'Version, legal, and acknowledgements',
+  },
+  {
+    href: '/notifications',
+    title: 'Notification center',
+    detail: 'In-app inbox for this device',
+  },
 ] as const;
 
 export function SettingsHomeExperience(): ReactElement {
@@ -53,8 +96,8 @@ export function SettingsHomeExperience(): ReactElement {
   return (
     <PlatformShell
       title="Settings"
-      subtitle="Find what you need — security first, everything else close by."
-      reassure="Changes on this device stay under your control."
+      subtitle="Find what you need in under ten seconds — clear categories, short descriptions."
+      reassure="Changes on this device stay under your control. Advanced options stay out of the way."
       backHref="/dashboard"
       backLabel="Wallet"
       nav={<SettingsSectionNav current="/settings" />}
@@ -67,7 +110,7 @@ export function SettingsHomeExperience(): ReactElement {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Security, theme, devices…"
+            placeholder="Theme, alerts, networks…"
             aria-label="Search settings"
           />
         </label>
@@ -83,25 +126,6 @@ export function SettingsHomeExperience(): ReactElement {
             ))}
           </div>
         )}
-      </section>
-
-      <section className="cx-panel">
-        <h2>Need help?</h2>
-        <p className="cx-meta">Clear answers on recovery, scams, and permissions.</p>
-        <div className="cx-platform__actions">
-          <a className="cx-btn cx-btn--ghost" href="/settings/help">
-            Help & support
-          </a>
-          <a className="cx-btn cx-btn--ghost" href="/learn">
-            Education Hub
-          </a>
-          <a className="cx-btn cx-btn--ghost" href="/assistant">
-            Ask Assistant
-          </a>
-          <a className="cx-btn cx-btn--ghost" href="/status">
-            Service status
-          </a>
-        </div>
       </section>
     </PlatformShell>
   );

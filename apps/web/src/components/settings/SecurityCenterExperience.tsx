@@ -5,13 +5,13 @@ import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { settingsFetch } from '../../lib/settings/api';
 import {
   DEMO_ALERTS,
-  DEMO_DAPPS,
   DEMO_DEVICES,
   DEMO_SESSIONS,
   computeSecurityScore,
   type SecurityAlert,
   type SecurityScoreFactor,
 } from '../../lib/settings/demo';
+import { demoConnectedRows } from '../../lib/web3/sessions';
 import { getBackupPrefs } from '../../lib/settings/prefs';
 import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
@@ -22,7 +22,8 @@ const WHY: Record<string, string> = {
   backup: 'A verified recovery phrase is the only way to restore self-custody wallets.',
   biometric: 'Biometrics speed unlock without weakening your PIN or phrase.',
   devices: 'Unknown or untrusted devices are a common path to account takeover.',
-  dapps: 'Open dApp permissions can move funds without another prompt.',
+  dapps:
+    'Open dApp transaction grants can move funds after you approve each send — review regularly.',
   review: 'A recent review helps you catch drift before it turns into risk.',
   reminders: 'Gentle reminders keep recovery hygiene from drifting.',
 };
@@ -32,7 +33,7 @@ export function SecurityCenterExperience(): ReactElement {
   const [live, setLive] = useState(false);
   const [sessionCount, setSessionCount] = useState(DEMO_SESSIONS.length);
   const [deviceCount, setDeviceCount] = useState(DEMO_DEVICES.length);
-  const [dappCount, setDappCount] = useState(DEMO_DAPPS.length);
+  const [dappCount, setDappCount] = useState(demoConnectedRows().length);
   const [alerts, setAlerts] = useState<SecurityAlert[]>(DEMO_ALERTS);
   const [pinEnabled, setPinEnabled] = useState(false);
   const [biometric, setBiometric] = useState(false);
@@ -134,7 +135,7 @@ export function SecurityCenterExperience(): ReactElement {
       {
         id: 'dapps',
         label: 'dApp permissions reviewed',
-        ok: live ? dappCount <= 1 : DEMO_DAPPS.every((dapp) => dapp.permissions <= 2),
+        ok: live ? dappCount <= 1 : demoConnectedRows().every((dapp) => dapp.permissions <= 2),
         weight: 15,
         href: '/web3/permissions',
         action: dappCount <= 1 ? 'Open Web3' : 'Review permissions',
@@ -210,7 +211,8 @@ export function SecurityCenterExperience(): ReactElement {
     >
       {ready && !live ? (
         <div className="cx-alert cx-alert--info">
-          Live sessions are unavailable — curated Security Center data is shown for preview.
+          Live sessions are unavailable — curated Security Center data is shown for preview. Scores
+          and connected-app counts are not a verified-safe guarantee.
         </div>
       ) : null}
 
@@ -332,7 +334,7 @@ export function SecurityCenterExperience(): ReactElement {
         <PlatformCardLink
           href="/web3/permissions"
           title="Connected dApps"
-          detail="Permissions · revoke · risk"
+          detail="Permissions · revoke · review risk"
         />
         <PlatformCardLink
           href="/settings/privacy"

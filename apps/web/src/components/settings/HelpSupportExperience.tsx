@@ -11,20 +11,24 @@ const FAQ = [
     a: 'Use your recovery phrase on Restore or Recovery. Never share it — Auvora support will never ask for it.',
   },
   {
-    q: 'I sent funds to the wrong network. What now?',
-    a: 'Wrong-network sends can be irreversible. Check Activity for the hash, then contact the destination exchange if applicable. Prevention: always confirm network on Receive and Send.',
+    q: 'Where do I change theme or currency?',
+    a: 'Settings → Wallet & appearance. Theme updates instantly. Currency and date formats live there too.',
+  },
+  {
+    q: 'Why don’t I get push notifications?',
+    a: 'This release uses an in-app Notification Center and local preferences only. Push delivery comes later.',
+  },
+  {
+    q: 'Are price alerts live?',
+    a: 'Alerts are stored on this device and evaluate against preview prices when you tap Check now — not live markets.',
   },
   {
     q: 'How do I revoke a dApp?',
-    a: 'Open Web3 → Permissions, or Settings → Connected apps, then revoke the grant. Also disconnect WalletConnect sessions you no longer use.',
-  },
-  {
-    q: 'What is a security score?',
-    a: 'A simple health check across PIN, backup, biometrics, devices, and dApp hygiene. Improve each item from Security Center recommendations.',
+    a: 'Open Web3 → Permissions, or Settings → Connected apps, then revoke the grant.',
   },
   {
     q: 'How do I spot a scam?',
-    a: 'Auvora never DMs first asking for seed phrases or remote access. Bookmark official URLs. Use address risk warnings on Send.',
+    a: 'Auvora never DMs first asking for seed phrases. Bookmark official URLs. Review every connection and signature.',
   },
 ] as const;
 

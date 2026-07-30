@@ -27,19 +27,25 @@ export type PrivacyPrefs = {
 };
 
 export type NotificationPrefsLocal = {
-  transactions: boolean;
+  incomingTransactions: boolean;
+  outgoingTransactions: boolean;
+  transactionConfirmations: boolean;
   priceAlerts: boolean;
+  largeBalanceChanges: boolean;
   securityAlerts: boolean;
-  stakingRewards: boolean;
-  marketing: boolean;
-  productUpdates: boolean;
-  web3Activity: boolean;
-  /** Portfolio concentration / idle / milestone tips */
-  insightAlerts: boolean;
-  /** Portfolio health recommendations */
-  portfolioHealth: boolean;
-  largeTransfers: boolean;
-  highNetworkFees: boolean;
+  walletConnections: boolean;
+  softwareUpdates: boolean;
+  networkOutages: boolean;
+  /** Legacy aliases kept for older localStorage blobs */
+  transactions?: boolean;
+  stakingRewards?: boolean;
+  marketing?: boolean;
+  productUpdates?: boolean;
+  web3Activity?: boolean;
+  insightAlerts?: boolean;
+  portfolioHealth?: boolean;
+  largeTransfers?: boolean;
+  highNetworkFees?: boolean;
 };
 
 export type BackupPrefs = {
@@ -102,17 +108,16 @@ const PRIVACY_DEFAULTS: PrivacyPrefs = {
 };
 
 const NOTIF_DEFAULTS: NotificationPrefsLocal = {
-  transactions: true,
+  incomingTransactions: true,
+  outgoingTransactions: true,
+  transactionConfirmations: true,
   priceAlerts: true,
+  largeBalanceChanges: true,
   securityAlerts: true,
-  stakingRewards: true,
+  walletConnections: true,
+  softwareUpdates: true,
+  networkOutages: true,
   marketing: false,
-  productUpdates: true,
-  web3Activity: true,
-  insightAlerts: true,
-  portfolioHealth: true,
-  largeTransfers: true,
-  highNetworkFees: true,
 };
 
 const BACKUP_DEFAULTS: BackupPrefs = {

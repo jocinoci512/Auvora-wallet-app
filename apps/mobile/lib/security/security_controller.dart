@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../connections/connections_controller.dart';
 import '../state/wallet_controller.dart';
 import '../wallet_engine/wallet_engine.dart';
 import 'security_models.dart';
 
 class SecurityController extends ChangeNotifier {
   WalletController? _walletController;
+  ConnectionsController? _connections;
   SharedPreferences? _prefs;
 
   SecurityPreferences preferences = const SecurityPreferences();
@@ -21,7 +23,6 @@ class SecurityController extends ChangeNotifier {
   static const _kPrefs = 'auvora_security_center_prefs_v1';
   static const _kDevices = 'auvora_security_devices_v1';
   static const _kSessions = 'auvora_security_sessions_v1';
-  static const _kDapps = 'auvora_security_dapps_v1';
   static const _kAlerts = 'auvora_security_alerts_v1';
 
   void attach({
@@ -31,14 +32,46 @@ class SecurityController extends ChangeNotifier {
     _walletController = walletController;
   }
 
+  void attachConnections(ConnectionsController connections) {
+    if (identical(_connections, connections)) {
+      _syncDappsFromConnections();
+      return;
+    }
+    _connections?.removeListener(_onConnectionsChanged);
+    _connections = connections;
+    _connections!.addListener(_onConnectionsChanged);
+    _syncDappsFromConnections();
+  }
+
+  @override
+  void dispose() {
+    _connections?.removeListener(_onConnectionsChanged);
+    super.dispose();
+  }
+
+  void _onConnectionsChanged() {
+    _syncDappsFromConnections();
+    notifyListeners();
+  }
+
+  void _syncDappsFromConnections() {
+    final connections = _connections;
+    if (connections == null || connections.loading) return;
+    dapps = connections.connectedDappsSummary;
+  }
+
   Future<void> bootstrap() async {
     if (!loading) return;
     _prefs ??= await SharedPreferences.getInstance();
     preferences = _readPrefs();
     devices = _readDevices();
     sessions = _readSessions();
-    dapps = _readDapps();
     alerts = _readAlerts();
+    await _connections?.bootstrap();
+    _syncDappsFromConnections();
+    if (dapps.isEmpty && _connections == null) {
+      dapps = _demoDapps;
+    }
     loading = false;
     notifyListeners();
   }
@@ -184,14 +217,19 @@ class SecurityController extends ChangeNotifier {
   }
 
   Future<void> disconnectDapp(String id) async {
-    dapps = dapps.where((item) => item.id != id).toList();
+    final connections = _connections;
+    if (connections != null) {
+      await connections.disconnectSession(id);
+      _syncDappsFromConnections();
+    } else {
+      dapps = dapps.where((item) => item.id != id).toList();
+    }
     await addAlert(
       title: 'Connected app removed',
       description: 'A connected app was disconnected from this wallet preview state.',
       recommendedAction: 'Reconnect only if you still trust this app.',
       severity: SecurityStatus.good,
     );
-    await _persistDapps();
     notifyListeners();
   }
 
@@ -338,22 +376,6 @@ class SecurityController extends ChangeNotifier {
         .toList();
   }
 
-  List<ConnectedDapp> _readDapps() {
-    final raw = _prefs?.getString(_kDapps);
-    if (raw == null || raw.isEmpty) return _demoDapps;
-    final list = jsonDecode(raw) as List<dynamic>;
-    return list
-        .map((item) => ConnectedDapp(
-              id: item['id'] as String,
-              name: item['name'] as String,
-              website: item['website'] as String,
-              connectedAt: DateTime.parse(item['connectedAt'] as String),
-              permissions: (item['permissions'] as List<dynamic>).cast<String>(),
-              warning: item['warning'] as String?,
-            ))
-        .toList();
-  }
-
   List<SecurityAlertItem> _readAlerts() {
     final raw = _prefs?.getString(_kAlerts);
     if (raw == null || raw.isEmpty) return _demoAlerts;
@@ -421,21 +443,6 @@ class SecurityController extends ChangeNotifier {
           'lastActiveAt': item.lastActiveAt.toIso8601String(),
           'authMethod': item.authMethod,
           'current': item.current,
-        },
-    ]));
-  }
-
-  Future<void> _persistDapps() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setString(_kDapps, jsonEncode([
-      for (final item in dapps)
-        {
-          'id': item.id,
-          'name': item.name,
-          'website': item.website,
-          'connectedAt': item.connectedAt.toIso8601String(),
-          'permissions': item.permissions,
-          'warning': item.warning,
         },
     ]));
   }
@@ -514,15 +521,15 @@ class SecurityController extends ChangeNotifier {
       name: 'Uniswap',
       website: 'https://app.uniswap.org',
       connectedAt: DateTime.now().subtract(const Duration(days: 4)),
-      permissions: const ['View wallet', 'Request signatures', 'Swap approvals'],
+      permissions: const ['View addresses', 'Request signatures', 'Request transactions'],
+      warning: 'Can request transactions that move funds.',
     ),
     ConnectedDapp(
       id: 'dapp-2',
-      name: 'OpenSea',
-      website: 'https://opensea.io',
+      name: 'Aave',
+      website: 'https://app.aave.com',
       connectedAt: DateTime.now().subtract(const Duration(days: 10)),
-      permissions: const ['View wallet'],
-      warning: 'Review before minting or listing new items.',
+      permissions: const ['View addresses', 'View balances', 'Request signatures'],
     ),
   ];
 
