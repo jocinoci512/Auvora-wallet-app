@@ -31,18 +31,28 @@ const FAQ = [
 const LINKS = [
   {
     href: '/status',
-    title: 'Knowledge base / status',
-    detail: 'Platform status and common questions',
+    title: 'Service status',
+    detail: 'Is Auvora up? Check before you worry',
+  },
+  {
+    href: '/legal',
+    title: 'Legal & privacy drafts',
+    detail: 'Privacy, terms, and company transparency',
+  },
+  {
+    href: '/trust',
+    title: 'Trust & transparency',
+    detail: 'How we communicate risk and incidents',
   },
   {
     href: 'mailto:support@auvora.example',
-    title: 'Contact support',
-    detail: 'Human help — never share your recovery phrase',
+    title: 'Contact support (placeholder)',
+    detail: 'Replace with production inbox before public launch — never share your recovery phrase',
   },
   {
     href: 'mailto:security@auvora.example?subject=Issue%20report',
-    title: 'Report a problem',
-    detail: 'Product or security issue',
+    title: 'Report a problem (placeholder)',
+    detail: 'Product or security issue — placeholder address until launch',
   },
   {
     href: '/settings/security',
@@ -53,11 +63,6 @@ const LINKS = [
     href: '/wallets/recovery',
     title: 'Recovery assistance',
     detail: 'Guided recovery phrase help',
-  },
-  {
-    href: '/design-system',
-    title: 'Product documentation',
-    detail: 'In-app design system gallery',
   },
 ] as const;
 
@@ -101,12 +106,12 @@ export function HelpSupportExperience(): ReactElement {
       <section className="cx-panel">
         <h2>Legal</h2>
         <p className="cx-meta">
-          Terms, privacy policy, and disclosures ship with your distribution. Placeholders live
-          under Advanced until legal URLs are finalized.
+          Terms and privacy policy ship with your distribution. Contact support if you need the
+          latest copies for your region.
         </p>
         <div className="cx-platform__actions">
-          <Link href="/settings/advanced" className="cx-btn cx-btn--ghost">
-            Advanced & legal placeholders
+          <Link href="/settings/security" className="cx-btn cx-btn--ghost">
+            Security Center
           </Link>
           <Link href="/web3" className="cx-btn cx-btn--ghost">
             Web3 Hub

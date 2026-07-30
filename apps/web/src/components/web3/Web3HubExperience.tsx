@@ -305,9 +305,13 @@ export function Web3HubExperience(): ReactElement {
                     <strong>
                       {d.name}{' '}
                       {d.verified ? (
-                        <ShieldCheck size={14} aria-label="Verified placeholder" />
+                        <span className="cx-meta">
+                          <ShieldCheck size={14} aria-hidden /> Catalog badge (not attestation)
+                        </span>
                       ) : (
-                        <ShieldAlert size={14} aria-label="Unverified" />
+                        <span className="cx-meta">
+                          <ShieldAlert size={14} aria-hidden /> Unverified
+                        </span>
                       )}
                     </strong>
                     <p className="cx-meta">

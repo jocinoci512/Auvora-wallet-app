@@ -4,6 +4,7 @@ import { Alert, Button, EmptyState, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
+import { markPermissionsReviewed } from '../../lib/insights/demo';
 import { mapPermissionGrants, web3Fetch } from '../../lib/web3/api';
 import { DEMO_PERMISSIONS, riskLabel, type PermissionGrant } from '../../lib/web3/demo';
 import { PlatformShell } from '../platform/PlatformShell';
@@ -17,6 +18,10 @@ export function PermissionCenterExperience(): ReactElement {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    markPermissionsReviewed();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

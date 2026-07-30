@@ -40,4 +40,14 @@ export class MaintenanceService {
       },
     });
   }
+
+  async setActive(id: string, isActive: boolean) {
+    return this.prisma.obsMaintenanceNotice.update({
+      where: { id },
+      data: {
+        isActive,
+        ...(isActive ? {} : { endsAt: new Date() }),
+      },
+    });
+  }
 }

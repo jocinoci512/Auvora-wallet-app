@@ -20,6 +20,10 @@ export type PrivacyPrefs = {
   cookiesEssential: boolean;
   cookiesAnalytics: boolean;
   personalization: boolean;
+  /** Allow on-device assistant suggestions (never sends keys). */
+  aiAssistant: boolean;
+  /** Keep local assistant chat history on this device. */
+  aiChatHistory: boolean;
 };
 
 export type NotificationPrefsLocal = {
@@ -30,6 +34,12 @@ export type NotificationPrefsLocal = {
   marketing: boolean;
   productUpdates: boolean;
   web3Activity: boolean;
+  /** Portfolio concentration / idle / milestone tips */
+  insightAlerts: boolean;
+  /** Portfolio health recommendations */
+  portfolioHealth: boolean;
+  largeTransfers: boolean;
+  highNetworkFees: boolean;
 };
 
 export type BackupPrefs = {
@@ -87,6 +97,8 @@ const PRIVACY_DEFAULTS: PrivacyPrefs = {
   cookiesEssential: true,
   cookiesAnalytics: false,
   personalization: true,
+  aiAssistant: true,
+  aiChatHistory: true,
 };
 
 const NOTIF_DEFAULTS: NotificationPrefsLocal = {
@@ -97,6 +109,10 @@ const NOTIF_DEFAULTS: NotificationPrefsLocal = {
   marketing: false,
   productUpdates: true,
   web3Activity: true,
+  insightAlerts: true,
+  portfolioHealth: true,
+  largeTransfers: true,
+  highNetworkFees: true,
 };
 
 const BACKUP_DEFAULTS: BackupPrefs = {

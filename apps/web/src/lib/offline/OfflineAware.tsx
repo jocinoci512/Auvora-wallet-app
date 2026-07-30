@@ -18,6 +18,8 @@ export function OfflineAware({ children, blockWhenOffline = false, onRetry }: Pr
   if (!online && blockWhenOffline) {
     return (
       <OfflineState
+        title="You’re offline"
+        description="Auvora can’t reach the network right now. Your recovery phrase stays on this device — reconnect when you’re ready to sync balances and activity."
         action={
           onRetry ? (
             <Button type="button" variant="secondary" onClick={onRetry}>

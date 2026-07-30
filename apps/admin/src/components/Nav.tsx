@@ -6,22 +6,21 @@ import type { ReactElement } from 'react';
 import { ThemeToggle } from '@auvora/ui';
 
 const links = [
-  { href: '/', label: 'Home' },
+  { href: '/', label: 'Overview' },
+  { href: '/users', label: 'Users' },
   { href: '/wallets', label: 'Wallets' },
   { href: '/blockchain', label: 'Blockchain' },
   { href: '/payments', label: 'Payments' },
   { href: '/compliance', label: 'Compliance' },
   { href: '/custody', label: 'Custody' },
   { href: '/notifications', label: 'Notifications' },
+  ...(process.env.NODE_ENV !== 'production' ? [{ href: '/support', label: 'Support (demo)' }] : []),
   { href: '/analytics', label: 'Analytics' },
-  { href: '/ai', label: 'AI' },
-  { href: '/swap', label: 'Swap' },
-  { href: '/nfts', label: 'NFTs' },
-  { href: '/staking', label: 'Staking' },
-  { href: '/connections', label: 'Connect' },
-  { href: '/bridge', label: 'Bridge' },
+  { href: '/security', label: 'Security' },
   { href: '/observability', label: 'Ops' },
   { href: '/infrastructure', label: 'Infra' },
+  { href: '/settings', label: 'Settings' },
+  { href: '/ai', label: 'AI' },
   { href: '/design-system', label: 'Design System' },
 ];
 

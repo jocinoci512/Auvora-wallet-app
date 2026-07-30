@@ -1,6 +1,5 @@
 'use client';
 
-import { Alert, Button, Switch } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import {
@@ -10,7 +9,7 @@ import {
   verifyPin,
 } from '../../lib/wallet-experience/security-prefs';
 import type { SecurityPrefs } from '../../lib/wallet-experience/types';
-import '../../app/wallet-experience.css';
+import { PlatformShell } from '../platform/PlatformShell';
 
 export function SecurityExperience(): ReactElement {
   const [prefs, setPrefs] = useState<SecurityPrefs>(() => getSecurityPrefs());
@@ -68,6 +67,7 @@ export function SecurityExperience(): ReactElement {
   }
 
   function disablePin(): void {
+    if (!window.confirm('Disable PIN protection on this device?')) return;
     patch({ pinEnabled: false, pinHash: null });
     setMessage('PIN disabled');
     setLocked(false);
@@ -75,69 +75,66 @@ export function SecurityExperience(): ReactElement {
 
   if (locked) {
     return (
-      <div className="wx" role="main">
-        <section className="wx-panel wx-panel--center">
-          <h1>Session locked</h1>
-          <p className="wx__sub">Enter your PIN to continue. Auto-lock protects idle sessions.</p>
-          <label className="wx-field">
+      <PlatformShell
+        title="Session locked"
+        subtitle="Enter your PIN to continue."
+        reassure="Auto-lock protects idle sessions on this device."
+        backHref="/settings/security"
+        backLabel="Security Center"
+        wide={false}
+      >
+        <section className="cx-panel">
+          <label className="cx-field">
             <span>PIN</span>
             <input
               type="password"
               inputMode="numeric"
               value={unlockPin}
               onChange={(e) => setUnlockPin(e.target.value)}
-              autoComplete="off"
+              autoComplete="one-time-code"
             />
           </label>
           {message ? (
-            <Alert tone="error" title="Unlock">
+            <div className="cx-alert cx-alert--error" role="alert">
               {message}
-            </Alert>
+            </div>
           ) : null}
-          <Button type="button" onClick={() => void unlock()}>
+          <button type="button" className="cx-btn cx-btn--primary" onClick={() => void unlock()}>
             Unlock
-          </Button>
+          </button>
         </section>
-      </div>
+      </PlatformShell>
     );
   }
 
   return (
-    <div className="wx" role="main">
-      <header className="wx__header">
-        <div>
-          <p className="wx__eyebrow">
-            <Link href="/settings/security">Security Center</Link>
-            {' · '}
-            <Link href="/wallets">Wallets</Link>
-          </p>
-          <h1>Security</h1>
-          <p className="wx__sub">
-            PIN, biometric placeholders, auto-lock, backup reminders, and risk warnings.
-          </p>
-        </div>
-        <Link href="/settings/security">
-          <Button type="button" variant="secondary">
-            Open Security Center
-          </Button>
+    <PlatformShell
+      title="PIN & lock"
+      subtitle="PIN, biometrics preference, auto-lock, and address warnings."
+      reassure="These controls protect this device. Recovery phrase status lives in Backup."
+      backHref="/settings/security"
+      backLabel="Security Center"
+      actions={
+        <Link href="/settings/security" className="cx-btn cx-btn--ghost">
+          Security Center
         </Link>
-      </header>
-
+      }
+    >
       {message ? (
-        <Alert tone="info" title="Updated">
+        <div className="cx-alert cx-alert--info" role="status">
           {message}
-        </Alert>
+        </div>
       ) : null}
 
-      <section className="wx-panel">
+      <section className="cx-panel">
         <h2>Session & lock</h2>
-        <div className="wx-setting-row">
+        <div className="cx-row">
           <div>
             <strong>Auto-lock</strong>
-            <p className="wx-meta">Lock after idle minutes</p>
+            <p className="cx-meta">Lock after idle minutes</p>
           </div>
-          <label className="wx-field wx-field--narrow">
-            <span className="wx-sr-only">Auto lock minutes</span>
+          <label className="cx-field" style={{ maxWidth: 96 }}>
+            <span className="cx-sr-only">Auto lock minutes</span>
             <input
               type="number"
               min={1}
@@ -147,13 +144,13 @@ export function SecurityExperience(): ReactElement {
             />
           </label>
         </div>
-        <div className="wx-setting-row">
+        <div className="cx-row">
           <div>
             <strong>Session timeout</strong>
-            <p className="wx-meta">Require unlock after extended absence</p>
+            <p className="cx-meta">Require unlock after extended absence</p>
           </div>
-          <label className="wx-field wx-field--narrow">
-            <span className="wx-sr-only">Session timeout minutes</span>
+          <label className="cx-field" style={{ maxWidth: 96 }}>
+            <span className="cx-sr-only">Session timeout minutes</span>
             <input
               type="number"
               min={5}
@@ -163,105 +160,124 @@ export function SecurityExperience(): ReactElement {
             />
           </label>
         </div>
-        <Button type="button" variant="secondary" onClick={() => setLocked(true)}>
+        <button type="button" className="cx-btn cx-btn--ghost" onClick={() => setLocked(true)}>
           Lock now
-        </Button>
+        </button>
       </section>
 
-      <section className="wx-panel">
-        <h2>PIN management</h2>
+      <section className="cx-panel">
+        <h2>PIN</h2>
         {prefs.pinEnabled ? (
           <>
-            <Alert tone="success" title="PIN is enabled">
-              Stored as a salted SHA-256 hash in local storage for this preview — never plaintext.
-            </Alert>
-            <Button type="button" variant="danger" onClick={disablePin}>
+            <div className="cx-alert cx-alert--info">
+              <strong>PIN is enabled</strong>
+              <p>Stored as a hash on this device — never as plaintext.</p>
+            </div>
+            <button type="button" className="cx-btn cx-btn--ghost" onClick={disablePin}>
               Disable PIN
-            </Button>
+            </button>
           </>
         ) : (
-          <div className="wx-form-stack">
-            <label className="wx-field">
+          <>
+            <label className="cx-field">
               <span>New PIN</span>
               <input
                 type="password"
                 inputMode="numeric"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                autoComplete="off"
+                autoComplete="new-password"
               />
             </label>
-            <label className="wx-field">
+            <label className="cx-field">
               <span>Confirm PIN</span>
               <input
                 type="password"
                 inputMode="numeric"
                 value={pinConfirm}
                 onChange={(e) => setPinConfirm(e.target.value)}
-                autoComplete="off"
+                autoComplete="new-password"
               />
             </label>
-            <Button type="button" onClick={() => void enablePin()}>
+            <button
+              type="button"
+              className="cx-btn cx-btn--primary"
+              onClick={() => void enablePin()}
+            >
               Enable PIN
-            </Button>
-          </div>
+            </button>
+          </>
         )}
       </section>
 
-      <section className="wx-panel">
-        <h2>Biometrics (placeholder)</h2>
-        <div className="wx-setting-row">
+      <section className="cx-panel">
+        <h2>Biometrics</h2>
+        <div className="cx-row">
           <div>
-            <strong>Use device biometrics</strong>
-            <p className="wx-meta">
-              Architecture stub for WebAuthn / platform authenticator — enable when hardware is
-              available.
+            <strong>Prefer device biometrics</strong>
+            <p className="cx-meta">
+              Saves a preference for Face ID / fingerprint unlock when WebAuthn ships. This toggle
+              does not enable biometrics yet.
             </p>
           </div>
-          <Switch
-            checked={prefs.biometricEnabled}
-            onCheckedChange={(v) => patch({ biometricEnabled: v })}
-            aria-label="Toggle biometric unlock placeholder"
-          />
+          <button
+            type="button"
+            className={`cx-chip${prefs.biometricEnabled ? ' is-on' : ''}`}
+            aria-pressed={prefs.biometricEnabled}
+            onClick={() => patch({ biometricEnabled: !prefs.biometricEnabled })}
+          >
+            {prefs.biometricEnabled ? 'Preferred' : 'Not set'}
+          </button>
         </div>
       </section>
 
-      <section className="wx-panel">
-        <h2>Backup & risk</h2>
-        <div className="wx-setting-row">
+      <section className="cx-panel">
+        <h2>Warnings</h2>
+        <div className="cx-row">
           <div>
             <strong>Backup reminders</strong>
-            <p className="wx-meta">Nudge for recovery rehearsal</p>
+            <p className="cx-meta">Nudge for recovery rehearsal</p>
           </div>
-          <Switch
-            checked={prefs.backupReminderEnabled}
-            onCheckedChange={(v) =>
+          <button
+            type="button"
+            className={`cx-chip${prefs.backupReminderEnabled ? ' is-on' : ''}`}
+            aria-pressed={prefs.backupReminderEnabled}
+            onClick={() =>
               patch({
-                backupReminderEnabled: v,
-                lastBackupReminderAt: v ? new Date().toISOString() : prefs.lastBackupReminderAt,
+                backupReminderEnabled: !prefs.backupReminderEnabled,
+                lastBackupReminderAt: !prefs.backupReminderEnabled
+                  ? new Date().toISOString()
+                  : prefs.lastBackupReminderAt,
               })
             }
-            aria-label="Toggle backup reminders"
-          />
+          >
+            {prefs.backupReminderEnabled ? 'On' : 'Off'}
+          </button>
         </div>
-        <div className="wx-setting-row">
+        <div className="cx-row">
           <div>
             <strong>Suspicious address warnings</strong>
-            <p className="wx-meta">Surface risk heuristics on Send</p>
+            <p className="cx-meta">Surface risk checks on Send</p>
           </div>
-          <Switch
-            checked={prefs.suspiciousAddressWarnings}
-            onCheckedChange={(v) => patch({ suspiciousAddressWarnings: v })}
-            aria-label="Toggle suspicious address warnings"
-          />
+          <button
+            type="button"
+            className={`cx-chip${prefs.suspiciousAddressWarnings ? ' is-on' : ''}`}
+            aria-pressed={prefs.suspiciousAddressWarnings}
+            onClick={() => patch({ suspiciousAddressWarnings: !prefs.suspiciousAddressWarnings })}
+          >
+            {prefs.suspiciousAddressWarnings ? 'On' : 'Off'}
+          </button>
         </div>
         {prefs.backupReminderEnabled ? (
-          <Alert tone="warn" title="Backup reminder">
-            Complete a <Link href="/wallets/recovery">recovery rehearsal</Link> if you have not
-            verified an offline backup recently.
-          </Alert>
+          <div className="cx-warn">
+            <strong>Backup reminder</strong>
+            <p>
+              Complete a <Link href="/wallets/recovery">recovery rehearsal</Link> if you have not
+              verified an offline backup recently.
+            </p>
+          </div>
         ) : null}
       </section>
-    </div>
+    </PlatformShell>
   );
 }

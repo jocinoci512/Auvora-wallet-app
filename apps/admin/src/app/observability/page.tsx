@@ -5,18 +5,7 @@ import { Alert, EmptyState, LoadingBlock, PageHeader, Skeleton } from '@auvora/u
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../components/Subnav';
 import { createApiClient, formatApiError } from '../../lib/api-client';
-
-const OPS_LINKS = [
-  { href: '/observability', label: 'Dashboard' },
-  { href: '/observability/alerts', label: 'Alerts' },
-  { href: '/observability/incidents', label: 'Incidents' },
-  { href: '/observability/slos', label: 'SLOs' },
-  { href: '/observability/capacity', label: 'Capacity' },
-  { href: '/observability/health', label: 'Health' },
-  { href: '/observability/dependencies', label: 'Dependencies' },
-  { href: '/observability/traces', label: 'Traces' },
-  { href: '/observability/logs', label: 'Logs' },
-];
+import { OPS_LINKS } from '../../lib/section-nav';
 
 export default function AdminObservabilityPage(): ReactElement {
   const [overview, setOverview] = useState<OpsDashboardOverview | null>(null);

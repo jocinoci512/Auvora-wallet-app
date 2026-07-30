@@ -97,10 +97,17 @@ export function SigningExperience(): ReactElement {
             confirmed: action === 'approve',
           }),
         });
+        setStatus(action === 'approve' ? 'approved' : 'rejected');
       } else {
         setOffline(true);
+        if (action === 'reject') {
+          setStatus('rejected');
+        } else {
+          setError(
+            'Preview only — we could not reach the signing service. Nothing was approved on-chain.',
+          );
+        }
       }
-      setStatus(action === 'approve' ? 'approved' : 'rejected');
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -111,8 +118,8 @@ export function SigningExperience(): ReactElement {
   return (
     <PlatformShell
       title="Signing"
-      subtitle="Premium approval for messages, typed data, and transactions with risk cues."
-      reassure="Take a moment to review permissions and the payload before you approve — nothing leaves without your say."
+      subtitle="Review messages, typed data, and transactions before you approve."
+      reassure="Nothing leaves without your confirmation. Check the network, amount, and origin carefully."
       backHref="/web3"
       backLabel="Web3 Hub"
       nav={<Web3SectionNav current="/web3/sign" />}

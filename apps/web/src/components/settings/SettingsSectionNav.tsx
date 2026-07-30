@@ -26,7 +26,12 @@ export function SettingsSectionNav({ current }: { current: string }): ReactEleme
       {LINKS.map((link) => {
         const on = link.exact ? current === link.href : current.startsWith(link.href);
         return (
-          <Link key={link.href} className={on ? 'is-active' : undefined} href={link.href}>
+          <Link
+            key={link.href}
+            className={on ? 'is-active' : undefined}
+            href={link.href}
+            aria-current={on ? 'page' : undefined}
+          >
             {link.label}
           </Link>
         );

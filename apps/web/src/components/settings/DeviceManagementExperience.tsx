@@ -60,11 +60,14 @@ export function DeviceManagementExperience(): ReactElement {
   }, []);
 
   async function revokeSession(id: string): Promise<void> {
+    if (!window.confirm('Sign this device out? You can sign in again later.')) return;
+    if (!live) {
+      showToast('Preview only — connect sessions API to revoke for real');
+      return;
+    }
     setBusyId(id);
     try {
-      if (live) {
-        await settingsFetch(`/api/v1/me/sessions/${id}`, { method: 'DELETE' });
-      }
+      await settingsFetch(`/api/v1/me/sessions/${id}`, { method: 'DELETE' });
       setSessions((prev) => prev.filter((s) => s.id !== id));
       showToast('Session revoked');
     } catch {
@@ -75,15 +78,18 @@ export function DeviceManagementExperience(): ReactElement {
   }
 
   async function logoutAll(): Promise<void> {
+    if (!window.confirm('Sign out all other devices? This device stays signed in. Continue?')) {
+      return;
+    }
+    if (!live) {
+      showToast('Preview only — connect sessions API to log out other devices');
+      return;
+    }
     setBusyId('all');
     try {
       const others = sessions.filter((x) => !x.current);
       for (const s of others) {
-        if (live) {
-          await settingsFetch(`/api/v1/me/sessions/${s.id}`, { method: 'DELETE' }).catch(
-            () => null,
-          );
-        }
+        await settingsFetch(`/api/v1/me/sessions/${s.id}`, { method: 'DELETE' }).catch(() => null);
       }
       setSessions((prev) => prev.filter((s) => s.current));
       showToast('Logged out other devices');
@@ -104,8 +110,8 @@ export function DeviceManagementExperience(): ReactElement {
   return (
     <PlatformShell
       title="Devices & sessions"
-      subtitle="Current device, trusted devices, last login, platform, browser, approximate location, and remote logout."
-      reassure="Revoking a session signs that device out without touching this one."
+      subtitle="See where you are signed in and remove sessions you do not recognize."
+      reassure="Revoking a session signs that device out. This device stays signed in."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/devices" />}
@@ -121,8 +127,18 @@ export function DeviceManagementExperience(): ReactElement {
       }
     >
       {toast ? (
-        <Alert tone={toast.startsWith('Could') ? 'error' : 'success'} title="Updated">
+        <Alert
+          tone={toast.startsWith('Could') || toast.startsWith('Preview') ? 'warn' : 'success'}
+          title="Updated"
+        >
           {toast}
+        </Alert>
+      ) : null}
+
+      {!live ? (
+        <Alert tone="info" title="Preview devices">
+          Showing sample devices and sessions until the sessions API is available. Revoke and logout
+          actions do not change real sessions in this mode.
         </Alert>
       ) : null}
 

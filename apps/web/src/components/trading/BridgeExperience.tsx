@@ -175,9 +175,9 @@ export function BridgeExperience(): ReactElement {
           timer.current = null;
           pushTradingActivity({
             kind: 'bridge',
-            title: `${source} → ${destination}`,
-            detail: `${amount} ${asset}`,
-            status: 'confirmed',
+            title: live ? `${source} → ${destination}` : `${source} → ${destination} (preview)`,
+            detail: live ? `${amount} ${asset}` : `${amount} ${asset} — simulator`,
+            status: live ? 'confirmed' : 'pending',
             amount,
             asset,
             href: '/bridge',
@@ -198,12 +198,18 @@ export function BridgeExperience(): ReactElement {
     <TransactionShell
       title="Bridge"
       subtitle="Cross-chain transfers with provider choice, fees, and arrival estimates."
-      reassure="We compare routes and fees before anything leaves the source chain."
+      reassure="We compare routes and fees first. Preview mode never leaves the source chain."
       steps={multiStep ? BRIDGE_STEPS : undefined}
       currentStepId={multiStep ? stepId : undefined}
       backHref="/"
       backLabel="Dashboard"
     >
+      {!live ? (
+        <div className="cx-alert cx-alert--info" role="status">
+          Bridge preview — confirming does not lock or mint assets until the bridge service is
+          connected.
+        </div>
+      ) : null}
       <div className="cx-tabs" role="tablist" aria-label="Bridge views">
         <button
           type="button"
@@ -455,8 +461,12 @@ export function BridgeExperience(): ReactElement {
       {tab === 'bridge' && screen === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Bridging…"
-          stages={['Lock', 'Relay', 'Mint', 'Completed']}
+          label={live ? 'Bridging…' : 'Running bridge preview…'}
+          stages={
+            live
+              ? ['Lock', 'Relay', 'Mint', 'Completed']
+              : ['Queued', 'Simulated', 'Review', 'Done']
+          }
         />
       ) : null}
 
@@ -465,8 +475,12 @@ export function BridgeExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Bridge in flight</h2>
-          <p>Transfer {transferId ?? ''} submitted. Track status in history and activity.</p>
+          <h2>{live ? 'Bridge in flight' : 'Preview complete'}</h2>
+          <p>
+            {live
+              ? `Transfer ${transferId ?? ''} submitted. Track status in history and activity.`
+              : `Nothing left the source chain. Reference ${transferId ?? 'preview'} is for UI testing only.`}
+          </p>
           <div className="cx-success__cta">
             <Link href="/activity" className="cx-btn cx-btn--primary">
               Activity
@@ -476,7 +490,7 @@ export function BridgeExperience(): ReactElement {
               className="cx-btn cx-btn--ghost"
               onClick={() => setScreen('form')}
             >
-              Bridge again
+              {live ? 'Bridge again' : 'Start again'}
             </button>
           </div>
         </div>

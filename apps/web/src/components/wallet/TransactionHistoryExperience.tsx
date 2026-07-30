@@ -124,10 +124,15 @@ export function TransactionHistoryExperience({
     <TransactionShell
       title="Activity"
       subtitle="Grouped history with status, fees, hashes, and explorer links."
-      reassure="Pending and confirming transfers stay visible until they settle."
+      reassure="Sample and local preview activity until live history connects. Pending transfers stay visible when live."
       backHref="/dashboard"
       backLabel="Wallet"
     >
+      {!initial?.length ? (
+        <div className="cx-alert cx-alert--info" role="status">
+          Sample / local preview history — not a complete live ledger.
+        </div>
+      ) : null}
       <div className="cx-wide">
         <div className="cx-toolbar" role="search">
           <label className="cx-field cx-field--grow">

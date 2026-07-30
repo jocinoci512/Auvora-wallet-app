@@ -172,5 +172,13 @@ export type {
   InfraBackupJob,
   InfraRecoveryDrill,
   FeatureFlag,
+  UpdateFeatureFlagInput,
   InfraDashboardOverview,
+  AdminUserSearchResult,
+  AdminSearchUsersQuery,
+  SecurityAuditLog,
+  AdminAuditListResult,
+  AdminAuditQuery,
+  AdminMaintenanceNotice,
+  CreateMaintenanceInput,
 } from './client';

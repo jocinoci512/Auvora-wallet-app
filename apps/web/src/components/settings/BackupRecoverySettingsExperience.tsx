@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, StatusBadge, Switch } from '@auvora/ui';
+import { StatusBadge, Switch } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
@@ -31,28 +31,24 @@ export function BackupRecoverySettingsExperience(): ReactElement {
     showToast('Backup preference saved');
   }
 
-  function markVerified(): void {
-    patch({ phraseVerified: true, lastVerifiedAt: new Date().toISOString() });
-  }
-
   return (
     <PlatformShell
       title="Backup & recovery"
-      subtitle="Recovery phrase status, reminders, verification, education, and guided recovery."
-      reassure="Your phrase never leaves this device — practice recovery before you need it."
+      subtitle="See whether your recovery phrase is verified, and practice recovery safely."
+      reassure="Your phrase never leaves this device. Practice recovery before you need it."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/backup" />}
       actions={
         <Link href="/wallets/recovery" className="cx-btn cx-btn--primary">
-          Open recovery rehearsal
+          Practice recovery
         </Link>
       }
     >
       {toast ? (
-        <Alert tone="success" title="Saved">
+        <div className="cx-alert cx-alert--info" role="status">
           {toast}
-        </Alert>
+        </div>
       ) : null}
 
       <section className="cx-panel">
@@ -63,7 +59,7 @@ export function BackupRecoverySettingsExperience(): ReactElement {
             <p className="cx-meta">
               {prefs.phraseVerified
                 ? `Verified ${prefs.lastVerifiedAt ? new Date(prefs.lastVerifiedAt).toLocaleString() : ''}`
-                : 'Not verified — complete recovery rehearsal'}
+                : 'Not verified — complete recovery rehearsal to raise your security score'}
             </p>
           </div>
           <StatusBadge
@@ -82,28 +78,36 @@ export function BackupRecoverySettingsExperience(): ReactElement {
             aria-label="Backup reminders"
           />
         </div>
+        <div className="cx-warn" style={{ marginTop: '0.75rem' }}>
+          <strong>How verification works</strong>
+          <p>
+            Complete the recovery rehearsal. Verification is recorded only after you finish that
+            guided flow — not from a one-tap shortcut.
+          </p>
+        </div>
         <div className="cx-platform__actions">
-          <Button type="button" onClick={markVerified} disabled={prefs.phraseVerified}>
-            Mark verified (local)
-          </Button>
-          <Link href="/wallets/recovery">
-            <Button type="button" variant="secondary">
-              Practice recovery
-            </Button>
+          <Link href="/wallets/recovery" className="cx-btn cx-btn--primary">
+            {prefs.phraseVerified ? 'Practice again' : 'Start recovery rehearsal'}
           </Link>
         </div>
       </section>
 
       <section className="cx-panel">
-        <h2>Education</h2>
-        <Alert tone="info" title="Never share your phrase">
-          Auvora never asks for your recovery phrase in chat, email, or dApp popups. Store offline
-          copies in separate locations. Hardware wallets keep keys offline.
-        </Alert>
-        <Alert tone="warn" title="Recovery guidance" style={{ marginTop: '0.75rem' }}>
-          If you lose device access, use Import / Restore with your phrase. Verify spelling and word
-          order carefully — incorrect phrases unlock empty wallets.
-        </Alert>
+        <h2>Stay safe</h2>
+        <div className="cx-alert cx-alert--info">
+          <strong>Never share your phrase</strong>
+          <p>
+            Auvora never asks for your recovery phrase in chat, email, or dApp popups. Keep offline
+            copies in separate places. Hardware wallets keep keys offline.
+          </p>
+        </div>
+        <div className="cx-warn" style={{ marginTop: '0.75rem' }}>
+          <strong>If you lose this device</strong>
+          <p>
+            Use Import / Restore with your phrase. Check spelling and word order carefully —
+            incorrect phrases unlock empty wallets.
+          </p>
+        </div>
       </section>
     </PlatformShell>
   );

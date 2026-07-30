@@ -28,6 +28,8 @@ Examples:
 - ESLint + Prettier enforced via lint-staged
 - Prefer `@auvora/*` workspace packages over duplicated logic
 - No `any` — use proper types or `unknown` with narrowing
+- Product copy: follow `apps/web/src/lib/brand/voice.ts` (calm, honest; never “guaranteed returns” / fake settlement language)
+- Design phases live under `docs/design-system/` — Phase 10 is company readiness; do not treat it as a flip of the Phase 9 executive **NO GO** for public GA
 
 ## Pull requests
 

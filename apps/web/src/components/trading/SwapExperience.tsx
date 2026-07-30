@@ -221,9 +221,11 @@ export function SwapExperience(): ReactElement {
           timer.current = null;
           pushTradingActivity({
             kind: 'swap',
-            title: `${sellToken} → ${buyToken}`,
-            detail: `Sold ${sellAmount} ${sellToken}`,
-            status: 'confirmed',
+            title: live ? `${sellToken} → ${buyToken}` : `${sellToken} → ${buyToken} (preview)`,
+            detail: live
+              ? `Sold ${sellAmount} ${sellToken}`
+              : `Preview sold ${sellAmount} ${sellToken}`,
+            status: live ? 'confirmed' : 'pending',
             amount: sellAmount,
             asset: sellToken,
             href: '/swap',
@@ -252,12 +254,18 @@ export function SwapExperience(): ReactElement {
     <TransactionShell
       title="Swap"
       subtitle="Instant quotes, route clarity, and calm confirmation — built for confident trading."
-      reassure="Quotes refresh automatically. Nothing broadcasts until you confirm."
+      reassure="Quotes refresh automatically. Preview mode never broadcasts; live mode waits for your confirm."
       steps={multiStep ? SWAP_STEPS : undefined}
       currentStepId={multiStep ? stepId : undefined}
       backHref="/"
       backLabel="Dashboard"
     >
+      {!live ? (
+        <div className="cx-alert cx-alert--info" role="status">
+          Swap preview — confirming does not execute an on-chain trade until the swap service is
+          connected.
+        </div>
+      ) : null}
       <div className="cx-tabs" role="tablist" aria-label="Swap views">
         <button
           type="button"
@@ -589,8 +597,12 @@ export function SwapExperience(): ReactElement {
       {tab === 'swap' && screen === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Swapping…"
-          stages={['Pending', 'Broadcast', 'Confirming', 'Completed']}
+          label={live ? 'Swapping…' : 'Running swap preview…'}
+          stages={
+            live
+              ? ['Pending', 'Broadcast', 'Confirming', 'Completed']
+              : ['Queued', 'Simulated', 'Review', 'Done']
+          }
         />
       ) : null}
 
@@ -599,8 +611,12 @@ export function SwapExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Swap submitted</h2>
-          <p>Execution {executionId ?? 'complete'}. Portfolio and activity will refresh shortly.</p>
+          <h2>{live ? 'Swap submitted' : 'Preview complete'}</h2>
+          <p>
+            {live
+              ? `Execution ${executionId ?? 'complete'}. Portfolio and activity will refresh shortly.`
+              : `Nothing was swapped on-chain. Reference ${executionId ?? 'preview'} is for UI testing only.`}
+          </p>
           <div className="cx-success__cta">
             <Link href="/activity" className="cx-btn cx-btn--primary">
               Activity
@@ -613,7 +629,7 @@ export function SwapExperience(): ReactElement {
               className="cx-btn cx-btn--ghost"
               onClick={() => setScreen('form')}
             >
-              Swap again
+              {live ? 'Swap again' : 'Start again'}
             </button>
           </div>
         </div>

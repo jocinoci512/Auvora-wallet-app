@@ -129,9 +129,13 @@ export function StakingExperience(): ReactElement {
           if (timer.current != null) window.clearInterval(timer.current);
           pushTradingActivity({
             kind: action === 'claim' ? 'claim' : action,
-            title: `${action} · ${validator.name}`,
-            detail: `${amount} on ${validator.network}`,
-            status: 'confirmed',
+            title: live
+              ? `${action} · ${validator.name}`
+              : `${action} · ${validator.name} (preview)`,
+            detail: live
+              ? `${amount} on ${validator.network}`
+              : `${amount} on ${validator.network} — simulator`,
+            status: live ? 'confirmed' : 'pending',
             amount,
             asset: validator.network === 'solana' ? 'SOL' : 'ETH',
             href: '/staking',
@@ -230,14 +234,16 @@ export function StakingExperience(): ReactElement {
           </button>
         </div>
 
-        {!live && error ? (
+        {!live ? (
           <div className="cx-warn">
             <strong>Preview staking data</strong>
             <p>
-              {humanizeError(
-                error,
-                'Live staking service unavailable — showing curated dashboard data.',
-              )}
+              {error
+                ? humanizeError(
+                    error,
+                    'Live staking service unavailable — showing curated dashboard data.',
+                  )
+                : 'Showing curated dashboard data until staking positions connect.'}
             </p>
           </div>
         ) : null}
@@ -421,8 +427,12 @@ export function StakingExperience(): ReactElement {
         {screen === 'progress' ? (
           <CxProgressTrack
             progress={progress}
-            label="Submitting…"
-            stages={['Pending', 'Broadcast', 'Confirming', 'Confirmed']}
+            label={live ? 'Submitting…' : 'Running staking preview…'}
+            stages={
+              live
+                ? ['Pending', 'Broadcast', 'Confirming', 'Confirmed']
+                : ['Queued', 'Simulated', 'Review', 'Done']
+            }
           />
         ) : null}
 
@@ -431,9 +441,11 @@ export function StakingExperience(): ReactElement {
             <div className="cx-success-burst" aria-hidden>
               ✓
             </div>
-            <h2>Staking action submitted</h2>
+            <h2>{live ? 'Staking action submitted' : 'Preview complete'}</h2>
             <p>
-              Position and rewards will update after confirmation. Check activity for the receipt.
+              {live
+                ? 'Position and rewards will update after confirmation. Check activity for the receipt.'
+                : 'Nothing was staked, unstaked, or claimed on-chain. This walkthrough was UI-only.'}
             </p>
             <div className="cx-success__cta">
               <button

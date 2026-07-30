@@ -1,7 +1,9 @@
 'use client';
 
 import { Alert, Button, Switch } from '@auvora/ui';
+import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
+import { clearAssistantHistoryStorage } from '../../lib/insights/demo';
 import { getPrivacyPrefs, setPrivacyPrefs, type PrivacyPrefs } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { PlatformShell } from '../platform/PlatformShell';
@@ -25,7 +27,7 @@ export function PrivacyCenterExperience(): ReactElement {
   return (
     <PlatformShell
       title="Privacy Center"
-      subtitle="Analytics, crash reporting, cookies, personalization, and data controls."
+      subtitle="Analytics, Assistant, crash reporting, cookies, personalization, and data controls."
       reassure="Privacy choices are local first — share only what you intend to share."
       backHref="/settings"
       backLabel="Settings"
@@ -75,6 +77,49 @@ export function PrivacyCenterExperience(): ReactElement {
       </section>
 
       <section className="cx-panel">
+        <h2>Auvora Assistant</h2>
+        <p className="cx-meta">
+          On-device matching maps questions to curated educational guides. Keys and recovery phrases
+          are never collected. Answers educate — they never move funds or recommend trades.
+        </p>
+        <div className="cx-row">
+          <div>
+            <strong>Assistant suggestions</strong>
+            <p className="cx-meta">Allow the in-app assistant on this device.</p>
+          </div>
+          <Switch
+            checked={prefs.aiAssistant}
+            onCheckedChange={(v) => patch({ aiAssistant: v })}
+            aria-label="Auvora Assistant"
+          />
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Keep chat history locally</strong>
+            <p className="cx-meta">
+              Store recent questions on this device only. Turning this off clears stored history.
+            </p>
+          </div>
+          <Switch
+            checked={prefs.aiChatHistory}
+            onCheckedChange={(v) => {
+              if (!v) clearAssistantHistoryStorage();
+              patch({ aiChatHistory: v });
+            }}
+            aria-label="Local assistant chat history"
+          />
+        </div>
+        <div className="cx-platform__actions">
+          <a className="cx-btn cx-btn--ghost" href="/assistant">
+            Open Assistant
+          </a>
+          <a className="cx-btn cx-btn--ghost" href="/learn">
+            Education Hub
+          </a>
+        </div>
+      </section>
+
+      <section className="cx-panel">
         <h2>Cookies (web)</h2>
         <div className="cx-row">
           <div>
@@ -99,11 +144,15 @@ export function PrivacyCenterExperience(): ReactElement {
       <section className="cx-panel">
         <h2>Policy & data</h2>
         <div className="cx-platform__actions">
-          <a href="https://auvora.example/privacy" target="_blank" rel="noopener noreferrer">
-            <Button type="button" variant="secondary">
-              Privacy policy
-            </Button>
-          </a>
+          <Link href="/legal/privacy" className="cx-btn cx-btn--primary">
+            Privacy policy
+          </Link>
+          <Link href="/legal/terms" className="cx-btn cx-btn--ghost">
+            Terms of use
+          </Link>
+          <Link href="/trust" className="cx-btn cx-btn--ghost">
+            Trust & transparency
+          </Link>
           <Button
             type="button"
             variant="secondary"

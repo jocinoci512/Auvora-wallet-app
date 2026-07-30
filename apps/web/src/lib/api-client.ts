@@ -19,10 +19,11 @@ export function setStoredAccessToken(token: string | null): void {
   }
 }
 
-export function createApiClient(): AuvoraClient {
+export function createApiClient(options?: { timeoutMs?: number }): AuvoraClient {
   const client = new AuvoraClient({
     baseUrl: env.NEXT_PUBLIC_API_URL,
     credentials: 'include',
+    ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
   });
   client.setAccessToken(getStoredAccessToken());
   return client;

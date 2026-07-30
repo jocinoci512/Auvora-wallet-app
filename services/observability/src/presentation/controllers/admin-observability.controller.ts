@@ -106,6 +106,10 @@ class CreateMaintenanceDto {
   @IsOptional() @IsString() endsAt?: string;
 }
 
+class UpdateMaintenanceDto {
+  @IsBoolean() isActive!: boolean;
+}
+
 const _adminDtoRuntime = {
   CreateAlertRuleDto,
   UpdateAlertRuleDto,
@@ -115,6 +119,7 @@ const _adminDtoRuntime = {
   RecordSliDto,
   UpsertDependencyDto,
   CreateMaintenanceDto,
+  UpdateMaintenanceDto,
 };
 void _adminDtoRuntime;
 
@@ -356,6 +361,12 @@ export class AdminObservabilityController {
         endsAt: dto.endsAt ? new Date(dto.endsAt) : undefined,
       }),
     );
+  }
+
+  @Patch('maintenance/:id')
+  @Permissions(PERMISSION_OBSERVABILITY_ADMIN)
+  async updateMaintenance(@Param('id') id: string, @Body() body: UpdateMaintenanceDto) {
+    return successResponse(await this.maintenance.setActive(id, body.isActive));
   }
 
   @Get('audit')

@@ -1,4 +1,53 @@
 /* App-specific overrides — shared chrome lives in @auvora/ui/styles.css */
+/* Phase 8: Admin Aether chrome (Mist / Lagoon) without forking @auvora/ui for web */
+
+:root,
+[data-theme='light'],
+.auvora-theme-light {
+  --auvora-color-primary: #0e4f5c;
+  --auvora-color-primary-hover: #0a3f49;
+  --auvora-color-primary-pressed: #08333b;
+  --auvora-color-primary-muted: #d5e8ec;
+  --auvora-color-background: #eef1f4;
+  --auvora-color-background-subtle: #e4e8ed;
+  --auvora-color-surface: #f7f9fb;
+  --auvora-color-surface-solid: #ffffff;
+  --auvora-color-border: #d5dbe3;
+  --auvora-color-text: #0b1220;
+  --auvora-color-text-muted: #5c6570;
+  --auvora-color-hover: rgba(14, 79, 92, 0.08);
+  --auvora-color-pressed: rgba(14, 79, 92, 0.14);
+  --auvora-color-focus: #5eead4;
+  --auvora-paper: var(--auvora-color-background);
+  --auvora-accent: var(--auvora-color-primary);
+  --auvora-accent-muted: var(--auvora-color-primary-muted);
+  --auvora-border: var(--auvora-color-border);
+  --auvora-focus: var(--auvora-color-focus);
+  --auvora-atmosphere-accent: rgba(14, 79, 92, 0.12);
+}
+
+[data-theme='dark'],
+.auvora-theme-dark {
+  --auvora-color-primary: #5eead4;
+  --auvora-color-primary-hover: #7ef0dc;
+  --auvora-color-primary-pressed: #2dd4bf;
+  --auvora-color-primary-muted: #14353c;
+  --auvora-color-background: #0a0c10;
+  --auvora-color-background-subtle: #12151c;
+  --auvora-color-surface: #151922;
+  --auvora-color-surface-solid: #1b202b;
+  --auvora-color-border: #2a3340;
+  --auvora-color-text: #e8eaed;
+  --auvora-color-text-muted: #9aa3ad;
+  --auvora-color-hover: rgba(94, 234, 212, 0.1);
+  --auvora-color-pressed: rgba(94, 234, 212, 0.16);
+  --auvora-color-focus: #5eead4;
+  --auvora-paper: var(--auvora-color-background);
+  --auvora-accent: var(--auvora-color-primary);
+  --auvora-accent-muted: var(--auvora-color-primary-muted);
+  --auvora-border: var(--auvora-color-border);
+  --auvora-focus: var(--auvora-color-focus);
+}
 
 html,
 body {
@@ -8,13 +57,59 @@ body {
 
 body {
   color: var(--auvora-color-text, var(--auvora-ink));
+  background: var(--auvora-color-background, var(--auvora-paper));
 }
 
 main,
 .auvora-page {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
+}
+
+.token-panel {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 0;
+}
+
+.panel {
+  border: 1px solid var(--auvora-color-border, var(--auvora-border));
+  border-radius: var(--auvora-radius-md, 10px);
+  background: var(--auvora-color-surface-solid, var(--auvora-color-surface));
+  padding: 1rem 1.25rem;
+}
+
+.filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 10rem;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
+}
+
+.field-input {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--auvora-color-border, var(--auvora-border));
+  background: var(--auvora-color-surface-solid, #fff);
+  color: inherit;
+}
+
+.table-scroll {
+  overflow-x: auto;
 }
 
 h1 {
@@ -32,12 +127,6 @@ p {
   max-width: 42rem;
   line-height: 1.6;
   font-size: 1rem;
-}
-
-.token-panel {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1rem 1.5rem 0;
 }
 
 .token-panel__hint {
@@ -276,3 +365,21 @@ code {
     font-size: 0.85rem;
   }
 }
+
+/* Phase 9 — accessibility baseline */
+:focus-visible {
+  outline: 2px solid var(--auvora-color-focus, #5eead4);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

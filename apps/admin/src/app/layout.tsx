@@ -44,8 +44,8 @@ export default function RootLayout({ children }: { children: ReactNode }): React
             Skip to content
           </a>
           <AppShell header={<Nav />}>
-            <AccessTokenPanel />
-            <div id="main-content">{children}</div>
+            {process.env.NODE_ENV !== 'production' ? <AccessTokenPanel /> : null}
+            <main id="main-content">{children}</main>
           </AppShell>
         </Providers>
       </body>

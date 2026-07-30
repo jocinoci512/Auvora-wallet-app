@@ -55,9 +55,9 @@ export function BuyExperience(): ReactElement {
           timer.current = null;
           pushTradingActivity({
             kind: 'buy',
-            title: `Buy ${asset}`,
-            detail: `$${fiatAmount} via ${method}`,
-            status: 'confirmed',
+            title: `Buy ${asset} (preview)`,
+            detail: `$${fiatAmount} via ${method} — simulator`,
+            status: 'pending',
             amount: cryptoEst,
             asset,
             href: '/buy',
@@ -76,11 +76,15 @@ export function BuyExperience(): ReactElement {
     <TransactionShell
       title="Buy"
       subtitle="Card, bank, or third-party providers — with fee transparency and compliance messaging."
-      reassure="Purchases may require identity verification depending on amount and jurisdiction."
+      reassure="Simulator until a buy provider is connected. No payment is charged in this mode."
       steps={tab === 'buy' ? [...STEPS] : undefined}
       currentStepId={stepId}
       backHref="/dashboard"
     >
+      <div className="cx-alert cx-alert--info" role="status">
+        Buy preview — confirming does not charge a card or create a real order until a provider is
+        connected.
+      </div>
       <div className="cx-tabs" role="tablist" aria-label="Buy sections">
         <button
           type="button"
@@ -263,8 +267,8 @@ export function BuyExperience(): ReactElement {
       {tab === 'buy' && screen === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Processing payment…"
-          stages={['Submitted', 'Provider', 'Settling', 'Complete']}
+          label="Running buy preview…"
+          stages={['Queued', 'Simulated', 'Review', 'Done']}
         />
       ) : null}
 
@@ -273,8 +277,11 @@ export function BuyExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Purchase submitted</h2>
-          <p>Funds typically arrive after provider settlement. Track in activity and portfolio.</p>
+          <h2>Preview complete</h2>
+          <p>
+            No payment was charged. This walkthrough estimated {cryptoEst} {asset} for ${fiatAmount}
+            .
+          </p>
           <div className="cx-success__cta">
             <Link href="/activity" className="cx-btn cx-btn--primary">
               Activity

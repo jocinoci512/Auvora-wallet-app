@@ -21,7 +21,7 @@ const WHY: Record<string, string> = {
   pin: 'A PIN stops casual access if your device is unlocked nearby.',
   backup: 'A verified recovery phrase is the only way to restore self-custody wallets.',
   biometric: 'Biometrics speed unlock without weakening your PIN or phrase.',
-  devices: 'Unknown devices are a common path to account takeover.',
+  devices: 'Unknown or untrusted devices are a common path to account takeover.',
   dapps: 'Open dApp permissions can move funds without another prompt.',
   reminders: 'Gentle reminders keep recovery hygiene from drifting.',
 };
@@ -106,19 +106,19 @@ export function SecurityCenterExperience(): ReactElement {
       },
       {
         id: 'devices',
-        label: 'Trusted devices reviewed',
-        ok: deviceCount > 0,
+        label: 'No untrusted devices',
+        ok: deviceCount > 0 && live,
         weight: 15,
         href: '/settings/devices',
-        action: 'Manage devices',
+        action: 'Review devices',
       },
       {
         id: 'dapps',
         label: 'dApp permissions reviewed',
-        ok: dappCount === 0,
+        ok: live ? dappCount === 0 : false,
         weight: 15,
         href: '/web3/permissions',
-        action: dappCount === 0 ? 'Browse Web3' : 'Review permissions',
+        action: dappCount === 0 ? 'Open Web3' : 'Review permissions',
       },
       {
         id: 'reminders',
@@ -129,7 +129,7 @@ export function SecurityCenterExperience(): ReactElement {
         action: 'Backup settings',
       },
     ],
-    [pinEnabled, backupOk, biometric, deviceCount, dappCount, backupReminders],
+    [pinEnabled, backupOk, biometric, deviceCount, dappCount, backupReminders, live],
   );
 
   const score = computeSecurityScore(factors);
@@ -157,6 +157,15 @@ export function SecurityCenterExperience(): ReactElement {
       {ready && !live ? (
         <div className="cx-alert cx-alert--info">
           Live sessions are unavailable — curated Security Center data is shown for preview.
+        </div>
+      ) : null}
+
+      {!ready ? (
+        <div className="cx-skeleton" aria-busy="true" aria-label="Loading security status">
+          <div className="cx-skeleton__row cx-skeleton__row--lg" />
+          <div className="cx-skeleton__row" />
+          <div className="cx-skeleton__row" />
+          <div className="cx-skeleton__row" />
         </div>
       ) : null}
 

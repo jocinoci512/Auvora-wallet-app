@@ -1,20 +1,31 @@
 'use client';
 
-import { type OpsSlo } from '@auvora/sdk';
-import Link from 'next/link';
+import { AuvoraClientError, type OpsSlo } from '@auvora/sdk';
+import { AsyncStates, PageHeader } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { Subnav } from '../../../components/Subnav';
 import { createApiClient, formatApiError } from '../../../lib/api-client';
+import { OPS_LINKS } from '../../../lib/section-nav';
 
 export default function AdminSlosPage(): ReactElement {
   const [items, setItems] = useState<OpsSlo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const client = createApiClient();
       setItems(await client.adminListObservabilitySlos());
     } catch (err) {
-      setError(formatApiError(err));
+      setError(
+        err instanceof AuvoraClientError && err.status === 401
+          ? 'Unauthorized — save an admin JWT access token above.'
+          : formatApiError(err),
+      );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -24,21 +35,29 @@ export default function AdminSlosPage(): ReactElement {
 
   return (
     <main className="page">
-      <header className="page__header">
-        <h1>SLO Dashboard</h1>
-        <nav className="page__subnav">
-          <Link href="/observability">Dashboard</Link>
-        </nav>
-      </header>
-      {error ? <div className="alert alert--error">{error}</div> : null}
-      <ul className="stack">
-        {items.map((slo) => (
-          <li key={slo.id}>
-            {slo.code} — {slo.name} ({slo.serviceName}) target {slo.targetPercent}%
-          </li>
-        ))}
-        {!items.length && !error ? <li>No SLOs configured.</li> : null}
-      </ul>
+      <PageHeader title="SLO Dashboard" subtitle="Service level objectives and targets.">
+        <Subnav label="Observability sections" links={OPS_LINKS} />
+      </PageHeader>
+
+      <AsyncStates
+        loading={loading}
+        loadingMessage="Loading SLOs…"
+        error={error}
+        errorTitle="Could not load SLOs"
+        onRetry={() => void load()}
+        empty={!loading && !error && items.length === 0}
+        emptyTitle="No SLOs configured"
+        emptyDescription="Create SLOs via the observability admin API."
+      >
+        <ul className="stack">
+          {items.map((slo) => (
+            <li key={slo.id}>
+              <strong>{slo.code}</strong> — {slo.name} ({slo.serviceName}) target{' '}
+              {slo.targetPercent}% · {slo.indicatorType}
+            </li>
+          ))}
+        </ul>
+      </AsyncStates>
     </main>
   );
 }

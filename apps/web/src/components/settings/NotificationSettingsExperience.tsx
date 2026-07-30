@@ -14,11 +14,16 @@ import { SettingsSectionNav } from './SettingsSectionNav';
 
 const LABELS: { key: keyof NotificationPrefsLocal; title: string; detail: string }[] = [
   { key: 'transactions', title: 'Transactions', detail: 'Sends, receives, and confirmations' },
+  {
+    key: 'largeTransfers',
+    title: 'Large transfers',
+    detail: 'Notable incoming or outgoing amounts',
+  },
   { key: 'priceAlerts', title: 'Price alerts', detail: 'Watchlist and threshold moves' },
   {
     key: 'securityAlerts',
     title: 'Security alerts',
-    detail: 'New devices, sessions, phishing cues',
+    detail: 'New devices, sessions, phishing cues, unusual approvals',
   },
   {
     key: 'stakingRewards',
@@ -26,8 +31,23 @@ const LABELS: { key: keyof NotificationPrefsLocal; title: string; detail: string
     detail: 'Reward credits and staking status updates',
   },
   {
+    key: 'highNetworkFees',
+    title: 'High network fees',
+    detail: 'When gas is elevated vs your usual window',
+  },
+  {
+    key: 'insightAlerts',
+    title: 'Portfolio insights',
+    detail: 'Concentration, idle assets, milestones — educational tips',
+  },
+  {
+    key: 'portfolioHealth',
+    title: 'Portfolio health',
+    detail: 'Recommendations that improve your health score',
+  },
+  {
     key: 'marketing',
-    title: 'Marketing (placeholder)',
+    title: 'Marketing',
     detail: 'Optional campaigns — off by default',
   },
   { key: 'productUpdates', title: 'Product updates', detail: 'Release notes and feature launches' },
@@ -55,7 +75,7 @@ export function NotificationSettingsExperience(): ReactElement {
   return (
     <PlatformShell
       title="Notification preferences"
-      subtitle="Centralize alerts for transactions, prices, security, staking, product, and Web3."
+      subtitle="Transactions, smart alerts, insights, security, staking, product, and Web3 — you control each."
       reassure="Local toggles apply immediately on this device; server prefs sync when signed in."
       backHref="/settings"
       backLabel="Settings"

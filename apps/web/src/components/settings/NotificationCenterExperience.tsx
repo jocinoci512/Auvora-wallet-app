@@ -8,6 +8,8 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
+import { DEMO_SMART_ALERTS } from '../../lib/insights/demo';
+import { getNotifPrefs, type NotificationPrefsLocal } from '../../lib/settings/prefs';
 import { PlatformShell } from '../platform/PlatformShell';
 
 type CategoryFilter = 'all' | 'tx' | 'price' | 'security' | 'staking' | 'system';
@@ -87,6 +89,7 @@ function normalizeCategory(raw: string): CategoryFilter {
 export function NotificationCenterExperience(): ReactElement {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [localPrefs, setLocalPrefs] = useState<NotificationPrefsLocal>(() => getNotifPrefs());
   const [error, setError] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [category, setCategory] = useState<CategoryFilter>('all');
@@ -94,6 +97,7 @@ export function NotificationCenterExperience(): ReactElement {
 
   const load = useCallback(async () => {
     setError(null);
+    setLocalPrefs(getNotifPrefs());
     try {
       const client = createApiClient();
       const [list, preferences] = await Promise.all([
@@ -129,6 +133,13 @@ export function NotificationCenterExperience(): ReactElement {
     return items.filter((n) => normalizeCategory(n.category) === category);
   }, [items, category]);
 
+  const smartAlerts = useMemo(() => {
+    return DEMO_SMART_ALERTS.filter((a) => {
+      const key = a.category as keyof NotificationPrefsLocal;
+      return localPrefs[key] !== false;
+    });
+  }, [localPrefs]);
+
   async function markRead(id: string): Promise<void> {
     if (!apiAvailable || demoMode) {
       setItems((prev) => prev.map((n) => (n.id === id ? { ...n, status: 'DELIVERED' } : n)));
@@ -146,17 +157,20 @@ export function NotificationCenterExperience(): ReactElement {
   return (
     <PlatformShell
       title="Notification center"
-      subtitle="Inbox for transactions, prices, security, staking, and system updates."
-      reassure="Unread alerts stay here until you mark them read — nothing moves funds."
+      subtitle="Inbox for transactions, smart alerts, prices, security, staking, and system updates."
+      reassure="Unread alerts stay here until you mark them read — nothing moves funds. Tune every category in preferences."
       backHref="/settings"
       backLabel="Settings"
       actions={
         <>
           <Link href="/settings/notifications" className="cx-btn cx-btn--ghost">
-            Local prefs
+            Alert settings
+          </Link>
+          <Link href="/insights" className="cx-btn cx-btn--ghost">
+            Insights
           </Link>
           <Link href="/notifications/preferences" className="cx-btn cx-btn--primary">
-            Server prefs
+            Delivery settings
           </Link>
         </>
       }
@@ -181,13 +195,41 @@ export function NotificationCenterExperience(): ReactElement {
         </p>
       ) : null}
 
-      <div className="cx-chips" role="tablist" aria-label="Filter by category">
+      {smartAlerts.length > 0 ? (
+        <section className="cx-panel">
+          <h2>Smart alerts</h2>
+          <p className="cx-meta">
+            Preview examples filtered by your preferences — not live events until delivery is
+            connected. Educational and situational; nothing here moves funds.
+          </p>
+          <ul className="cx-list">
+            {smartAlerts.map((a) => (
+              <li key={a.id}>
+                <div>
+                  <strong>{a.title}</strong>
+                  <p className="cx-meta">{a.detail}</p>
+                  <span className="cx-badge cx-badge--pending">Preview</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <section className="cx-panel">
+          <h2>Smart alerts</h2>
+          <p className="cx-meta">
+            All smart alert categories are off.{' '}
+            <Link href="/settings/notifications">Turn categories on</Link> if you want examples.
+          </p>
+        </section>
+      )}
+
+      <div className="cx-chips" role="group" aria-label="Filter by category">
         {CATEGORIES.map((c) => (
           <button
             key={c.id}
             type="button"
-            role="tab"
-            aria-selected={category === c.id}
+            aria-pressed={category === c.id}
             className={`cx-chip${category === c.id ? ' is-on' : ''}`}
             onClick={() => setCategory(c.id)}
           >
@@ -198,38 +240,43 @@ export function NotificationCenterExperience(): ReactElement {
 
       <section className="cx-panel">
         {filtered.length === 0 ? (
-          <p className="cx-meta">No notifications in this category.</p>
+          <div className="cx-empty">
+            <h2>No notifications</h2>
+            <p>Nothing in this category right now.</p>
+          </div>
         ) : (
           <ul className="cx-list">
-            {filtered.map((n) => (
-              <li key={n.id}>
-                <div>
-                  <strong>{n.subject ?? n.category}</strong>
-                  <p className="cx-meta">
-                    {normalizeCategory(n.category)} · {n.channel} · {n.status}
-                    {n.createdAt ? ` · ${new Date(n.createdAt).toLocaleString()}` : ''}
-                  </p>
-                  <p className="cx-meta">{n.body}</p>
-                </div>
-                {n.status !== 'DELIVERED' ? (
-                  <button
-                    type="button"
-                    className="cx-btn cx-btn--ghost"
-                    onClick={() => void markRead(n.id)}
-                  >
-                    Mark read
-                  </button>
-                ) : null}
-              </li>
-            ))}
+            {filtered.map((n) => {
+              const cat = normalizeCategory(n.category);
+              const unread = n.status !== 'DELIVERED' && n.status !== 'READ';
+              return (
+                <li key={n.id}>
+                  <div>
+                    <strong>{n.subject ?? n.category}</strong>
+                    <p className="cx-meta">
+                      {CATEGORIES.find((c) => c.id === cat)?.label ?? cat}
+                      {n.createdAt ? ` · ${new Date(n.createdAt).toLocaleString()}` : ''}
+                      {unread ? ' · Unread' : ' · Read'}
+                    </p>
+                    <p className="cx-meta">{n.body}</p>
+                  </div>
+                  {unread && apiAvailable ? (
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn--ghost"
+                      onClick={() => void markRead(n.id)}
+                    >
+                      Mark read
+                    </button>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
 
       <div className="cx-platform__actions">
-        <Link href="/notifications/webhooks" className="cx-link">
-          Webhooks
-        </Link>
         <Link href="/settings/notifications" className="cx-link">
           Notification preferences
         </Link>

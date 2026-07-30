@@ -33,7 +33,7 @@ export function TransactionShell({
   const progress = list.length ? ((currentIndex + 1) / list.length) * 100 : 0;
 
   return (
-    <div className="cx" role="main">
+    <div className="cx">
       <div className="cx-atmosphere" aria-hidden />
       <header className="cx__header">
         <p className="cx__eyebrow">

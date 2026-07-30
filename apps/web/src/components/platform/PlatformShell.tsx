@@ -30,7 +30,7 @@ export function PlatformShell({
   wide?: boolean;
 }): ReactElement {
   return (
-    <div className={`cx${wide ? ' cx--wide' : ''}`} role="main">
+    <div className={`cx${wide ? ' cx--wide' : ''}`}>
       <div className="cx-atmosphere" aria-hidden />
       <header className="cx__header">
         <div className="cx-platform__head">
@@ -64,8 +64,13 @@ export function PlatformCardLink({
 }): ReactElement {
   const className = 'cx-card-link';
   if (external || href.startsWith('mailto:') || href.startsWith('http')) {
+    const isHttp = href.startsWith('http');
     return (
-      <a className={className} href={href}>
+      <a
+        className={className}
+        href={href}
+        {...(isHttp ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      >
         <strong>{title}</strong>
         <span>{detail}</span>
       </a>

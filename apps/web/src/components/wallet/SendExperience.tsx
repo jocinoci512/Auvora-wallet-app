@@ -18,7 +18,6 @@ import {
 } from '../../lib/wallet-experience/types';
 import {
   estimateFeeDisplay,
-  explorerUrlFor,
   isNameLikeRecipient,
   parseAmount,
   resolveNamePreview,
@@ -193,10 +192,14 @@ export function SendExperience(): ReactElement {
     <TransactionShell
       title="Send"
       subtitle="Clear steps. Clear fees. Nothing leaves until you confirm."
-      reassure="We check the address and network before you continue."
+      reassure="Preview flow until live broadcast connects — we still check address and network before you continue."
       steps={[...STEPS]}
       currentStepId={step}
     >
+      <div className="cx-alert cx-alert--info" role="status">
+        Transfer preview — confirming does not broadcast to a network until wallet signing is
+        connected. No funds move in this mode.
+      </div>
       {step === 'asset' ? (
         <section className="cx-panel">
           <h2>Choose asset</h2>
@@ -500,8 +503,8 @@ export function SendExperience(): ReactElement {
       {step === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Sending your transfer…"
-          stages={['Pending', 'Broadcast', 'Confirming', 'Confirmed']}
+          label="Running transfer preview…"
+          stages={['Queued', 'Simulated', 'Review', 'Done']}
         />
       ) : null}
 
@@ -510,20 +513,23 @@ export function SendExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Sent</h2>
+          <h2>Preview complete</h2>
           <p>
-            {amount} {asset} is on its way.
+            Nothing was sent. This walkthrough prepared {amount} {asset} for review only.
           </p>
+          <div className="cx-alert cx-alert--info" role="status">
+            The hash below is a simulated reference for UI testing — not an on-chain transaction.
+          </div>
           <div className="cx-confirm" style={{ textAlign: 'left' }}>
             <dl>
               <div>
-                <dt>Hash</dt>
+                <dt>Preview reference</dt>
                 <dd>
                   <code>{txHash}</code>
                 </dd>
               </div>
               <div>
-                <dt>Fee</dt>
+                <dt>Estimated fee</dt>
                 <dd>{fee.feeNative}</dd>
               </div>
             </dl>
@@ -532,14 +538,6 @@ export function SendExperience(): ReactElement {
             <Link href="/activity" className="cx-btn cx-btn--primary">
               View activity
             </Link>
-            <a
-              className="cx-btn cx-btn--ghost"
-              href={txHash ? explorerUrlFor(network, txHash) : '#'}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Explorer
-            </a>
             <button
               type="button"
               className="cx-btn cx-btn--ghost"
@@ -550,7 +548,7 @@ export function SendExperience(): ReactElement {
                 setTxHash(null);
               }}
             >
-              Send again
+              Start again
             </button>
           </div>
         </div>

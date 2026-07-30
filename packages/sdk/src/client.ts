@@ -1508,6 +1508,62 @@ export interface FeatureFlag {
   updatedAt: string;
 }
 
+export interface UpdateFeatureFlagInput {
+  enabled?: boolean;
+  description?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AdminUserSearchResult {
+  total: number;
+  users: UserProfile[];
+}
+
+export interface AdminSearchUsersQuery {
+  query?: string;
+  status?: string;
+  skip?: number;
+  take?: number;
+}
+
+export interface SecurityAuditLog {
+  id: string;
+  action: string;
+  actorUserId: string | null;
+  targetUserId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AdminAuditListResult {
+  total: number;
+  logs: SecurityAuditLog[];
+}
+
+export interface AdminAuditQuery {
+  action?: string;
+  actorUserId?: string;
+  targetUserId?: string;
+  skip?: number;
+  take?: number;
+}
+
+export interface AdminMaintenanceNotice extends MaintenanceNotice {
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateMaintenanceInput {
+  title: string;
+  message: string;
+  severity?: string;
+  startsAt: string;
+  endsAt?: string;
+}
+
 export interface InfraDashboardOverview {
   generatedAt: string;
   activeEnvironmentCount: number;
@@ -2514,10 +2570,36 @@ export class AuvoraClient {
     );
   }
 
+  async adminAcknowledgeAlert(id: string): Promise<OpsAlert> {
+    return this.request<OpsAlert>('POST', `/api/v1/admin/observability/alerts/${id}/acknowledge`);
+  }
+
+  async adminResolveAlert(id: string): Promise<OpsAlert> {
+    return this.request<OpsAlert>('POST', `/api/v1/admin/observability/alerts/${id}/resolve`);
+  }
+
   async adminListObservabilityIncidents(): Promise<{ items: OpsIncident[]; total: number }> {
     return this.request<{ items: OpsIncident[]; total: number }>(
       'GET',
       '/api/v1/admin/observability/incidents',
+    );
+  }
+
+  async adminAcknowledgeIncident(id: string): Promise<OpsIncident> {
+    return this.request<OpsIncident>(
+      'POST',
+      `/api/v1/admin/observability/incidents/${id}/acknowledge`,
+    );
+  }
+
+  async adminResolveIncident(
+    id: string,
+    body?: { rootCause?: string; postmortem?: string },
+  ): Promise<OpsIncident> {
+    return this.request<OpsIncident>(
+      'POST',
+      `/api/v1/admin/observability/incidents/${id}/resolve`,
+      body ?? {},
     );
   }
 
@@ -2626,6 +2708,90 @@ export class AuvoraClient {
     return this.request<FeatureFlag[]>(
       'GET',
       `/api/v1/admin/infrastructure/feature-flags${suffix}`,
+    );
+  }
+
+  async adminUpdateFeatureFlag(code: string, input: UpdateFeatureFlagInput): Promise<FeatureFlag> {
+    return this.request<FeatureFlag>(
+      'PATCH',
+      `/api/v1/admin/infrastructure/feature-flags/${encodeURIComponent(code)}`,
+      input,
+    );
+  }
+
+  async adminSearchUsers(query: AdminSearchUsersQuery = {}): Promise<AdminUserSearchResult> {
+    const params = new URLSearchParams();
+    if (query.query) params.set('query', query.query);
+    if (query.status) params.set('status', query.status);
+    if (query.skip != null) params.set('skip', String(query.skip));
+    if (query.take != null) params.set('take', String(query.take));
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return this.request<AdminUserSearchResult>('GET', `/api/v1/admin/users${suffix}`);
+  }
+
+  async adminGetUser(userId: string): Promise<UserProfile> {
+    return this.request<UserProfile>('GET', `/api/v1/admin/users/${encodeURIComponent(userId)}`);
+  }
+
+  async adminUpdateUserStatus(userId: string, status: string): Promise<UserProfile> {
+    return this.request<UserProfile>(
+      'PATCH',
+      `/api/v1/admin/users/${encodeURIComponent(userId)}/status`,
+      { status },
+    );
+  }
+
+  async adminAssignUserRoles(userId: string, roles: string[]): Promise<UserProfile> {
+    return this.request<UserProfile>(
+      'PATCH',
+      `/api/v1/admin/users/${encodeURIComponent(userId)}/roles`,
+      { roles },
+    );
+  }
+
+  async adminForceLogoutUser(userId: string): Promise<{ revoked: number }> {
+    return this.request<{ revoked: number }>(
+      'POST',
+      `/api/v1/admin/users/${encodeURIComponent(userId)}/force-logout`,
+    );
+  }
+
+  async adminToggleUserMfa(userId: string, enabled: boolean): Promise<UserProfile> {
+    return this.request<UserProfile>(
+      'PATCH',
+      `/api/v1/admin/users/${encodeURIComponent(userId)}/mfa`,
+      { enabled },
+    );
+  }
+
+  async adminListAudit(query: AdminAuditQuery = {}): Promise<AdminAuditListResult> {
+    const params = new URLSearchParams();
+    if (query.action) params.set('action', query.action);
+    if (query.actorUserId) params.set('actorUserId', query.actorUserId);
+    if (query.targetUserId) params.set('targetUserId', query.targetUserId);
+    if (query.skip != null) params.set('skip', String(query.skip));
+    if (query.take != null) params.set('take', String(query.take));
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return this.request<AdminAuditListResult>('GET', `/api/v1/admin/audit${suffix}`);
+  }
+
+  async adminListMaintenance(): Promise<AdminMaintenanceNotice[]> {
+    return this.request<AdminMaintenanceNotice[]>('GET', '/api/v1/admin/observability/maintenance');
+  }
+
+  async adminCreateMaintenance(input: CreateMaintenanceInput): Promise<AdminMaintenanceNotice> {
+    return this.request<AdminMaintenanceNotice>(
+      'POST',
+      '/api/v1/admin/observability/maintenance',
+      input,
+    );
+  }
+
+  async adminSetMaintenanceActive(id: string, isActive: boolean): Promise<AdminMaintenanceNotice> {
+    return this.request<AdminMaintenanceNotice>(
+      'PATCH',
+      `/api/v1/admin/observability/maintenance/${id}`,
+      { isActive },
     );
   }
 

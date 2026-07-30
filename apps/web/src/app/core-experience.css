@@ -291,6 +291,18 @@
   font-weight: 400;
 }
 
+.cx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .cx-btn {
   display: inline-flex;
   align-items: center;
@@ -1037,9 +1049,18 @@ body:has(.cx) .token-panel {
   display: flex;
   gap: 0.35rem;
   margin-bottom: 1.25rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 0.15rem;
 }
 
-.cx-tabs button {
+.cx-tabs button,
+.cx-tabs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 40px;
   padding: 0 1rem;
   border-radius: 999px;
@@ -1050,15 +1071,22 @@ body:has(.cx) .token-panel {
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.cx-tabs button.is-active {
+.cx-tabs button.is-active,
+.cx-tabs a.is-active,
+.cx-tabs a[aria-current='page'] {
   background: var(--cx-lagoon);
   border-color: var(--cx-lagoon);
   color: #fff;
 }
 
-[data-theme='dark'] .cx-tabs button.is-active {
+[data-theme='dark'] .cx-tabs button.is-active,
+[data-theme='dark'] .cx-tabs a.is-active,
+[data-theme='dark'] .cx-tabs a[aria-current='page'] {
   color: #0a0c10;
 }
 
@@ -1354,7 +1382,7 @@ body:has(.cx) .token-panel {
 
 .cx-platform__nav .cx-tabs {
   margin-bottom: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .cx-card-grid {
@@ -1428,6 +1456,11 @@ body:has(.cx) .token-panel {
   flex-wrap: wrap;
   gap: 1.5rem;
   align-items: center;
+}
+
+.cx-score-copy {
+  flex: 1;
+  min-width: min(100%, 16rem);
 }
 
 .cx-score-ring {
@@ -1522,6 +1555,134 @@ body:has(.cx) .token-panel {
     transition: none !important;
   }
 }
+
+/* Preference-driven a11y (PreferencesExperience → locale-document dataset) */
+html[data-reduce-motion='true'] .cx,
+html[data-reduce-motion='true'] .cx * {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-high-contrast='true'] .cx {
+  --cx-line: #0b1220;
+  --cx-muted: #2a3340;
+  --cx-ink: #05080f;
+}
+
+html[data-high-contrast='true'][data-theme='dark'] .cx {
+  --cx-line: #e8eaed;
+  --cx-muted: #c5ccd4;
+  --cx-ink: #ffffff;
+}
+
+html[data-high-contrast='true'] .cx-card-link,
+html[data-high-contrast='true'] .cx-btn,
+html[data-high-contrast='true'] .cx-field input,
+html[data-high-contrast='true'] .cx-field select,
+html[data-high-contrast='true'] .cx-field textarea,
+html[data-high-contrast='true'] .cx-tabs a,
+html[data-high-contrast='true'] .cx-tabs button {
+  border-width: 2px;
+}
+
+html[data-high-contrast='true'] .cx__title,
+html[data-high-contrast='true'] .cx-panel h2 {
+  letter-spacing: -0.02em;
+}
+
+.cx-skeleton {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.cx-skeleton__row {
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--cx-subtle) 0%,
+    var(--cx-line) 50%,
+    var(--cx-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: cx-skel 1.2s ease-in-out infinite;
+}
+
+.cx-skeleton__row--lg {
+  height: 72px;
+}
+
+@keyframes cx-skel {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+html[data-reduce-motion='true'] .cx-skeleton__row,
+@media (prefers-reduced-motion: reduce) {
+  .cx-skeleton__row {
+    animation: none;
+  }
+}
+
+/* Phase 7 — Assistant chat */
+.cx-chat {
+  margin-top: 0.5rem;
+}
+
+.cx-chat__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+}
+
+.cx-chat__bubble {
+  max-width: 92%;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--cx-line);
+  background: var(--cx-solid);
+}
+
+.cx-chat__bubble p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.cx-chat__bubble--user {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--cx-lagoon) 12%, var(--cx-solid));
+  border-color: color-mix(in srgb, var(--cx-lagoon) 35%, var(--cx-line));
+}
+
+.cx-chat__bubble--assistant {
+  align-self: flex-start;
+}
+
+.cx-chat__form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-top: 1rem;
+}
+
+.cx-amount-display {
+  font-family: var(--cx-font-serif);
+  font-variant-numeric: tabular-nums;
+}
+
+
 
 
 

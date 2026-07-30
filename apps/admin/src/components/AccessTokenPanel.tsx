@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@auvora/ui';
+import { Alert, Button } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { ACCESS_TOKEN_KEY, getStoredAccessToken, setStoredAccessToken } from '../lib/api-client';
 
@@ -29,11 +29,15 @@ export function AccessTokenPanel(): ReactElement {
 
   return (
     <section className="token-panel">
+      <Alert tone="warn" title="Local / staging auth only">
+        Paste-JWT into <code>localStorage</code> is for engineering and staging. Production admin
+        must use SSO / httpOnly sessions — never instruct operators to paste tokens in a live SOC.
+      </Alert>
       <details>
-        <summary>API access token</summary>
+        <summary>API access token (dev)</summary>
         <p className="token-panel__hint">
-          Admin requests use a JWT from <code>{ACCESS_TOKEN_KEY}</code> in localStorage. Paste an
-          access token from <code>POST /api/v1/auth/login</code> on the gateway.
+          Admin requests read a JWT from <code>{ACCESS_TOKEN_KEY}</code>. For local use only, paste
+          an access token from <code>POST /api/v1/auth/login</code> on the gateway.
         </p>
         <div className="token-panel__row">
           <input

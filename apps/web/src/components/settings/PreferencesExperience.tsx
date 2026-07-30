@@ -87,9 +87,7 @@ export function PreferencesExperience(): ReactElement {
             </button>
           ))}
         </div>
-        <p className="cx-meta">
-          Accent stays Mist / Lagoon — personalization does not invent new brands.
-        </p>
+        <p className="cx-meta">Theme follows system, or stays light / dark on this device.</p>
       </section>
 
       <section className="cx-panel">
@@ -241,6 +239,22 @@ export function PreferencesExperience(): ReactElement {
         <Link href="/settings/account" className="cx-link">
           Account profile & locale details
         </Link>
+      </section>
+
+      <section className="cx-panel">
+        <h2>Regional & global</h2>
+        <p className="cx-meta">
+          Currency, language, and date/time formats above apply on this device. Full localization
+          (translated UI strings) and right-to-left layouts are on the global roadmap — English is
+          the production default until language packs ship. Time zones follow your device clock.
+        </p>
+        <p className="cx-meta">
+          Legal notices for your region will appear in{' '}
+          <Link href="/legal" className="cx-link">
+            Legal
+          </Link>{' '}
+          once counsel publishes jurisdiction-specific terms.
+        </p>
       </section>
     </PlatformShell>
   );

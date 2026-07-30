@@ -64,9 +64,9 @@ export function SellExperience(): ReactElement {
           timer.current = null;
           pushTradingActivity({
             kind: 'sell',
-            title: `Sell ${asset.id}`,
-            detail: `$${fiat} → ${destination}`,
-            status: 'confirmed',
+            title: `Sell ${asset.id} (preview)`,
+            detail: `$${fiat} → ${destination} — simulator`,
+            status: 'pending',
             amount,
             asset: asset.id,
             href: '/sell',
@@ -85,11 +85,14 @@ export function SellExperience(): ReactElement {
     <TransactionShell
       title="Sell"
       subtitle="Choose an asset, destination, and review settlement before confirming."
-      reassure="Double-check destination details before you confirm."
+      reassure="Simulator until an off-ramp is connected. No sale settles in this mode."
       steps={tab === 'sell' ? [...STEPS] : undefined}
       currentStepId={stepId}
       backHref="/dashboard"
     >
+      <div className="cx-alert cx-alert--info" role="status">
+        Sell preview — confirming does not move funds or settle fiat until an off-ramp is connected.
+      </div>
       <div className="cx-tabs" role="tablist" aria-label="Sell sections">
         <button
           type="button"
@@ -238,8 +241,8 @@ export function SellExperience(): ReactElement {
       {tab === 'sell' && screen === 'progress' ? (
         <CxProgressTrack
           progress={progress}
-          label="Submitting sale…"
-          stages={['Submitted', 'Off-ramp', 'Settling', 'Complete']}
+          label="Running sell preview…"
+          stages={['Queued', 'Simulated', 'Review', 'Done']}
         />
       ) : null}
 
@@ -248,8 +251,10 @@ export function SellExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Sale submitted</h2>
-          <p>Settlement estimate: {settleEta}. Track progress in activity.</p>
+          <h2>Preview complete</h2>
+          <p>
+            No sale was submitted. Estimated receive ≈ ${fiat} ({settleEta} when live).
+          </p>
           <div className="cx-success__cta">
             <Link href="/activity" className="cx-btn cx-btn--primary">
               Activity
