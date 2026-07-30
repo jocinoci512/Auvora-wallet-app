@@ -254,6 +254,20 @@ export function buildPortfolioInsights(holdings: Holding[] = DEMO_HOLDINGS): Por
 
 export const LEARN_TOPICS: LearnTopic[] = [
   {
+    id: 'private-keys',
+    category: 'Wallet Basics',
+    title: 'Private keys in plain language',
+    summary: 'Why keys matter and how the app keeps them on this device.',
+    minutes: 3,
+    body: [
+      'A private key is the secret that signs transactions for an address. Whoever has it can move funds.',
+      'Auvora stores key material in this device’s secure storage. Preview builds still treat keys as sensitive.',
+      'Never type a private key into a website form, message, or “support” chat.',
+    ],
+    href: '/settings/security',
+    hrefLabel: 'Security Center',
+  },
+  {
     id: 'wallet-basics',
     category: 'Wallet Basics',
     title: 'What a wallet actually holds',

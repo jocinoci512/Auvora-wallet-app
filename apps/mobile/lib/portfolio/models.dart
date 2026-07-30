@@ -200,6 +200,8 @@ class PortfolioSnapshot {
     this.offline = false,
     this.priceError = false,
     this.syncDelayed = false,
+    this.fromCache = false,
+    this.failedChains = const [],
   });
 
   final List<AssetHolding> assets;
@@ -213,8 +215,50 @@ class PortfolioSnapshot {
   final bool offline;
   final bool priceError;
   final bool syncDelayed;
+  final bool fromCache;
+  final List<String> failedChains;
 
   double get totalUsd => assets.fold(0, (s, a) => s + a.fiatValue);
 
   List<AssetHolding> get nonZero => assets.where((a) => a.balance > 0).toList();
+
+  String get cacheAgeLabel {
+    final age = DateTime.now().difference(updatedAt);
+    if (age.inSeconds < 45) return 'Updated just now';
+    if (age.inMinutes < 60) return 'Cached ${age.inMinutes}m ago';
+    if (age.inHours < 48) return 'Cached ${age.inHours}h ago';
+    return 'Cached ${age.inDays}d ago';
+  }
+
+  PortfolioSnapshot copyWith({
+    List<AssetHolding>? assets,
+    List<PortfolioTx>? transactions,
+    List<AddressContact>? contacts,
+    List<double>? trend7d,
+    double? change24hUsd,
+    double? change24hPct,
+    DateTime? updatedAt,
+    bool? isPreview,
+    bool? offline,
+    bool? priceError,
+    bool? syncDelayed,
+    bool? fromCache,
+    List<String>? failedChains,
+  }) {
+    return PortfolioSnapshot(
+      assets: assets ?? this.assets,
+      transactions: transactions ?? this.transactions,
+      contacts: contacts ?? this.contacts,
+      trend7d: trend7d ?? this.trend7d,
+      change24hUsd: change24hUsd ?? this.change24hUsd,
+      change24hPct: change24hPct ?? this.change24hPct,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isPreview: isPreview ?? this.isPreview,
+      offline: offline ?? this.offline,
+      priceError: priceError ?? this.priceError,
+      syncDelayed: syncDelayed ?? this.syncDelayed,
+      fromCache: fromCache ?? this.fromCache,
+      failedChains: failedChains ?? this.failedChains,
+    );
+  }
 }

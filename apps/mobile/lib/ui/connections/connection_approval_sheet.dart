@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../connections/connections_controller.dart';
+import '../../connections/known_catalog.dart';
 import '../../connections/models.dart';
 import '../../connections/permission_catalog.dart';
+import '../../intelligence/catalog.dart';
+import '../../intelligence/intelligence_controller.dart';
+import '../../intelligence/models.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../intelligence/intelligence_tip.dart';
+import '../intelligence/learning_center_screen.dart';
 import 'connections_auth.dart';
 
 Future<bool?> showConnectionApprovalSheet(
@@ -68,6 +74,26 @@ class _ConnectionApprovalBody extends StatelessWidget {
               'Review who is asking, what they can request, and any caution notes — then approve or reject.',
               style: TextStyle(color: AetherColors.muted, height: 1.45),
             ),
+            if (context.watch<IntelligenceController>().shouldShowExplanation(IntelligenceKind.security)) ...[
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final intel = context.read<IntelligenceController>();
+                  final explanation = IntelligenceCatalog.explainConnection(
+                    origin: request.origin,
+                    lookalike: lookalikeHint(request.origin) != null,
+                    unknown: !request.trust.anyVerified,
+                  );
+                  return IntelligenceExplainPanel(
+                    explanation: explanation,
+                    compact: intel.useCompactExplanation(explanation),
+                    onLearnMore: explanation.learnTopicId == null
+                        ? null
+                        : () => openLesson(context, explanation.learnTopicId),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 14),
             _InfoCard(
               child: Column(

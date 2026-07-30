@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../connections/connections_controller.dart';
 import '../../crypto/wallet_crypto.dart';
+import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../security/security_controller.dart';
 import '../../security/security_models.dart';
@@ -164,6 +165,9 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                                 );
                                 if (!allowed) return;
                                 await wallet.enableBiometrics(value);
+                                if (value && context.mounted) {
+                                  context.read<IntelligenceController>().noteEvent('afterBiometrics');
+                                }
                                 await security.addAlert(
                                   title: value ? 'Biometrics enabled' : 'Biometrics disabled',
                                   description: value

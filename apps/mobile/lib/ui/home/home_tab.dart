@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
@@ -9,6 +10,8 @@ import '../../engine/models.dart';
 import '../asset_detail_screen.dart';
 import '../connections/connect_dapp_screen.dart';
 import '../engine/digital_asset_flow.dart';
+import '../intelligence/intelligence_tip.dart';
+import '../intelligence/learning_center_screen.dart';
 import '../receive_flow_screen.dart';
 import '../send_flow_screen.dart';
 import '../transaction_detail_screen.dart';
@@ -119,6 +122,12 @@ class _MobileHome extends StatelessWidget {
           ),
         ),
         ..._moneySection(context),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: _IntelligenceHomeStrip(snap: snap),
+          ),
+        ),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
@@ -425,6 +434,45 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
+class _IntelligenceHomeStrip extends StatelessWidget {
+  const _IntelligenceHomeStrip({required this.snap});
+
+  final PortfolioSnapshot? snap;
+
+  @override
+  Widget build(BuildContext context) {
+    final intel = context.watch<IntelligenceController>();
+    final summaries = intel.portfolioSummaries(snap);
+    final tip = intel.pendingTip;
+    if (summaries.isEmpty && tip == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (summaries.isNotEmpty) ...[
+          for (final line in summaries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                line.text,
+                style: const TextStyle(height: 1.4, fontSize: 13, color: AetherColors.muted),
+              ),
+            ),
+        ],
+        if (tip != null) ...[
+          if (summaries.isNotEmpty) const SizedBox(height: 8),
+          IntelligenceTipCard(
+            title: tip.title,
+            body: tip.body,
+            onDismiss: () => intel.dismissTip(tip.id),
+            onLearnMore: tip.learnTopicId == null ? null : () => openLesson(context, tip.learnTopicId),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _StatusStack extends StatelessWidget {
   const _StatusStack({required this.snap, required this.portfolio, required this.address});
 
@@ -439,9 +487,28 @@ class _StatusStack extends StatelessWidget {
       children.add(
         SoftBanner(
           tone: BannerTone.warn,
-          message: 'You appear offline. Showing the last values saved on this device.',
+          message:
+              'You appear offline. ${snap!.cacheAgeLabel}. Figures may be outdated until you reconnect.',
           actionLabel: 'Retry',
-          onAction: () => portfolio.refresh(address),
+          onAction: () => portfolio.refresh(address, soft: true),
+        ),
+      );
+    } else if (snap?.fromCache == true) {
+      children.add(
+        SoftBanner(
+          tone: BannerTone.warn,
+          message: '${snap!.cacheAgeLabel}. Refreshing live preview balances in the background.',
+          actionLabel: 'Refresh',
+          onAction: () => portfolio.refresh(address, soft: true),
+        ),
+      );
+    }
+    if (portfolio.refreshing && snap != null && snap?.fromCache != true && snap?.offline != true) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
+      children.add(
+        const SoftBanner(
+          tone: BannerTone.warn,
+          message: 'Syncing balances… existing figures stay visible.',
         ),
       );
     }
@@ -452,11 +519,22 @@ class _StatusStack extends StatelessWidget {
           tone: BannerTone.error,
           message: 'Prices are temporarily unavailable. Crypto balances still show.',
           actionLabel: 'Retry',
-          onAction: () => portfolio.refresh(address),
+          onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
     }
-    if (snap?.syncDelayed == true) {
+    if (snap?.failedChains.isNotEmpty == true) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
+      children.add(
+        SoftBanner(
+          tone: BannerTone.warn,
+          message:
+              'Some networks failed to sync (${snap!.failedChains.join(', ')}). Showing last good values for those chains.',
+          actionLabel: 'Retry',
+          onAction: () => portfolio.refresh(address, soft: true),
+        ),
+      );
+    } else if (snap?.syncDelayed == true) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
         const SoftBanner(

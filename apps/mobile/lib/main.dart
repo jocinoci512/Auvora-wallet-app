@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'connections/connections_controller.dart';
+import 'intelligence/intelligence_controller.dart';
 import 'portfolio/portfolio_controller.dart';
 import 'portfolio/portfolio_repository.dart';
 import 'preferences/preferences_controller.dart';
@@ -16,6 +17,7 @@ import 'wallet_engine/blockchain_adapter.dart';
 import 'wallet_engine/key_store.dart';
 import 'wallet_engine/network_manager.dart';
 import 'wallet_engine/price_service.dart';
+import 'wallet_engine/sync_coordinator.dart';
 import 'wallet_engine/sync_engine.dart';
 import 'wallet_engine/transaction_engine.dart';
 import 'wallet_engine/models.dart';
@@ -130,7 +132,34 @@ class AuvoraApp extends StatelessWidget {
           },
           update: (_, portfolio, controller) => controller!..attachPortfolio(portfolio),
         ),
+        ChangeNotifierProxyProvider4<SyncEngine, NetworkManager, PortfolioController,
+            PreferencesController, SyncCoordinator>(
+          create: (context) => SyncCoordinator(
+            syncEngine: context.read<SyncEngine>(),
+            networkManager: context.read<NetworkManager>(),
+            portfolio: context.read<PortfolioController>(),
+            preferences: context.read<PreferencesController>(),
+          ),
+          update: (_, syncEngine, networkManager, portfolio, preferences, coordinator) {
+            coordinator ??= SyncCoordinator(
+              syncEngine: syncEngine,
+              networkManager: networkManager,
+              portfolio: portfolio,
+              preferences: preferences,
+            );
+            coordinator.attachPreferences(preferences);
+            return coordinator;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => ConnectionsController()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final controller = IntelligenceController();
+            // ignore: discarded_futures
+            controller.bootstrap();
+            return controller;
+          },
+        ),
         ChangeNotifierProxyProvider3<WalletController, WalletEngine, ConnectionsController, SecurityController>(
           create: (_) => SecurityController(),
           update: (_, walletController, walletEngine, connections, controller) => controller!

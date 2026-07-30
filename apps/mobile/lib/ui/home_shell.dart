@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
+import '../wallet_engine/sync_coordinator.dart';
 import 'home/activity_tab.dart';
 import 'home/assets_tab.dart';
 import 'home/home_tab.dart';
@@ -28,10 +29,24 @@ class _HomeShellState extends State<HomeShell> {
     if (_bootstrapped) return;
     _bootstrapped = true;
     final address = context.read<WalletController>().address;
+    final wallet = context.read<WalletController>();
     final portfolio = context.read<PortfolioController>();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      portfolio.bootstrap(address);
+    final sync = context.read<SyncCoordinator>();
+    final syncEngine = sync.syncEngine;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final cold = wallet.coldStartMs;
+      if (cold != null) {
+        syncEngine.recordColdStart(Duration(milliseconds: cold));
+      }
+      await portfolio.bootstrap(address);
+      sync.start(address: address);
     });
+  }
+
+  @override
+  void dispose() {
+    // Coordinator lives in the provider tree for the app lifetime.
+    super.dispose();
   }
 
   void openTab(int index) => setState(() => _index = index);

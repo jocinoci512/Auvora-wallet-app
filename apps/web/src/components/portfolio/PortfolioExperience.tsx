@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { DonutChart, LineChart } from '../charts/Charts';
 import { CountUp } from '../charts/CountUp';
 import {
@@ -13,7 +13,8 @@ import {
   type Holding,
 } from '../../lib/dashboard-demo';
 import { buildPortfolioInsights, computePortfolioHealthScore } from '../../lib/insights/demo';
-import { OFFLINE_CACHE_NS, writeOfflineCache } from '../../lib/offline/cache';
+import { OFFLINE_CACHE_NS, readOfflineCache, writeOfflineCache } from '../../lib/offline/cache';
+import { useOnlineStatus } from '../../lib/offline/online-status';
 import { PlatformShell } from '../platform/PlatformShell';
 import '../../app/dashboard.css';
 
@@ -26,29 +27,61 @@ const COLORS = [
 ];
 
 type SortKey = 'value' | 'change' | 'symbol' | 'allocation';
+type PortfolioCachePayload = {
+  holdings: Holding[];
+  performance: typeof DEMO_PERFORMANCE;
+};
 
 export function PortfolioExperience(): ReactElement {
+  const { online, since } = useOnlineStatus();
   const [query, setQuery] = useState('');
   const [network, setNetwork] = useState('all');
   const [sort, setSort] = useState<SortKey>('value');
   const [openId, setOpenId] = useState<string | null>(DEMO_HOLDINGS[0]?.id ?? null);
-  const holdings = DEMO_HOLDINGS;
+  const [holdings, setHoldings] = useState<Holding[]>(DEMO_HOLDINGS);
+  const [fromCache, setFromCache] = useState(false);
+  const [cacheAgeLabel, setCacheAgeLabel] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [factors, setFactors] = useState(() => computePortfolioHealthScore(DEMO_HOLDINGS).factors);
   const [insights, setInsights] = useState(() => buildPortfolioInsights(DEMO_HOLDINGS).slice(0, 3));
 
+  const hydrate = useCallback((preferLive: boolean) => {
+    const cached = readOfflineCache<PortfolioCachePayload>(OFFLINE_CACHE_NS.portfolio, 'holdings', {
+      allowStale: true,
+    });
+    if (!preferLive && cached?.data?.holdings?.length) {
+      setHoldings(cached.data.holdings);
+      setFromCache(true);
+      const ageMin = Math.max(0, Math.round((Date.now() - cached.savedAt) / 60_000));
+      setCacheAgeLabel(ageMin < 1 ? 'Cached just now' : `Cached ${ageMin}m ago`);
+      return;
+    }
+    const payload: PortfolioCachePayload = {
+      holdings: DEMO_HOLDINGS,
+      performance: DEMO_PERFORMANCE,
+    };
+    writeOfflineCache(OFFLINE_CACHE_NS.portfolio, 'holdings', payload, 1000 * 60 * 60 * 12);
+    setHoldings(DEMO_HOLDINGS);
+    setFromCache(false);
+    setCacheAgeLabel(null);
+  }, []);
+
   useEffect(() => {
-    const health = computePortfolioHealthScore(DEMO_HOLDINGS);
+    hydrate(false);
+    if (online) hydrate(true);
+  }, [hydrate, online]);
+
+  useEffect(() => {
+    if (!online || !since) return;
+    hydrate(true);
+  }, [online, since, hydrate]);
+
+  useEffect(() => {
+    const health = computePortfolioHealthScore(holdings);
     setScore(health.score);
     setFactors(health.factors);
-    setInsights(buildPortfolioInsights(DEMO_HOLDINGS).slice(0, 3));
-    writeOfflineCache(
-      OFFLINE_CACHE_NS.portfolio,
-      'holdings',
-      { holdings: DEMO_HOLDINGS, performance: DEMO_PERFORMANCE },
-      1000 * 60 * 60 * 12,
-    );
-  }, []);
+    setInsights(buildPortfolioInsights(holdings).slice(0, 3));
+  }, [holdings]);
 
   const networks = useMemo(
     () => Array.from(new Set(holdings.map((h) => h.network))).sort(),
@@ -113,6 +146,13 @@ export function PortfolioExperience(): ReactElement {
         Sample holdings until live balances connect. Unrealized P/L uses demo cost basis where
         present — estimates, not advice. Insights never trade for you.
       </div>
+      {!online || fromCache ? (
+        <div className="cx-alert cx-alert--warn" role="status" style={{ marginTop: '0.75rem' }}>
+          {!online
+            ? `Offline — ${cacheAgeLabel ?? 'showing last saved portfolio on this device'}.`
+            : `${cacheAgeLabel ?? 'Cached snapshot'} — refreshing when the network allows.`}
+        </div>
+      ) : null}
 
       <section className="cx-panel" aria-label="Portfolio totals">
         <h2>Total value</h2>

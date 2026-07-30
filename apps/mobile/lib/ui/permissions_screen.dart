@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
+import '../intelligence/intelligence_controller.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'app_shell.dart';
@@ -66,7 +67,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
         ],
       ),
       footer: FilledButton(
-        onPressed: c.finishPermissions,
+        onPressed: () async {
+          await c.finishPermissions();
+          if (!context.mounted) return;
+          // After create or import — one calm tip to practice recovery when ready.
+          context.read<IntelligenceController>().noteEvent('afterImport');
+        },
         child: const Text('Enter my wallet'),
       ),
     );

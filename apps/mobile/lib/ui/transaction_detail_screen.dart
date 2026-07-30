@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../intelligence/catalog.dart';
+import '../intelligence/intelligence_controller.dart';
+import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../theme/aether_theme.dart';
 import 'home/home_shared.dart';
+import 'intelligence/intelligence_tip.dart';
+import 'intelligence/learning_center_screen.dart';
 
 class TransactionDetailScreen extends StatelessWidget {
   const TransactionDetailScreen({super.key, required this.txId});
@@ -31,6 +36,7 @@ class TransactionDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<PortfolioController>();
+    final intel = context.watch<IntelligenceController>();
     final tx = p.txById(txId);
 
     if (tx == null) {
@@ -47,20 +53,7 @@ class TransactionDetailScreen extends StatelessWidget {
         '${when.year}-${when.month.toString().padLeft(2, '0')}-${when.day.toString().padLeft(2, '0')}';
     final time =
         '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
-
-    String friendly() {
-      switch (tx.status) {
-        case TxStatus.pending:
-          return 'Still confirming on ${tx.network.label}. This usually finishes in a few minutes.';
-        case TxStatus.completed:
-          return 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.';
-        case TxStatus.failed:
-          return tx.note ??
-              'This transaction did not complete. No funds left your wallet beyond any network fee already paid.';
-        case TxStatus.cancelled:
-          return 'You cancelled this request before it settled on-chain.';
-      }
-    }
+    final explanation = intel.transactionExplanation(tx);
 
     final receipt = [
       'Auvora receipt',
@@ -106,29 +99,58 @@ class TransactionDetailScreen extends StatelessWidget {
                 ),
                 child: Text(
                   tx.status.label,
-                  style: TextStyle(color: statusColor(tx.status), fontWeight: FontWeight.w700, fontSize: 12),
+                  style: TextStyle(
+                    color: statusColor(tx.status),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(friendly(), style: const TextStyle(color: AetherColors.muted, height: 1.45)),
+          if (explanation != null)
+            IntelligenceExplainPanel(
+              explanation: explanation,
+              compact: intel.useCompactExplanation(explanation),
+              onLearnMore: explanation.learnTopicId == null
+                  ? null
+                  : () => openLesson(context, explanation.learnTopicId),
+            )
+          else
+            Text(
+              _friendlyFallback(tx),
+              style: const TextStyle(color: AetherColors.muted, height: 1.45),
+            ),
+          if (tx.fee != null &&
+              intel.shouldShowExplanation(IntelligenceKind.transaction) &&
+              (tx.fee ?? 0) > 0.02) ...[
+            const SizedBox(height: 12),
+            IntelligenceExplainPanel(
+              explanation: IntelligenceCatalog.explainFeeEstimate(
+                networkLabel: tx.network.label,
+                elevated: true,
+              ),
+              onLearnMore: () => openLesson(context, 'gas-fees'),
+            ),
+          ],
           const SizedBox(height: 24),
           _kv('Network', tx.network.label),
           _kv('Date', date),
           _kv('Time', time),
-          if (tx.fee != null) _kv('Fee', p.hideBalances ? '••••' : '${tx.fee} ${tx.feeAsset ?? ''}'),
+          if (tx.fee != null)
+            _kv('Network fee', p.hideBalances ? '••••' : '${tx.fee} ${tx.feeAsset ?? ''}'),
           _kv('From', tx.from),
           _kv('To', tx.to),
           const SizedBox(height: 8),
-          const Text('Transaction hash', style: TextStyle(color: AetherColors.muted, fontSize: 13)),
+          const Text('Transaction ID', style: TextStyle(color: AetherColors.muted, fontSize: 13)),
           const SizedBox(height: 4),
           SelectableText(tx.hash, style: const TextStyle(fontSize: 13, height: 1.4)),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () => copyText(context, tx.hash, label: 'Hash copied'),
+            onPressed: () => copyText(context, tx.hash, label: 'Transaction ID copied'),
             icon: const Icon(Icons.copy_rounded),
-            label: const Text('Copy hash'),
+            label: const Text('Copy transaction ID'),
           ),
           const SizedBox(height: 10),
           if (explorer != null)
@@ -146,6 +168,20 @@ class TransactionDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _friendlyFallback(PortfolioTx tx) {
+    switch (tx.status) {
+      case TxStatus.pending:
+        return 'Still confirming on ${tx.network.label}. This usually finishes in a few minutes.';
+      case TxStatus.completed:
+        return 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.';
+      case TxStatus.failed:
+        return tx.note ??
+            'This transfer did not complete. Amounts beyond any network fee already paid usually stay in your wallet.';
+      case TxStatus.cancelled:
+        return 'You cancelled this request before it finished on the network.';
+    }
   }
 
   Widget _kv(String k, String v) {

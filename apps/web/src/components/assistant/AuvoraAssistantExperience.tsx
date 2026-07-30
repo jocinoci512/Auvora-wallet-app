@@ -21,7 +21,7 @@ type Msg = {
 const WELCOME: Msg = {
   id: 'welcome',
   role: 'assistant',
-  text: 'Hi — I explain fees, security, recovery, staking, bridges, and portfolio ideas in plain language. I never move funds, ask for your recovery phrase, or tell you what to buy or sell.',
+  text: 'Auvora Intelligence can explain fees, security prompts, recovery, staking, bridges, and portfolio concepts in plain language. It never moves funds, asks for your recovery phrase, or tells you what to buy or sell.',
 };
 
 function prefersReducedMotion(): boolean {
@@ -119,25 +119,25 @@ export function AuvoraAssistantExperience(): ReactElement {
 
   return (
     <PlatformShell
-      title="Auvora Assistant"
-      subtitle="Calm explanations — never a replacement for your decisions."
+      title="Auvora Intelligence Q&A"
+      subtitle="Optional on-device explanations — never a replacement for your decisions."
       reassure="Private by default. No recovery phrases. No fund moves. No investment advice."
       backHref="/dashboard"
       backLabel="Wallet"
       actions={
         <>
           <Link href="/learn" className="cx-btn cx-btn--ghost">
-            Learn
+            Learning Center
           </Link>
           <Link href="/settings/privacy" className="cx-btn cx-btn--ghost">
-            AI privacy
+            Guidance privacy
           </Link>
         </>
       }
     >
       {!aiOn ? (
         <div className="cx-warn">
-          <strong>Assistant is off</strong>
+          <strong>Q&amp;A is off</strong>
           <p>
             Turn it on in Privacy settings if you want on-device explanations. Nothing is sent while
             it is off.
@@ -151,9 +151,9 @@ export function AuvoraAssistantExperience(): ReactElement {
       <section className="cx-panel">
         <h2>How answers are made</h2>
         <p className="cx-meta">
-          On-device matching maps your question to curated educational guides. Answers are general
-          explanations — not personalized financial advice, and not live market predictions. Your
-          keys never leave the device for this assistant.
+          On-device matching maps your question to curated educational guides. The main Intelligence
+          layer is contextual tips throughout the wallet — this Q&amp;A is optional. Answers
+          educate; they never recommend trades. Keys never leave the device for this surface.
         </p>
       </section>
 

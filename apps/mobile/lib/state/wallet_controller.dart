@@ -94,7 +94,11 @@ class WalletController extends ChangeNotifier {
 
   int get onboardingStepCount => 6;
 
+  /// Milliseconds from bootstrap start until first interactive stage (diagnostics).
+  int? coldStartMs;
+
   Future<void> bootstrap({bool systemReduceMotion = false}) async {
+    final started = DateTime.now();
     final engine = _engine;
     final prefs = await SharedPreferences.getInstance();
     onboardingComplete = prefs.getBool(_kOnboarded) ?? false;
@@ -113,8 +117,12 @@ class WalletController extends ChangeNotifier {
     biometricsEnabled = (await _secure.read(key: _kBio)) == '1';
     reduceMotion = systemReduceMotion || (prefs.getBool('auvora_reduce_motion') ?? false);
 
-    // Keep splash brief — premium feels fast.
-    await Future<void>.delayed(Duration(milliseconds: reduceMotion ? 200 : 480));
+    // Minimal paint settle only — no cosmetic half-second splash tax.
+    if (!reduceMotion) {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
+
+    coldStartMs = DateTime.now().difference(started).inMilliseconds;
 
     if (onboardingComplete && address != null && hasPin) {
       unlocked = false;

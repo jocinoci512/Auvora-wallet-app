@@ -4,6 +4,13 @@ import { Alert, Button, Switch } from '@auvora/ui';
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { clearAssistantHistoryStorage } from '../../lib/insights/demo';
+import {
+  getIntelligencePrefs,
+  setIntelligencePrefs,
+  GUIDANCE_DISCLAIMER,
+  type GuidanceLevel,
+  type IntelligencePrefs,
+} from '../../lib/intelligence/guidance';
 import { getPrivacyPrefs, setPrivacyPrefs, type PrivacyPrefs } from '../../lib/settings/prefs';
 import { getSecurityPrefs, setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
@@ -12,6 +19,7 @@ import { SettingsSectionNav } from './SettingsSectionNav';
 
 export function PrivacyCenterExperience(): ReactElement {
   const [prefs, setPrefs] = useState<PrivacyPrefs>(() => getPrivacyPrefs());
+  const [intel, setIntel] = useState<IntelligencePrefs>(() => getIntelligencePrefs());
   const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
   const [notificationPrivacy, setNotificationPrivacy] = useState(true);
   const [clipboardTimeoutSeconds, setClipboardTimeoutSeconds] = useState(30);
@@ -20,6 +28,7 @@ export function PrivacyCenterExperience(): ReactElement {
 
   useEffect(() => {
     setPrefs(getPrivacyPrefs());
+    setIntel(getIntelligencePrefs());
     const sec = getSecurityPrefs();
     setHideSensitiveInfo(sec.hideSensitiveInfo);
     setNotificationPrivacy(sec.notificationPrivacy);
@@ -30,6 +39,12 @@ export function PrivacyCenterExperience(): ReactElement {
     const saved = setPrivacyPrefs(next);
     setPrefs(saved);
     showToast('Privacy preference updated');
+  }
+
+  function patchIntel(next: Partial<IntelligencePrefs>): void {
+    const saved = setIntelligencePrefs(next);
+    setIntel(saved);
+    showToast('Guidance preference updated');
   }
 
   return (
@@ -144,25 +159,66 @@ export function PrivacyCenterExperience(): ReactElement {
       </section>
 
       <section className="cx-panel">
-        <h2>Auvora Assistant</h2>
+        <h2>Auvora Intelligence</h2>
         <p className="cx-meta">
-          On-device matching maps questions to curated educational guides. Keys and recovery phrases
-          are never collected. Answers educate — they never move funds or recommend trades.
+          Guidance appears in context — fees, security prompts, portfolio notes — not as a chatbot
+          takeover. {GUIDANCE_DISCLAIMER}
         </p>
+        <label className="cx-field">
+          <span>Guidance level</span>
+          <select
+            value={intel.guidanceLevel}
+            onChange={(e) => patchIntel({ guidanceLevel: e.target.value as GuidanceLevel })}
+            aria-label="Guidance level"
+          >
+            <option value="minimal">Less guidance — security and failures only</option>
+            <option value="balanced">Balanced (recommended)</option>
+            <option value="full">More guidance — extra educational hints</option>
+          </select>
+        </label>
         <div className="cx-row">
           <div>
-            <strong>Assistant suggestions</strong>
-            <p className="cx-meta">Allow the in-app assistant on this device.</p>
+            <strong>Educational hints</strong>
+            <p className="cx-meta">
+              Optional tips after key moments (import, biometrics, first transfer).
+            </p>
           </div>
           <Switch
-            checked={prefs.aiAssistant}
-            onCheckedChange={(v) => patch({ aiAssistant: v })}
-            aria-label="Auvora Assistant"
+            checked={intel.educationalHints}
+            onCheckedChange={(v) => patchIntel({ educationalHints: v })}
+            aria-label="Educational hints"
           />
         </div>
         <div className="cx-row">
           <div>
-            <strong>Keep chat history locally</strong>
+            <strong>Allow external AI services</strong>
+            <p className="cx-meta">
+              Off by default. When off, guidance stays on this device and never sends wallet data to
+              external AI.
+            </p>
+          </div>
+          <Switch
+            checked={intel.allowExternalAi}
+            onCheckedChange={(v) => patchIntel({ allowExternalAi: v })}
+            aria-label="Allow external AI services"
+          />
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>In-app Q&amp;A surface</strong>
+            <p className="cx-meta">
+              Allow the optional on-device question matcher (never moves funds).
+            </p>
+          </div>
+          <Switch
+            checked={prefs.aiAssistant}
+            onCheckedChange={(v) => patch({ aiAssistant: v })}
+            aria-label="Auvora Intelligence Q and A"
+          />
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Keep local Q&amp;A history</strong>
             <p className="cx-meta">
               Store recent questions on this device only. Turning this off clears stored history.
             </p>
@@ -173,15 +229,15 @@ export function PrivacyCenterExperience(): ReactElement {
               if (!v) clearAssistantHistoryStorage();
               patch({ aiChatHistory: v });
             }}
-            aria-label="Local assistant chat history"
+            aria-label="Local Q and A history"
           />
         </div>
         <div className="cx-platform__actions">
           <a className="cx-btn cx-btn--ghost" href="/assistant">
-            Open Assistant
+            Open Q&amp;A
           </a>
           <a className="cx-btn cx-btn--ghost" href="/learn">
-            Education Hub
+            Learning Center
           </a>
         </div>
       </section>

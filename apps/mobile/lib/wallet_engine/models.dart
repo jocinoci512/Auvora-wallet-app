@@ -327,6 +327,9 @@ class SyncStatusSnapshot {
     this.offline = false,
     this.priceStale = false,
     this.endpointIssues = false,
+    this.fromCache = false,
+    this.failedChains = const [],
+    this.lastSyncReason,
   });
 
   final WalletSyncState state;
@@ -335,6 +338,9 @@ class SyncStatusSnapshot {
   final bool offline;
   final bool priceStale;
   final bool endpointIssues;
+  final bool fromCache;
+  final List<String> failedChains;
+  final String? lastSyncReason;
 }
 
 @immutable
@@ -346,6 +352,10 @@ class WalletDiagnostics {
     required this.rpcFailures,
     required this.averageLatencyMs,
     required this.lastSyncAt,
+    this.retryAttempts = 0,
+    this.partialChainFailures = 0,
+    this.coldStartMs,
+    this.lastSyncReason,
   });
 
   final int cacheHits;
@@ -354,6 +364,23 @@ class WalletDiagnostics {
   final int rpcFailures;
   final int averageLatencyMs;
   final DateTime? lastSyncAt;
+  final int retryAttempts;
+  final int partialChainFailures;
+  final int? coldStartMs;
+  final String? lastSyncReason;
+
+  Map<String, Object?> toJson() => {
+        'cacheHits': cacheHits,
+        'cacheMisses': cacheMisses,
+        'rpcRequests': rpcRequests,
+        'rpcFailures': rpcFailures,
+        'averageLatencyMs': averageLatencyMs,
+        'lastSyncAt': lastSyncAt?.toIso8601String(),
+        'retryAttempts': retryAttempts,
+        'partialChainFailures': partialChainFailures,
+        'coldStartMs': coldStartMs,
+        'lastSyncReason': lastSyncReason,
+      };
 }
 
 @immutable

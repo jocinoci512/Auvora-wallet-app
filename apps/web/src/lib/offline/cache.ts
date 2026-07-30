@@ -83,4 +83,18 @@ export const OFFLINE_CACHE_NS = {
   portfolio: 'portfolio',
   assetMeta: 'asset-meta',
   me: 'me-profile',
+  networkMeta: 'network-meta',
+  diagnostics: 'diagnostics',
 } as const;
+
+export function clearOfflineCache(ns?: string): number {
+  if (typeof window === 'undefined') return 0;
+  const needle = ns ? `${PREFIX}${ns}:` : PREFIX;
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(needle)) keys.push(k);
+  }
+  for (const k of keys) localStorage.removeItem(k);
+  return keys.length;
+}

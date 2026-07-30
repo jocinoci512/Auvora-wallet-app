@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../intelligence/intelligence_controller.dart';
 import '../state/wallet_controller.dart';
 import 'app_shell.dart';
 
@@ -45,7 +46,15 @@ class _BiometricScreenState extends State<BiometricScreen> {
       footer: Column(
         children: [
           FilledButton(
-            onPressed: _available == false ? null : () => c.enableBiometrics(true),
+            onPressed: _available == false
+                ? null
+                : () async {
+                    await c.enableBiometrics(true);
+                    if (!context.mounted) return;
+                    if (c.biometricsEnabled) {
+                      context.read<IntelligenceController>().noteEvent('afterBiometrics');
+                    }
+                  },
             child: const Text('Enable biometrics'),
           ),
           const SizedBox(height: 10),

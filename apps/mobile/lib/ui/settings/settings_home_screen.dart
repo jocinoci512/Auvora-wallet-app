@@ -7,7 +7,10 @@ import 'about_screen.dart';
 import 'accessibility_settings_screen.dart';
 import 'account_settings_screen.dart';
 import 'appearance_settings_screen.dart';
+import 'diagnostics_screen.dart';
 import 'help_support_screen.dart';
+import '../intelligence/guidance_settings_screen.dart';
+import '../intelligence/learning_center_screen.dart';
 import 'networks_settings_screen.dart';
 import 'notification_center_screen.dart';
 import 'notification_settings_screen.dart';
@@ -97,6 +100,18 @@ class _SettingsHomeScreenState extends State<SettingsHomeScreen> {
       builder: (_) => const AccessibilitySettingsScreen(),
     ),
     _Category(
+      title: 'Guidance',
+      description: 'Auvora Intelligence level, tips, and Learning Center',
+      icon: Icons.auto_awesome_outlined,
+      builder: (_) => const GuidanceSettingsScreen(),
+    ),
+    _Category(
+      title: 'Learning Center',
+      description: 'Short lessons on wallets, fees, and security',
+      icon: Icons.menu_book_outlined,
+      builder: (_) => const LearningCenterScreen(),
+    ),
+    _Category(
       title: 'Support',
       description: 'FAQ, guides, and ways to get help',
       icon: Icons.help_outline_rounded,
@@ -107,6 +122,12 @@ class _SettingsHomeScreenState extends State<SettingsHomeScreen> {
       description: 'Version, legal, and acknowledgements',
       icon: Icons.info_outline_rounded,
       builder: (_) => const AboutScreen(),
+    ),
+    _Category(
+      title: 'Diagnostics',
+      description: 'Developer sync health, cache, and export — support only',
+      icon: Icons.monitor_heart_outlined,
+      builder: (_) => const DiagnosticsScreen(),
     ),
   ];
 

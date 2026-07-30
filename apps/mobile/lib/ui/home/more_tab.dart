@@ -8,6 +8,8 @@ import '../address_book_screen.dart';
 import '../connections/connect_dapp_screen.dart';
 import '../connections/permission_center_screen.dart';
 import '../connections/web3_activity_screen.dart';
+import '../intelligence/guidance_settings_screen.dart';
+import '../intelligence/learning_center_screen.dart';
 import '../security/security_center_screen.dart';
 import '../settings/notification_center_screen.dart';
 import '../settings/settings_home_screen.dart';
@@ -59,6 +61,28 @@ class MoreTab extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const NotificationCenterScreen()),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text('Guidance', style: Theme.of(context).textTheme.titleMedium),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.auto_awesome_outlined, color: AetherColors.lagoon),
+          title: const Text('Learning Center'),
+          subtitle: const Text('Short lessons on fees, keys, and networks'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const LearningCenterScreen()),
+          ),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.tune_rounded, color: AetherColors.lagoon),
+          title: const Text('Guidance settings'),
+          subtitle: const Text('How much Auvora Intelligence to show'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const GuidanceSettingsScreen()),
           ),
         ),
         const SizedBox(height: 12),

@@ -20,6 +20,7 @@ class PortfolioController extends ChangeNotifier {
 
   PortfolioSnapshot? snapshot;
   bool loading = true;
+  bool refreshing = false;
   bool hideBalances = false;
   bool hideZeroBalances = false;
   bool emptyMode = false;
@@ -46,15 +47,34 @@ class PortfolioController extends ChangeNotifier {
       (s) => s.name == sortName,
       orElse: () => AssetSort.valueDesc,
     );
-    await refresh(address);
+
+    // Cache-first paint — never block the first frame on RPC.
+    final cached = await _repo.loadCached();
+    if (cached != null) {
+      snapshot = cached;
+      loading = false;
+      notifyListeners();
+    } else {
+      loading = true;
+      notifyListeners();
+    }
+    await refresh(address, soft: snapshot != null);
   }
 
-  Future<void> refresh(String? address) async {
-    loading = true;
+  /// [soft] keeps existing holdings visible while a background sync runs.
+  Future<void> refresh(String? address, {bool soft = false}) async {
+    if (!soft || snapshot == null) {
+      loading = true;
+    }
+    refreshing = true;
     notifyListeners();
-    snapshot = await _repo.load(walletAddress: address, empty: emptyMode);
-    loading = false;
-    notifyListeners();
+    try {
+      snapshot = await _repo.load(walletAddress: address, empty: emptyMode);
+    } finally {
+      loading = false;
+      refreshing = false;
+      notifyListeners();
+    }
   }
 
   Future<void> setHideBalances(bool value) async {

@@ -30,7 +30,7 @@ export function EducationHubExperience(): ReactElement {
 
   return (
     <PlatformShell
-      title="Education Hub"
+      title="Learning Center"
       subtitle="Beginner-friendly guides — clear language, no jargon by default."
       reassure="Learn at your pace. Lessons educate; they never tell you what to buy or sell."
       backHref="/dashboard"
@@ -38,7 +38,7 @@ export function EducationHubExperience(): ReactElement {
       actions={
         <>
           <Link href="/assistant" className="cx-btn cx-btn--primary">
-            Ask Assistant
+            Ask a question
           </Link>
           <Link href="/settings/help" className="cx-btn cx-btn--ghost">
             Help & FAQ

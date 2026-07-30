@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactElement } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
+import { searchAssist } from '../../lib/intelligence/guidance';
 import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
 
@@ -30,9 +31,18 @@ const FAQ = [
     q: 'How do I spot a scam?',
     a: 'Auvora never DMs first asking for seed phrases. Bookmark official URLs. Review every connection and signature.',
   },
+  {
+    q: 'What is Auvora Intelligence?',
+    a: 'Plain-language guidance on fees, security prompts, and portfolio notes. It educates — it never recommends trades or moves funds. Adjust how much you see in Privacy → Guidance.',
+  },
 ] as const;
 
 const LINKS = [
+  {
+    href: '/learn',
+    title: 'Learning Center',
+    detail: 'Short lessons on wallets, fees, and networks',
+  },
   {
     href: '/status',
     title: 'Service status',
@@ -71,6 +81,16 @@ const LINKS = [
 ] as const;
 
 export function HelpSupportExperience(): ReactElement {
+  const [query, setQuery] = useState('');
+  const assist = useMemo(() => searchAssist(query), [query]);
+  const faqFiltered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return FAQ;
+    return FAQ.filter(
+      (item) => item.q.toLowerCase().includes(q) || item.a.toLowerCase().includes(q),
+    );
+  }, [query]);
+
   return (
     <PlatformShell
       title="Help & support"
@@ -81,14 +101,45 @@ export function HelpSupportExperience(): ReactElement {
       nav={<SettingsSectionNav current="/settings/help" />}
     >
       <section className="cx-panel">
+        <h2>Find something</h2>
+        <label className="cx-field">
+          <span>Search help, settings, or lessons</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Fees, recovery, permissions…"
+            aria-label="Search help"
+          />
+        </label>
+        {assist.length > 0 ? (
+          <ul className="cx-list" style={{ marginTop: '0.75rem' }}>
+            {assist.map((hit) => (
+              <li key={hit.id}>
+                <div>
+                  <strong>{hit.title}</strong>
+                  <p className="cx-meta">{hit.subtitle}</p>
+                </div>
+                <Link href={hit.href} className="cx-btn cx-btn--ghost">
+                  Open
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
+      <section className="cx-panel">
         <h2>FAQ</h2>
         <div className="cx-faq">
-          {FAQ.map((item) => (
+          {faqFiltered.map((item) => (
             <details key={item.q}>
               <summary>{item.q}</summary>
               <p>{item.a}</p>
             </details>
           ))}
+          {faqFiltered.length === 0 ? (
+            <p className="cx-meta">No FAQ matches. Try another word.</p>
+          ) : null}
         </div>
       </section>
 

@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../intelligence/catalog.dart';
+import '../intelligence/intelligence_controller.dart';
+import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../state/wallet_controller.dart';
@@ -13,6 +16,8 @@ import '../transfer/address_validation.dart';
 import '../wallet_engine/network_manager.dart';
 import '../wallet_engine/transaction_engine.dart';
 import 'home/home_shared.dart';
+import 'intelligence/intelligence_tip.dart';
+import 'intelligence/learning_center_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'transaction_detail_screen.dart';
 import 'widgets/passcode_entry.dart';
@@ -470,6 +475,22 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         _kv('Recipient receives', amount <= 0 ? '—' : '${amount.toStringAsFixed(6)} ${asset.ticker}'),
         _kv('You’ll have left', p.crypto(remaining, asset.ticker)),
         _kv('Estimated arrival', fee.arrivalLabel),
+        if (context.watch<IntelligenceController>().shouldShowExplanation(IntelligenceKind.transaction)) ...[
+          const SizedBox(height: 12),
+          if (fee.feeUsd >= 8)
+            IntelligenceExplainPanel(
+              explanation: IntelligenceCatalog.explainFeeEstimate(
+                networkLabel: asset.network.label,
+                elevated: true,
+              ),
+              onLearnMore: () => openLesson(context, 'gas-fees'),
+            )
+          else
+            const Text(
+              'Network fee estimate — pays the network to include your transfer. Timing is never guaranteed.',
+              style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
+            ),
+        ],
         if (insufficient) ...[
           const SizedBox(height: 10),
           SoftBanner(
@@ -702,6 +723,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         _submitting = false;
         _step = _SendStep.done;
       });
+      if (mounted) {
+        context.read<IntelligenceController>().noteEvent('afterFirstTx');
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -738,8 +762,19 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         const SizedBox(height: 12),
         const SoftBanner(
           message:
-              'Live network broadcast connects with chain sync. This device recorded a secured pending transfer in Activity.',
+              'This device recorded the transfer in Activity. We’ll update status as confirmation arrives.',
         ),
+        if (context.watch<IntelligenceController>().pendingTip case final tip?) ...[
+          const SizedBox(height: 12),
+          IntelligenceTipCard(
+            title: tip.title,
+            body: tip.body,
+            onDismiss: () => context.read<IntelligenceController>().dismissTip(tip.id),
+            onLearnMore: tip.learnTopicId == null
+                ? null
+                : () => openLesson(context, tip.learnTopicId),
+          ),
+        ],
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: () => copyText(context, tx.hash, label: 'Reference copied'),

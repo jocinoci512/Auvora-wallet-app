@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../intelligence/intelligence_controller.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'app_shell.dart';
@@ -31,6 +32,10 @@ class _ImportScreenState extends State<ImportScreen> {
   Future<void> _submit(WalletController c) async {
     setState(() => _localError = null);
     await c.commitMnemonic(_controller.text);
+    if (!mounted) return;
+    if (c.errorMessage == null && c.stage == AppStage.securityPin) {
+      context.read<IntelligenceController>().noteEvent('afterImport');
+    }
   }
 
   @override

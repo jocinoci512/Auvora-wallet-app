@@ -2,6 +2,7 @@
 
 import { AuvoraClient } from '@auvora/sdk';
 import { env } from '../env';
+import { isTransientHttpError, withGetRetry } from './reliability/get-retry';
 
 export const ACCESS_TOKEN_KEY = 'auvora_access_token';
 
@@ -27,6 +28,18 @@ export function createApiClient(options?: { timeoutMs?: number }): AuvoraClient 
   });
   client.setAccessToken(getStoredAccessToken());
   return client;
+}
+
+/** GET-shaped calls with capped retries (idempotent reads only). */
+export async function apiGetWithRetry<T>(
+  loader: (client: AuvoraClient) => Promise<T>,
+  options?: { timeoutMs?: number; maxAttempts?: number },
+): Promise<T> {
+  const client = createApiClient({ timeoutMs: options?.timeoutMs ?? 12_000 });
+  return withGetRetry(() => loader(client), {
+    maxAttempts: options?.maxAttempts ?? 3,
+    retryIf: isTransientHttpError,
+  });
 }
 
 export function formatApiError(error: unknown): string {

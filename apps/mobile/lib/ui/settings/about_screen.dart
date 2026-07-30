@@ -32,7 +32,7 @@ class AboutScreen extends StatelessWidget {
               context,
               title: 'Release notes',
               body:
-                  'Sprint 8: Settings Center, Notification Center, price alerts, appearance, privacy, networks, accessibility, help, and about — preview-first on this device.',
+                  'Sprint 9: Reliability — cache-first home, sync coordinator, partial chain sync, retries, diagnostics. Sprint 8: Settings Center and notifications preview.',
             ),
           ),
           ListTile(

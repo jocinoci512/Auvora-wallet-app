@@ -1,7 +1,7 @@
 import 'models.dart';
 import '../wallet_engine/sync_engine.dart';
 
-/// Local portfolio source until live chain + price APIs are wired (Sprint 3+).
+/// Local portfolio source until live chain + price APIs are wired.
 class PortfolioRepository {
   PortfolioRepository({SyncEngine? syncEngine}) : _syncEngine = syncEngine;
 
@@ -11,6 +11,16 @@ class PortfolioRepository {
     required SyncEngine syncEngine,
   }) {
     _syncEngine = syncEngine;
+  }
+
+  SyncEngine? get syncEngine => _syncEngine;
+
+  Future<PortfolioSnapshot?> loadCached() async {
+    final sync = _syncEngine;
+    if (sync == null) return null;
+    final snap = await sync.cachedPortfolio();
+    if (snap == null) return null;
+    return snap.copyWith(contacts: _contacts, isPreview: true, fromCache: true);
   }
 
   Future<PortfolioSnapshot> load({required String? walletAddress, bool empty = false}) async {
@@ -29,6 +39,8 @@ class PortfolioRepository {
         offline: snap.offline,
         priceError: snap.priceError,
         syncDelayed: snap.syncDelayed,
+        fromCache: snap.fromCache,
+        failedChains: snap.failedChains,
       );
     }
     await Future<void>.delayed(const Duration(milliseconds: 280));

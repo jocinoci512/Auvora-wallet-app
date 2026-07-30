@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../intelligence/guidance_settings_screen.dart';
 import '../security/security_center_screen.dart';
 
 class PrivacySettingsScreen extends StatelessWidget {
@@ -65,6 +66,20 @@ class PrivacySettingsScreen extends StatelessWidget {
             subtitle: const Text('Remind you on sensitive screens where the OS allows'),
             value: prefs.screenshotProtectionHint,
             onChanged: prefs.setScreenshotProtectionHint,
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Auvora Intelligence'),
+            subtitle: const Text(
+              'Guidance stays on this device by default. External AI needs your explicit consent in Guidance settings.',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const GuidanceSettingsScreen(),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
