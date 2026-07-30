@@ -6,6 +6,8 @@ import {
   ArrowUpRight,
   Bell,
   Boxes,
+  Eye,
+  EyeOff,
   Landmark,
   Settings,
   Banknote,
@@ -97,6 +99,8 @@ export function DashboardExperience(): ReactElement {
   const [network, setNetwork] = useState('all');
   const [sort, setSort] = useState<SortKey>('value');
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set(['h-btc', 'h-eth']));
+  const [hideBalances, setHideBalances] = useState(false);
+  const [hideZero, setHideZero] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [walletLabel, setWalletLabel] = useState('Personal');
   const [activityFilter, setActivityFilter] = useState<'all' | TxPreview['type']>('all');
@@ -125,7 +129,33 @@ export function DashboardExperience(): ReactElement {
       pin: s.pinEnabled,
       autoLock: s.autoLockMinutes ? `${s.autoLockMinutes} min` : 'Off',
     });
+    try {
+      setHideBalances(localStorage.getItem('auvora_hide_balances_v1') === '1');
+      setHideZero(localStorage.getItem('auvora_hide_zero_v1') === '1');
+    } catch {
+      /* ignore */
+    }
   }, []);
+
+  function toggleHideBalances(): void {
+    setHideBalances((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('auvora_hide_balances_v1', next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  function money(n: number): string {
+    return hideBalances ? '••••••' : formatUsd(n);
+  }
+
+  function units(balance: number, symbol: string): string {
+    return hideBalances ? `•••• ${symbol}` : `${balance} ${symbol}`;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +268,7 @@ export function DashboardExperience(): ReactElement {
   const filteredHoldings = useMemo(() => {
     const q = query.trim().toLowerCase();
     let rows = holdings.filter((h) => {
+      if (hideZero && h.balance <= 0) return false;
       if (network !== 'all' && h.network !== network) return false;
       if (!q) return true;
       return (
@@ -255,7 +286,7 @@ export function DashboardExperience(): ReactElement {
       return b.valueUsd - a.valueUsd;
     });
     return rows;
-  }, [favorites, holdings, network, query, sort]);
+  }, [favorites, hideZero, holdings, network, query, sort]);
 
   const dayGroups = useMemo(() => {
     const filtered = activityFilter === 'all' ? txs : txs.filter((t) => t.type === activityFilter);
@@ -321,6 +352,15 @@ export function DashboardExperience(): ReactElement {
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search assets"
           />
+          <button
+            type="button"
+            className="wd-icon-btn"
+            aria-label={hideBalances ? 'Show balances' : 'Hide balances'}
+            aria-pressed={hideBalances}
+            onClick={toggleHideBalances}
+          >
+            <Icon icon={hideBalances ? EyeOff : Eye} size="sm" />
+          </button>
           <Link href="/notifications" className="wd-icon-btn" aria-label="Notifications">
             <Icon icon={Bell} size="sm" />
           </Link>
@@ -339,21 +379,22 @@ export function DashboardExperience(): ReactElement {
         <p className="wd-hero__label" id="wd-portfolio-label">
           Total portfolio
         </p>
-        <p className="wd-hero__balance">
-          <CountUp value={totals.total} format={(n) => formatUsd(n)} />
+        <p className="wd-hero__balance" aria-live="polite">
+          {hideBalances ? '••••••' : <CountUp value={totals.total} format={(n) => formatUsd(n)} />}
         </p>
         <div className="wd-hero__delta">
           <span className={totals.dayPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {formatUsd(totals.day)} · {formatPct(totals.dayPct)} <span>24h</span>
+            {hideBalances ? '••••' : money(totals.day)} ·{' '}
+            {hideBalances ? '••••' : formatPct(totals.dayPct)} <span>24h</span>
           </span>
           <span className={totals.weekPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {formatPct(totals.weekPct)} <span>1W</span>
+            {hideBalances ? '••••' : formatPct(totals.weekPct)} <span>1W</span>
           </span>
           <span className={totals.monthPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {formatPct(totals.monthPct)} <span>1M</span>
+            {hideBalances ? '••••' : formatPct(totals.monthPct)} <span>1M</span>
           </span>
           <span className={totals.unrealized >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {formatUsd(totals.unrealized)} <span>P&amp;L</span>
+            {hideBalances ? '••••' : money(totals.unrealized)} <span>P&amp;L</span>
           </span>
         </div>
         <div className="wd-ranges" role="tablist" aria-label="Chart range">
@@ -456,6 +497,22 @@ export function DashboardExperience(): ReactElement {
             <option value="change">24h change</option>
             <option value="symbol">Name</option>
           </select>
+          <label className="wd-check">
+            <input
+              type="checkbox"
+              checked={hideZero}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setHideZero(next);
+                try {
+                  localStorage.setItem('auvora_hide_zero_v1', next ? '1' : '0');
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+            Hide zero
+          </label>
         </div>
         <ul className="wd-assets">
           {filteredHoldings.map((h) => {
@@ -507,7 +564,7 @@ export function DashboardExperience(): ReactElement {
                         </span>
                       </strong>
                       <small>
-                        {h.balance} · {h.network}
+                        {units(h.balance, h.symbol)} · {h.network}
                       </small>
                     </span>
                   </button>
@@ -533,9 +590,9 @@ export function DashboardExperience(): ReactElement {
                       padding: 0,
                     }}
                   >
-                    <strong>{formatUsd(h.valueUsd)}</strong>
+                    <strong>{money(h.valueUsd)}</strong>
                     <small className={h.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-                      {formatPct(h.change24hPct)}
+                      {hideBalances ? '••••' : formatPct(h.change24hPct)}
                     </small>
                   </button>
                 </div>
@@ -549,13 +606,13 @@ export function DashboardExperience(): ReactElement {
                     />
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--wd-muted)' }}>
                       Allocation {h.allocationPct.toFixed(1)}% · {h.walletLabel} · Price{' '}
-                      {formatUsd(h.priceUsd)}
+                      {money(h.priceUsd)}
                     </p>
                     <div className="wd-asset__detail-actions">
                       <Link href={`/send?asset=${h.symbol}`}>Send</Link>
                       <Link href={`/receive?asset=${h.symbol}`}>Receive</Link>
                       <Link href={`/swap?from=${h.symbol}`}>Swap</Link>
-                      <Link href="/portfolio">Details</Link>
+                      <Link href={`/assets/${h.id}`}>Details</Link>
                     </div>
                   </div>
                 ) : null}
@@ -594,7 +651,7 @@ export function DashboardExperience(): ReactElement {
             <div key={g.day} className="wd-day">
               <p className="wd-day__label">{g.day}</p>
               {g.items.map((tx) => (
-                <Link key={tx.id} href="/activity" className="wd-tx">
+                <Link key={tx.id} href={`/activity/${tx.id}`} className="wd-tx">
                   <span className="wd-tx__icon" aria-hidden>
                     {tx.type === 'receive' ? '↓' : tx.type === 'send' ? '↑' : '⇄'}
                   </span>

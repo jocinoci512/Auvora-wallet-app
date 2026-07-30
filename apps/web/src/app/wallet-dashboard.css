@@ -437,6 +437,16 @@
   flex-wrap: wrap;
   gap: 0.45rem;
   margin-bottom: 0.75rem;
+  align-items: center;
+}
+
+.wd-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--wd-muted);
+  margin-left: 0.25rem;
 }
 
 /* Assets */

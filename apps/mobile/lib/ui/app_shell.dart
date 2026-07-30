@@ -6,7 +6,7 @@ import '../theme/aether_theme.dart';
 import 'backup_screen.dart';
 import 'biometric_screen.dart';
 import 'create_explain_screen.dart';
-import 'dashboard_screen.dart';
+import 'home_shell.dart';
 import 'import_screen.dart';
 import 'permissions_screen.dart';
 import 'pin_screen.dart';
@@ -72,7 +72,7 @@ class AppShell extends StatelessWidget {
       case AppStage.permissions:
         return const PermissionsScreen();
       case AppStage.dashboard:
-        return const DashboardScreen();
+        return const HomeShell();
     }
   }
 }

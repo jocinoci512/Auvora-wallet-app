@@ -280,6 +280,18 @@ class WalletController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> authenticateForTransfer({String reason = 'Confirm this transfer'}) async {
+    if (!biometricsEnabled) return false;
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> lock() async {
     if (!hasPin) return;
     unlocked = false;

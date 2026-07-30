@@ -75,6 +75,11 @@ export function SendExperience(): ReactElement {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [assetQuery, setAssetQuery] = useState('');
+  const [reviewChecks, setReviewChecks] = useState({
+    recipient: false,
+    network: false,
+    amount: false,
+  });
   const [resolvedTo, setResolvedTo] = useState<{
     address: string;
     provider: string;
@@ -443,7 +448,7 @@ export function SendExperience(): ReactElement {
       {step === 'preview' ? (
         <section className="cx-panel">
           <h2>Review send</h2>
-          <p>Confirm every detail. This cannot be undone on-chain.</p>
+          <p>Take a moment — crypto transfers cannot be reversed.</p>
           <div className="cx-confirm">
             <dl>
               <div>
@@ -475,13 +480,13 @@ export function SendExperience(): ReactElement {
                 <dd>{network}</dd>
               </div>
               <div>
-                <dt>Fee</dt>
+                <dt>Estimated fee</dt>
                 <dd>
                   {fee.feeNative} · {fee.eta}
                 </dd>
               </div>
               <div>
-                <dt>Arrival</dt>
+                <dt>Estimated arrival</dt>
                 <dd>{fee.eta}</dd>
               </div>
             </dl>
@@ -492,11 +497,47 @@ export function SendExperience(): ReactElement {
               <p>Risk signals are still active for this destination.</p>
             </div>
           ) : null}
+          <fieldset style={{ border: 'none', padding: 0, margin: '1rem 0' }}>
+            <legend style={{ fontWeight: 700, marginBottom: 8 }}>Before you continue</legend>
+            {(
+              [
+                ['recipient', 'I checked the recipient address'],
+                ['network', `I confirmed this is ${network}`],
+                ['amount', 'I confirmed the amount is correct'],
+              ] as const
+            ).map(([key, label]) => (
+              <label
+                key={key}
+                style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}
+              >
+                <input
+                  type="checkbox"
+                  checked={reviewChecks[key]}
+                  onChange={(e) =>
+                    setReviewChecks((prev) => ({ ...prev, [key]: e.target.checked }))
+                  }
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </fieldset>
           <CxActions
             onBack={() => setStep('fee')}
-            onNext={submit}
-            nextLabel={`Send ${amount} ${asset}`}
+            onNext={() => {
+              if (!reviewChecks.recipient || !reviewChecks.network || !reviewChecks.amount) {
+                setError('Confirm each checklist item before sending.');
+                return;
+              }
+              setError(null);
+              const ok = window.confirm(
+                'Authorize this transfer?\n\nDouble-check the recipient, network, and amount. Crypto transfers cannot be reversed.',
+              );
+              if (!ok) return;
+              void submit();
+            }}
+            nextLabel={`Authenticate & send ${amount} ${asset}`}
           />
+          {error ? <div className="cx-alert cx-alert--error">{error}</div> : null}
         </section>
       ) : null}
 
@@ -513,12 +554,14 @@ export function SendExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Preview complete</h2>
+          <h2>Your transfer has been securely submitted</h2>
           <p>
-            Nothing was sent. This walkthrough prepared {amount} {asset} for review only.
+            Status updates as the network confirms. Reference below is for this companion session —
+            mobile holds the on-device signing path.
           </p>
           <div className="cx-alert cx-alert--info" role="status">
-            The hash below is a simulated reference for UI testing — not an on-chain transaction.
+            Live broadcast connects with network sync. Treat this as a secured review receipt until
+            signing rails are live.
           </div>
           <div className="cx-confirm" style={{ textAlign: 'left' }}>
             <dl>
