@@ -238,12 +238,6 @@ export const DEMO_MARKET_SNAPSHOT = {
   ethGasGwei: 18,
 };
 
-export const DEMO_NFT_PREVIEWS = [
-  { id: 'n1', name: 'Aura #1204', collection: 'Aether Forms', floorEth: 0.42 },
-  { id: 'n2', name: 'Ledger Study', collection: 'Quiet Blocks', floorEth: 0.18 },
-  { id: 'n3', name: 'Mist Gate', collection: 'Northern', floorEth: 0.91 },
-];
-
 export type DayGroup = { day: string; items: TxPreview[] };
 
 export function groupTxsByDay(txs: TxPreview[]): DayGroup[] {

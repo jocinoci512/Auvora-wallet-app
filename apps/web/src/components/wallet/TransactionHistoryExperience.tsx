@@ -3,7 +3,6 @@
 import { Download, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from 'react';
-import { DEMO_ACTIVITY as DEMO_NFT_ACTIVITY } from '../../lib/nft/demo';
 import { tradingAsActivityTx } from '../../lib/trading/activity';
 import {
   DEMO_ACTIVITY,
@@ -23,29 +22,6 @@ function slugId(value: string): string {
   );
 }
 
-function nftActivityAsTx(): ActivityTx[] {
-  return DEMO_NFT_ACTIVITY.map((n) => ({
-    id: n.id,
-    hash: n.id,
-    direction: n.kind === 'received' || n.kind === 'minted' ? 'receive' : 'send',
-    status: n.status === 'pending' ? 'pending' : 'confirmed',
-    network: n.network.toLowerCase().includes('solana')
-      ? 'solana'
-      : n.network.toLowerCase().includes('polygon')
-        ? 'polygon'
-        : 'ethereum',
-    asset: 'ETH',
-    amount: '1',
-    amountUsd: 0,
-    from: n.kind,
-    to: n.detail,
-    timestamp: n.timestamp,
-    note: n.title,
-    explorerUrl: n.assetId ? `/nfts/assets/${n.assetId}` : '/nfts/activity',
-    walletLabel: 'NFTs',
-  }));
-}
-
 function badgeClass(status: TxStatus): string {
   return `cx-badge cx-badge--${status}`;
 }
@@ -62,12 +38,10 @@ export function TransactionHistoryExperience({
   const [network, setNetwork] = useState<'all' | ActivityTx['network']>('all');
   const [selected, setSelected] = useState<ActivityTx | null>(null);
   const [trading, setTrading] = useState<ActivityTx[]>([]);
-  const [nftRows, setNftRows] = useState<ActivityTx[]>([]);
 
   useEffect(() => {
     const refresh = (): void => {
       setTrading(tradingAsActivityTx());
-      setNftRows(nftActivityAsTx());
     };
     refresh();
     const onVis = (): void => {
@@ -85,8 +59,8 @@ export function TransactionHistoryExperience({
 
   const source = useMemo(() => {
     const base = initial?.length ? initial : DEMO_ACTIVITY;
-    return [...trading, ...nftRows, ...base].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  }, [initial, trading, nftRows]);
+    return [...trading, ...base].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [initial, trading]);
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();

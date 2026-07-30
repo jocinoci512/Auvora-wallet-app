@@ -314,11 +314,11 @@ export function PortfolioExperience(): ReactElement {
       </section>
 
       <div className="cx-platform__actions">
-        <Link href="/nfts" className="cx-btn cx-btn--ghost">
-          Collectibles
-        </Link>
         <Link href="/activity" className="cx-btn cx-btn--ghost">
           Activity
+        </Link>
+        <Link href="/receive" className="cx-btn cx-btn--ghost">
+          Receive
         </Link>
       </div>
     </PlatformShell>

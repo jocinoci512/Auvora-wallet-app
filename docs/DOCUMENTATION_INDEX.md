@@ -90,6 +90,7 @@
 | Public launch checklist (Task 036)           | [`PUBLIC_LAUNCH_CHECKLIST.md`](./PUBLIC_LAUNCH_CHECKLIST.md)                                                       |
 | Phase 10 — Global launch / company readiness | [`design-system/phase-10/`](./design-system/phase-10/)                                                             |
 | Phase 10 follow-up — Executive launch review | [`design-system/phase-10-review/`](./design-system/phase-10-review/)                                               |
+| Sprint 1 — Native mobile build report        | [`SPRINT_1_IMPLEMENTATION_REPORT.md`](./SPRINT_1_IMPLEMENTATION_REPORT.md)                                         |
 | Phase 9 executive Go/No-Go                   | [`design-system/phase-9-review/10_Executive_Go_No_Go.md`](./design-system/phase-9-review/10_Executive_Go_No_Go.md) |
 | Executive launch audit (Task 037)            | [`../EXECUTIVE_LAUNCH_AUDIT.md`](../EXECUTIVE_LAUNCH_AUDIT.md)                                                     |
 | Production sign-off (Task 037)               | [`../PRODUCTION_SIGNOFF.md`](../PRODUCTION_SIGNOFF.md)                                                             |

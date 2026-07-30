@@ -1,0 +1,90 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../crypto/wallet_crypto.dart';
+import '../state/wallet_controller.dart';
+import '../theme/aether_theme.dart';
+import 'app_shell.dart';
+
+class BackupScreen extends StatefulWidget {
+  const BackupScreen({super.key});
+
+  @override
+  State<BackupScreen> createState() => _BackupScreenState();
+}
+
+class _BackupScreenState extends State<BackupScreen> {
+  bool _written = false;
+  bool _revealed = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<WalletController>();
+    final mnemonic = c.draftMnemonic ?? '';
+    final words = WalletCrypto.words(mnemonic);
+
+    return ScreenScaffold(
+      title: 'Write these words down',
+      subtitle:
+          'This is your recovery phrase — the only backup of this wallet. Anyone with these words can move your funds.',
+      reassure: 'Auvora never stores this phrase. Prefer paper. Avoid screenshots and cloud notes.',
+      onBack: c.backToExplain,
+      showProgress: true,
+      body: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => setState(() => _revealed = !_revealed),
+              child: Text(_revealed ? 'Hide words' : 'Show words'),
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              itemCount: words.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.15,
+              ),
+              itemBuilder: (context, i) {
+                return Semantics(
+                  label: _revealed ? 'Word ${i + 1}: ${words[i]}' : 'Word ${i + 1} hidden',
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardTheme.color,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AetherColors.border),
+                    ),
+                    child: Text(
+                      _revealed ? '${i + 1}. ${words[i]}' : '${i + 1}. ••••',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _written,
+            onChanged: words.length == 12
+                ? (v) => setState(() => _written = v ?? false)
+                : null,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text(
+              'I wrote these words down and stored them somewhere private.',
+              style: TextStyle(fontSize: 14, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+      footer: FilledButton(
+        onPressed: _written && words.length == 12 ? c.continueToVerify : null,
+        child: const Text('Continue to confirmation'),
+      ),
+    );
+  }
+}

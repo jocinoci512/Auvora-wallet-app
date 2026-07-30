@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react';
 import '../../app/core-experience.css';
 
 /**
- * Aether shell for Settings / Security / Web3 / NFT / Help / Notifications.
+ * Aether shell for Settings / Security / Web3 / Help / Notifications.
  * Same Mist/Lagoon language as TransactionShell, without step progress.
  */
 export function PlatformShell({

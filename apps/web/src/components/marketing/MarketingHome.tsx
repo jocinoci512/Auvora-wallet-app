@@ -61,13 +61,11 @@ const FEATURES = [
     ),
   },
   {
-    title: 'NFT management',
-    body: 'A quiet gallery for collectibles with media that fails gracefully.',
+    title: 'Security that teaches',
+    body: 'Passcodes, biometrics, and recovery guidance without fear or jargon.',
     icon: (
       <Icon>
-        <rect x="3" y="5" width="18" height="14" rx="2" />
-        <circle cx="9" cy="11" r="1.5" />
-        <path d="M3 16l5-4 4 3 4-5 5 6" />
+        <path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6l7-3z" />
       </Icon>
     ),
   },
@@ -287,7 +285,7 @@ export function MarketingHome(): ReactElement {
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
   const [testimonial, setTestimonial] = useState(0);
   const [statsRef, statsInView] = useInView<HTMLDivElement>();
-  const [showcaseTab, setShowcaseTab] = useState<'portfolio' | 'swap' | 'nfts'>('portfolio');
+  const [showcaseTab, setShowcaseTab] = useState<'portfolio' | 'swap' | 'security'>('portfolio');
 
   const nextTestimonial = useCallback(() => {
     setTestimonial((i) => (i + 1) % TESTIMONIALS.length);
@@ -400,7 +398,7 @@ export function MarketingHome(): ReactElement {
               A wallet that feels alive — never restless.
             </h2>
             <p className="mh-lede">
-              Portfolio, activity, NFTs, send, receive, and swap in one composed surface. Motion
+              Portfolio, activity, security, send, receive, and swap in one composed surface. Motion
               explains change; it never performs.
             </p>
             <div className="mh-showcase__tabs" role="tablist" aria-label="Product views">
@@ -408,7 +406,7 @@ export function MarketingHome(): ReactElement {
                 [
                   ['portfolio', 'Portfolio'],
                   ['swap', 'Swap'],
-                  ['nfts', 'NFTs'],
+                  ['security', 'Security'],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -438,11 +436,11 @@ export function MarketingHome(): ReactElement {
                   <li>Progress you can trust</li>
                 </>
               ) : null}
-              {showcaseTab === 'nfts' ? (
+              {showcaseTab === 'security' ? (
                 <>
-                  <li>Stable media frames</li>
-                  <li>Collection clarity</li>
-                  <li>Graceful empty states</li>
+                  <li>Passcode and biometrics</li>
+                  <li>Recovery phrase education</li>
+                  <li>Calm, plain-language guidance</li>
                 </>
               ) : null}
             </ul>
@@ -458,11 +456,11 @@ export function MarketingHome(): ReactElement {
                     <span className="mh-mini-swap__cta">Review swap</span>
                   </div>
                 ) : null}
-                {showcaseTab === 'nfts' ? (
-                  <div className="mh-mini-nfts" aria-hidden>
-                    <span />
-                    <span />
-                    <span />
+                {showcaseTab === 'security' ? (
+                  <div className="mh-mini-swap" aria-hidden>
+                    <p>Security</p>
+                    <span>Passcode · Biometrics · Backup</span>
+                    <span className="mh-mini-swap__cta">Review protection</span>
                   </div>
                 ) : null}
               </div>

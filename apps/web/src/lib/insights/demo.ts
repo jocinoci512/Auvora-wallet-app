@@ -366,20 +366,6 @@ export const LEARN_TOPICS: LearnTopic[] = [
     hrefLabel: 'Permissions',
   },
   {
-    id: 'nfts',
-    category: 'NFTs',
-    title: 'Collectibles, spam, and verified collections',
-    summary: 'How to hide junk and read traits calmly.',
-    minutes: 4,
-    body: [
-      'NFTs are unique tokens — art, tickets, or memberships. Spam NFTs try to lure clicks.',
-      'Hide junk in Collectibles and prefer collections you recognize.',
-      'Never approve unlimited permissions from a link inside a mystery NFT.',
-    ],
-    href: '/nfts',
-    hrefLabel: 'Collectibles',
-  },
-  {
     id: 'networks',
     category: 'Blockchain Networks',
     title: 'Bitcoin, Ethereum, Solana — different jobs',
@@ -484,13 +470,13 @@ const ASSISTANT_KB: { match: RegExp; reply: AssistantReply }[] = [
     },
   },
   {
-    match: /nft|collectible|spam nft/i,
+    match: /security|scam|phish|seed|recovery phrase/i,
     reply: {
       educational: true,
       answer:
-        'NFTs are unique tokens — art, tickets, or memberships. Spam NFTs try to lure clicks; hide them in Collectibles and prefer collections you recognize. Never approve unlimited permissions from an unknown site.',
+        'Auvora support never asks for your recovery phrase. Bookmark official URLs, double-check dApp permissions, and use Security Center to review devices and hygiene tips.',
       related: [
-        { label: 'Collectibles', href: '/nfts' },
+        { label: 'Security Center', href: '/settings/security' },
         { label: 'Permissions', href: '/web3/permissions' },
       ],
     },
@@ -527,7 +513,7 @@ export function answerAssistant(question: string): AssistantReply {
     return {
       educational: true,
       answer:
-        'Ask about fees, recovery, staking, bridges, NFTs, or portfolio concepts — in everyday language. I explain; I do not give investment advice.',
+        'Ask about fees, recovery, staking, bridges, or portfolio concepts — in everyday language. I explain; I do not give investment advice.',
     };
   }
   for (const row of ASSISTANT_KB) {
@@ -536,7 +522,7 @@ export function answerAssistant(question: string): AssistantReply {
   return {
     educational: true,
     answer:
-      'I explain fees, security, recovery, staking, bridges, NFTs, and portfolio basics in plain language. I never move funds, ask for your recovery phrase, or tell you what to buy or sell. Try: “Why are gas fees high?” or “How do I recover my wallet?”',
+      'I explain fees, security, recovery, staking, bridges, and portfolio basics in plain language. I never move funds, ask for your recovery phrase, or tell you what to buy or sell. Try: “Why are gas fees high?” or “How do I recover my wallet?”',
     related: [
       { label: 'Education Hub', href: '/learn' },
       { label: 'Insights', href: '/insights' },

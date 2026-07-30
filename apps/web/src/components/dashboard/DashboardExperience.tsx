@@ -10,7 +10,6 @@ import {
   Settings,
   Banknote,
   ShoppingCart,
-  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
@@ -21,7 +20,6 @@ import {
   DEMO_HOLDINGS,
   DEMO_MARKET_SNAPSHOT,
   DEMO_MOVERS,
-  DEMO_NFT_PREVIEWS,
   DEMO_PERFORMANCE,
   DEMO_TXS,
   DEMO_WATCHLIST,
@@ -55,7 +53,6 @@ const MORE_ACTIONS = [
   { href: '/sell', label: 'Sell', icon: Banknote },
   { href: '/staking', label: 'Stake', icon: Landmark },
   { href: '/bridge', label: 'Bridge', icon: Boxes },
-  { href: '/nfts', label: 'NFTs', icon: Sparkles },
 ] as const;
 
 const RANGES: ChartRange[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
@@ -691,30 +688,6 @@ export function DashboardExperience(): ReactElement {
                 {formatPct(m.change24hPct)}
               </strong>
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="wd-section" aria-labelledby="wd-nft-title">
-        <div className="wd-section__head">
-          <h2 className="wd-section__title" id="wd-nft-title">
-            Collectibles
-          </h2>
-          <Link className="wd-section__link" href="/nfts">
-            Gallery
-          </Link>
-        </div>
-        <div className="wd-nfts">
-          {DEMO_NFT_PREVIEWS.map((n) => (
-            <Link key={n.id} href={`/nfts`} className="wd-nft">
-              <div className="wd-nft__art" aria-hidden />
-              <div className="wd-nft__meta">
-                <strong>{n.name}</strong>
-                <small>
-                  {n.collection} · {n.floorEth} ETH floor
-                </small>
-              </div>
-            </Link>
           ))}
         </div>
       </section>

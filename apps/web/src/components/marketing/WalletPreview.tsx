@@ -10,7 +10,7 @@ const ASSETS = [
   { name: 'USDC', ticker: 'USDC', amount: '4,820', fiat: '$4,820', delta: '0.0%' },
 ];
 
-const TABS = ['Portfolio', 'Activity', 'NFTs'] as const;
+const TABS = ['Portfolio', 'Activity', 'Security'] as const;
 
 type WalletPreviewProps = {
   interactive?: boolean;
@@ -124,13 +124,21 @@ export function WalletPreview({
                 </li>
               </ul>
             ) : null}
-            {interactive && tab === 'NFTs' ? (
-              <div className="mh-device__nfts">
-                <div className="mh-device__nft" />
-                <div className="mh-device__nft" />
-                <div className="mh-device__nft" />
-                <div className="mh-device__nft" />
-              </div>
+            {interactive && tab === 'Security' ? (
+              <ul className="mh-device__activity">
+                <li>
+                  <strong>Passcode</strong>
+                  <span>On</span>
+                </li>
+                <li>
+                  <strong>Biometrics</strong>
+                  <span>Ready</span>
+                </li>
+                <li>
+                  <strong>Recovery</strong>
+                  <span>Backed up</span>
+                </li>
+              </ul>
             ) : null}
           </div>
           <svg className="mh-device__chart" viewBox="0 0 280 64" aria-hidden="true">

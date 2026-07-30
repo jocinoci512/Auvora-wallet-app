@@ -1,17 +1,6 @@
-import { Suspense, type ReactElement } from 'react';
-import { NftGalleryExperience } from '../../components/nft/NftGalleryExperience';
-import '../nft-experience.css';
+import { redirect } from 'next/navigation';
 
-export default function NftsPage(): ReactElement {
-  return (
-    <Suspense
-      fallback={
-        <div className="nx" aria-busy="true" aria-label="Loading gallery">
-          <div className="nx-skeleton" />
-        </div>
-      }
-    >
-      <NftGalleryExperience />
-    </Suspense>
-  );
+/** NFT product line permanently removed — preserve old bookmarks. */
+export default function NftsRemovedRedirect(): never {
+  redirect('/dashboard');
 }

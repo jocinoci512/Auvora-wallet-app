@@ -1,6 +1,5 @@
-import type { ReactElement } from 'react';
-import { NftActivityExperience } from '../../../components/nft/NftActivityExperience';
+import { redirect } from 'next/navigation';
 
-export default function NftActivityPage(): ReactElement {
-  return <NftActivityExperience />;
+export default function NftActivityRemoved(): never {
+  redirect('/dashboard');
 }

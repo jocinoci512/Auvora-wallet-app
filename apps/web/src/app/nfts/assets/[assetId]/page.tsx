@@ -1,6 +1,5 @@
-import type { ReactElement } from 'react';
-import { NftDetailExperience } from '../../../../components/nft/NftDetailExperience';
+import { redirect } from 'next/navigation';
 
-export default function NftAssetPage(): ReactElement {
-  return <NftDetailExperience />;
+export default function NftAssetRemoved(): never {
+  redirect('/dashboard');
 }

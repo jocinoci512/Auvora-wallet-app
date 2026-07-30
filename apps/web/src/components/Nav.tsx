@@ -25,7 +25,6 @@ const moreLinks: NavLink[] = [
   { href: '/buy', label: 'Buy' },
   { href: '/sell', label: 'Sell' },
   { href: '/staking', label: 'Staking' },
-  { href: '/nfts', label: 'NFTs' },
   { href: '/learn', label: 'Learn' },
   { href: '/trust', label: 'Trust' },
   { href: '/legal', label: 'Legal' },

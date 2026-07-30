@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
-export default function DigitalAssetsPage() {
-  redirect('/nfts');
+/** Digital assets hub removed with NFT product line. */
+export default function DigitalAssetsRemovedRedirect(): never {
+  redirect('/dashboard');
 }
