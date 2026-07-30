@@ -3,15 +3,19 @@ import 'package:uuid/uuid.dart';
 
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../wallet_engine/transaction_engine.dart';
 import 'models.dart';
 import 'quote_engine.dart';
 
 typedef EngineStatusListener = void Function(EngineStatus status);
 
 class EngineController extends ChangeNotifier {
-  EngineController({QuoteEngine? quotes}) : _quotes = quotes ?? QuoteEngine();
+  EngineController({QuoteEngine? quotes, TransactionEngine? transactionEngine})
+      : _quotes = quotes ?? QuoteEngine(),
+        _transactionEngine = transactionEngine;
 
   final QuoteEngine _quotes;
+  final TransactionEngine? _transactionEngine;
   static const _uuid = Uuid();
 
   final List<EngineReceipt> history = [];
@@ -93,8 +97,12 @@ class EngineController extends ChangeNotifier {
     onStatus?.call(EngineStatus.preparing);
     notifyListeners();
     try {
-      final id = 'eng-${_uuid.v4().substring(0, 10)}';
-      final reference =
+      final submission = await _transactionEngine?.submitEngineQuote(
+        quote: quote,
+        walletAddress: walletAddress,
+      );
+      final id = submission?.id ?? 'eng-${_uuid.v4().substring(0, 10)}';
+      final reference = submission?.hash ??
           '0x${id.hashCode.toRadixString(16)}${quote.id.hashCode.abs().toRadixString(16)}';
       _consumedQuoteIds.add(quote.id);
 

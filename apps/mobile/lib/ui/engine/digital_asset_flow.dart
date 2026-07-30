@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +10,8 @@ import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../../wallet_engine/network_manager.dart';
+import '../../wallet_engine/transaction_engine.dart';
 import '../home/home_shared.dart';
 import 'engine_shared.dart';
 
@@ -33,7 +33,8 @@ class DigitalAssetFlowScreen extends StatefulWidget {
 class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
   _Phase _phase = _Phase.configure;
   final _amountCtrl = TextEditingController(text: '100');
-  final _engine = EngineController();
+  late final EngineController _engine;
+  bool _engineReady = false;
 
   String _from = 'ETH';
   String _to = 'USDC';
@@ -90,6 +91,14 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_engineReady) return;
+    _engine = EngineController(transactionEngine: context.read<TransactionEngine>());
+    _engineReady = true;
+  }
+
+  @override
   void dispose() {
     _autoRefresh?.cancel();
     _debounce?.cancel();
@@ -107,16 +116,9 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
   }
 
   Future<void> _checkConnectivity() async {
-    if (kIsWeb) {
-      setState(() => _offline = false);
-      return;
-    }
-    try {
-      final result = await InternetAddress.lookup('example.com').timeout(const Duration(seconds: 2));
-      if (mounted) setState(() => _offline = result.isEmpty);
-    } catch (_) {
-      if (mounted) setState(() => _offline = true);
-    }
+    final network = context.read<NetworkManager>();
+    await network.refresh();
+    if (mounted) setState(() => _offline = network.offline);
   }
 
   List<AssetHolding> get _assets =>
@@ -349,7 +351,7 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
       final receipt = await _engine.submit(
         quote: quote,
         portfolio: portfolio,
-        walletAddress: wallet.address ?? '',
+        walletAddress: wallet.addressFor(_network) ?? wallet.address ?? '',
         offline: _offline,
         onStatus: (s) {
           if (mounted) setState(() => _liveStatus = s);

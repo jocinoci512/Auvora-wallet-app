@@ -63,6 +63,12 @@ export function totalFeesUsd(q: AssetQuote): number {
   return q.fees.reduce((s, f) => s + f.fiatUsd, 0);
 }
 
+export function fmtAmount(value: number): string {
+  if (value >= 100) return value.toFixed(2);
+  if (value >= 1) return value.toFixed(4);
+  return value.toFixed(6);
+}
+
 export function arrivalLabel(seconds: number): string {
   if (seconds < 60) return 'Usually under a minute';
   if (seconds < 3600) return `About ${Math.ceil(seconds / 60)} minutes`;

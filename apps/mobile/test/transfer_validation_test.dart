@@ -43,10 +43,13 @@ void main() {
     expect(p.address.length, 42);
   });
 
-  test('receive safety only allows EVM on device today', () {
+  test('receive safety allows supported multi-chain networks on device', () {
     expect(AddressValidation.canReceiveOnDevice(AssetNetwork.ethereum), isTrue);
-    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.bitcoin), isFalse);
-    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.solana), isFalse);
+    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.bitcoin), isTrue);
+    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.solana), isTrue);
+    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.tron), isTrue);
+    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.polygon), isTrue);
+    expect(AddressValidation.canReceiveOnDevice(AssetNetwork.bnbSmartChain), isTrue);
   });
 
   test('detects empty address', () {

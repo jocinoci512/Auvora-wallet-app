@@ -56,6 +56,8 @@ enum AssetNetwork {
   ethereum,
   bitcoin,
   solana,
+  bnbSmartChain,
+  tron,
   polygon;
 
   String get label {
@@ -66,6 +68,10 @@ enum AssetNetwork {
         return 'Bitcoin';
       case AssetNetwork.solana:
         return 'Solana';
+      case AssetNetwork.bnbSmartChain:
+        return 'BNB Smart Chain';
+      case AssetNetwork.tron:
+        return 'Tron';
       case AssetNetwork.polygon:
         return 'Polygon';
     }
@@ -79,6 +85,10 @@ enum AssetNetwork {
         return 'BTC';
       case AssetNetwork.solana:
         return 'SOL';
+      case AssetNetwork.bnbSmartChain:
+        return 'BNB';
+      case AssetNetwork.tron:
+        return 'TRX';
       case AssetNetwork.polygon:
         return 'POL';
     }

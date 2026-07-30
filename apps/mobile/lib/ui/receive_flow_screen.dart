@@ -55,7 +55,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
   Widget build(BuildContext context) {
     final wallet = context.watch<WalletController>();
     final portfolio = context.watch<PortfolioController>();
-    final address = wallet.address ?? '';
+    final address = wallet.addressFor(_network) ?? '';
     final assets = portfolio.snapshot?.assets ?? const <AssetHolding>[];
     final safe = AddressValidation.canReceiveOnDevice(_network);
     AssetHolding? asset = portfolio.assetById(_assetId ?? '');
@@ -92,7 +92,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final n in AssetNetwork.values)
+                    for (final n in wallet.availableNetworks)
                       ChoiceChip(
                         label: Text(n.label),
                         selected: _network == n,
@@ -115,7 +115,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   SoftBanner(
                     tone: BannerTone.error,
                     message:
-                        '${_network.label} deposit addresses aren’t ready on this device yet. Choose Ethereum or Polygon to receive safely — or wait for full network sync.',
+                        '${_network.label} deposit addresses aren’t ready on this device yet. Wait for full network sync before receiving here.',
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -123,13 +123,13 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AetherColors.muted, height: 1.45),
                   ),
                 ] else ...[
-                  if (assets.any((a) => AddressValidation.isEvm(a.network))) ...[
+                  if (assets.any((a) => a.network == _network || AddressValidation.isEvm(a.network))) ...[
                     Text('Asset', style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       initialValue: asset?.id,
                       items: [
-                        for (final a in assets.where((x) => AddressValidation.isEvm(x.network)))
+                        for (final a in assets.where((x) => x.network == _network))
                           DropdownMenuItem(value: a.id, child: Text('${a.name} (${a.ticker})')),
                       ],
                       onChanged: (id) {

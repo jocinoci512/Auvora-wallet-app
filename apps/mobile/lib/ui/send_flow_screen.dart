@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +10,8 @@ import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../transfer/address_book.dart';
 import '../transfer/address_validation.dart';
+import '../wallet_engine/network_manager.dart';
+import '../wallet_engine/transaction_engine.dart';
 import 'home/home_shared.dart';
 import 'qr_scanner_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -85,12 +85,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       setState(() => _offline = false);
       return;
     }
-    try {
-      final result = await InternetAddress.lookup('example.com').timeout(const Duration(seconds: 2));
-      if (mounted) setState(() => _offline = result.isEmpty);
-    } catch (_) {
-      if (mounted) setState(() => _offline = true);
-    }
+    final network = context.read<NetworkManager>();
+    await network.refresh();
+    if (mounted) setState(() => _offline = network.offline);
   }
 
   void _setTo(String raw) {
@@ -315,7 +312,10 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     final asset = _asset!;
     final book = context.watch<AddressBookStore>();
     final validation = AddressValidation.validate(_toCtrl.text, expected: asset.network);
-    final self = AddressValidation.looksLikeSameWallet(_toCtrl.text, _wallet.address ?? '');
+    final self = AddressValidation.looksLikeSameWallet(
+      _toCtrl.text,
+      _wallet.addressFor(_asset?.network ?? AssetNetwork.ethereum) ?? _wallet.address ?? '',
+    );
     final contacts = book.forNetwork(asset.network);
     final recent = book.recentFor(asset.network);
 
@@ -516,7 +516,10 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     final amount = _parsedAmount(asset);
     final fee = estimateFee(asset: asset, amount: amount);
     final to = _toCtrl.text.trim();
-    final self = AddressValidation.looksLikeSameWallet(to, _wallet.address ?? '');
+    final self = AddressValidation.looksLikeSameWallet(
+      to,
+      _wallet.addressFor(asset.network) ?? _wallet.address ?? '',
+    );
     final short = to.length > 10 ? '…${to.substring(to.length - 6)}' : to;
 
     final items = <(String, String)>[
@@ -658,6 +661,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
 
   Future<void> _submit() async {
     if (_doubleTapGuard || _submitting) return;
+    final engine = context.read<TransactionEngine>();
     await _checkConnectivity();
     if (_offline) {
       if (mounted) {
@@ -675,15 +679,21 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     try {
       final asset = _asset!;
       final amount = _parsedAmount(asset);
-      final fee = estimateFee(asset: asset, amount: amount);
-      final tx = await _portfolio.recordOutgoingSend(
+      final result = await engine.submitSend(
         asset: asset,
         to: _toCtrl.text.trim(),
-        from: _wallet.address ?? '',
         amount: amount,
-        feeCrypto: fee.feeCrypto,
-        feeAsset: fee.feeAsset,
+        memo: 'Sent from Auvora',
       );
+      final tx = result.tx;
+      final snap = _portfolio.snapshot;
+      if (snap != null) {
+        final assets = snap.assets.map((item) {
+          if (item.id != asset.id) return item;
+          return item.copyWith(balance: (item.balance - amount).clamp(0, double.infinity).toDouble());
+        }).toList();
+        _portfolio.applyLocalSnapshot(assets: assets, prependTx: tx);
+      }
       await _book.rememberRecipient(address: _toCtrl.text.trim(), network: asset.network);
       HapticFeedback.mediumImpact();
       if (!mounted) return;

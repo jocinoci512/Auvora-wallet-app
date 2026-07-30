@@ -9,7 +9,7 @@ enum AssetSort { valueDesc, nameAsc, changeDesc, balanceDesc }
 class PortfolioController extends ChangeNotifier {
   PortfolioController({PortfolioRepository? repository}) : _repo = repository ?? PortfolioRepository();
 
-  final PortfolioRepository _repo;
+  PortfolioRepository _repo;
 
   static const _kHideBalances = 'auvora_hide_balances_v1';
   static const _kHideZero = 'auvora_hide_zero_v1';
@@ -28,6 +28,11 @@ class PortfolioController extends ChangeNotifier {
   AssetSort sort = AssetSort.valueDesc;
   String assetQuery = '';
   String globalQuery = '';
+
+  void attachRepository(PortfolioRepository repository) {
+    if (identical(_repo, repository)) return;
+    _repo = repository;
+  }
 
   Future<void> bootstrap(String? address) async {
     final prefs = await SharedPreferences.getInstance();

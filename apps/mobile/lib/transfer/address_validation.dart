@@ -44,10 +44,14 @@ class AddressValidation {
   );
 
   static bool isEvm(AssetNetwork n) =>
-      n == AssetNetwork.ethereum || n == AssetNetwork.polygon;
+      n == AssetNetwork.ethereum || n == AssetNetwork.polygon || n == AssetNetwork.bnbSmartChain;
 
   /// True when this device can safely show a receive address for [network].
-  static bool canReceiveOnDevice(AssetNetwork network) => isEvm(network);
+  static bool canReceiveOnDevice(AssetNetwork network) =>
+      network == AssetNetwork.bitcoin ||
+      network == AssetNetwork.solana ||
+      network == AssetNetwork.tron ||
+      isEvm(network);
 
   static ParsedPayment parsePaymentUri(String raw) {
     final input = raw.trim();
@@ -63,6 +67,9 @@ class AddressValidation {
       if (scheme == 'ethereum' ||
           scheme == 'bitcoin' ||
           scheme == 'solana' ||
+          scheme == 'tron' ||
+          scheme == 'bnb' ||
+          scheme == 'binance' ||
           scheme == 'polygon') {
         final rest = input.substring(schemeIdx + 1);
         final parts = rest.split('?');
@@ -153,6 +160,9 @@ class AddressValidation {
       if (v.startsWith('1') || v.startsWith('3') || v.toLowerCase().startsWith('bc1')) {
         return AssetNetwork.bitcoin;
       }
+      if (v.startsWith('T') && v.length >= 34) {
+        return AssetNetwork.tron;
+      }
       return AssetNetwork.solana;
     }
     return null;
@@ -196,6 +206,20 @@ FeeEstimate estimateFee({
         feeCrypto: 0.00005,
         feeUsd: 0.00005 * (asset.ticker == 'SOL' ? asset.priceUsd : 148),
         feeAsset: 'SOL',
+        arrivalLabel: 'Usually under a minute',
+      );
+    case AssetNetwork.bnbSmartChain:
+      return const FeeEstimate(
+        feeCrypto: 0.0003,
+        feeUsd: 0.18,
+        feeAsset: 'BNB',
+        arrivalLabel: 'Usually under a minute',
+      );
+    case AssetNetwork.tron:
+      return const FeeEstimate(
+        feeCrypto: 1.25,
+        feeUsd: 0.16,
+        feeAsset: 'TRX',
         arrivalLabel: 'Usually under a minute',
       );
     case AssetNetwork.polygon:

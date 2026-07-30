@@ -14,12 +14,17 @@ class TransactionDetailScreen extends StatelessWidget {
   String? _explorerUrl(PortfolioTx tx) {
     switch (tx.network) {
       case AssetNetwork.ethereum:
-      case AssetNetwork.polygon:
         return 'https://etherscan.io/tx/${tx.hash}';
+      case AssetNetwork.polygon:
+        return 'https://polygonscan.com/tx/${tx.hash}';
       case AssetNetwork.bitcoin:
         return 'https://mempool.space/tx/${tx.hash}';
       case AssetNetwork.solana:
         return 'https://solscan.io/tx/${tx.hash}';
+      case AssetNetwork.bnbSmartChain:
+        return 'https://bscscan.com/tx/${tx.hash}';
+      case AssetNetwork.tron:
+        return 'https://tronscan.org/#/transaction/${tx.hash}';
     }
   }
 
