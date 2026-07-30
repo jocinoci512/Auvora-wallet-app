@@ -79,9 +79,37 @@ class WalletCrypto {
     return choices;
   }
 
+  /// Slow iterated hash for device PIN (v2). Legacy single-pass still verifies.
+  /// Replace with Argon2id before public beta when a native KDF is wired.
   static String pinPepperHash(String pin, String salt) {
-    final bytes = utf8.encode('$salt::$pin::auvora');
-    return sha256.convert(bytes).toString();
+    var digest = sha256.convert(utf8.encode('auvora-pin-v2|$salt|$pin'));
+    for (var i = 0; i < 100000; i++) {
+      digest = sha256.convert(digest.bytes);
+    }
+    return 'v2:${digest.toString()}';
+  }
+
+  static bool verifyPinHash(String pin, String salt, String stored) {
+    final String candidate;
+    if (stored.startsWith('v2:')) {
+      candidate = pinPepperHash(pin, salt);
+    } else if (stored.startsWith('v3:')) {
+      // Reserved for Argon2id migration — fall through to reject until wired.
+      return false;
+    } else {
+      candidate = sha256.convert(utf8.encode('$salt::$pin::auvora')).toString();
+    }
+    return _constantTimeEquals(candidate, stored);
+  }
+
+  /// Constant-time string compare to reduce PIN timing leakage.
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return diff == 0;
   }
 
   static String newSalt() {

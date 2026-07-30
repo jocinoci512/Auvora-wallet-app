@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
+import '../../privacy/screenshot_guard.dart';
 import '../../theme/aether_theme.dart';
 import '../intelligence/guidance_settings_screen.dart';
 import '../security/security_center_screen.dart';
@@ -65,7 +66,10 @@ class PrivacySettingsScreen extends StatelessWidget {
             title: const Text('Screenshot protection hint'),
             subtitle: const Text('Remind you on sensitive screens where the OS allows'),
             value: prefs.screenshotProtectionHint,
-            onChanged: prefs.setScreenshotProtectionHint,
+            onChanged: (v) async {
+              await prefs.setScreenshotProtectionHint(v);
+              await ScreenshotGuard.setEnabled(v);
+            },
           ),
           const SizedBox(height: 8),
           ListTile(

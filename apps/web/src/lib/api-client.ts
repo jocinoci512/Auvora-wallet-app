@@ -8,15 +8,25 @@ export const ACCESS_TOKEN_KEY = 'auvora_access_token';
 
 export function getStoredAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  // Prefer sessionStorage (tab-scoped). Migrate legacy localStorage once.
+  const session = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  if (session) return session;
+  const legacy = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (legacy) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, legacy);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    return legacy;
+  }
+  return null;
 }
 
 export function setStoredAccessToken(token: string | null): void {
   if (typeof window === 'undefined') return;
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
   if (token) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
   } else {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   }
 }
 

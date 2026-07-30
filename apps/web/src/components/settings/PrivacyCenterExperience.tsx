@@ -280,19 +280,22 @@ export function PrivacyCenterExperience(): ReactElement {
             type="button"
             variant="secondary"
             onClick={() => {
-              showToast('Data export placeholder — request queued for future API', 2200);
+              showToast(
+                'Data export is not available in Closed Beta — use Beta feedback if you need help',
+                2200,
+              );
             }}
           >
-            Export data (placeholder)
+            Export my data
           </Button>
           <Button type="button" variant="danger" onClick={() => setConfirmDelete(true)}>
-            Delete account (placeholder)
+            Delete wallet data
           </Button>
         </div>
         {confirmDelete ? (
-          <Alert tone="warn" title="Confirm deletion placeholder">
-            Account deletion is not enabled in this environment. Contact support to proceed when
-            available.
+          <Alert tone="warn" title="Not available yet">
+            Account and cloud deletion are not enabled in Internal Alpha. Clear local browser data
+            or uninstall the companion app to remove this device&apos;s copy.
             <div className="cx-platform__actions" style={{ marginTop: '0.75rem' }}>
               <Button
                 type="button"

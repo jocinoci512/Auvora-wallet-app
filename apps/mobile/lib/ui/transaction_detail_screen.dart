@@ -60,7 +60,7 @@ class TransactionDetailScreen extends StatelessWidget {
       '${tx.type.label} ${tx.amount} ${tx.assetTicker}',
       'Status: ${tx.status.label}',
       'Network: ${tx.network.label}',
-      'Hash: ${tx.hash}',
+      'Transaction ID: ${tx.hash}',
       'When: $date $time',
     ].join('\n');
 

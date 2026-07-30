@@ -90,6 +90,7 @@ class _HomeShellState extends State<HomeShell> {
                           child: IconButton(
                             tooltip: 'Search',
                             onPressed: openSearch,
+                            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
                             icon: const Icon(Icons.search_rounded),
                           ),
                         ),

@@ -5,6 +5,7 @@ import '../intelligence/intelligence_controller.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'app_shell.dart';
+import 'home/home_shared.dart';
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -33,6 +34,7 @@ class _ImportScreenState extends State<ImportScreen> {
     setState(() => _localError = null);
     await c.commitMnemonic(_controller.text);
     if (!mounted) return;
+    _controller.clear();
     if (c.errorMessage == null && c.stage == AppStage.securityPin) {
       context.read<IntelligenceController>().noteEvent('afterImport');
     }
@@ -46,12 +48,19 @@ class _ImportScreenState extends State<ImportScreen> {
 
     return ScreenScaffold(
       title: 'Import wallet',
-      subtitle: 'Enter the recovery phrase from your existing wallet. Validation happens on this device.',
+      subtitle:
+          'Enter the recovery phrase from your existing wallet. Validation happens on this device.',
       reassure: 'Never enter a phrase someone else typed or sent to you.',
       onBack: c.goWelcome,
       showProgress: true,
       body: ListView(
         children: [
+          const SoftBanner(
+            tone: BannerTone.info,
+            message:
+                'Make sure nobody can see your screen. Auvora never asks for this phrase by email or chat.',
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: _controller,
             minLines: 4,
@@ -78,13 +87,13 @@ class _ImportScreenState extends State<ImportScreen> {
           ),
           if (error != null) ...[
             const SizedBox(height: 12),
-            Text(error, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            SoftBanner(tone: BannerTone.error, message: error),
           ],
         ],
       ),
       footer: FilledButton(
         onPressed: c.busy || (count != 12 && count != 24) ? null : () => _submit(c),
-        child: Text(c.busy ? 'Importing…' : 'Import securely'),
+        child: Text(c.busy ? 'Importing…' : 'Import on this device'),
       ),
     );
   }

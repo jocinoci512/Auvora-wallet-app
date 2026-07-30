@@ -72,8 +72,9 @@ class WalletEngine {
     DateTime? lastSecurityReviewAt,
   }) async {
     final current = _wallet;
-    final mnemonic = await _keyStore.readMnemonic();
-    if (current == null || mnemonic == null) return current;
+    if (!_sessionUnlocked) return current;
+    final phrase = await _keyStore.readMnemonic();
+    if (current == null || phrase == null) return current;
     final next = WalletVaultRecord(
       walletId: current.walletId,
       accounts: current.accounts,
@@ -84,7 +85,7 @@ class WalletEngine {
       phraseVerifiedAt: phraseVerifiedAt ?? current.phraseVerifiedAt,
       lastSecurityReviewAt: lastSecurityReviewAt ?? current.lastSecurityReviewAt,
     );
-    await _keyStore.saveWallet(mnemonic: mnemonic, wallet: next);
+    await _keyStore.saveWallet(mnemonic: phrase, wallet: next);
     _wallet = next;
     return next;
   }

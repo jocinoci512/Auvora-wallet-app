@@ -77,9 +77,15 @@ class _VerifyScreenState extends State<VerifyScreen> {
                   onTap: () {
                     setState(() => _answers[index] = word);
                     if (word == _words[index] && _cursor < _quiz.length - 1) {
-                      Future<void>.delayed(const Duration(milliseconds: 180), () {
+                      final reduce = c.reduceMotion || MediaQuery.disableAnimationsOf(context);
+                      void advance() {
                         if (mounted) setState(() => _cursor += 1);
-                      });
+                      }
+                      if (reduce) {
+                        advance();
+                      } else {
+                        Future<void>.delayed(const Duration(milliseconds: 180), advance);
+                      }
                     }
                   },
                   child: Container(

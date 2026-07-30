@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     template: `%s · ${appName}`,
   },
   description:
-    'Auvora is a premium self-custody cryptocurrency wallet — calm like Apple, precise like Stripe. Multi-chain, readable confirms, built for beginners and professionals.',
+    'Auvora web companion for Internal Alpha — preview flows and settings. Mobile holds on-device signing.',
   applicationName: appName,
   keywords: [
     'Auvora',
@@ -67,20 +67,20 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: appName,
-    title: `${appName} — Quiet operating system for digital value`,
+    title: `${appName} — Internal Alpha companion`,
     description:
-      'Premium self-custody wallet with editorial clarity, institutional rigor, and zero crypto noise.',
+      'Web companion for Auvora Internal Alpha. Preview balances and flows — not a live custodian.',
     ...(appUrl ? { url: appUrl } : {}),
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${appName} — Quiet operating system for digital value`,
+    title: `${appName} — Internal Alpha companion`,
     description:
-      'Premium self-custody wallet with editorial clarity, institutional rigor, and zero crypto noise.',
+      'Web companion for Auvora Internal Alpha. Preview balances and flows — not a live custodian.',
   },
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 };
 

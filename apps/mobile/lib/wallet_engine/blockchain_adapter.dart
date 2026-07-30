@@ -109,7 +109,6 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
     required WalletAddressRecord address,
     required String assetSymbol,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 80));
     final seed = address.address.hashCode.abs() + assetSymbol.hashCode.abs();
     final base = (seed % 1000) / 100;
     return switch (assetSymbol) {
@@ -128,7 +127,6 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
   Future<List<PortfolioTx>> getHistory({
     required WalletAddressRecord address,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 90));
     final now = DateTime.now();
     final hash = WalletCrypto.shortHash('${address.address}:${chain.key}');
     return [
@@ -228,8 +226,8 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
     required TransactionDraft draft,
     required String mnemonic,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 90));
-    return 'signed:${WalletCrypto.shortHash('$mnemonic:${draft.unsignedPayload}')}:preview';
+    // Preview signature — never include mnemonic material in the digest.
+    return 'signed:${WalletCrypto.shortHash('${draft.fromAddress}:${draft.unsignedPayload}')}:preview';
   }
 
   @override
@@ -237,7 +235,6 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
     required TransactionDraft draft,
     required String signedPayload,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 140));
     final hash = WalletCrypto.shortHash('${draft.unsignedPayload}:$signedPayload:${DateTime.now().microsecondsSinceEpoch}');
     return TransactionSubmissionResult(
       id: '${chain.key}-${DateTime.now().millisecondsSinceEpoch}',
@@ -251,7 +248,6 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
 
   @override
   Future<EndpointHealth> ping() async {
-    await Future<void>.delayed(const Duration(milliseconds: 40));
     final rng = Random(chain.index + 7);
     final latency = 80 + rng.nextInt(110);
     final state = latency > 160 ? EndpointState.degraded : EndpointState.healthy;

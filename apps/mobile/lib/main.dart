@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'connections/connections_controller.dart';
@@ -35,6 +36,7 @@ Future<void> main() async {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
     ),
   );
   runApp(const AuvoraApp());
@@ -177,6 +179,14 @@ class AuvoraApp extends StatelessWidget {
             theme: buildAetherTheme(brightness: Brightness.light),
             darkTheme: buildAetherTheme(brightness: Brightness.dark),
             themeMode: prefs.materialThemeMode,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'),
+            ],
             builder: (context, child) {
               final media = MediaQuery.of(context);
               return MediaQuery(

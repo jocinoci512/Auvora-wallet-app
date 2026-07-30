@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
+import '../../preferences/preferences_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../../engine/models.dart';
@@ -15,6 +16,7 @@ import '../intelligence/learning_center_screen.dart';
 import '../receive_flow_screen.dart';
 import '../send_flow_screen.dart';
 import '../transaction_detail_screen.dart';
+import '../widgets/passcode_entry.dart';
 import 'home_shared.dart';
 
 void openDigitalAssetFlow(BuildContext context, EngineOp op, {String? initialFrom}) {
@@ -412,7 +414,63 @@ class _HomeHeader extends StatelessWidget {
           ),
           IconButton(
             tooltip: portfolio.hideBalances ? 'Show balances' : 'Hide balances',
-            onPressed: () => portfolio.setHideBalances(!portfolio.hideBalances),
+            onPressed: () async {
+              final revealing = portfolio.hideBalances;
+              if (revealing) {
+                final prefs = context.read<PreferencesController>();
+                if (prefs.requireAuthToRevealBalances) {
+                  final wallet = context.read<WalletController>();
+                  var ok = false;
+                  if (wallet.biometricsEnabled) {
+                    ok = await wallet.authenticateForTransfer(reason: 'Reveal balances');
+                  }
+                  if (!ok && wallet.hasPin && context.mounted) {
+                    ok = await showModalBottomSheet<bool>(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (ctx) {
+                            String? error;
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: 20,
+                                right: 20,
+                                top: 20,
+                                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                              ),
+                              child: StatefulBuilder(
+                                builder: (ctx, setModal) => Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Enter passcode to show balances',
+                                      style: Theme.of(ctx).textTheme.titleLarge,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    PasscodeEntry(
+                                      errorText: error,
+                                      onCompleted: (pin) async {
+                                        final match = await wallet.verifyPin(pin);
+                                        if (!ctx.mounted) return;
+                                        if (match) {
+                                          Navigator.pop(ctx, true);
+                                        } else {
+                                          setModal(() => error = 'Incorrect passcode');
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ) ==
+                        true;
+                  }
+                  if (!ok) return;
+                }
+              }
+              await portfolio.setHideBalances(!portfolio.hideBalances);
+            },
             icon: Icon(portfolio.hideBalances ? Icons.visibility_off_outlined : Icons.visibility_outlined),
             style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
           ),

@@ -5,6 +5,7 @@ import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../address_book_screen.dart';
+import '../beta/beta_feedback_screen.dart';
 import '../connections/connect_dapp_screen.dart';
 import '../connections/permission_center_screen.dart';
 import '../connections/web3_activity_screen.dart';
@@ -43,6 +44,16 @@ class MoreTab extends StatelessWidget {
         ),
         const SizedBox(height: 28),
         Text('Settings', style: Theme.of(context).textTheme.titleMedium),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.feedback_outlined, color: AetherColors.lagoon),
+          title: const Text('Beta feedback'),
+          subtitle: const Text('Bug, UX, performance, security, accessibility'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),
+          ),
+        ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.settings_outlined, color: AetherColors.lagoon),

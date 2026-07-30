@@ -29,6 +29,7 @@ class WalletController extends ChangeNotifier {
   })  : _secure = secureStorage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
             ),
         _localAuth = localAuth ?? LocalAuthentication();
 
@@ -110,6 +111,7 @@ class WalletController extends ChangeNotifier {
       final legacyMnemonic = await _secure.read(key: _kMnemonic);
       if (legacyMnemonic != null && engine != null) {
         wallet = await engine.importWallet(legacyMnemonic);
+        await _secure.delete(key: _kMnemonic);
       }
     }
     address = wallet?.primaryAddress() ?? await _secure.read(key: _kAddress);
@@ -127,9 +129,11 @@ class WalletController extends ChangeNotifier {
     if (onboardingComplete && address != null && hasPin) {
       unlocked = false;
       stage = AppStage.unlock;
-    } else if (onboardingComplete && address != null) {
-      unlocked = true;
-      stage = AppStage.dashboard;
+    } else if (onboardingComplete && address != null && !hasPin) {
+      // Never auto-unlock without a device passcode — Internal Alpha gate.
+      unlocked = false;
+      stage = AppStage.securityPin;
+      errorMessage = 'Set a 6-digit passcode to protect this wallet.';
     } else {
       stage = AppStage.welcome;
     }
@@ -140,7 +144,41 @@ class WalletController extends ChangeNotifier {
   void setReduceMotion(bool value) {
     if (reduceMotion == value) return;
     reduceMotion = value;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool('auvora_reduce_motion', value);
+    });
     notifyListeners();
+  }
+
+  static const _weakPins = {
+    '000000',
+    '111111',
+    '123456',
+    '654321',
+    '121212',
+    '112233',
+  };
+
+  bool isWeakPin(String pin) => _weakPins.contains(pin);
+
+  int _pinFailures = 0;
+  DateTime? _pinLockUntil;
+
+  bool get pinTemporarilyLocked {
+    final until = _pinLockUntil;
+    if (until == null) return false;
+    if (DateTime.now().isAfter(until)) {
+      _pinLockUntil = null;
+      return false;
+    }
+    return true;
+  }
+
+  Duration? get pinLockRemaining {
+    final until = _pinLockUntil;
+    if (until == null) return null;
+    final left = until.difference(DateTime.now());
+    return left.isNegative ? null : left;
   }
 
   void backToExplain() {
@@ -214,7 +252,8 @@ class WalletController extends ChangeNotifier {
       if (engine != null) {
         wallet = await engine.importWallet(normalized, backupConfirmed: draftBackupConfirmed);
         address = wallet?.primaryAddress();
-        engine.setSessionUnlocked(true);
+        // Keep signing session locked until passcode is set.
+        engine.setSessionUnlocked(false);
       } else {
         final addr = WalletCrypto.fingerprintAddress(normalized);
         await _secure.write(key: _kMnemonic, value: normalized);
@@ -236,6 +275,11 @@ class WalletController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (isWeakPin(pin)) {
+      errorMessage = 'Choose a less obvious passcode.';
+      notifyListeners();
+      return;
+    }
     final salt = WalletCrypto.newSalt();
     final hash = WalletCrypto.pinPepperHash(pin, salt);
     await _secure.write(key: _kPinSalt, value: salt);
@@ -247,10 +291,22 @@ class WalletController extends ChangeNotifier {
   }
 
   Future<bool> verifyPin(String pin) async {
+    if (pinTemporarilyLocked) return false;
     final salt = await _secure.read(key: _kPinSalt);
     final hash = await _secure.read(key: _kPinHash);
     if (salt == null || hash == null) return false;
-    return WalletCrypto.pinPepperHash(pin, salt) == hash;
+    final ok = WalletCrypto.verifyPinHash(pin, salt, hash);
+    if (ok) {
+      _pinFailures = 0;
+      _pinLockUntil = null;
+      return true;
+    }
+    _pinFailures += 1;
+    if (_pinFailures >= 5) {
+      final seconds = (30 * (_pinFailures - 4)).clamp(30, 300);
+      _pinLockUntil = DateTime.now().add(Duration(seconds: seconds));
+    }
+    return false;
   }
 
   Future<void> unlockWithPin(String pin) async {
@@ -258,9 +314,19 @@ class WalletController extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     try {
+      if (pinTemporarilyLocked) {
+        final secs = pinLockRemaining?.inSeconds ?? 30;
+        errorMessage = 'Too many attempts. Try again in $secs seconds.';
+        return;
+      }
       final ok = await verifyPin(pin);
       if (!ok) {
-        errorMessage = 'Incorrect passcode. Try again.';
+        if (pinTemporarilyLocked) {
+          final secs = pinLockRemaining?.inSeconds ?? 30;
+          errorMessage = 'Too many attempts. Try again in $secs seconds.';
+        } else {
+          errorMessage = 'Incorrect passcode. Try again.';
+        }
         return;
       }
       unlocked = true;
@@ -321,7 +387,10 @@ class WalletController extends ChangeNotifier {
       biometricsEnabled = false;
     }
     errorMessage = null;
-    stage = AppStage.permissions;
+    // Only advance onboarding when still on the biometric setup stage.
+    if (stage == AppStage.securityBiometric) {
+      stage = AppStage.permissions;
+    }
     notifyListeners();
   }
 
@@ -369,7 +438,8 @@ class WalletController extends ChangeNotifier {
     required String nextPin,
   }) async {
     if (!await verifyPin(currentPin)) return false;
-    if (nextPin.length != 6 || !RegExp(r'^\\d{6}\$').hasMatch(nextPin)) return false;
+    if (nextPin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(nextPin)) return false;
+    if (isWeakPin(nextPin)) return false;
     final salt = WalletCrypto.newSalt();
     final hash = WalletCrypto.pinPepperHash(nextPin, salt);
     await _secure.write(key: _kPinSalt, value: salt);

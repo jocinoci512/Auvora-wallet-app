@@ -59,14 +59,14 @@ const LINKS = [
     detail: 'How we communicate risk and incidents',
   },
   {
-    href: 'mailto:support@auvora.example',
-    title: 'Contact support (placeholder)',
-    detail: 'Replace with production inbox before public launch — never share your recovery phrase',
+    href: '/settings/feedback',
+    title: 'Closed Beta feedback',
+    detail: 'Bug, UX, performance, security, accessibility — local until you share',
   },
   {
-    href: 'mailto:security@auvora.example?subject=Issue%20report',
-    title: 'Report a problem (placeholder)',
-    detail: 'Product or security issue — placeholder address until launch',
+    href: '/settings/feedback',
+    title: 'Report a security concern',
+    detail: 'Use the Security category. Never share your recovery phrase in any channel.',
   },
   {
     href: '/settings/security',

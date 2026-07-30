@@ -22,6 +22,7 @@ class SecurityCenterScreen extends StatefulWidget {
 
 class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
   bool _bootstrapped = false;
+  bool _biometricBusy = false;
 
   @override
   void didChangeDependencies() {
@@ -156,44 +157,50 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               value: wallet.biometricsEnabled,
-                              onChanged: (value) async {
-                                final allowed = await _authenticateSensitive(
-                                  wallet,
-                                  reason: value
-                                      ? 'Confirm before enabling biometrics'
-                                      : 'Confirm before disabling biometrics',
-                                );
-                                if (!allowed) return;
-                                await wallet.enableBiometrics(value);
-                                if (value && context.mounted) {
-                                  context.read<IntelligenceController>().noteEvent('afterBiometrics');
-                                }
-                                await security.addAlert(
-                                  title: value ? 'Biometrics enabled' : 'Biometrics disabled',
-                                  description: value
-                                      ? 'Biometric unlock was enabled for this device.'
-                                      : 'Biometric unlock was turned off for this device.',
-                                  recommendedAction: 'Review whether you want a faster unlock path on this device.',
-                                  severity: value ? SecurityStatus.good : SecurityStatus.fair,
-                                );
-                              },
+                              onChanged: _biometricBusy
+                                  ? null
+                                  : (value) async {
+                                      setState(() => _biometricBusy = true);
+                                      try {
+                                        final allowed = await _authenticateSensitive(
+                                          wallet,
+                                          reason: value
+                                              ? 'Confirm before enabling biometrics'
+                                              : 'Confirm before disabling biometrics',
+                                        );
+                                        if (!allowed || !mounted) return;
+                                        await wallet.enableBiometrics(value);
+                                        if (value && context.mounted) {
+                                          context.read<IntelligenceController>().noteEvent('afterBiometrics');
+                                        }
+                                        await security.addAlert(
+                                          title: value ? 'Biometrics enabled' : 'Biometrics disabled',
+                                          description: value
+                                              ? 'Biometric unlock was enabled for this device.'
+                                              : 'Biometric unlock was turned off for this device.',
+                                          recommendedAction:
+                                              'Review whether you want a faster unlock path on this device.',
+                                          severity: value ? SecurityStatus.good : SecurityStatus.fair,
+                                        );
+                                      } finally {
+                                        if (mounted) setState(() => _biometricBusy = false);
+                                      }
+                                    },
                               title: const Text('Use device biometrics'),
-                              subtitle: const Text('Face ID, Touch ID, or Android biometrics when available.'),
+                              subtitle: Text(
+                                _biometricBusy
+                                    ? 'Waiting for device confirmation…'
+                                    : 'Face ID, Touch ID, or Android biometrics when available.',
+                              ),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              value: security.preferences.requireAuthForSend,
-                              onChanged: (value) async {
-                                final allowed = await _authenticateSensitive(
-                                  wallet,
-                                  reason: 'Confirm before changing send protection',
-                                );
-                                if (!allowed) return;
-                                await security.patchPreferences(
-                                  security.preferences.copyWith(requireAuthForSend: value),
-                                );
-                              },
+                              value: true,
+                              onChanged: null,
                               title: const Text('Require confirmation before sending funds'),
+                              subtitle: const Text(
+                                'Always required in Internal Alpha. Preference wiring ships later.',
+                              ),
                             ),
                             const SwitchListTile(
                               contentPadding: EdgeInsets.zero,
@@ -490,6 +497,11 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
   Future<void> _runStep(String id, SecurityController security, WalletController wallet) async {
     switch (id) {
       case 'backup':
+        final backupOk = await _authenticateSensitive(
+          wallet,
+          reason: 'Confirm before marking backup complete',
+        );
+        if (!backupOk) return;
         await security.markBackupComplete();
         break;
       case 'verify':
@@ -511,6 +523,11 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
         }
         break;
       case 'devices':
+        final devicesOk = await _authenticateSensitive(
+          wallet,
+          reason: 'Confirm before marking devices reviewed',
+        );
+        if (!devicesOk) return;
         await security.markDevicesReviewed();
         break;
       case 'dapps':
@@ -518,9 +535,19 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
           MaterialPageRoute<void>(builder: (_) => const PermissionCenterScreen()),
         );
         if (!mounted) return;
+        final dappOk = await _authenticateSensitive(
+          wallet,
+          reason: 'Confirm after reviewing connected apps',
+        );
+        if (!dappOk) return;
         await security.markDappsReviewed();
         break;
       case 'app':
+        final appOk = await _authenticateSensitive(
+          wallet,
+          reason: 'Confirm this app version is current',
+        );
+        if (!appOk) return;
         await security.confirmAppUpdated();
         break;
     }
@@ -531,7 +558,8 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
       final ok = await wallet.authenticateForTransfer(reason: reason);
       if (ok) return true;
     }
-    if (!wallet.hasPin || !mounted) return !wallet.hasPin;
+    // Fail closed — sensitive actions require a PIN when biometrics are unavailable.
+    if (!wallet.hasPin || !mounted) return false;
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,

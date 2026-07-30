@@ -625,7 +625,7 @@ export function SwapExperience(): ReactElement {
           <CxActions
             onBack={() => setScreen('form')}
             onNext={() => void execute()}
-            nextLabel="Authenticate & swap"
+            nextLabel="Confirm preview swap"
           />
         </section>
       ) : null}
@@ -643,7 +643,7 @@ export function SwapExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>{live ? 'Swap submitted' : 'Preview complete'}</h2>
+          <h2>{live ? 'Quote path complete (preview broadcast)' : 'Preview complete'}</h2>
           <p>
             {live
               ? `Execution ${executionId ?? 'complete'}. Portfolio and activity will refresh shortly.`

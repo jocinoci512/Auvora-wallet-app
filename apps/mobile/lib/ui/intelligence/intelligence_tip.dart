@@ -46,7 +46,7 @@ class IntelligenceTipCard extends StatelessWidget {
                     TextButton(
                       onPressed: onLearnMore,
                       style: TextButton.styleFrom(
-                        minimumSize: const Size(48, 40),
+                        minimumSize: const Size(48, 48),
                         padding: const EdgeInsets.only(top: 4),
                       ),
                       child: const Text('Related lesson'),

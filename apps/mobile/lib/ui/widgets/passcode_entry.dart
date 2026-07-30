@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 
 /// Premium 6-digit passcode entry with large touch targets and haptics.
@@ -50,6 +52,10 @@ class _PasscodeEntryState extends State<PasscodeEntry> {
 
   @override
   Widget build(BuildContext context) {
+    final wallet = context.watch<WalletController>();
+    final reduceMotion = MediaQuery.disableAnimationsOf(context) || wallet.reduceMotion;
+    final duration = reduceMotion ? Duration.zero : const Duration(milliseconds: 160);
+
     return Semantics(
       label: 'Six digit passcode',
       child: Column(
@@ -58,7 +64,7 @@ class _PasscodeEntryState extends State<PasscodeEntry> {
             Text(
               widget.titleHint!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AetherColors.muted, height: 1.4),
+              style: TextStyle(color: AetherColors.mutedFor(context), height: 1.4),
             ),
             const SizedBox(height: 20),
           ],
@@ -67,7 +73,7 @@ class _PasscodeEntryState extends State<PasscodeEntry> {
             children: List.generate(6, (i) {
               final filled = i < _value.length;
               return AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
+                duration: duration,
                 curve: Curves.easeOut,
                 margin: const EdgeInsets.symmetric(horizontal: 6),
                 width: 14,

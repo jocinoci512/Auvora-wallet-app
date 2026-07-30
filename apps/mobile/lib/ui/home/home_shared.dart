@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../portfolio/models.dart';
+import '../../privacy/clipboard_guard.dart';
 import '../../theme/aether_theme.dart';
 
 String greetingFor(DateTime now) {
@@ -54,9 +55,13 @@ IconData typeIcon(TxType t) {
 }
 
 Future<void> copyText(BuildContext context, String text, {String label = 'Copied'}) async {
-  await Clipboard.setData(ClipboardData(text: text));
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label)));
+  try {
+    await copyTextSecure(context, text, label: label);
+  } catch (_) {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label)));
+    }
   }
 }
 

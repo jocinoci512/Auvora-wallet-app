@@ -281,8 +281,9 @@ export function SendExperience(): ReactElement {
             <div className="cx-alert cx-alert--info">
               <strong>Name recipient</strong>
               <p>
-                We will resolve this via ENS or Unstoppable Domains and show the destination address
-                on the review step before anything is sent.
+                Demo name resolve only — not a live ENS or Unstoppable Domains lookup. Destination
+                below is a preview address for this Internal Alpha session. on the review step
+                before anything is sent.
               </p>
             </div>
           ) : null}
@@ -339,7 +340,11 @@ export function SendExperience(): ReactElement {
               </Link>
             </>
           ) : null}
-          {error ? <div className="cx-alert cx-alert--error">{error}</div> : null}
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {error}
+            </div>
+          ) : null}
           <CxActions onBack={() => setStep('asset')} onNext={goAmount} />
           <Dialog open={qrOpen} onOpenChange={setQrOpen}>
             <DialogContent>
@@ -399,7 +404,11 @@ export function SendExperience(): ReactElement {
               </button>
             ))}
           </div>
-          {error ? <div className="cx-alert cx-alert--error">{error}</div> : null}
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {error}
+            </div>
+          ) : null}
           <CxActions onBack={() => setStep('to')} onNext={goFee} />
         </section>
       ) : null}
@@ -535,9 +544,13 @@ export function SendExperience(): ReactElement {
               if (!ok) return;
               void submit();
             }}
-            nextLabel={`Authenticate & send ${amount} ${asset}`}
+            nextLabel={`Confirm preview ${amount} ${asset}`}
           />
-          {error ? <div className="cx-alert cx-alert--error">{error}</div> : null}
+          {error ? (
+            <div className="cx-alert cx-alert--error" role="alert">
+              {error}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -554,13 +567,13 @@ export function SendExperience(): ReactElement {
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Your transfer has been securely submitted</h2>
+          <h2>Transfer preview complete</h2>
           <p>
-            Status updates as the network confirms. Reference below is for this companion session —
-            mobile holds the on-device signing path.
+            This companion preview recorded a review receipt. Status updates when live network
+            signing is connected — mobile remains the on-device signing path.
           </p>
           <div className="cx-alert cx-alert--info" role="status">
-            Live broadcast connects with network sync. Treat this as a secured review receipt until
+            Not a live broadcast yet. Treat the reference below as a secured review receipt until
             signing rails are live.
           </div>
           <div className="cx-confirm" style={{ textAlign: 'left' }}>

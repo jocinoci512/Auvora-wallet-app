@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/aether_theme.dart';
+import '../beta/beta_feedback_screen.dart';
 import '../home/home_shared.dart';
 
 class HelpSupportScreen extends StatefulWidget {
@@ -105,30 +106,41 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           Text('Contact', style: Theme.of(context).textTheme.titleMedium),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            title: const Text('Send Closed Beta feedback'),
+            subtitle: const Text('Bug, confusing UX, performance, security, accessibility'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),
+              );
+            },
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
             title: const Text('Contact support'),
             onTap: () => showActionSheet(
               context,
               title: 'Contact support',
-              body: 'Email support@auvora.app with what you expected vs what happened. Never include seed phrases.',
+              body:
+                  'Use Beta feedback in-app for Closed Beta. Never include seed phrases in any channel.',
             ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Report a bug'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Report a bug',
-              body: 'Describe steps to reproduce, device, and app version from About. Attach screenshots if helpful.',
-            ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),
+              );
+            },
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Feature request'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Feature request',
-              body: 'Tell us the job you are trying to finish. We prioritize clarity and safety over novelty.',
-            ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),
+              );
+            },
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,

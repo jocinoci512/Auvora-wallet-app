@@ -14,11 +14,11 @@ class NetworksSettingsScreen extends StatefulWidget {
 class _NetworksSettingsScreenState extends State<NetworksSettingsScreen> {
   bool _advanced = false;
 
-  static const _networks = <(String, String, String)>[
-    ('ETHEREUM', 'Healthy', 'rpc-preview · 42ms'),
-    ('BITCOIN', 'Healthy', 'rpc-preview · 58ms'),
-    ('SOLANA', 'Degraded', 'rpc-preview · 210ms'),
-    ('POLYGON', 'Healthy', 'rpc-preview · 51ms'),
+  static const _networks = <(String, String, String, String)>[
+    ('ETHEREUM', 'Ethereum', 'Healthy', 'Preview · 42ms'),
+    ('BITCOIN', 'Bitcoin', 'Healthy', 'Preview · 58ms'),
+    ('SOLANA', 'Solana', 'Degraded', 'Preview · 210ms'),
+    ('POLYGON', 'Polygon', 'Healthy', 'Preview · 51ms'),
   ];
 
   @override
@@ -31,9 +31,9 @@ class _NetworksSettingsScreenState extends State<NetworksSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
-          const Text(
-            'Pick a default network for new actions. Status below is preview health — not live SLA.',
-            style: TextStyle(color: AetherColors.muted, height: 1.45),
+          Text(
+            'Pick a default network for new actions. Status below is preview health — not a live guarantee.',
+            style: TextStyle(color: AetherColors.mutedFor(context), height: 1.45),
           ),
           const SizedBox(height: 16),
           for (final n in _networks)
@@ -43,15 +43,15 @@ class _NetworksSettingsScreenState extends State<NetworksSettingsScreen> {
                 selected == n.$1 ? Icons.radio_button_checked : Icons.radio_button_off,
                 color: AetherColors.lagoon,
               ),
-              title: Text(n.$1),
-              subtitle: Text('${n.$2} · ${n.$3}'),
+              title: Text(n.$2),
+              subtitle: Text('${n.$3} · ${n.$4}'),
               onTap: () => prefs.setWalletDisplay(prefs.walletDisplay.copyWith(defaultNetwork: n.$1)),
             ),
           const SizedBox(height: 12),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             title: const Text('Advanced'),
-            subtitle: const Text('RPC cache and technical options'),
+            subtitle: const Text('Cache and connection options'),
             initiallyExpanded: _advanced,
             onExpansionChanged: (v) => setState(() => _advanced = v),
             children: [
@@ -60,7 +60,7 @@ class _NetworksSettingsScreenState extends State<NetworksSettingsScreen> {
                 title: const Text('Reset network cache'),
                 subtitle: Text(
                   prefs.networkCacheResetAt == null
-                      ? 'Clears preview RPC cache on this device'
+                      ? 'Clears preview network cache on this device'
                       : 'Last reset ${prefs.networkCacheResetAt!.toLocal()}',
                 ),
                 trailing: TextButton(
@@ -70,7 +70,7 @@ class _NetworksSettingsScreenState extends State<NetworksSettingsScreen> {
               ),
               const ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Custom RPC endpoints'),
+                title: Text('Custom network endpoints'),
                 subtitle: Text('Not available in this preview — coming with live provider wiring.'),
               ),
             ],

@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../transfer/address_validation.dart';
@@ -81,9 +82,14 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
               children: [
                 Text('Show this to the sender', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Match the network exactly. A wrong network can permanently lose funds.',
-                  style: TextStyle(color: AetherColors.muted, height: 1.4),
+                  style: TextStyle(color: AetherColors.mutedFor(context), height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                const SoftBanner(
+                  tone: BannerTone.warn,
+                  message: ReleaseConfig.fundingBlockedMessage,
                 ),
                 const SizedBox(height: 18),
                 Text('Network', style: Theme.of(context).textTheme.titleSmall),
@@ -111,7 +117,13 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                if (!safe) ...[
+                if (!ReleaseConfig.allowFundingAddresses) ...[
+                  SoftBanner(
+                    tone: BannerTone.error,
+                    message:
+                        'Receive is locked for real funding in ${ReleaseConfig.buildLabel}. You can still explore networks and practice other journeys.',
+                  ),
+                ] else if (!safe) ...[
                   SoftBanner(
                     tone: BannerTone.error,
                     message:
@@ -143,6 +155,13 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     ),
                   ],
                   const SizedBox(height: 20),
+                  if (address.isEmpty) ...[
+                    SoftBanner(
+                      tone: BannerTone.error,
+                      message:
+                          'No ${_network.label} address is ready yet. Finish wallet setup, then try again.',
+                    ),
+                  ] else ...[
                   Center(
                     child: Semantics(
                       label: 'Receiving QR code for ${_network.label}',
@@ -154,7 +173,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                           border: Border.all(color: AetherColors.border),
                         ),
                         child: QrImageView(
-                          data: address.isEmpty ? 'auvora:empty' : address,
+                          data: address,
                           size: wide ? 280 : 240,
                           backgroundColor: Colors.white,
                           eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: AetherColors.ink),
@@ -169,7 +188,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   const SizedBox(height: 18),
                   Text(_network.label, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700)),
                   if (asset != null)
-                    Text(asset.ticker, textAlign: TextAlign.center, style: const TextStyle(color: AetherColors.muted)),
+                    Text(asset.ticker, textAlign: TextAlign.center, style: TextStyle(color: AetherColors.mutedFor(context))),
                   const SizedBox(height: 12),
                   SelectableText(
                     address,
@@ -184,9 +203,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: address.isEmpty
-                        ? null
-                        : () async {
+                    onPressed: () async {
                             await Clipboard.setData(ClipboardData(text: address));
                             HapticFeedback.selectionClick();
                             if (context.mounted) {
@@ -200,15 +217,14 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
-                    onPressed: address.isEmpty
-                        ? null
-                        : () => Share.share(
+                    onPressed: () => Share.share(
                               'My Auvora ${_network.label} address:\n$address',
                               subject: 'Auvora receive address',
                             ),
                     icon: const Icon(Icons.ios_share_rounded),
                     label: const Text('Share address'),
                   ),
+                  ],
                 ],
               ],
             ),

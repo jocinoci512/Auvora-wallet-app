@@ -10,15 +10,16 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('security controller boots preview data and computes a score', () async {
+  test('security controller boots with this-device only (no synthetic unknowns)', () async {
     final controller = SecurityController();
     await controller.bootstrap();
 
     final snapshot = controller.buildSnapshot();
     expect(snapshot.trustedDevices, isNotEmpty);
+    expect(snapshot.trustedDevices.every((d) => d.trusted), isTrue);
     expect(snapshot.activeSessions, isNotEmpty);
-    expect(snapshot.connectedDapps, isNotEmpty);
-    expect(snapshot.recentAlerts, isNotEmpty);
+    expect(snapshot.activeSessions.every((s) => s.current), isTrue);
+    expect(snapshot.connectedDapps, isEmpty);
     expect(snapshot.score, inInclusiveRange(0, 100));
   });
 

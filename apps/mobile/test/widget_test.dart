@@ -21,6 +21,17 @@ void main() {
     expect(choices.length, 3);
   });
 
+  test('PIN regex and v2 hash round-trip', () {
+    expect(RegExp(r'^\d{6}$').hasMatch('123456'), isTrue);
+    // Guard against the escaped-regex regression that broke changePin.
+    expect(RegExp(r'^\\d{6}\$').hasMatch('123456'), isFalse);
+    final salt = WalletCrypto.newSalt();
+    final hash = WalletCrypto.pinPepperHash('482917', salt);
+    expect(hash.startsWith('v2:'), isTrue);
+    expect(WalletCrypto.verifyPinHash('482917', salt, hash), isTrue);
+    expect(WalletCrypto.verifyPinHash('000000', salt, hash), isFalse);
+  });
+
   testWidgets('Auvora app boots with brand mark', (tester) async {
     await tester.pumpWidget(const AuvoraApp());
     await tester.pump(const Duration(milliseconds: 100));

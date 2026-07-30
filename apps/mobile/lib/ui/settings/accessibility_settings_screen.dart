@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../preferences/preferences_controller.dart';
+import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 
 class AccessibilitySettingsScreen extends StatelessWidget {
@@ -10,6 +11,7 @@ class AccessibilitySettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesController>();
+    final wallet = context.watch<WalletController>();
     final a = prefs.accessibility;
 
     return Scaffold(
@@ -17,9 +19,9 @@ class AccessibilitySettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
-          const Text(
+          Text(
             'These preferences work with your OS settings. System text scaling still applies within safe bounds.',
-            style: TextStyle(color: AetherColors.muted, height: 1.45),
+            style: TextStyle(color: AetherColors.mutedFor(context), height: 1.45),
           ),
           const SizedBox(height: 16),
           Text('Text scaling (${a.textScale.toStringAsFixed(2)}×)', style: Theme.of(context).textTheme.titleMedium),
@@ -35,8 +37,11 @@ class AccessibilitySettingsScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             title: const Text('Reduce motion'),
             subtitle: const Text('Prefer simpler transitions when animations feel distracting'),
-            value: a.reduceMotion,
-            onChanged: (v) => prefs.setAccessibility(a.copyWith(reduceMotion: v)),
+            value: a.reduceMotion || wallet.reduceMotion,
+            onChanged: (v) async {
+              await prefs.setAccessibility(a.copyWith(reduceMotion: v));
+              if (context.mounted) context.read<WalletController>().setReduceMotion(v);
+            },
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

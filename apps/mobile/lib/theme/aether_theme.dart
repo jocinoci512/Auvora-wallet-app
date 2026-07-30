@@ -6,12 +6,19 @@ abstract final class AetherColors {
   static const mist = Color(0xFFF4F6F8);
   static const ink = Color(0xFF12161C);
   static const muted = Color(0xFF5C6570);
+  static const mutedOnDark = Color(0xFFA8B0BA);
   static const lagoon = Color(0xFF0E4F5C);
   static const lagoonSoft = Color(0xFF3D9AAA);
   static const surface = Color(0xFFFFFFFF);
   static const surfaceDark = Color(0xFF1A1F27);
   static const danger = Color(0xFFB42318);
   static const border = Color(0xFFD8DEE6);
+
+  /// Brightness-aware secondary text for WCAG-friendly contrast.
+  static Color mutedFor(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? mutedOnDark : muted;
+  }
 }
 
 ThemeData buildAetherTheme({required Brightness brightness}) {

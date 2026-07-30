@@ -20,6 +20,7 @@ const LINKS: NavLink[] = [
   { href: '/settings/backup', label: 'Backup' },
   { href: '/settings/advanced', label: 'Advanced' },
   { href: '/settings/help', label: 'Help' },
+  { href: '/settings/feedback', label: 'Feedback' },
   { href: '/settings/about', label: 'About' },
 ];
 

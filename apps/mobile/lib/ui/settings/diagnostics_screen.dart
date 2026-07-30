@@ -74,7 +74,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           _tile('Offline', status.offline ? 'yes' : 'no'),
           _tile('Failed chains', status.failedChains.isEmpty ? 'none' : status.failedChains.join(', ')),
           _tile('Cache hits / misses', '${d.cacheHits} / ${d.cacheMisses}'),
-          _tile('RPC requests / failures', '${d.rpcRequests} / ${d.rpcFailures}'),
+          _tile('Network requests / failures', '${d.rpcRequests} / ${d.rpcFailures}'),
           _tile('Retries', '${d.retryAttempts}'),
           _tile('Partial chain failures', '${d.partialChainFailures}'),
           _tile('Avg latency', '${d.averageLatencyMs} ms'),

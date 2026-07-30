@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../release/release_config.dart';
 import '../../theme/aether_theme.dart';
+import '../beta/beta_feedback_screen.dart';
 import '../home/home_shared.dart';
-
-/// Mirrors pubspec version — keep in sync when shipping store builds.
-const kAppVersion = '1.0.0';
-const kAppBuild = '1';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -19,20 +17,38 @@ class AboutScreen extends StatelessWidget {
         children: [
           Text('Auvora Wallet', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 4),
-          const Text(
-            'Version $kAppVersion · Build $kAppBuild',
-            style: TextStyle(color: AetherColors.muted),
+          Text(
+            '${ReleaseConfig.buildLabel}\nVersion ${ReleaseConfig.marketingVersion} · Channel ${ReleaseConfig.releaseChannel}',
+            style: TextStyle(color: AetherColors.mutedFor(context), height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          SoftBanner(
+            tone: BannerTone.warn,
+            message: ReleaseConfig.fundingBlockedMessage,
           ),
           const SizedBox(height: 20),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            title: const Text('Send beta feedback'),
+            subtitle: const Text('Bugs, UX, performance, security, accessibility'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
             title: const Text('Release notes'),
-            subtitle: const Text('What changed in recent builds'),
+            subtitle: const Text('What changed in this Closed Beta'),
             onTap: () => showActionSheet(
               context,
-              title: 'Release notes',
+              title: 'RM2 Closed Beta',
               body:
-                  'Sprint 9: Reliability — cache-first home, sync coordinator, partial chain sync, retries, diagnostics. Sprint 8: Settings Center and notifications preview.',
+                  '• Structured beta feedback with optional diagnostics consent\n'
+                  '• Receive funding locked until BIP32 derivation\n'
+                  '• Live broadcast kill switch off — preview sends only\n'
+                  '• Clipboard auto-clear, Android screenshot guard, balance reveal auth\n'
+                  '• Web access tokens moved to sessionStorage\n'
+                  '• Security trust theater removed (this-device sessions)',
             ),
           ),
           ListTile(
@@ -50,26 +66,8 @@ class AboutScreen extends StatelessWidget {
             onTap: () => showActionSheet(
               context,
               title: 'Terms of service',
-              body: 'Draft terms live on web at /legal. Preview features are labeled and not live chain guarantees.',
-            ),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Open-source acknowledgements'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Acknowledgements',
               body:
-                  'Auvora builds on Flutter, Provider, SharedPreferences, mobile_scanner, and related open-source packages. Full license texts ship with the store build.',
-            ),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Licenses'),
-            onTap: () => showLicensePage(
-              context: context,
-              applicationName: 'Auvora Wallet',
-              applicationVersion: kAppVersion,
+                  'Draft terms live on web at /legal. Closed Beta uses preview networks — not live chain guarantees.',
             ),
           ),
         ],

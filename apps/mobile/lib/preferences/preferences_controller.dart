@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../portfolio/portfolio_controller.dart';
+import '../privacy/screenshot_guard.dart';
 import 'models.dart';
 
 class PreferencesController extends ChangeNotifier {
@@ -67,6 +68,10 @@ class PreferencesController extends ChangeNotifier {
       await _persistAlerts();
     }
     _syncPortfolioBridges();
+    if (screenshotProtectionHint) {
+      // ignore: discarded_futures
+      ScreenshotGuard.setEnabled(true);
+    }
     loading = false;
     notifyListeners();
   }
@@ -192,6 +197,7 @@ class PreferencesController extends ChangeNotifier {
 
   Future<void> setScreenshotProtectionHint(bool value) async {
     screenshotProtectionHint = value;
+    await ScreenshotGuard.setEnabled(value);
     await _persistBlob();
     notifyListeners();
   }

@@ -9,6 +9,7 @@ import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../transfer/address_book.dart';
@@ -602,7 +603,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
                   if (_offline && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('You’re offline. Reconnect to submit this transfer securely.'),
+                        content: Text('You’re offline. Reconnect to continue this preview transfer.'),
                       ),
                     );
                     return;
@@ -657,7 +658,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
                 final ok = await _wallet.authenticateForTransfer(
                   reason: 'Confirm sending ${amount.toStringAsFixed(4)} ${asset.ticker}',
                 );
-                if (ok) await _submit();
+                if (ok && mounted) await _submit();
               },
               icon: const Icon(Icons.fingerprint),
               label: const Text('Use biometrics'),
@@ -668,8 +669,13 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           enabled: !_submitting,
           onCompleted: (pin) async {
             final ok = await _wallet.verifyPin(pin);
+            if (!mounted) return;
             if (!ok) {
-              setState(() => _pinError = 'Incorrect passcode. Try again.');
+              setState(() {
+                _pinError = _wallet.pinTemporarilyLocked
+                    ? 'Too many attempts. Wait and try again.'
+                    : 'Incorrect passcode. Try again.';
+              });
               return;
             }
             await _submit();
@@ -709,11 +715,15 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       final tx = result.tx;
       final snap = _portfolio.snapshot;
       if (snap != null) {
-        final assets = snap.assets.map((item) {
-          if (item.id != asset.id) return item;
-          return item.copyWith(balance: (item.balance - amount).clamp(0, double.infinity).toDouble());
-        }).toList();
-        _portfolio.applyLocalSnapshot(assets: assets, prependTx: tx);
+        final nextAssets = ReleaseConfig.liveBroadcastEnabled
+            ? snap.assets.map((item) {
+                if (item.id != asset.id) return item;
+                return item.copyWith(
+                  balance: (item.balance - amount).clamp(0, double.infinity).toDouble(),
+                );
+              }).toList()
+            : snap.assets;
+        _portfolio.applyLocalSnapshot(assets: nextAssets, prependTx: tx);
       }
       await _book.rememberRecipient(address: _toCtrl.text.trim(), network: asset.network);
       HapticFeedback.mediumImpact();
@@ -746,23 +756,24 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       children: [
         const Icon(Icons.check_circle_outline_rounded, size: 48, color: Color(0xFF067647)),
         const SizedBox(height: 12),
-        Text('Your transfer has been securely submitted', style: Theme.of(context).textTheme.headlineSmall),
+        Text('Transfer preview recorded', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
         Text(
-          'Status: ${tx.status.label}. We’ll update this as confirmation arrives.',
+          'This is a preview on this device — not a live network broadcast. Status: ${tx.status.label}.',
           style: const TextStyle(color: AetherColors.muted, height: 1.45),
         ),
         const SizedBox(height: 16),
         _kv('Amount', '${tx.amount} ${asset.ticker}'),
         _kv('To', tx.to),
         _kv('Network', asset.network.label),
-        const Text('Reference', style: TextStyle(color: AetherColors.muted)),
+        const Text('Preview reference', style: TextStyle(color: AetherColors.muted)),
         const SizedBox(height: 4),
         SelectableText(tx.hash, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         const SoftBanner(
+          tone: BannerTone.warn,
           message:
-              'This device recorded the transfer in Activity. We’ll update status as confirmation arrives.',
+              'Do not send real funds based on this preview. Live broadcast is off until network signing is audited.',
         ),
         if (context.watch<IntelligenceController>().pendingTip case final tip?) ...[
           const SizedBox(height: 12),

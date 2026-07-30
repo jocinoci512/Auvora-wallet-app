@@ -14,7 +14,7 @@ class BackupScreen extends StatefulWidget {
 }
 
 class _BackupScreenState extends State<BackupScreen> {
-  bool _revealed = true;
+  bool _revealed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,8 @@ class _BackupScreenState extends State<BackupScreen> {
       title: 'Write these words down',
       subtitle:
           'This is your recovery phrase — the only backup of this wallet. Anyone with these words can move your funds.',
-      reassure: 'Auvora never stores this phrase. Prefer paper. Avoid screenshots and cloud notes.',
+      reassure:
+          'Auvora does not send this phrase off your device. After setup it stays encrypted in this phone’s secure storage. Write it down — you need it if you lose the device.',
       onBack: c.backToExplain,
       showProgress: true,
       body: Column(

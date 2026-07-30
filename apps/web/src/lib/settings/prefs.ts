@@ -99,12 +99,12 @@ const ACCOUNT_DEFAULTS: AccountPrefs = {
 
 const PRIVACY_DEFAULTS: PrivacyPrefs = {
   analytics: false,
-  crashReporting: true,
+  crashReporting: false,
   cookiesEssential: true,
   cookiesAnalytics: false,
-  personalization: true,
-  aiAssistant: true,
-  aiChatHistory: true,
+  personalization: false,
+  aiAssistant: false,
+  aiChatHistory: false,
 };
 
 const NOTIF_DEFAULTS: NotificationPrefsLocal = {

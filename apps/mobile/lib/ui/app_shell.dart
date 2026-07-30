@@ -15,8 +15,35 @@ import 'unlock_screen.dart';
 import 'verify_screen.dart';
 import 'welcome_screen.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      final wallet = context.read<WalletController>();
+      if (wallet.hasPin && wallet.unlocked && wallet.stage == AppStage.dashboard) {
+        wallet.lock();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -127,7 +127,7 @@ class SecurityPreferences {
     this.notificationPrivacy = true,
     this.clipboardTimeoutSeconds = 30,
     this.lastReviewAt,
-    this.appUpdated = true,
+    this.appUpdated = false,
     this.reviewedTrustedDevices = false,
     this.reviewedConnectedDapps = false,
     this.emergencyNotificationsMuted = false,

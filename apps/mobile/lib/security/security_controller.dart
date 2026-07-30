@@ -69,9 +69,7 @@ class SecurityController extends ChangeNotifier {
     alerts = _readAlerts();
     await _connections?.bootstrap();
     _syncDappsFromConnections();
-    if (dapps.isEmpty && _connections == null) {
-      dapps = _demoDapps;
-    }
+    // Never invent connected apps — empty means none in this Alpha build.
     loading = false;
     notifyListeners();
   }
@@ -334,7 +332,7 @@ class SecurityController extends ChangeNotifier {
       notificationPrivacy: data['notificationPrivacy'] != false,
       clipboardTimeoutSeconds: (data['clipboardTimeoutSeconds'] as num?)?.toInt() ?? 30,
       lastReviewAt: DateTime.tryParse((data['lastReviewAt'] as String?) ?? ''),
-      appUpdated: data['appUpdated'] != false,
+      appUpdated: data['appUpdated'] == true,
       reviewedTrustedDevices: data['reviewedTrustedDevices'] == true,
       reviewedConnectedDapps: data['reviewedConnectedDapps'] == true,
       emergencyNotificationsMuted: data['emergencyNotificationsMuted'] == true,
@@ -343,7 +341,20 @@ class SecurityController extends ChangeNotifier {
 
   List<TrustedDevice> _readDevices() {
     final raw = _prefs?.getString(_kDevices);
-    if (raw == null || raw.isEmpty) return _demoDevices;
+    if (raw == null || raw.isEmpty) {
+      // This device only — never seed fake "unknown" devices that inflate risk.
+      return [
+        TrustedDevice(
+          id: 'dev-current',
+          name: 'This phone',
+          platform: 'Current device',
+          appVersion: '1.0.0-alpha',
+          lastActiveAt: DateTime.now(),
+          current: true,
+          trusted: true,
+        ),
+      ];
+    }
     final list = jsonDecode(raw) as List<dynamic>;
     return list
         .map((item) => TrustedDevice(
@@ -360,7 +371,20 @@ class SecurityController extends ChangeNotifier {
 
   List<ActiveSession> _readSessions() {
     final raw = _prefs?.getString(_kSessions);
-    if (raw == null || raw.isEmpty) return _demoSessions;
+    if (raw == null || raw.isEmpty) {
+      return [
+        ActiveSession(
+          id: 'sess-current',
+          deviceName: 'This phone',
+          platform: 'Auvora mobile',
+          location: 'This device',
+          loginAt: DateTime.now().subtract(const Duration(hours: 1)),
+          lastActiveAt: DateTime.now(),
+          authMethod: 'Passcode',
+          current: true,
+        ),
+      ];
+    }
     final list = jsonDecode(raw) as List<dynamic>;
     return list
         .map((item) => ActiveSession(
@@ -378,7 +402,7 @@ class SecurityController extends ChangeNotifier {
 
   List<SecurityAlertItem> _readAlerts() {
     final raw = _prefs?.getString(_kAlerts);
-    if (raw == null || raw.isEmpty) return _demoAlerts;
+    if (raw == null || raw.isEmpty) return const <SecurityAlertItem>[];
     final list = jsonDecode(raw) as List<dynamic>;
     return list
         .map((item) => SecurityAlertItem(
