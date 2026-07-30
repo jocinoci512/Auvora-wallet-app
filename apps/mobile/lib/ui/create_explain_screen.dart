@@ -12,8 +12,10 @@ class CreateExplainScreen extends StatelessWidget {
     final c = context.watch<WalletController>();
     return ScreenScaffold(
       title: 'Create your wallet',
-      subtitle: 'In a moment you’ll see twelve words. They’re the master key to your funds — only you should ever see them.',
-      reassure: 'Nothing is generated until you tap continue.',
+      subtitle:
+          'In a moment you’ll see twelve words. They’re the master key to your funds — only you should ever see them.',
+      reassure:
+          'By continuing you agree to Auvora’s Terms and Privacy Policy (drafts on the web companion). Nothing is generated until you tap continue.',
       onBack: c.goWelcome,
       showProgress: true,
       body: const Column(

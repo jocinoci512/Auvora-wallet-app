@@ -276,7 +276,7 @@ export function BuyExperience(): ReactElement {
           <CxActions
             onBack={() => setScreen('form')}
             onNext={execute}
-            nextLabel="Authenticate & pay"
+            nextLabel="Confirm buy preview"
             nextDisabled={quoteExpired(quote) || submitting}
           />
         </section>

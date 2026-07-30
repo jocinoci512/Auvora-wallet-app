@@ -5,6 +5,16 @@ import 'package:auvora_wallet/connections/permission_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+Future<ConnectedAppSession> _approveUniswap(ConnectionsController c) async {
+  final request = await c.createPairingRequest(
+    rawInput: 'wc:preview@2?relay-protocol=irn&symKey=demo#https://app.uniswap.org',
+    method: ConnectionMethod.walletConnectUri,
+  );
+  final session = await c.approveConnection(request.id);
+  expect(session, isNotNull);
+  return session!;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -37,13 +47,13 @@ void main() {
   });
 
   group('ConnectionsController', () {
-    test('boots seed sessions and activity', () async {
+    test('boots empty without invented sessions or activity', () async {
       final c = ConnectionsController();
       await c.bootstrap();
       expect(c.loading, isFalse);
-      expect(c.activeSessions, isNotEmpty);
-      expect(c.activity, isNotEmpty);
-      expect(c.connectedDappsSummary, isNotEmpty);
+      expect(c.activeSessions, isEmpty);
+      expect(c.activity, isEmpty);
+      expect(c.connectedDappsSummary, isEmpty);
     });
 
     test('approve and reject connection reducers', () async {
@@ -82,7 +92,7 @@ void main() {
     test('revoke permission and disconnect session', () async {
       final c = ConnectionsController();
       await c.bootstrap();
-      final session = c.activeSessions.first;
+      final session = await _approveUniswap(c);
       final grant = session.grants.first;
       final grantCount = session.grants.length;
 
@@ -102,6 +112,7 @@ void main() {
     test('activity filtering by query and kind', () async {
       final c = ConnectionsController();
       await c.bootstrap();
+      await _approveUniswap(c);
       final filtered = c.filteredActivity(query: 'uniswap');
       expect(filtered, isNotEmpty);
       expect(
@@ -115,7 +126,10 @@ void main() {
         isTrue,
       );
 
+      final sig = await c.enqueueSignatureRequest(sessionId: c.activeSessions.first.id);
+      await c.approveSignature(sig.id);
       final sigOnly = c.filteredActivity(kind: Web3ActivityKind.signature);
+      expect(sigOnly, isNotEmpty);
       expect(sigOnly.every((e) => e.kind == Web3ActivityKind.signature), isTrue);
     });
 
@@ -165,7 +179,7 @@ void main() {
     test('typed-data signatures mark spending risk', () async {
       final c = ConnectionsController();
       await c.bootstrap();
-      final session = c.activeSessions.first;
+      final session = await _approveUniswap(c);
       final sig = await c.enqueueSignatureRequest(
         sessionId: session.id,
         kind: SignatureKind.typedData,
@@ -197,7 +211,7 @@ void main() {
     test('signature and transaction approve record activity', () async {
       final c = ConnectionsController();
       await c.bootstrap();
-      final session = c.activeSessions.first;
+      final session = await _approveUniswap(c);
 
       final sig = await c.enqueueSignatureRequest(sessionId: session.id);
       await c.approveSignature(sig.id);

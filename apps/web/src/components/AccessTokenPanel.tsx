@@ -39,8 +39,9 @@ export function AccessTokenPanel(): ReactElement | null {
       <details>
         <summary>API access token</summary>
         <p className="token-panel__hint">
-          Requests use a JWT from <code>{ACCESS_TOKEN_KEY}</code> in localStorage. Paste an access
-          token from <code>POST /api/v1/auth/login</code> on the gateway.
+          Requests use a JWT from <code>{ACCESS_TOKEN_KEY}</code> in <code>sessionStorage</code>{' '}
+          (tab-scoped). Paste an access token from <code>POST /api/v1/auth/login</code> on the
+          gateway.
         </p>
         <div className="token-panel__row">
           <input

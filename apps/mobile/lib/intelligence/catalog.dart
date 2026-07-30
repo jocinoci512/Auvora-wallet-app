@@ -193,7 +193,7 @@ class IntelligenceCatalog {
           learnTopicId: 'confirmations',
         );
       case TxStatus.cancelled:
-        return IntelligenceExplanation(
+        return const IntelligenceExplanation(
           id: 'tx-cancelled',
           kind: IntelligenceKind.transaction,
           title: 'Cancelled before it settled',

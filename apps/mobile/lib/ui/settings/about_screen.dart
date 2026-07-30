@@ -22,7 +22,7 @@ class AboutScreen extends StatelessWidget {
             style: TextStyle(color: AetherColors.mutedFor(context), height: 1.4),
           ),
           const SizedBox(height: 12),
-          SoftBanner(
+          const SoftBanner(
             tone: BannerTone.warn,
             message: ReleaseConfig.fundingBlockedMessage,
           ),

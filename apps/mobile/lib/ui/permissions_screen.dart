@@ -37,9 +37,9 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       showProgress: true,
       body: ListView(
         children: [
-          const Text(
+          Text(
             'Camera is only for scanning address codes when you choose. Notifications are optional activity alerts.',
-            style: TextStyle(color: AetherColors.muted, height: 1.45),
+            style: TextStyle(color: AetherColors.mutedFor(context), height: 1.45),
           ),
           const SizedBox(height: 16),
           TextButton(

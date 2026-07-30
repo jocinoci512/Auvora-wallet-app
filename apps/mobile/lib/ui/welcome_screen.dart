@@ -33,7 +33,7 @@ class WelcomeScreen extends StatelessWidget {
                 'A calm wallet for digital value.\nYou hold the keys — we never ask for them.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AetherColors.muted,
+                  color: AetherColors.mutedFor(context),
                   height: 1.45,
                 ),
               ),

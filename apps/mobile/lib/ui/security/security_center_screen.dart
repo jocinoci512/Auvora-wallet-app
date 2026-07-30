@@ -193,13 +193,13 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                                     : 'Face ID, Touch ID, or Android biometrics when available.',
                               ),
                             ),
-                            SwitchListTile(
+                            const SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               value: true,
                               onChanged: null,
-                              title: const Text('Require confirmation before sending funds'),
-                              subtitle: const Text(
-                                'Always required in Internal Alpha. Preference wiring ships later.',
+                              title: Text('Require confirmation before sending funds'),
+                              subtitle: Text(
+                                'Always required in Closed Beta. Preference wiring ships with live send rails.',
                               ),
                             ),
                             const SwitchListTile(

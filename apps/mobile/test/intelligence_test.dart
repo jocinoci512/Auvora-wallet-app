@@ -15,8 +15,8 @@ void main() {
 
   test('catalog never frames buy/sell advice in portfolio summaries', () {
     final snap = PortfolioSnapshot(
-      assets: [
-        const AssetHolding(
+      assets: const [
+        AssetHolding(
           id: 'btc',
           name: 'Bitcoin',
           ticker: 'BTC',
@@ -27,7 +27,7 @@ void main() {
           color: 0xFFF7931A,
           sparkline: [1, 2, 3, 4, 5, 6, 7],
         ),
-        const AssetHolding(
+        AssetHolding(
           id: 'usdc',
           name: 'USD Coin',
           ticker: 'USDC',

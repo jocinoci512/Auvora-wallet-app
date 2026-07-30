@@ -25,17 +25,23 @@ class GuidanceSettingsScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Text('Guidance level', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          for (final level in GuidanceLevel.values)
-            RadioListTile<GuidanceLevel>(
-              contentPadding: EdgeInsets.zero,
-              title: Text(_label(level)),
-              subtitle: Text(_subtitle(level), style: const TextStyle(height: 1.35)),
-              value: level,
-              groupValue: intel.prefs.guidanceLevel,
-              onChanged: (v) {
-                if (v != null) intel.setGuidanceLevel(v);
-              },
+          RadioGroup<GuidanceLevel>(
+            groupValue: intel.prefs.guidanceLevel,
+            onChanged: (v) {
+              if (v != null) intel.setGuidanceLevel(v);
+            },
+            child: Column(
+              children: [
+                for (final level in GuidanceLevel.values)
+                  RadioListTile<GuidanceLevel>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(_label(level)),
+                    subtitle: Text(_subtitle(level), style: const TextStyle(height: 1.35)),
+                    value: level,
+                  ),
+              ],
             ),
+          ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Educational hints'),

@@ -57,7 +57,9 @@ class PrivacySettingsScreen extends StatelessWidget {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Crash reporting'),
-            subtitle: const Text('Send crash diagnostics without seed phrases or keys'),
+            subtitle: const Text(
+              'Preference saved on this device. Crash SDK wiring ships before Public Beta — nothing is sent today.',
+            ),
             value: prefs.crashReportingEnabled,
             onChanged: prefs.setCrashReportingEnabled,
           ),

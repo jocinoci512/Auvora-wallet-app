@@ -59,11 +59,7 @@ class ConnectionsController extends ChangeNotifier {
         .where((r) => r.status == ConnectionRequestStatus.pending)
         .toList();
     activity = _readList(_kActivity, Web3ActivityEvent.fromJson);
-    if (sessions.isEmpty && activity.isEmpty) {
-      sessions = _seedSessions();
-      activity = _seedActivity(sessions);
-      await _persistAll();
-    }
+    // Closed Beta: start empty — never invent connected apps or activity.
     loading = false;
     notifyListeners();
   }
@@ -523,14 +519,6 @@ class ConnectionsController extends ChangeNotifier {
     await _persistActivity();
   }
 
-  Future<void> _persistAll() async {
-    await _persistSessions();
-    await _persistPending();
-    await _persistSignatures();
-    await _persistTransactions();
-    await _persistActivity();
-  }
-
   Future<void> _persistSessions() async {
     _prefs ??= await SharedPreferences.getInstance();
     await _prefs!.setString(_kSessions, jsonEncode([for (final s in sessions) s.toJson()]));
@@ -716,118 +704,6 @@ class ConnectionsController extends ChangeNotifier {
     return uri.origin;
   }
 
-  List<ConnectedAppSession> _seedSessions() {
-    final now = DateTime.now();
-    ConnectedAppSession build({
-      required String id,
-      required String name,
-      required String origin,
-      required List<String> networks,
-      required List<DappPermissionCode> codes,
-      required Duration ago,
-      String? warning,
-      bool verified = true,
-    }) {
-      final connectedAt = now.subtract(ago);
-      return ConnectedAppSession(
-        id: id,
-        appName: name,
-        origin: origin,
-        networks: networks,
-        accounts: const ['Primary account'],
-        method: ConnectionMethod.walletConnectUri,
-        connectedAt: connectedAt,
-        lastUsedAt: now.subtract(Duration(hours: ago.inHours ~/ 2)),
-        trust: TrustIndicators(
-          verifiedDomain: verified,
-          https: true,
-          previouslyConnected: true,
-          knownProject: lookupKnownDapp(origin) != null,
-        ),
-        grants: [
-          for (final code in codes)
-            PermissionGrant(
-              id: '$id-${code.wire}',
-              sessionId: id,
-              code: code,
-              grantedAt: connectedAt,
-              lastUsedAt: now.subtract(Duration(hours: ago.inHours ~/ 3)),
-            ),
-        ],
-        faviconHint: name.substring(0, 1),
-        warning: warning,
-      );
-    }
-
-    return [
-      build(
-        id: 'sess-uniswap',
-        name: 'Uniswap',
-        origin: 'https://app.uniswap.org',
-        networks: const ['ETHEREUM'],
-        codes: const [
-          DappPermissionCode.viewAddresses,
-          DappPermissionCode.viewBalances,
-          DappPermissionCode.requestSignatures,
-          DappPermissionCode.requestTransactions,
-          DappPermissionCode.sessionManage,
-        ],
-        ago: const Duration(days: 4),
-        warning: 'Can request transactions that move funds.',
-      ),
-      build(
-        id: 'sess-aave',
-        name: 'Aave',
-        origin: 'https://app.aave.com',
-        networks: const ['ETHEREUM'],
-        codes: const [
-          DappPermissionCode.viewAddresses,
-          DappPermissionCode.viewBalances,
-          DappPermissionCode.requestSignatures,
-          DappPermissionCode.sessionManage,
-        ],
-        ago: const Duration(days: 10),
-      ),
-      build(
-        id: 'sess-snapshot',
-        name: 'Snapshot',
-        origin: 'https://snapshot.org',
-        networks: const ['ETHEREUM'],
-        codes: const [
-          DappPermissionCode.viewAddresses,
-          DappPermissionCode.requestSignatures,
-        ],
-        ago: const Duration(days: 18),
-      ),
-    ];
-  }
-
-  List<Web3ActivityEvent> _seedActivity(List<ConnectedAppSession> seed) {
-    final now = DateTime.now();
-    return [
-      for (final s in seed)
-        Web3ActivityEvent(
-          id: 'act-seed-${s.id}',
-          kind: Web3ActivityKind.connected,
-          title: 'Connected ${s.label}',
-          detail: 'Preview seed session for ${s.origin}.',
-          timestamp: s.connectedAt,
-          status: Web3ActivityStatus.confirmed,
-          appName: s.label,
-          origin: s.origin,
-        ),
-      Web3ActivityEvent(
-        id: 'act-seed-sig',
-        kind: Web3ActivityKind.signature,
-        title: 'Signature approved',
-        detail: 'Message sign · Welcome to Uniswap',
-        timestamp: now.subtract(const Duration(days: 2)),
-        status: Web3ActivityStatus.confirmed,
-        appName: 'Uniswap',
-        origin: 'https://app.uniswap.org',
-      ),
-    ];
-  }
 }
 
 class _ParsedPair {

@@ -249,7 +249,7 @@ export function SellExperience(): ReactElement {
           <CxActions
             onBack={() => setScreen('form')}
             onNext={execute}
-            nextLabel="Authenticate & sell"
+            nextLabel="Confirm sell preview"
             nextDisabled={quoteExpired(quote) || submitting}
           />
         </section>

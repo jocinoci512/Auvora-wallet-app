@@ -3,6 +3,8 @@
 Mobile-first product surface for iOS, Android, and tablet.  
 Desktop companion remains `apps/web` (Next.js).
 
+**Channel:** Closed Beta (`1.1.0-beta.1`) — preview chain rails; funding receive locked until BIP32 ships.
+
 ## Prerequisites
 
 1. Flutter SDK 3.24+ (`flutter doctor`)
@@ -22,8 +24,17 @@ flutter pub get
 flutter run
 ```
 
-## Sprint 1 scope
+## Foundation (Prompt 1)
 
-Splash → Welcome → Create / Import → Recovery verify → Security (PIN + biometrics) → Permissions → Dashboard.
+Splash → Welcome → Create / Import → Recovery verify → PIN + biometrics → Permissions → Home shell  
+(Assets / Activity / More). Theme supports light and dark. Keys stay on-device via secure storage.
 
-Keys and recovery phrases stay on-device via secure storage. NFT features are intentionally absent.
+## Build
+
+```bash
+flutter test
+flutter build apk --release   # Android
+flutter build ios --release   # macOS + Xcode only
+```
+
+See `docs/MASTER_BUILD_PROMPT_1_REPORT.md` for the latest foundation milestone status.

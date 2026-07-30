@@ -130,7 +130,7 @@ class WalletController extends ChangeNotifier {
       unlocked = false;
       stage = AppStage.unlock;
     } else if (onboardingComplete && address != null && !hasPin) {
-      // Never auto-unlock without a device passcode — Internal Alpha gate.
+      // Never auto-unlock without a device passcode — Closed Beta gate.
       unlocked = false;
       stage = AppStage.securityPin;
       errorMessage = 'Set a 6-digit passcode to protect this wallet.';

@@ -24,10 +24,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _lift = Tween(begin: 10.0, end: 0.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
-    _controller.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final media = MediaQuery.maybeOf(context);
       final reduce = media?.disableAnimations == true;
+      if (reduce) {
+        _controller.value = 1;
+      } else {
+        _controller.forward();
+      }
       context.read<WalletController>().bootstrap(systemReduceMotion: reduce);
     });
   }

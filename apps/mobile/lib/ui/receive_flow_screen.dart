@@ -118,7 +118,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                 ),
                 const SizedBox(height: 14),
                 if (!ReleaseConfig.allowFundingAddresses) ...[
-                  SoftBanner(
+                  const SoftBanner(
                     tone: BannerTone.error,
                     message:
                         'Receive is locked for real funding in ${ReleaseConfig.buildLabel}. You can still explore networks and practice other journeys.',
