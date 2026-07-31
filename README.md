@@ -2,20 +2,23 @@
 
 Enterprise cryptocurrency wallet platform monorepo. This repository contains shared packages, NestJS microservices, Next.js apps, database schema, and cloud-agnostic infrastructure.
 
-**Current product version:** `1.0.0-rc.1` — Phases 1–14 (Release Candidate). GA cut remains gated by staging soak and remaining checklist items.
+**Current product version:** `1.0.0-alpha.1` — Version 1.0 Alpha (Master Build Prompt 10). Closed testing on simulated rails; funding receive and live broadcast stay locked. See [`docs/MASTER_BUILD_PROMPT_10_REPORT.md`](docs/MASTER_BUILD_PROMPT_10_REPORT.md).
 
-| Doc                                                                | Purpose                                     |
-| ------------------------------------------------------------------ | ------------------------------------------- |
-| [`BUILD_STATUS.md`](BUILD_STATUS.md)                               | Latest lint/test/build/perf verification    |
-| [`docs/RELEASE_CANDIDATE_v1.0.md`](docs/RELEASE_CANDIDATE_v1.0.md) | Phase 14 RC dossier (19 sections)           |
-| [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)                   | RC release notes                            |
-| [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md)       | Documentation map                           |
-| [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md)                 | Maintainability audit findings              |
-| [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md)             | Tracked debt and deferred upgrades          |
-| [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md)         | Pre-GA gate checklist                       |
-| [`DEPLOYMENT.md`](DEPLOYMENT.md)                                   | GitHub → Vercel + backend auto-deploy setup |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                     | Architecture overview                       |
-| [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md)           | ADR index (0001–0010)                       |
+| Doc                                                                              | Purpose                                     |
+| -------------------------------------------------------------------------------- | ------------------------------------------- |
+| [`docs/MASTER_BUILD_PROMPT_10_REPORT.md`](docs/MASTER_BUILD_PROMPT_10_REPORT.md) | Version 1.0 Alpha executive verification    |
+| [`docs/ALPHA_1.0_LAUNCH_CHECKLIST.md`](docs/ALPHA_1.0_LAUNCH_CHECKLIST.md)       | Closed Alpha go / no-go                     |
+| [`docs/ALPHA_1.0_RELEASE_NOTES.md`](docs/ALPHA_1.0_RELEASE_NOTES.md)             | Tester-facing Alpha notes                   |
+| [`BUILD_STATUS.md`](BUILD_STATUS.md)                                             | Latest lint/test/build/perf verification    |
+| [`docs/RELEASE_CANDIDATE_v1.0.md`](docs/RELEASE_CANDIDATE_v1.0.md)               | Prior RC dossier (historical)               |
+| [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)                                 | Prior RC release notes                      |
+| [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md)                     | Documentation map                           |
+| [`CODE_QUALITY_REPORT.md`](CODE_QUALITY_REPORT.md)                               | Maintainability audit findings              |
+| [`TECHNICAL_DEBT_REPORT.md`](TECHNICAL_DEBT_REPORT.md)                           | Tracked debt and deferred upgrades          |
+| [`FINAL_RELEASE_CHECKLIST.md`](FINAL_RELEASE_CHECKLIST.md)                       | Pre-GA gate checklist                       |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md)                                                 | GitHub → Vercel + backend auto-deploy setup |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                                   | Architecture overview                       |
+| [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md)                         | ADR index (0001–0010)                       |
 
 ## Architecture
 

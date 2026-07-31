@@ -73,7 +73,7 @@ export function PreferencesExperience(): ReactElement {
         </div>
       ) : null}
 
-      <section className="cx-panel">
+      <section className="cx-panel" id="appearance">
         <h2>Theme</h2>
         <div className="cx-chips">
           {(['system', 'light', 'dark'] as ThemePref[]).map((t) => (
@@ -87,7 +87,10 @@ export function PreferencesExperience(): ReactElement {
             </button>
           ))}
         </div>
-        <p className="cx-meta">Theme follows system, or stays light / dark on this device.</p>
+        <p className="cx-meta">
+          Theme follows system, or stays light / dark on this device. Transitions are smooth; custom
+          accent colors are prepared for a later release (Lagoon remains the brand accent).
+        </p>
       </section>
 
       <section className="cx-panel">
@@ -206,8 +209,29 @@ export function PreferencesExperience(): ReactElement {
         </div>
       </section>
 
-      <section className="cx-panel">
+      <section className="cx-panel" id="accessibility">
         <h2>Accessibility</h2>
+        <label className="cx-field">
+          <span>Text scale ({prefs.textScale?.toFixed?.(2) ?? '1.00'}×)</span>
+          <input
+            type="range"
+            min={0.85}
+            max={1.35}
+            step={0.05}
+            value={prefs.textScale ?? 1}
+            onChange={(e) => {
+              const textScale = Number(e.target.value);
+              patch({ textScale });
+              if (typeof document !== 'undefined') {
+                document.documentElement.style.setProperty(
+                  '--auvora-text-scale',
+                  String(textScale),
+                );
+              }
+            }}
+            aria-label="Text scale"
+          />
+        </label>
         <div className="cx-row">
           <div>
             <strong>Reduce motion</strong>
@@ -234,6 +258,20 @@ export function PreferencesExperience(): ReactElement {
             aria-pressed={prefs.highContrast}
           >
             {prefs.highContrast ? 'On' : 'Off'}
+          </button>
+        </div>
+        <div className="cx-row">
+          <div>
+            <strong>Large touch targets</strong>
+            <p className="cx-meta">Comfortable tap areas for primary controls (WCAG-oriented).</p>
+          </div>
+          <button
+            type="button"
+            className={`cx-chip${prefs.largeTouchTargets ? ' is-on' : ''}`}
+            onClick={() => patch({ largeTouchTargets: !prefs.largeTouchTargets })}
+            aria-pressed={Boolean(prefs.largeTouchTargets)}
+          >
+            {prefs.largeTouchTargets ? 'On' : 'Off'}
           </button>
         </div>
         <Link href="/settings/account" className="cx-link">

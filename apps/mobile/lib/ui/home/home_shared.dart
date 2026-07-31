@@ -77,7 +77,7 @@ void showActionSheet(BuildContext context, {required String title, required Stri
         children: [
           Text(title, style: Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height: 8),
-          Text(body, style: const TextStyle(color: AetherColors.muted, height: 1.45)),
+          Text(body, style: TextStyle(color: AetherColors.mutedFor(ctx), height: 1.45)),
           const SizedBox(height: 16),
           FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Got it')),
         ],
@@ -106,18 +106,33 @@ class SoftBanner extends StatelessWidget {
       BannerTone.warn => const Color(0xFFB54708),
       BannerTone.error => AetherColors.danger,
     };
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline_rounded, size: 18, color: fg),
-          const SizedBox(width: 10),
-          Expanded(child: Text(message, style: TextStyle(color: fg, height: 1.35, fontSize: 13))),
-          if (actionLabel != null && onAction != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
-        ],
+    final roleLabel = switch (tone) {
+      BannerTone.info => 'Status',
+      BannerTone.warn => 'Warning',
+      BannerTone.error => 'Error',
+    };
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: '$roleLabel: $message',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 18, color: fg),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: fg, height: 1.35, fontSize: 13),
+              ),
+            ),
+            if (actionLabel != null && onAction != null)
+              TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ),
       ),
     );
   }

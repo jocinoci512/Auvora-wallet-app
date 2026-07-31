@@ -5,6 +5,7 @@ import '../../intelligence/intelligence_controller.dart';
 import '../../intelligence/models.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
+import '../../search/fuzzy.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../../wallet_engine/key_store.dart';
@@ -82,7 +83,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ? const <VaultIndexEntry>[]
         : [
             for (final v in wallet.vaults)
-              if (v.name.toLowerCase().contains(q.toLowerCase())) v,
+              if (fuzzyMatches(q, v.name)) v,
           ];
 
     return Scaffold(
@@ -94,7 +95,7 @@ class _SearchScreenState extends State<SearchScreen> {
           onChanged: p.setGlobalQuery,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
-            hintText: 'Assets, wallets, activity, settings…',
+            hintText: 'Assets, wallets, activity, settings, help…',
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,

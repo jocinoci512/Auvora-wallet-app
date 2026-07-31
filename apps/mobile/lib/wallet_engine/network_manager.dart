@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,10 +7,19 @@ import '../reliability/retry.dart';
 import 'blockchain_adapter.dart';
 import 'models.dart';
 
+/// Preview / Closed Beta RPC health with labeled primary→backup failover.
+///
+/// Real multi-URL RPC pools land when live broadcast is enabled; until then
+/// adapters report simulated endpoints and NetworkManager tracks failover attempts.
 class NetworkManager extends ChangeNotifier {
-  NetworkManager({required BlockchainLayer blockchainLayer}) : _blockchainLayer = blockchainLayer;
+  NetworkManager({
+    required BlockchainLayer blockchainLayer,
+    Map<ChainId, List<String>>? backupEndpoints,
+  })  : _blockchainLayer = blockchainLayer,
+        _backupEndpoints = backupEndpoints ?? _defaultBackups;
 
   final BlockchainLayer _blockchainLayer;
+  final Map<ChainId, List<String>> _backupEndpoints;
   final Map<ChainId, EndpointHealth> _health = {};
 
   bool offline = false;
@@ -18,9 +28,20 @@ class NetworkManager extends ChangeNotifier {
   DateTime? lastOnlineAt;
   int healthRefreshCount = 0;
   int pingRetries = 0;
+  int failoverAttempts = 0;
+  int timeoutEvents = 0;
 
   /// Test / diagnostics hook — when set, skips DNS lookup.
   bool? forceOffline;
+
+  static final Map<ChainId, List<String>> _defaultBackups = {
+    for (final chain in ChainId.values)
+      chain: [
+        '${chain.key}-rpc-primary.preview',
+        '${chain.key}-rpc-backup.preview',
+        '${chain.key}-rpc-fallback.preview',
+      ],
+  };
 
   EndpointHealth? statusFor(ChainId chain) => _health[chain];
 
@@ -63,24 +84,55 @@ class NetworkManager extends ChangeNotifier {
   }
 
   Future<EndpointHealth> _pingWithBackup(BlockchainAdapter adapter) async {
-    try {
-      return await withRetry(
-        () => adapter.ping(),
-        maxAttempts: 2,
-        initialDelay: const Duration(milliseconds: 80),
-        onRetry: (_, __) => pingRetries += 1,
-      );
-    } catch (_) {
-      final now = DateTime.now();
-      return EndpointHealth(
-        chain: adapter.chain,
-        endpoint: '${adapter.providerCode}-backup-miss',
-        latencyMs: 0,
-        state: EndpointState.degraded,
-        lastCheckedAt: now,
-        failoverCount: 1,
-      );
+    final labels = _backupEndpoints[adapter.chain] ??
+        ['${adapter.providerCode}-primary', '${adapter.providerCode}-backup'];
+    var failovers = 0;
+    Object? lastError;
+
+    for (var i = 0; i < labels.length; i++) {
+      final label = labels[i];
+      try {
+        final health = await withRetry(
+          () => adapter.ping().timeout(const Duration(seconds: 3)),
+          maxAttempts: i == 0 ? 2 : 1,
+          initialDelay: const Duration(milliseconds: 80),
+          onRetry: (_, __) => pingRetries += 1,
+        );
+        if (i > 0) {
+          failoverAttempts += 1;
+          failovers = i;
+        }
+        final degraded = health.state != EndpointState.healthy || i > 0;
+        return EndpointHealth(
+          chain: health.chain,
+          endpoint: i == 0 ? health.endpoint : '$label (failover)',
+          latencyMs: health.latencyMs,
+          state: degraded ? EndpointState.degraded : EndpointState.healthy,
+          lastCheckedAt: DateTime.now(),
+          failoverCount: (health.failoverCount) + failovers,
+        );
+      } on TimeoutException {
+        timeoutEvents += 1;
+        lastError = TimeoutException('rpc ping timeout');
+        failoverAttempts += 1;
+        failovers = i + 1;
+      } catch (error) {
+        lastError = error;
+        failoverAttempts += 1;
+        failovers = i + 1;
+      }
     }
+
+    assert(lastError != null || failovers > 0);
+    final now = DateTime.now();
+    return EndpointHealth(
+      chain: adapter.chain,
+      endpoint: '${labels.last}-miss',
+      latencyMs: 0,
+      state: EndpointState.degraded,
+      lastCheckedAt: now,
+      failoverCount: failovers,
+    );
   }
 
   Future<bool> _detectOffline() async {
@@ -110,6 +162,8 @@ class NetworkManager extends ChangeNotifier {
         'lastOnlineAt': lastOnlineAt?.toIso8601String(),
         'healthRefreshCount': healthRefreshCount,
         'pingRetries': pingRetries,
+        'failoverAttempts': failoverAttempts,
+        'timeoutEvents': timeoutEvents,
         'endpoints': [
           for (final item in allStatuses)
             {

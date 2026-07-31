@@ -2,18 +2,16 @@
 
 import Link from 'next/link';
 import type { ReactElement } from 'react';
+import { ReleaseConfig } from '../../lib/release/config';
 import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-
-const VERSION = '0.1.0';
-const BUILD = 'web-preview';
 
 export function AboutSettingsExperience(): ReactElement {
   return (
     <PlatformShell
       title="About"
       subtitle="Version, legal, and acknowledgements."
-      reassure="Preview builds are labeled honestly — not production store metadata."
+      reassure="Alpha builds are labeled honestly — funding and live broadcast stay locked."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/about" />}
@@ -21,15 +19,55 @@ export function AboutSettingsExperience(): ReactElement {
       <section className="cx-panel">
         <h2>Auvora Wallet</h2>
         <p className="cx-meta">
-          Version {VERSION} · Build {BUILD}
+          {ReleaseConfig.buildLabel}
+          <br />
+          Version {ReleaseConfig.marketingVersion} · Channel {ReleaseConfig.releaseChannel}
+        </p>
+        <div className="cx-alert cx-alert--warn" role="status">
+          {ReleaseConfig.fundingBlockedMessage}
+        </div>
+        <p className="cx-meta">
+          Support:{' '}
+          <a className="cx-link" href={`mailto:${ReleaseConfig.supportEmail}`}>
+            {ReleaseConfig.supportEmail}
+          </a>
+          {' · '}
+          <a className="cx-link" href={ReleaseConfig.websiteUrl} rel="noreferrer" target="_blank">
+            Website
+          </a>
+          {' · '}
+          <a
+            className="cx-link"
+            href={ReleaseConfig.privacyPolicyUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Privacy
+          </a>
+          {' · '}
+          <a
+            className="cx-link"
+            href={ReleaseConfig.termsOfServiceUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Terms
+          </a>
         </p>
         <ul className="cx-list">
           <li>
             <strong>Release notes</strong>
             <p className="cx-meta">
-              Sprint 8 adds Settings organization, price alerts, networks, and about — aligned with
-              mobile.
+              Version 1.0 Alpha packaging for trusted testing. Receive funding stays locked; live
+              broadcast kill switch is off. Reliability and store-ready Android config from Prompts
+              8–10.
             </p>
+          </li>
+          <li>
+            <Link href="/settings/feedback" className="cx-link">
+              Send Alpha feedback
+            </Link>
+            <p className="cx-meta">Bugs, UX, performance, security, accessibility</p>
           </li>
           <li>
             <Link href="/legal" className="cx-link">

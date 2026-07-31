@@ -385,6 +385,9 @@ class WalletDiagnostics {
     this.partialChainFailures = 0,
     this.coldStartMs,
     this.lastSyncReason,
+    this.lastSyncDurationMs,
+    this.syncSampleCount = 0,
+    this.errorEvents = 0,
   });
 
   final int cacheHits;
@@ -397,6 +400,9 @@ class WalletDiagnostics {
   final int partialChainFailures;
   final int? coldStartMs;
   final String? lastSyncReason;
+  final int? lastSyncDurationMs;
+  final int syncSampleCount;
+  final int errorEvents;
 
   Map<String, Object?> toJson() => {
         'cacheHits': cacheHits,
@@ -409,6 +415,9 @@ class WalletDiagnostics {
         'partialChainFailures': partialChainFailures,
         'coldStartMs': coldStartMs,
         'lastSyncReason': lastSyncReason,
+        'lastSyncDurationMs': lastSyncDurationMs,
+        'syncSampleCount': syncSampleCount,
+        'errorEvents': errorEvents,
       };
 }
 

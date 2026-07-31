@@ -1,8 +1,23 @@
 # Known Limitations — Auvora Wallet
 
 **Task:** 037  
-**Date:** 2026-07-27  
-**Audience:** Operators, beta users, executive stakeholders
+**Updated:** 2026-07-31 (Version 1.0 Alpha)  
+**Audience:** Operators, Alpha testers, executive stakeholders
+
+---
+
+## Version 1.0 Alpha (active)
+
+| Limitation                           | Impact                                      | Mitigation                                                   |
+| ------------------------------------ | ------------------------------------------- | ------------------------------------------------------------ |
+| Funding receive locked               | Cannot show/copy full funding addresses     | Kill switch + redaction on Receive / More / Account          |
+| Live broadcast off                   | Sends / swaps / bridges stay preview        | `liveBroadcastEnabled=false` mobile + web                    |
+| Preview / simulated chain rails      | Balances and txs are not live money         | Soft banners; tester brief: do not send real funds           |
+| Crash / analytics SDKs unwired       | Toggles disabled; nothing leaves device     | Honest Privacy copy                                          |
+| iOS IPA not built on Windows         | No TestFlight binary from this host         | Archive on macOS                                             |
+| AAB may be debug-signed              | Play rejects without upload keystore        | Add local `key.properties`                                   |
+| Hosted legal URLs may be unpublished | About links can 404 until DNS/content live  | Publish `wallet.auvora.app/legal/*` or point to web `/legal` |
+| Store marketing graphics missing     | No Play feature graphic / final screenshots | `docs/store-assets/alpha-1.0/` placeholders                  |
 
 ---
 

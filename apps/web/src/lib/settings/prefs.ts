@@ -12,6 +12,8 @@ export type AccountPrefs = {
   fiatDisplay: boolean;
   reduceMotion: boolean;
   highContrast: boolean;
+  textScale: number;
+  largeTouchTargets: boolean;
 };
 
 export type PrivacyPrefs = {
@@ -29,7 +31,9 @@ export type PrivacyPrefs = {
 export type NotificationPrefsLocal = {
   incomingTransactions: boolean;
   outgoingTransactions: boolean;
+  pendingConfirmations: boolean;
   transactionConfirmations: boolean;
+  failedTransactions: boolean;
   priceAlerts: boolean;
   largeBalanceChanges: boolean;
   securityAlerts: boolean;
@@ -95,6 +99,8 @@ const ACCOUNT_DEFAULTS: AccountPrefs = {
   fiatDisplay: true,
   reduceMotion: false,
   highContrast: false,
+  textScale: 1,
+  largeTouchTargets: false,
 };
 
 const PRIVACY_DEFAULTS: PrivacyPrefs = {
@@ -110,7 +116,9 @@ const PRIVACY_DEFAULTS: PrivacyPrefs = {
 const NOTIF_DEFAULTS: NotificationPrefsLocal = {
   incomingTransactions: true,
   outgoingTransactions: true,
+  pendingConfirmations: true,
   transactionConfirmations: true,
+  failedTransactions: true,
   priceAlerts: true,
   largeBalanceChanges: true,
   securityAlerts: true,

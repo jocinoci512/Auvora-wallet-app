@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 enum AppThemePreference { system, light, dark }
 
+/// Future custom accent support — Lagoon is the shipped brand accent.
+enum AccentColorPreference { lagoon, slate, forest }
+
 enum FiatCurrency { usd, eur, gbp, jpy }
 
 enum DateFormatPreference { mdy, dmy, ymd }
@@ -13,7 +16,9 @@ enum AssetSortPreference { valueDesc, nameAsc, changeDesc, balanceDesc }
 enum NotificationCategory {
   incomingTransactions,
   outgoingTransactions,
+  pendingConfirmations,
   transactionConfirmations,
+  failedTransactions,
   priceAlerts,
   largeBalanceChanges,
   securityAlerts,
@@ -51,9 +56,19 @@ const kNotificationCatalog = <NotificationCategoryInfo>[
     purpose: 'Confirm when you send from this device.',
   ),
   NotificationCategoryInfo(
+    id: NotificationCategory.pendingConfirmations,
+    title: 'Pending confirmations',
+    purpose: 'Stay aware while a transfer is still confirming on-chain.',
+  ),
+  NotificationCategoryInfo(
     id: NotificationCategory.transactionConfirmations,
-    title: 'Confirmations',
+    title: 'Completed confirmations',
     purpose: 'Hear when a pending transfer finishes confirming.',
+  ),
+  NotificationCategoryInfo(
+    id: NotificationCategory.failedTransactions,
+    title: 'Failed transactions',
+    purpose: 'Know when a send or dApp request fails so you can retry safely.',
   ),
   NotificationCategoryInfo(
     id: NotificationCategory.priceAlerts,
@@ -454,6 +469,12 @@ ThemeMode themeModeFor(AppThemePreference pref) => switch (pref) {
       AppThemePreference.system => ThemeMode.system,
       AppThemePreference.light => ThemeMode.light,
       AppThemePreference.dark => ThemeMode.dark,
+    };
+
+Color accentColorFor(AccentColorPreference pref) => switch (pref) {
+      AccentColorPreference.lagoon => const Color(0xFF0E4F5C),
+      AccentColorPreference.slate => const Color(0xFF3D4F5F),
+      AccentColorPreference.forest => const Color(0xFF1F6B4A),
     };
 
 String currencyCode(FiatCurrency c) => switch (c) {

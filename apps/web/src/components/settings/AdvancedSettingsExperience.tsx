@@ -3,7 +3,11 @@
 import { Alert, Button, EmptyState } from '@auvora/ui';
 import { useCallback, useState, type ReactElement } from 'react';
 import { env } from '../../env';
-import { clearOfflineCache } from '../../lib/offline/cache';
+import {
+  clearOfflineCache,
+  offlineCacheNamespaceSizes,
+  purgeExpiredOfflineCache,
+} from '../../lib/offline/cache';
 import { withGetRetry, isTransientHttpError } from '../../lib/reliability/get-retry';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { PlatformShell } from '../platform/PlatformShell';
@@ -104,6 +108,19 @@ export function AdvancedSettingsExperience(): ReactElement {
     showToast(`Cleared ${n} offline cache entries on this browser`);
   }
 
+  function purgeCaches(): void {
+    const n = purgeExpiredOfflineCache();
+    const sizes = offlineCacheNamespaceSizes();
+    const summary = Object.entries(sizes)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(', ');
+    showToast(
+      n === 0
+        ? `No expired entries. Namespaces: ${summary || 'empty'}`
+        : `Purged ${n} expired entries. Remaining: ${summary || 'empty'}`,
+    );
+  }
+
   return (
     <PlatformShell
       title="Advanced"
@@ -156,6 +173,9 @@ export function AdvancedSettingsExperience(): ReactElement {
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={clearCaches}>
             Clear offline cache
+          </Button>
+          <Button type="button" size="sm" variant="secondary" onClick={purgeCaches}>
+            Purge expired cache
           </Button>
         </div>
         {probe ? (

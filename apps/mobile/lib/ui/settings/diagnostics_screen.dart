@@ -20,30 +20,48 @@ class DiagnosticsScreen extends StatefulWidget {
 
 class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   String? _toast;
+  Map<String, int> _cacheSizes = const {};
 
-  Map<String, Object?> _payload(BuildContext context) {
-    final sync = context.read<SyncEngine>();
-    final network = context.read<NetworkManager>();
-    final coordinator = context.read<SyncCoordinator>();
-    return sync.exportDiagnostics(
-      coordinator: {
-        'reconnectRefreshCount': coordinator.reconnectRefreshCount,
-        'coalescedCount': coordinator.coalescedCount,
-        'lastTriggeredAt': coordinator.lastTriggeredAt?.toIso8601String(),
-        'networkPingRetries': network.pingRetries,
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCacheSizes());
+  }
+
+  Future<void> _loadCacheSizes() async {
+    final sizes = await context.read<SyncEngine>().cacheStore.namespaceSizes();
+    if (!mounted) return;
+    setState(() => _cacheSizes = sizes);
   }
 
   Future<void> _export(BuildContext context) async {
-    final json = const JsonEncoder.withIndent('  ').convert(_payload(context));
+    final sync = context.read<SyncEngine>();
+    final coordinator = context.read<SyncCoordinator>();
+    final network = context.read<NetworkManager>();
+    final json = const JsonEncoder.withIndent('  ').convert(
+      await sync.exportDiagnosticsAsync(
+        coordinator: {
+          ...coordinator.diagnosticsJson(),
+          'networkPingRetries': network.pingRetries,
+          'networkFailoverAttempts': network.failoverAttempts,
+          'networkTimeoutEvents': network.timeoutEvents,
+        },
+      ),
+    );
     await Clipboard.setData(ClipboardData(text: json));
     setState(() => _toast = 'Diagnostics JSON copied — no secrets included.');
   }
 
   Future<void> _clearCache(BuildContext context) async {
     await context.read<SyncEngine>().clearCaches();
+    await _loadCacheSizes();
     setState(() => _toast = 'Local cache cleared. Pull to refresh on Home.');
+  }
+
+  Future<void> _purgeExpired(BuildContext context) async {
+    final n = await context.read<SyncEngine>().purgeExpiredCache();
+    await _loadCacheSizes();
+    setState(() => _toast = 'Purged $n expired cache entries.');
   }
 
   @override
@@ -77,10 +95,22 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           _tile('Network requests / failures', '${d.rpcRequests} / ${d.rpcFailures}'),
           _tile('Retries', '${d.retryAttempts}'),
           _tile('Partial chain failures', '${d.partialChainFailures}'),
+          _tile('Error events', '${d.errorEvents}'),
           _tile('Avg latency', '${d.averageLatencyMs} ms'),
+          _tile('Last sync duration', d.lastSyncDurationMs == null ? 'n/a' : '${d.lastSyncDurationMs} ms'),
+          _tile('Sync samples', '${d.syncSampleCount}'),
           _tile('Cold start', d.coldStartMs == null ? 'n/a' : '${d.coldStartMs} ms'),
           _tile('Reconnect refreshes', '${coordinator.reconnectRefreshCount}'),
+          _tile('Resume refreshes', '${coordinator.resumeRefreshCount}'),
+          _tile('Pending-tx refreshes', '${coordinator.pendingTxRefreshCount}'),
           _tile('Coalesced syncs', '${coordinator.coalescedCount}'),
+          _tile('Offline queue drained', '${coordinator.offlineQueueDrained}'),
+          _tile('RPC failovers / timeouts', '${network.failoverAttempts} / ${network.timeoutEvents}'),
+          if (_cacheSizes.isNotEmpty)
+            _tile(
+              'Cache namespaces',
+              _cacheSizes.entries.map((e) => '${e.key}:${e.value}').join(', '),
+            ),
           const SizedBox(height: 8),
           Text('Endpoints', style: Theme.of(context).textTheme.titleMedium),
           for (final ep in network.allStatuses)
@@ -93,6 +123,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           FilledButton(
             onPressed: () => _export(context),
             child: const Text('Copy diagnostics JSON'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () => _purgeExpired(context),
+            child: const Text('Purge expired cache'),
           ),
           const SizedBox(height: 8),
           OutlinedButton(

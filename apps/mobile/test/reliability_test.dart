@@ -1,5 +1,6 @@
 import 'package:auvora_wallet/portfolio/models.dart';
 import 'package:auvora_wallet/reliability/cache_store.dart';
+import 'package:auvora_wallet/reliability/offline_queue.dart';
 import 'package:auvora_wallet/reliability/retry.dart';
 import 'package:auvora_wallet/wallet_engine/asset_registry.dart';
 import 'package:auvora_wallet/wallet_engine/blockchain_adapter.dart';
@@ -112,6 +113,57 @@ void main() {
     expect(staleOk?.data['total'], 10);
   });
 
+  test('CacheStore drops corrupt entries on read', () async {
+    SharedPreferences.setMockInitialValues({
+      'auvora_cache_v1:help:broken': 'not-json{{{',
+    });
+    final store = CacheStore();
+    final result = await store.read<Map<String, Object?>>(
+      ns: CacheStore.nsHelp,
+      id: 'broken',
+      decode: (raw) => Map<String, Object?>.from(raw as Map),
+    );
+    expect(result, isNull);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('auvora_cache_v1:help:broken'), isNull);
+  });
+
+  test('OfflineActionQueue drains safe actions', () async {
+    final queue = OfflineActionQueue();
+    await queue.enqueue(
+      OfflineQueuedAction(
+        id: '1',
+        kind: OfflineActionKind.warmHelpCache,
+        createdAt: DateTime.now(),
+      ),
+    );
+    expect((await queue.peek()).length, 1);
+    var handled = 0;
+    final n = await queue.drain((_) async {
+      handled += 1;
+    });
+    expect(n, 1);
+    expect(handled, 1);
+    expect(await queue.peek(), isEmpty);
+  });
+
+  test('NetworkManager forceOffline marks endpoints offline', () async {
+    final layer = BlockchainLayer(
+      adapters: [
+        PreviewBlockchainAdapter(
+          chain: ChainId.ethereum,
+          providerCode: 'eth-sim',
+          explorerBaseUrl: 'https://etherscan.io/tx/',
+        ),
+      ],
+    );
+    final network = NetworkManager(blockchainLayer: layer)..forceOffline = true;
+    await network.refresh();
+    expect(network.offline, isTrue);
+    expect(network.allStatuses.single.state, EndpointState.offline);
+    expect(network.diagnosticsJson()['failoverAttempts'], isA<int>());
+  });
+
   test('SyncEngine paints cache then survives partial chain failure', () async {
     final layer = BlockchainLayer(
       adapters: [
@@ -152,6 +204,7 @@ void main() {
     expect(live.failedChains, contains('solana'));
     expect(live.syncDelayed, isTrue);
     expect(live.fromCache, isFalse);
+    expect(sync.diagnostics.lastSyncDurationMs, isNotNull);
 
     final cached = await sync.cachedPortfolio();
     expect(cached, isNotNull);
@@ -163,6 +216,18 @@ void main() {
     expect(offline.fromCache, isTrue);
     expect(offline.offline, isTrue);
     expect(offline.assets, isNotEmpty);
+
+    await sync.warmHelpCache();
+    final help = await sync.cacheStore.read<Map<String, Object?>>(
+      ns: CacheStore.nsHelp,
+      id: 'faq-bundle',
+      decode: (raw) => Map<String, Object?>.from(raw as Map),
+    );
+    expect(help?.data['offlineReady'], isTrue);
+
+    final diag = sync.exportDiagnostics();
+    expect(diag['privacy'], 'no_keys_seeds_pins');
+    expect(diag.containsKey('walletDiagnostics'), isTrue);
   });
 }
 

@@ -126,23 +126,25 @@ export function PrivacyCenterExperience(): ReactElement {
         <div className="cx-row">
           <div>
             <strong>Analytics</strong>
-            <p className="cx-meta">Help improve Auvora with anonymous usage metrics.</p>
+            <p className="cx-meta">
+              Unavailable in Version 1.0 Alpha — no analytics SDK is wired; nothing leaves this
+              device.
+            </p>
           </div>
-          <Switch
-            checked={prefs.analytics}
-            onCheckedChange={(v) => patch({ analytics: v })}
-            aria-label="Analytics preferences"
-          />
+          <Switch checked={false} disabled aria-label="Analytics preferences" />
         </div>
         <div className="cx-row">
           <div>
             <strong>Crash reporting</strong>
-            <p className="cx-meta">Send diagnostic stacks when the app fails unexpectedly.</p>
+            <p className="cx-meta">
+              Not available in Version 1.0 Alpha. No crash SDK is wired — nothing leaves this
+              browser even if the preference was previously enabled.
+            </p>
           </div>
           <Switch
-            checked={prefs.crashReporting}
-            onCheckedChange={(v) => patch({ crashReporting: v })}
-            aria-label="Crash reporting preferences"
+            checked={false}
+            disabled
+            aria-label="Crash reporting unavailable in Version 1.0 Alpha"
           />
         </div>
         <div className="cx-row">
@@ -281,7 +283,7 @@ export function PrivacyCenterExperience(): ReactElement {
             variant="secondary"
             onClick={() => {
               showToast(
-                'Data export is not available in Closed Beta — use Beta feedback if you need help',
+                'Data export is not available in Version 1.0 Alpha — use Alpha feedback if you need help',
                 2200,
               );
             }}

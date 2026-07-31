@@ -224,15 +224,23 @@ export function SigningExperience(): ReactElement {
           </p>
           <span className="cx-badge">{riskLabel(preview.risk)}</span>
           {permissionsCanMoveFunds(activeCodes) ? (
-            <Alert tone="warn" title="Funds can move">
-              Approving this transaction request can move funds or assets after you confirm.
+            <Alert tone="warn" title="This request may allow spending later">
+              {kind === 'transaction'
+                ? 'This transaction will spend cryptocurrency if you approve. Review the amount, network, and recipient carefully.'
+                : 'Typed data / Permit-style signatures can approve token spending without an immediate transfer. Reject if you did not expect an allowance.'}
             </Alert>
           ) : (
-            <Alert tone="info" title="Signing scope">
-              This request asks for a signature. It does not send funds by itself, though some
-              signatures can approve spending later.
+            <Alert tone="info" title="This request proves ownership of your wallet">
+              No funds will move if you approve this message alone. The app can show that you
+              control this address. Never approve automatically — confirm only after you understand
+              the request.
             </Alert>
           )}
+
+          <Alert tone="info" title="Auvora guidance">
+            Only approve transactions and signatures you fully understand. You can disconnect this
+            application at any time from Permission Center. This is not financial advice.
+          </Alert>
 
           {kind === 'transaction' ? (
             <>

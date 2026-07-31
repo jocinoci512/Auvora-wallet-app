@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/auvora_locale.dart';
 import '../../preferences/models.dart';
 import '../../preferences/preferences_controller.dart';
 import '../../theme/aether_theme.dart';
@@ -11,9 +12,10 @@ class AppearanceSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesController>();
+    final localeHelper = AuvoraLocale(prefs.locale);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Appearance')),
+      appBar: AppBar(title: Text(AuvoraStrings.lookup('appearance.theme') == 'Theme' ? 'Appearance' : 'Appearance')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
@@ -22,16 +24,40 @@ class AppearanceSettingsScreen extends StatelessWidget {
             style: TextStyle(color: AetherColors.muted, height: 1.45),
           ),
           const SizedBox(height: 16),
-          Text('Theme', style: Theme.of(context).textTheme.titleMedium),
+          Text(AuvoraStrings.lookup('appearance.theme'), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: [
               for (final t in AppThemePreference.values)
                 ChoiceChip(
-                  label: Text(t.name),
+                  label: Text(switch (t) {
+                    AppThemePreference.system => 'System',
+                    AppThemePreference.light => 'Light',
+                    AppThemePreference.dark => 'Dark',
+                  }),
                   selected: prefs.theme == t,
                   onSelected: (_) => prefs.setTheme(t),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(AuvoraStrings.lookup('appearance.accent'), style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            AuvoraStrings.lookup('appearance.accent_hint'),
+            style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final a in AccentColorPreference.values)
+                ChoiceChip(
+                  avatar: CircleAvatar(backgroundColor: accentColorFor(a), radius: 8),
+                  label: Text(a.name),
+                  selected: prefs.accent == a,
+                  onSelected: (_) => prefs.setAccent(a),
                 ),
             ],
           ),
@@ -39,18 +65,40 @@ class AppearanceSettingsScreen extends StatelessWidget {
           Text('Language framework', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           const Text(
-            'UI strings are English in this release. Region and formats below control how numbers and dates appear.',
+            'UI strings are English in this release. Selecting a future language pack will not require redesigning screens.',
             style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
           ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Language'),
-            subtitle: Text(prefs.locale.languageCode == 'en' ? 'English' : prefs.locale.languageCode),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final pack in kLanguagePackCatalog)
+                ChoiceChip(
+                  label: Text(pack.ready ? pack.label : '${pack.label} (soon)'),
+                  selected: prefs.locale.languageCode == pack.code,
+                  onSelected: pack.ready
+                      ? (_) => prefs.setLocale(prefs.locale.copyWith(languageCode: pack.code))
+                      : null,
+                ),
+            ],
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Region'),
             subtitle: Text(prefs.locale.regionCode),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Text direction'),
+            subtitle: Text(localeHelper.isRtl ? 'Right-to-left ready' : 'Left-to-right'),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Format preview'),
+            subtitle: Text(
+              '${localeHelper.formatCurrency(1234.56)} · ${localeHelper.formatDateTime(DateTime.now())}',
+            ),
           ),
           const SizedBox(height: 8),
           Text('Date format', style: Theme.of(context).textTheme.titleSmall),

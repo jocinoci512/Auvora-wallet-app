@@ -112,7 +112,7 @@ class _BetaFeedbackScreenState extends State<BetaFeedbackScreen> {
         ),
       );
       if (share == true) {
-        await Share.share(report.toSharePayload(), subject: 'Auvora Closed Beta feedback');
+        await Share.share(report.toSharePayload(), subject: 'Auvora 1.0 Alpha feedback');
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -122,7 +122,7 @@ class _BetaFeedbackScreenState extends State<BetaFeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Beta feedback')),
+      appBar: AppBar(title: const Text('Alpha feedback')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [

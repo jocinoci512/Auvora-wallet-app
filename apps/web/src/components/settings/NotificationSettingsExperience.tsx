@@ -28,9 +28,19 @@ const LABELS: {
     detail: 'Confirm when you send from this device',
   },
   {
+    key: 'pendingConfirmations',
+    title: 'Pending confirmations',
+    detail: 'Stay aware while a transfer is still confirming on-chain',
+  },
+  {
     key: 'transactionConfirmations',
-    title: 'Confirmations',
+    title: 'Completed confirmations',
     detail: 'Hear when a pending transfer finishes confirming',
+  },
+  {
+    key: 'failedTransactions',
+    title: 'Failed transactions',
+    detail: 'Know when a send or dApp request fails so you can retry safely',
   },
   {
     key: 'priceAlerts',

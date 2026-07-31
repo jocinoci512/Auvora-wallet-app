@@ -2,6 +2,7 @@
 
 import { Alert } from '@auvora/ui';
 import { useMemo, useState, type ReactElement } from 'react';
+import { ReleaseConfig } from '../../lib/release/config';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
@@ -54,8 +55,9 @@ export function BetaFeedbackExperience(): ReactElement {
 
   const diagnostics = useMemo(
     () => ({
-      channel: 'closed-beta',
-      version: '1.1.0-beta.1',
+      channel: ReleaseConfig.releaseChannel,
+      version: ReleaseConfig.marketingVersion,
+      buildLabel: ReleaseConfig.buildLabel,
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : 'n/a',
       online: typeof navigator !== 'undefined' ? navigator.onLine : true,
       privacyNote: 'No recovery phrase, private keys, or PIN included.',
@@ -88,8 +90,8 @@ export function BetaFeedbackExperience(): ReactElement {
 
   return (
     <PlatformShell
-      title="Beta feedback"
-      subtitle="Closed Beta reports stay on this device until you copy them. Never include your recovery phrase."
+      title="Alpha feedback"
+      subtitle="Version 1.0 Alpha reports stay on this device until you copy them. Never include your recovery phrase."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/feedback" />}

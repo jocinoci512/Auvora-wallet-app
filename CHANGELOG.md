@@ -4,6 +4,27 @@ All notable changes to this monorepo are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0-alpha.1] — 2026-07-31
+
+### Added
+
+- Version 1.0 Alpha packaging (mobile `1.0.0-alpha.1+5`, web + monorepo aligned).
+- Android notification channels; store-shaped icons/splash/HTTPS network config.
+- Alpha docs: Prompt 10 report, launch checklist, testing/release/store readiness guides.
+- `ReleaseConfig.redactAddress` + funding lock on More / Account / Receive.
+- Web `canUseLiveBroadcast()` kill switch for Swap / Bridge / Staking.
+
+### Security
+
+- `allowFundingAddresses=false` — QR / copy / share / export disabled across funding surfaces.
+- `liveBroadcastEnabled=false` — web trading cannot flip to “live” while Alpha kill switch is off.
+- Analytics + crash reporting toggles disabled (SDKs unwired).
+
+### Known
+
+- iOS IPA requires macOS; Play upload keystore still operator-provided.
+- See [`docs/CHANGELOG_ALPHA_1.0.md`](docs/CHANGELOG_ALPHA_1.0.md) and [`docs/MASTER_BUILD_PROMPT_10_REPORT.md`](docs/MASTER_BUILD_PROMPT_10_REPORT.md).
+
 ## [Unreleased] — Phase 16 UX / UI polish
 
 ### Added

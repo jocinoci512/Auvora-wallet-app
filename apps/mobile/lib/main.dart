@@ -4,15 +4,18 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'connections/connections_controller.dart';
+import 'connections/deep_link_router.dart';
 import 'intelligence/intelligence_controller.dart';
 import 'portfolio/portfolio_controller.dart';
 import 'portfolio/portfolio_repository.dart';
+import 'preferences/models.dart';
 import 'preferences/preferences_controller.dart';
 import 'security/security_controller.dart';
 import 'state/wallet_controller.dart';
 import 'theme/aether_theme.dart';
 import 'transfer/address_book.dart';
 import 'ui/app_shell.dart';
+import 'ui/connections/deep_link_listener.dart';
 import 'wallet_engine/asset_registry.dart';
 import 'wallet_engine/blockchain_adapter.dart';
 import 'wallet_engine/key_store.dart';
@@ -154,6 +157,7 @@ class AuvoraApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(create: (_) => ConnectionsController()),
+        ChangeNotifierProvider(create: (_) => DeepLinkRouter()),
         ChangeNotifierProvider(
           create: (_) {
             final controller = IntelligenceController();
@@ -172,12 +176,25 @@ class AuvoraApp extends StatelessWidget {
       ],
       child: Consumer<PreferencesController>(
         builder: (context, prefs, _) {
-          final scale = prefs.accessibility.textScale.clamp(0.85, 1.35);
+          final a11y = prefs.accessibility;
+          final scale = a11y.textScale.clamp(0.85, 1.35);
+          final light = buildAetherTheme(
+            brightness: Brightness.light,
+            highContrast: a11y.highContrast,
+            largeTouchTargets: a11y.largeTouchTargets,
+            accentColor: accentColorFor(prefs.accent),
+          );
+          final dark = buildAetherTheme(
+            brightness: Brightness.dark,
+            highContrast: a11y.highContrast,
+            largeTouchTargets: a11y.largeTouchTargets,
+            accentColor: accentColorFor(prefs.accent),
+          );
           return MaterialApp(
             title: 'Auvora Wallet',
             debugShowCheckedModeBanner: false,
-            theme: buildAetherTheme(brightness: Brightness.light),
-            darkTheme: buildAetherTheme(brightness: Brightness.dark),
+            theme: light,
+            darkTheme: dark,
             themeMode: prefs.materialThemeMode,
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
@@ -187,6 +204,7 @@ class AuvoraApp extends StatelessWidget {
             supportedLocales: const [
               Locale('en'),
             ],
+            locale: Locale(prefs.locale.languageCode, prefs.locale.regionCode),
             builder: (context, child) {
               final media = MediaQuery.of(context);
               return MediaQuery(
@@ -194,8 +212,13 @@ class AuvoraApp extends StatelessWidget {
                   textScaler: TextScaler.linear(
                     (media.textScaler.scale(1.0) * scale).clamp(0.85, 1.6),
                   ),
+                  boldText: a11y.highContrast ? true : media.boldText,
                 ),
-                child: child ?? const SizedBox.shrink(),
+                child: AnimatedTheme(
+                  data: Theme.of(context),
+                  duration: a11y.reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+                  child: DeepLinkListener(child: child ?? const SizedBox.shrink()),
+                ),
               );
             },
             home: const AppShell(),

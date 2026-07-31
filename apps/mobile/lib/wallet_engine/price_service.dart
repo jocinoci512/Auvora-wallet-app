@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../reliability/cache_store.dart';
 import 'coingecko_market_data_provider.dart';
 import 'market_data_provider.dart';
 import 'models.dart';
@@ -11,7 +12,9 @@ class PriceService {
   PriceService({
     SharedPreferences? prefs,
     List<MarketDataProvider>? providers,
+    CacheStore? cacheStore,
   })  : _prefs = prefs,
+        _cacheStore = cacheStore ?? CacheStore(prefs: prefs),
         _providers = providers ??
             [
               CoinGeckoMarketDataProvider(),
@@ -19,6 +22,7 @@ class PriceService {
             ];
 
   SharedPreferences? _prefs;
+  final CacheStore _cacheStore;
   final List<MarketDataProvider> _providers;
   Map<String, PricePoint> _cache = {};
   String? activeProviderId;
@@ -28,8 +32,21 @@ class PriceService {
 
   Future<void> bootstrap() async {
     _prefs ??= await SharedPreferences.getInstance();
+    final namespaced = await _cacheStore.read<Map<String, Object?>>(
+      ns: CacheStore.nsPrices,
+      id: 'quotes',
+      decode: (raw) => Map<String, Object?>.from(raw as Map),
+      allowStale: true,
+    );
+    if (namespaced != null) {
+      _cache = {
+        for (final entry in namespaced.data.entries)
+          if (entry.value is Map)
+            entry.key: PricePoint.fromJson(Map<String, Object?>.from(entry.value as Map)),
+      };
+    }
     final raw = _prefs?.getString(_kCache);
-    if (raw != null && raw.isNotEmpty) {
+    if (_cache.isEmpty && raw != null && raw.isNotEmpty) {
       final decoded = jsonDecode(raw);
       if (decoded is Map) {
         _cache = {
@@ -153,9 +170,16 @@ class PriceService {
 
   Future<void> _persist() async {
     _prefs ??= await SharedPreferences.getInstance();
-    final raw = jsonEncode({
+    final map = {
       for (final entry in _cache.entries) entry.key: entry.value.toJson(),
-    });
+    };
+    final raw = jsonEncode(map);
     await _prefs?.setString(_kCache, raw);
+    await _cacheStore.write(
+      ns: CacheStore.nsPrices,
+      id: 'quotes',
+      payload: map,
+      ttl: const Duration(minutes: 45),
+    );
   }
 }

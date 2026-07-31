@@ -44,6 +44,8 @@ class _ConnectionApprovalBody extends StatelessWidget {
     final caution = <String>[
       if (!request.trust.anyVerified) 'We can’t verify this site yet',
       if (!request.trust.https) 'Not HTTPS',
+      if (request.trust.unknownApplication) 'Unknown application',
+      if (request.trust.recentlyRegisteredHint) 'Newly seen domain',
     ];
     final canMove = permissionsCanMoveFunds(request.permissions);
 
@@ -205,8 +207,12 @@ class _ConnectionApprovalBody extends StatelessWidget {
                   reason: 'Confirm before connecting ${request.appName}',
                 );
                 if (!ok || !context.mounted) return;
+                final intelligence = context.read<IntelligenceController>();
+                final navigator = Navigator.of(context);
                 await connections.approveConnection(request.id);
-                if (context.mounted) Navigator.pop(context, true);
+                intelligence.noteEvent('onWeb3Connect');
+                if (!context.mounted) return;
+                navigator.pop(true);
               },
               child: const Text('Approve connection'),
             ),

@@ -58,27 +58,23 @@ class PrivacySettingsScreen extends StatelessWidget {
               security.preferences.copyWith(notificationPrivacy: v),
             ),
           ),
-          SwitchListTile(
+          const SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Analytics'),
-            subtitle: const Text('Help improve Auvora with anonymous usage (off by default)'),
-            value: prefs.analyticsEnabled,
-            onChanged: (v) async {
-              await prefs.setAnalyticsEnabled(v);
-              await security.patchPreferences(security.preferences.copyWith(analyticsEnabled: v));
-            },
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Crash reporting'),
-            subtitle: const Text(
-              'Preference saved on this device. Crash SDK wiring ships before Public Beta — nothing is sent today.',
+            title: Text('Analytics'),
+            subtitle: Text(
+              'Unavailable in Version 1.0 Alpha — no analytics SDK is wired; nothing leaves this device.',
             ),
-            value: prefs.crashReportingEnabled,
-            onChanged: (v) async {
-              await prefs.setCrashReportingEnabled(v);
-              await security.patchPreferences(security.preferences.copyWith(crashReportingEnabled: v));
-            },
+            value: false,
+            onChanged: null,
+          ),
+          const SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('Crash reporting'),
+            subtitle: Text(
+              'Not available in Version 1.0 Alpha. Preference is stored locally only — no crash SDK is wired, so nothing leaves this device.',
+            ),
+            value: false,
+            onChanged: null,
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -109,7 +105,7 @@ class PrivacySettingsScreen extends StatelessWidget {
           Text('Your data', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
           const Text(
-            'Export and deletion requests are optional and recorded on this device in Closed Beta.',
+            'Export and deletion requests are optional and recorded on this device in Version 1.0 Alpha.',
             style: TextStyle(color: AetherColors.muted, height: 1.4, fontSize: 13),
           ),
           const SizedBox(height: 8),

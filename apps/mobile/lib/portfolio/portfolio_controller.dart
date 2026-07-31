@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../search/fuzzy.dart';
 import 'models.dart';
 import 'portfolio_repository.dart';
 
@@ -407,31 +408,22 @@ class PortfolioController extends ChangeNotifier {
   List<Object> get searchResults {
     final snap = snapshot;
     if (snap == null) return const [];
-    final q = globalQuery.trim().toLowerCase();
+    final q = globalQuery.trim();
     if (q.isEmpty) return const [];
     final out = <Object>[];
     for (final a in snap.assets) {
-      if (a.name.toLowerCase().contains(q) || a.ticker.toLowerCase().contains(q)) {
-        out.add(a);
-      }
+      if (fuzzyMatchesAny(q, [a.name, a.ticker])) out.add(a);
     }
     for (final n in AssetNetwork.values) {
-      if (n.label.toLowerCase().contains(q) || n.short.toLowerCase().contains(q)) {
-        out.add(n);
-      }
+      if (fuzzyMatchesAny(q, [n.label, n.short])) out.add(n);
     }
     for (final t in snap.transactions) {
-      if (t.assetTicker.toLowerCase().contains(q) ||
-          t.hash.toLowerCase().contains(q) ||
-          t.type.label.toLowerCase().contains(q) ||
-          t.status.label.toLowerCase().contains(q)) {
+      if (fuzzyMatchesAny(q, [t.assetTicker, t.hash, t.type.label, t.status.label])) {
         out.add(t);
       }
     }
     for (final c in snap.contacts) {
-      if (c.name.toLowerCase().contains(q) || c.address.toLowerCase().contains(q)) {
-        out.add(c);
-      }
+      if (fuzzyMatchesAny(q, [c.name, c.address])) out.add(c);
     }
     return out;
   }

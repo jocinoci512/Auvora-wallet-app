@@ -943,16 +943,33 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       });
       if (mounted) {
         context.read<IntelligenceController>().noteEvent('afterFirstTx');
+        context.read<IntelligenceController>().noteEvent('onSend');
       }
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
         _doubleTapGuard = false;
         _step = _SendStep.auth;
       });
+      final detail = error is StateError || error is ArgumentError
+          ? error.toString().replaceFirst(RegExp(r'^(Bad state|Invalid argument):\s*'), '')
+          : null;
+      final safeDetail = detail != null &&
+              detail.length < 160 &&
+              !detail.toLowerCase().contains('mnemonic') &&
+              !detail.toLowerCase().contains('private') &&
+              !detail.toLowerCase().contains('seed')
+          ? detail
+          : null;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong. Nothing was sent — try again.')),
+        SnackBar(
+          content: Text(
+            safeDetail == null
+                ? 'Something went wrong. Nothing was sent — try again.'
+                : 'Could not complete send: $safeDetail. Nothing was broadcast.',
+          ),
+        ),
       );
     }
   }

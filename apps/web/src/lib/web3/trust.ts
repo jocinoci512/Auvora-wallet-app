@@ -2,7 +2,13 @@ import { DEMO_DAPPS } from './demo';
 import { highestPermissionRisk, permissionsCanMoveFunds, type PermissionRisk } from './permissions';
 
 export type TrustFlag = {
-  id: 'verified-domain' | 'https' | 'previously-connected' | 'known-project';
+  id:
+    | 'verified-domain'
+    | 'https'
+    | 'previously-connected'
+    | 'known-project'
+    | 'unknown-application'
+    | 'newly-seen-domain';
   label: string;
   present: boolean;
 };
@@ -24,7 +30,6 @@ const KNOWN_CATALOG: KnownEntry[] = [
   { name: 'Aave', originHost: 'app.aave.com', verified: true },
   { name: 'Snapshot', originHost: 'snapshot.org', verified: true },
   { name: 'Dune', originHost: 'dune.com', verified: true },
-  { name: 'OpenSea', originHost: 'opensea.io', verified: true },
   { name: 'Lens', originHost: 'hey.xyz', verified: false },
 ];
 
@@ -138,24 +143,49 @@ export function assessTrust(input: {
     { id: 'https', label: 'HTTPS', present: https },
     { id: 'previously-connected', label: 'Previously connected', present: previously },
     { id: 'known-project', label: 'Known project (catalog)', present: knownProject && !verified },
+    {
+      id: 'unknown-application',
+      label: 'Unknown application',
+      present: !knownProject && !previously,
+    },
+    {
+      id: 'newly-seen-domain',
+      label: 'Newly seen domain',
+      present: Boolean(input.newlyConnected) || (!knownProject && !previously),
+    },
   ];
 
-  const present = flags.filter((f) => f.present);
+  const present = flags.filter(
+    (f) => f.present && f.id !== 'unknown-application' && f.id !== 'newly-seen-domain',
+  );
+  const cautionFlags = flags.filter(
+    (f) => f.present && (f.id === 'unknown-application' || f.id === 'newly-seen-domain'),
+  );
   const summary =
-    present.length === 0
-      ? 'We can’t verify this site yet.'
-      : verified
-        ? 'Catalog verification signals are present — still review permissions before approving.'
-        : 'Some trust signals are present, but this site is not marked verified-safe.';
+    present.length === 0 && cautionFlags.length > 0
+      ? 'We can’t verify this site yet. Why: no catalog entry or prior connection for this origin.'
+      : present.length === 0
+        ? 'We can’t verify this site yet.'
+        : verified
+          ? 'Catalog verification signals are present — still review permissions before approving.'
+          : 'Some trust signals are present, but this site is not marked verified-safe.';
 
   const riskNotes: string[] = [];
   const hint = lookalikeHint(input.origin);
   if (hint) riskNotes.push(hint);
-  if (!knownProject) riskNotes.push('Unknown origin — not in the Auvora known-project catalog.');
-  if (input.newlyConnected) riskNotes.push('Newly connected — treat the first session carefully.');
+  if (!knownProject) {
+    riskNotes.push(
+      'Unknown application — why this warning appears: the origin is not in the Auvora known-project catalog.',
+    );
+  }
+  if (input.newlyConnected || (!knownProject && !previously)) {
+    riskNotes.push(
+      'Newly seen domain — why this warning appears: we have no prior connection history for this site.',
+    );
+  }
   if (input.permissions && permissionsCanMoveFunds(input.permissions)) {
     riskNotes.push(
-      'Elevated permission set includes request-transactions (can move funds after you approve).',
+      'This permission allows future spending requests until revoked — you still confirm each transaction.',
     );
   }
   if ((input.pendingRequestCount ?? 0) > 1) {

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../crypto/wallet_crypto.dart';
 import '../../preferences/preferences_controller.dart';
+import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../connections/connections_auth.dart';
@@ -75,23 +76,41 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           const SizedBox(height: 12),
           Text('Public address', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          SelectableText(address, style: const TextStyle(fontSize: 13, height: 1.4)),
+          if (!ReleaseConfig.allowFundingAddresses) ...[
+            const SoftBanner(
+              tone: BannerTone.warn,
+              message: ReleaseConfig.fundingBlockedMessage,
+            ),
+            const SizedBox(height: 8),
+          ],
+          SelectableText(
+            ReleaseConfig.allowFundingAddresses
+                ? address
+                : ReleaseConfig.redactAddress(address),
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: () async {
-              final ok = await authenticateConnectionsAction(
-                context,
-                wallet,
-                reason: 'Confirm before exporting public wallet info',
-              );
-              if (!ok || !context.mounted) return;
-              await Clipboard.setData(ClipboardData(text: address));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Public address copied')),
-              );
-            },
-            child: const Text('Export public address'),
+            onPressed: !ReleaseConfig.allowFundingAddresses
+                ? null
+                : () async {
+                    final ok = await authenticateConnectionsAction(
+                      context,
+                      wallet,
+                      reason: 'Confirm before exporting public wallet info',
+                    );
+                    if (!ok || !context.mounted) return;
+                    await Clipboard.setData(ClipboardData(text: address));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Public address copied')),
+                    );
+                  },
+            child: const Text(
+              ReleaseConfig.allowFundingAddresses
+                  ? 'Export public address'
+                  : 'Export locked (Alpha)',
+            ),
           ),
           const SizedBox(height: 24),
           Text('Wallets on this device', style: Theme.of(context).textTheme.titleMedium),

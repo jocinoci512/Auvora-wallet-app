@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../intelligence/intelligence_controller.dart';
 import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
@@ -28,6 +29,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<IntelligenceController>().noteEvent('onReceive');
       final p = context.read<PortfolioController>();
       if (widget.initialAssetId != null) {
         final a = p.assetById(widget.initialAssetId!);
@@ -52,7 +54,6 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
   }
 
   String _qrPayload(String address) {
-    if (!ReleaseConfig.allowFundingAddresses) return address;
     return buildPaymentUri(network: _network, address: address);
   }
 
@@ -87,22 +88,27 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
-                Text('Show this to the sender', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  fundingUnlocked ? 'Show this to the sender' : 'Receive (locked)',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  'Match the network exactly. A wrong network can permanently lose funds.',
+                  fundingUnlocked
+                      ? 'Match the network exactly. A wrong network can permanently lose funds.'
+                      : 'Funding is locked for ${ReleaseConfig.buildLabel}. Addresses exist for derivation preview, but QR, copy, and share stay off.',
                   style: TextStyle(color: AetherColors.mutedFor(context), height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 SoftBanner(
-                  tone: BannerTone.warn,
+                  tone: fundingUnlocked ? BannerTone.warn : BannerTone.error,
                   message: fundingUnlocked
                       ? 'You’re receiving on ${_network.label}. Confirm the sender uses the same network.'
                       : ReleaseConfig.fundingBlockedMessage,
                 ),
                 if (wallet.vaults.length > 1) ...[
                   const SizedBox(height: 12),
-                  _kv('Wallet', walletLabel),
+                  _kv(context, 'Wallet', walletLabel),
                 ],
                 const SizedBox(height: 18),
                 Text('Network', style: Theme.of(context).textTheme.titleSmall),
@@ -115,6 +121,8 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                       ChoiceChip(
                         label: Text(n.label),
                         selected: _network == n,
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                        visualDensity: VisualDensity.comfortable,
                         onSelected: (_) {
                           setState(() {
                             _network = n;
@@ -132,14 +140,69 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                 const SizedBox(height: 14),
                 if (!fundingUnlocked) ...[
                   const SoftBanner(
-                    tone: BannerTone.error,
+                    tone: BannerTone.warn,
                     message:
-                        'Receive is locked for real funding in ${ReleaseConfig.buildLabel}. '
-                        'QR and copy stay available for practice only — do not send real funds here.',
+                        'BIP32 / SLIP-0010 derivation is active. Off-device address verification is still required before funding unlocks.',
                   ),
                   const SizedBox(height: 16),
-                ],
-                if (!safe) ...[
+                  Semantics(
+                    label: 'Receive funding locked. QR code and copy actions are disabled.',
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: AetherColors.danger.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AetherColors.danger.withValues(alpha: 0.35)),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.lock_outline_rounded, size: 40, color: AetherColors.danger.withValues(alpha: 0.9)),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Funding QR disabled',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Copy and share stay off so testers cannot accidentally fund Alpha addresses.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AetherColors.mutedFor(context), height: 1.4),
+                          ),
+                          if (address.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Derivation preview (${_network.label})',
+                              style: TextStyle(
+                                color: AetherColors.mutedFor(context),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            SelectableText(
+                              ReleaseConfig.redactAddress(address),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13, height: 1.4, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('Copy address (locked)'),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.ios_share_rounded),
+                    label: const Text('Share address (locked)'),
+                  ),
+                ] else if (!safe) ...[
                   SoftBanner(
                     tone: BannerTone.error,
                     message:
@@ -148,7 +211,10 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'We never show a QR for the wrong network. That keeps your funds safe.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AetherColors.muted, height: 1.45),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AetherColors.mutedFor(context),
+                          height: 1.45,
+                        ),
                   ),
                 ] else ...[
                   if (assets.any((a) => a.network == _network || AddressValidation.isEvm(a.network))) ...[
@@ -250,12 +316,12 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
     );
   }
 
-  Widget _kv(String k, String v) {
+  Widget _kv(BuildContext context, String k, String v) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Text('$k: ', style: const TextStyle(color: AetherColors.muted)),
+          Text('$k: ', style: TextStyle(color: AetherColors.mutedFor(context))),
           Expanded(child: Text(v, style: const TextStyle(fontWeight: FontWeight.w600))),
         ],
       ),

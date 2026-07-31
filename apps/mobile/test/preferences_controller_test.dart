@@ -89,4 +89,17 @@ void main() {
     expect(again.accessibility.reduceMotion, isTrue);
     expect(again.accessibility.textScale, 1.2);
   });
+
+  test('accent preference persists', () async {
+    final c = PreferencesController();
+    await c.bootstrap();
+    await c.setAccent(AccentColorPreference.forest);
+    expect(c.accent, AccentColorPreference.forest);
+  });
+
+  test('pending and failed notification categories exist in catalog', () {
+    final ids = kNotificationCatalog.map((e) => e.id).toSet();
+    expect(ids.contains(NotificationCategory.pendingConfirmations), isTrue);
+    expect(ids.contains(NotificationCategory.failedTransactions), isTrue);
+  });
 }

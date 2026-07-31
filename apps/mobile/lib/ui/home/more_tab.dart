@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../portfolio/portfolio_controller.dart';
+import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../address_book_screen.dart';
@@ -24,8 +25,10 @@ class MoreTab extends StatelessWidget {
     final wallet = context.watch<WalletController>();
     final p = context.watch<PortfolioController>();
     final address = wallet.address ?? '—';
-    final short =
-        address.length > 12 ? '${address.substring(0, 6)}…${address.substring(address.length - 4)}' : address;
+    final fundingUnlocked = ReleaseConfig.allowFundingAddresses;
+    final displayAddress =
+        fundingUnlocked ? address : ReleaseConfig.redactAddress(address);
+    final short = ReleaseConfig.redactAddress(address);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -36,18 +39,30 @@ class MoreTab extends StatelessWidget {
         const SizedBox(height: 20),
         Text('Wallet', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        SelectableText(address, style: const TextStyle(fontSize: 13, height: 1.4)),
+        if (!fundingUnlocked) ...[
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message: ReleaseConfig.fundingBlockedMessage,
+          ),
+          const SizedBox(height: 12),
+        ],
+        SelectableText(
+          displayAddress,
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
         const SizedBox(height: 12),
         OutlinedButton(
-          onPressed: () => copyText(context, address, label: 'Address copied'),
-          child: Text('Copy $short'),
+          onPressed: fundingUnlocked
+              ? () => copyText(context, address, label: 'Address copied')
+              : null,
+          child: Text(fundingUnlocked ? 'Copy $short' : 'Copy locked'),
         ),
         const SizedBox(height: 28),
         Text('Settings', style: Theme.of(context).textTheme.titleMedium),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.feedback_outlined, color: AetherColors.lagoon),
-          title: const Text('Beta feedback'),
+          title: const Text('Alpha feedback'),
           subtitle: const Text('Bug, UX, performance, security, accessibility'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(

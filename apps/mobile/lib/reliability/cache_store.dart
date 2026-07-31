@@ -15,6 +15,8 @@ class CacheStore {
   static const nsNetworkMeta = 'network-meta';
   static const nsPrices = 'prices';
   static const nsSettingsSafe = 'settings-safe';
+  static const nsHelp = 'help';
+  static const nsDiagnostics = 'diagnostics';
 
   Future<SharedPreferences> _ensure() async {
     return _prefs ??= await SharedPreferences.getInstance();
@@ -48,11 +50,15 @@ class CacheStore {
     bool allowStale = true,
   }) async {
     final prefs = await _ensure();
-    final raw = prefs.getString(_key(ns, id));
+    final key = _key(ns, id);
+    final raw = prefs.getString(key);
     if (raw == null || raw.isEmpty) return null;
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! Map) return null;
+      if (decoded is! Map) {
+        await prefs.remove(key); // corrupt recovery
+        return null;
+      }
       final map = Map<String, Object?>.from(decoded);
       final savedAt = DateTime.tryParse((map['savedAt'] as String?) ?? '') ?? DateTime.now();
       final ttlMs = (map['ttlMs'] as num?)?.toInt() ?? 0;
@@ -65,8 +71,53 @@ class CacheStore {
         stale: stale,
       );
     } catch (_) {
+      await prefs.remove(key); // corrupt recovery
       return null;
     }
+  }
+
+  /// Drop expired entries (memory / storage cleanup). Keeps stale-allowed data unless [force].
+  Future<int> purgeExpired({bool force = false}) async {
+    final prefs = await _ensure();
+    final keys = prefs.getKeys().where((k) => k.startsWith(prefix)).toList();
+    var removed = 0;
+    for (final key in keys) {
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map) {
+          await prefs.remove(key);
+          removed += 1;
+          continue;
+        }
+        final map = Map<String, Object?>.from(decoded);
+        final savedAt = DateTime.tryParse((map['savedAt'] as String?) ?? '');
+        final ttlMs = (map['ttlMs'] as num?)?.toInt() ?? 0;
+        if (savedAt == null) {
+          await prefs.remove(key);
+          removed += 1;
+          continue;
+        }
+        final expired = DateTime.now().difference(savedAt).inMilliseconds > ttlMs;
+        if (force || expired) {
+          // Keep portfolio/prices for SWR unless force.
+          final ns = key.substring(prefix.length).split(':').first;
+          final keepForSwr = !force && (ns == nsPortfolio || ns == nsPrices || ns == nsTxHistory);
+          if (!keepForSwr && expired) {
+            await prefs.remove(key);
+            removed += 1;
+          } else if (force) {
+            await prefs.remove(key);
+            removed += 1;
+          }
+        }
+      } catch (_) {
+        await prefs.remove(key);
+        removed += 1;
+      }
+    }
+    return removed;
   }
 
   Future<int> clearNamespace(String ns) async {

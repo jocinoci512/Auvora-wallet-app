@@ -20,7 +20,7 @@ export const envSchema = z.object({
   CONNECTIONS_SERVICE_URL: z.string().url().default('http://127.0.0.1:3016'),
   BRIDGE_SERVICE_URL: z.string().url().default('http://127.0.0.1:3017'),
   SERVICE_NAME: z.string().default('gateway'),
-  SERVICE_VERSION: z.string().default('1.0.0-rc.1'),
+  SERVICE_VERSION: z.string().default('1.0.0-alpha.1'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),

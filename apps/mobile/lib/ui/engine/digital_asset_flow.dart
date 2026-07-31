@@ -381,6 +381,9 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
       });
       if (mounted) {
         context.read<IntelligenceController>().noteEvent('afterFirstTx');
+        if (widget.op == EngineOp.stake) {
+          context.read<IntelligenceController>().noteEvent('onStake');
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -667,7 +670,7 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
             const SoftBanner(
               tone: BannerTone.warn,
               message:
-                  'Identity verification (KYC) is required by most payment partners before live purchases. This Closed Beta shows the hook only.',
+                  'Identity verification (KYC) is required by most payment partners before live purchases. This Alpha build shows the hook only.',
             ),
           ],
         ];

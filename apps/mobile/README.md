@@ -3,7 +3,7 @@
 Mobile-first product surface for iOS, Android, and tablet.  
 Desktop companion remains `apps/web` (Next.js).
 
-**Channel:** Closed Beta (`1.1.0-beta.1`) — preview chain rails; funding receive locked until BIP32 ships.
+**Channel:** Version 1.0 Alpha (`1.0.0-alpha.1`) — preview chain rails; funding receive and live broadcast locked until security sign-off.
 
 ## Prerequisites
 

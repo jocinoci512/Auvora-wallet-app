@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { LineChart } from '../charts/Charts';
 import { formatApiError } from '../../lib/api-client';
+import { canUseLiveBroadcast } from '../../lib/release/config';
 import {
   DEMO_REWARD_SERIES,
   DEMO_VALIDATORS,
@@ -92,7 +93,7 @@ export function StakingExperience(): ReactElement {
               rewards: String((p as { rewards?: string }).rewards ?? '0'),
             })),
           );
-          setLive(true);
+          setLive(canUseLiveBroadcast());
         }
       } catch (err) {
         if (!cancelled) setError(formatApiError(err));

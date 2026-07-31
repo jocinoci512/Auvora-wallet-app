@@ -11,7 +11,9 @@ import '../../theme/aether_theme.dart';
 import 'connection_approval_sheet.dart';
 
 class ConnectDappScreen extends StatefulWidget {
-  const ConnectDappScreen({super.key});
+  const ConnectDappScreen({super.key, this.initialUri});
+
+  final String? initialUri;
 
   @override
   State<ConnectDappScreen> createState() => _ConnectDappScreenState();
@@ -23,6 +25,23 @@ class _ConnectDappScreenState extends State<ConnectDappScreen> {
   String? _error;
   bool _busy = false;
   bool _scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialUri?.trim();
+    if (initial != null && initial.isNotEmpty) {
+      _uriCtrl.text = initial;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final method = initial.toLowerCase().startsWith('wc:')
+            ? ConnectionMethod.walletConnectUri
+            : ConnectionMethod.deepLink;
+        // ignore: discarded_futures
+        _submit(initial, method);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -54,7 +73,9 @@ class _ConnectDappScreenState extends State<ConnectDappScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      setState(() => _error = 'Could not start pairing. Check the URI or code and try again.');
+      setState(() => _error = e is ArgumentError
+          ? (e.message?.toString() ?? 'Invalid pairing input.')
+          : 'Could not start pairing. Check the URI or code and try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

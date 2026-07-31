@@ -1,23 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { searchAssist } from '../../lib/intelligence/guidance';
+import { OFFLINE_CACHE_NS, writeOfflineCache } from '../../lib/offline/cache';
+import { useOnlineStatus } from '../../lib/offline/online-status';
+import { fuzzyRank } from '../../lib/search/fuzzy';
 import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
 
 const FAQ = [
   {
     q: 'How do I recover my wallet?',
-    a: 'Use your recovery phrase on Restore or Recovery. Never share it — Auvora support will never ask for it.',
+    a: 'Use your recovery phrase on Restore or Recovery. Your recovery phrase is the master key to your wallet. Never share it — Auvora support will never ask for it.',
   },
   {
     q: 'Where do I change theme or currency?',
-    a: 'Settings → Wallet & appearance. Theme updates instantly. Currency and date formats live there too.',
+    a: 'Settings → Appearance (or Wallet & appearance). Theme updates instantly. Currency and date formats live there too.',
   },
   {
     q: 'Why don’t I get push notifications?',
-    a: 'This release uses an in-app Notification Center and local preferences only. Push delivery comes later.',
+    a: 'This release uses an in-app Notification Center and local preferences. You can still prepare OS permission on mobile. Every alert category can be toggled independently.',
   },
   {
     q: 'Are price alerts live?',
@@ -25,7 +28,7 @@ const FAQ = [
   },
   {
     q: 'How do I revoke a dApp?',
-    a: 'Open Web3 → Permissions, or Settings → Connected apps, then revoke the grant.',
+    a: 'Open Web3 → Permissions, or Settings → Connected apps, then revoke the grant. You can disconnect this application at any time.',
   },
   {
     q: 'How do I spot a scam?',
@@ -33,7 +36,15 @@ const FAQ = [
   },
   {
     q: 'What is Auvora Intelligence?',
-    a: 'Plain-language guidance on fees, security prompts, and portfolio notes. It educates — it never recommends trades or moves funds. Adjust how much you see in Privacy → Guidance.',
+    a: 'Plain-language guidance on fees, security prompts, and portfolio notes. It educates quietly — it never recommends trades or moves funds. Adjust how much you see in Privacy → Guidance.',
+  },
+  {
+    q: 'What are gas fees?',
+    a: 'Network fees pay validators to include your transfer. They vary by congestion and are separate from any Auvora product fee. Review the fee before you confirm. This transaction cannot be reversed after confirmation.',
+  },
+  {
+    q: 'How do I report an issue?',
+    a: 'Use Alpha feedback in Settings → Support. Never include your recovery phrase in any report.',
   },
 ] as const;
 
@@ -60,7 +71,7 @@ const LINKS = [
   },
   {
     href: '/settings/feedback',
-    title: 'Closed Beta feedback',
+    title: 'Alpha feedback',
     detail: 'Bug, UX, performance, security, accessibility — local until you share',
   },
   {
@@ -82,14 +93,22 @@ const LINKS = [
 
 export function HelpSupportExperience(): ReactElement {
   const [query, setQuery] = useState('');
+  const { online } = useOnlineStatus();
   const assist = useMemo(() => searchAssist(query), [query]);
   const faqFiltered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return FAQ;
-    return FAQ.filter(
-      (item) => item.q.toLowerCase().includes(q) || item.a.toLowerCase().includes(q),
-    );
+    const q = query.trim();
+    if (!q) return [...FAQ];
+    return fuzzyRank(q, FAQ, (item) => [item.q, item.a]);
   }, [query]);
+
+  useEffect(() => {
+    writeOfflineCache(
+      OFFLINE_CACHE_NS.help,
+      'faq-bundle',
+      FAQ.map((item) => ({ q: item.q, a: item.a })),
+      1000 * 60 * 60 * 24 * 14,
+    );
+  }, []);
 
   return (
     <PlatformShell
@@ -100,6 +119,12 @@ export function HelpSupportExperience(): ReactElement {
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/help" />}
     >
+      {!online ? (
+        <p className="cx-muted" role="status">
+          You are offline. FAQ on this page stays available from the bundled copy; cached help
+          titles refresh when you reconnect.
+        </p>
+      ) : null}
       <section className="cx-panel">
         <h2>Find something</h2>
         <label className="cx-field">

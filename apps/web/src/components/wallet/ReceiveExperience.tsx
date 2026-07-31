@@ -8,6 +8,7 @@ import {
   type WalletAsset,
   type WalletNetwork,
 } from '../../lib/wallet-experience/types';
+import { ReleaseConfig } from '../../lib/release/config';
 import { QrPanel } from './QrPanel';
 import { TransactionShell } from '../transaction/TransactionShell';
 import '../../app/core-experience.css';
@@ -35,11 +36,16 @@ export function ReceiveExperience(): ReactElement {
   const [asset, setAsset] = useState<WalletAsset>('ETH');
   const address = DEMO_ADDRESSES[network];
   const tokens = useMemo(() => TOKENS.filter((t) => t.networks.includes(network)), [network]);
+  const fundingUnlocked = ReleaseConfig.allowFundingAddresses;
 
   return (
     <TransactionShell
-      title="Receive"
-      subtitle="Share one clear address. Always match the network."
+      title={fundingUnlocked ? 'Receive' : 'Receive (locked)'}
+      subtitle={
+        fundingUnlocked
+          ? 'Share one clear address. Always match the network.'
+          : 'Funding is locked for Version 1.0 Alpha. Demo addresses stay off QR, copy, and share.'
+      }
       reassure="Assets sent on the wrong network may be unrecoverable."
       backHref="/dashboard"
     >
@@ -76,10 +82,16 @@ export function ReceiveExperience(): ReactElement {
       </section>
 
       <section className="cx-panel cx-qr-stage" aria-label="Receive address">
-        <div className="cx-alert cx-alert--info" role="status">
-          Companion receive preview — addresses here are demo placeholders until funding rails are
-          unlocked on the signed mobile wallet.
-        </div>
+        {!fundingUnlocked ? (
+          <div className="cx-alert cx-alert--warn" role="status">
+            {ReleaseConfig.fundingBlockedMessage}
+          </div>
+        ) : (
+          <div className="cx-alert cx-alert--info" role="status">
+            Companion receive preview — addresses here are demo placeholders until funding rails are
+            unlocked on the signed mobile wallet.
+          </div>
+        )}
         <div className="cx-warn">
           <strong>
             Only send {asset} on {NETWORKS.find((n) => n.id === network)?.label ?? network}
@@ -89,8 +101,20 @@ export function ReceiveExperience(): ReactElement {
             sharing. Wrong-network deposits can be unrecoverable.
           </p>
         </div>
-        <QrPanel value={address} label={`Receive ${asset} on ${network}`} />
-        <p className="cx-meta">Demo address for {network} · practice sharing only</p>
+        {fundingUnlocked ? (
+          <>
+            <QrPanel value={address} label={`Receive ${asset} on ${network}`} />
+            <p className="cx-meta">Demo address for {network} · practice sharing only</p>
+          </>
+        ) : (
+          <div className="cx-alert cx-alert--warn" role="status" aria-label="Funding QR disabled">
+            <strong>Funding QR disabled</strong>
+            <p className="cx-meta">
+              Derivation preview ({network}): {address.slice(0, 10)}…{address.slice(-6)} — copy and
+              share stay off in {ReleaseConfig.buildLabel}.
+            </p>
+          </div>
+        )}
         <div className="cx-success__cta">
           <Link href="/address-book" className="cx-btn cx-btn--ghost">
             Address book

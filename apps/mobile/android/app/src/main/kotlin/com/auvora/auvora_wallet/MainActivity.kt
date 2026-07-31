@@ -1,5 +1,8 @@
 package com.auvora.auvora_wallet
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -8,6 +11,11 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "auvora/screenshot_guard"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        ensureNotificationChannels()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -27,5 +35,35 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+    }
+
+    /** Android 8+ requires channels before any notification can post. */
+    private fun ensureNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val channels = listOf(
+            NotificationChannel(
+                "auvora_transactions",
+                "Transactions",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Confirmed sends, receives, and pending transfer updates."
+            },
+            NotificationChannel(
+                "auvora_security",
+                "Security",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Unlock alerts, permission changes, and security reminders."
+            },
+            NotificationChannel(
+                "auvora_general",
+                "General",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Sync status, product tips, and non-urgent updates."
+            },
+        )
+        manager.createNotificationChannels(channels)
     }
 }

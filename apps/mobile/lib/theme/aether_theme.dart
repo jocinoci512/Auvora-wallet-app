@@ -21,22 +21,35 @@ abstract final class AetherColors {
   }
 }
 
-ThemeData buildAetherTheme({required Brightness brightness}) {
+ThemeData buildAetherTheme({
+  required Brightness brightness,
+  bool highContrast = false,
+  bool largeTouchTargets = false,
+  Color? accentColor,
+}) {
   final isDark = brightness == Brightness.dark;
   final base = isDark ? ThemeData.dark(useMaterial3: true) : ThemeData.light(useMaterial3: true);
   final display = GoogleFonts.syneTextTheme(base.textTheme);
   final body = GoogleFonts.manropeTextTheme(base.textTheme);
+  final primary = accentColor ?? AetherColors.lagoon;
+  final onSurface = highContrast
+      ? (isDark ? Colors.white : Colors.black)
+      : (isDark ? const Color(0xFFF2F4F7) : AetherColors.ink);
+  final border = highContrast
+      ? (isDark ? Colors.white70 : Colors.black54)
+      : AetherColors.border;
+  final minTap = largeTouchTargets ? 56.0 : 52.0;
 
   final colorScheme = ColorScheme(
     brightness: brightness,
-    primary: AetherColors.lagoon,
+    primary: primary,
     onPrimary: Colors.white,
     secondary: AetherColors.lagoonSoft,
     onSecondary: Colors.white,
     error: AetherColors.danger,
     onError: Colors.white,
     surface: isDark ? AetherColors.surfaceDark : AetherColors.surface,
-    onSurface: isDark ? const Color(0xFFF2F4F7) : AetherColors.ink,
+    onSurface: onSurface,
   );
 
   return base.copyWith(
@@ -62,8 +75,8 @@ ThemeData buildAetherTheme({required Brightness brightness}) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
-        backgroundColor: AetherColors.lagoon,
+        minimumSize: Size.fromHeight(minTap),
+        backgroundColor: primary,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
@@ -71,11 +84,26 @@ ThemeData buildAetherTheme({required Brightness brightness}) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
-        foregroundColor: AetherColors.lagoon,
-        side: const BorderSide(color: AetherColors.border),
+        minimumSize: Size.fromHeight(minTap),
+        foregroundColor: primary,
+        side: BorderSide(color: border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
+    ),
+    listTileTheme: ListTileThemeData(
+      minVerticalPadding: largeTouchTargets ? 14 : 8,
+      visualDensity: largeTouchTargets ? VisualDensity.comfortable : VisualDensity.standard,
+    ),
+    switchTheme: SwitchThemeData(
+      materialTapTargetSize:
+          largeTouchTargets ? MaterialTapTargetSize.padded : MaterialTapTargetSize.shrinkWrap,
+    ),
+    chipTheme: base.chipTheme.copyWith(
+      padding: EdgeInsets.symmetric(
+        horizontal: largeTouchTargets ? 14 : 10,
+        vertical: largeTouchTargets ? 10 : 8,
+      ),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -83,17 +111,26 @@ ThemeData buildAetherTheme({required Brightness brightness}) {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AetherColors.border),
+        borderSide: BorderSide(color: border),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: largeTouchTargets ? 18 : 16,
+      ),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
       color: isDark ? AetherColors.surfaceDark : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: isDark ? const Color(0xFF2A323C) : AetherColors.border),
+        side: BorderSide(
+          color: highContrast
+              ? border
+              : (isDark ? const Color(0xFF2A323C) : AetherColors.border),
+          width: highContrast ? 1.5 : 1,
+        ),
       ),
     ),
+    dividerColor: highContrast ? border : null,
   );
 }

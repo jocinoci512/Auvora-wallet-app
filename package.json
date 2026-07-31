@@ -1,6 +1,6 @@
 {
   "name": "auvora-wallet",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-alpha.1",
   "private": true,
   "description": "Auvora Wallet — enterprise cryptocurrency wallet platform monorepo",
   "license": "UNLICENSED",

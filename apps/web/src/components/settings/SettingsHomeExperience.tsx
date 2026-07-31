@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState, type ReactElement } from 'react';
+import { fuzzyRank } from '../../lib/search/fuzzy';
 import { PlatformCardLink, PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
 
@@ -12,8 +13,8 @@ const CATEGORIES = [
   },
   {
     href: '/settings/preferences',
-    title: 'Wallet & appearance',
-    detail: 'Theme, currency, sorting, formats, and accessibility',
+    title: 'Wallet',
+    detail: 'Currency, sorting, balances, and refresh behavior',
   },
   {
     href: '/settings/security',
@@ -31,6 +32,11 @@ const CATEGORIES = [
     detail: 'Create, pause, and delete custom targets',
   },
   {
+    href: '/settings/preferences#appearance',
+    title: 'Appearance',
+    detail: 'Theme, accent readiness, language formats, and display feel',
+  },
+  {
     href: '/settings/privacy',
     title: 'Privacy',
     detail: 'Balances, analytics, clipboard, and Assistant',
@@ -39,6 +45,11 @@ const CATEGORIES = [
     href: '/settings/networks',
     title: 'Networks',
     detail: 'Default network and preview RPC health',
+  },
+  {
+    href: '/settings/preferences#accessibility',
+    title: 'Accessibility',
+    detail: 'Text size, motion, contrast, and touch targets',
   },
   {
     href: '/settings/devices',
@@ -86,11 +97,9 @@ export function SettingsHomeExperience(): ReactElement {
   const [query, setQuery] = useState('');
   const deferred = useDeferredValue(query);
   const filtered = useMemo(() => {
-    const q = deferred.trim().toLowerCase();
-    if (!q) return CATEGORIES;
-    return CATEGORIES.filter(
-      (c) => c.title.toLowerCase().includes(q) || c.detail.toLowerCase().includes(q),
-    );
+    const q = deferred.trim();
+    if (!q) return [...CATEGORIES];
+    return fuzzyRank(q, CATEGORIES, (c) => [c.title, c.detail]);
   }, [deferred]);
 
   return (

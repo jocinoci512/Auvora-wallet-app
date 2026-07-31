@@ -1,4 +1,5 @@
 import '../portfolio/models.dart';
+import '../search/fuzzy.dart';
 import 'models.dart';
 
 /// On-device Auvora Intelligence catalog — instant, educational, never advice.
@@ -355,7 +356,7 @@ class IntelligenceCatalog {
     ContextualTip(
       id: 'tip-after-import',
       trigger: 'afterImport',
-      title: 'Verify your recovery phrase when you can',
+      title: 'Your recovery phrase is the master key to your wallet',
       body: 'A short practice later confirms you can restore this wallet if the device is lost.',
       learnTopicId: 'recovery',
     ),
@@ -369,9 +370,44 @@ class IntelligenceCatalog {
     ContextualTip(
       id: 'tip-after-first-tx',
       trigger: 'afterFirstTx',
-      title: 'Activity keeps your history',
+      title: 'This transaction cannot be reversed after confirmation',
       body: 'Transfers appear under Activity with status and a receipt. Pending usually means the network is still confirming.',
       learnTopicId: 'confirmations',
+    ),
+    ContextualTip(
+      id: 'tip-receive-network',
+      trigger: 'onReceive',
+      title: 'Always verify you’re sharing the correct network',
+      body: 'Assets sent on the wrong network are often unrecoverable. Match the network the sender expects.',
+      learnTopicId: 'networks',
+    ),
+    ContextualTip(
+      id: 'tip-send-review',
+      trigger: 'onSend',
+      title: 'This transaction cannot be reversed after confirmation',
+      body: 'Double-check the address, network, amount, and fee before you approve.',
+      learnTopicId: 'send',
+    ),
+    ContextualTip(
+      id: 'tip-stake-lock',
+      trigger: 'onStake',
+      title: 'Some staking providers require a lock period',
+      body: 'Locked assets may be unavailable until the period ends. Review terms before staking.',
+      learnTopicId: 'stake',
+    ),
+    ContextualTip(
+      id: 'tip-web3-disconnect',
+      trigger: 'onWeb3Connect',
+      title: 'You can disconnect this application at any time',
+      body: 'Permission Center lists connected apps. Revoke anything you no longer use.',
+      learnTopicId: 'web3',
+    ),
+    ContextualTip(
+      id: 'tip-security-updated',
+      trigger: 'onSecurityChange',
+      title: 'Your wallet protection has been updated',
+      body: 'Review Security Center if anything looks unexpected after a settings change.',
+      learnTopicId: 'security',
     ),
   ];
 
@@ -442,13 +478,13 @@ class IntelligenceCatalog {
   ];
 
   static List<SearchAssistHit> searchAssist(String query) {
-    final q = query.trim().toLowerCase();
+    final q = query.trim();
     if (q.isEmpty) return const [];
-    return searchAssistIndex.where((hit) {
-      if (hit.title.toLowerCase().contains(q) || hit.subtitle.toLowerCase().contains(q)) {
-        return true;
-      }
-      return hit.keywords.any((k) => k.contains(q) || q.contains(k));
-    }).toList();
+    return fuzzyRank(
+      q,
+      searchAssistIndex,
+      (hit) => [hit.title, hit.subtitle, ...hit.keywords],
+      minScore: 36,
+    );
   }
 }

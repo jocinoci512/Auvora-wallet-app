@@ -106,6 +106,10 @@ class _Web3ActivityScreenState extends State<Web3ActivityScreen> {
       Web3ActivityKind.dappTransaction => 'Transactions',
       Web3ActivityKind.permissionRevoked => 'Revokes',
       Web3ActivityKind.renamed => 'Renames',
+      Web3ActivityKind.sessionExpired => 'Expired',
+      Web3ActivityKind.sessionRestored => 'Restored',
+      Web3ActivityKind.deepLink => 'Deep links',
+      Web3ActivityKind.security => 'Security',
     };
   }
 
@@ -119,6 +123,10 @@ class _Web3ActivityScreenState extends State<Web3ActivityScreen> {
       Web3ActivityKind.dappTransaction => Icons.swap_horiz_rounded,
       Web3ActivityKind.permissionRevoked => Icons.remove_circle_outline,
       Web3ActivityKind.renamed => Icons.edit_outlined,
+      Web3ActivityKind.sessionExpired => Icons.timer_off_outlined,
+      Web3ActivityKind.sessionRestored => Icons.restore_rounded,
+      Web3ActivityKind.deepLink => Icons.open_in_new_rounded,
+      Web3ActivityKind.security => Icons.shield_outlined,
     };
   }
 }

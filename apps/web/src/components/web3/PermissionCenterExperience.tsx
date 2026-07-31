@@ -118,6 +118,37 @@ export function PermissionCenterExperience(): ReactElement {
     }
   }
 
+  async function disconnectAll(): Promise<void> {
+    if (sessions.length === 0) return;
+    setBusyId('__all__');
+    setError(null);
+    try {
+      if (live) {
+        await Promise.all(
+          grants.map((g) =>
+            web3Fetch('/api/v1/connections/dapps/permissions', {
+              method: 'POST',
+              body: JSON.stringify({
+                origin: g.origin,
+                permission: g.permission,
+                allowed: false,
+              }),
+            }),
+          ),
+        );
+      }
+      const count = sessions.length;
+      setGrants([]);
+      setToast(`Disconnected ${count} app${count === 1 ? '' : 's'}`);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(null), 1800);
+    } catch (err) {
+      setError(formatApiError(err));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const accounts = Array.from(new Set(grants.map((g) => g.account)));
 
   return (
@@ -130,6 +161,15 @@ export function PermissionCenterExperience(): ReactElement {
       nav={<Web3SectionNav current="/web3/permissions" />}
       actions={
         <>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busyId !== null || sessions.length === 0}
+            onClick={() => void disconnectAll()}
+            aria-label="Disconnect all connected apps"
+          >
+            Disconnect all
+          </Button>
           <Link href="/settings/dapps" className="cx-btn cx-btn--ghost">
             Connected dApps
           </Link>

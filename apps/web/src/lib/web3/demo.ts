@@ -2,7 +2,6 @@ import { highestPermissionRisk, permissionRiskFor, type DappPermissionCode } fro
 
 export type DappCategory =
   | 'DeFi'
-  | 'NFT'
   | 'Gaming'
   | 'Social'
   | 'DAO'
@@ -102,18 +101,6 @@ export const DEMO_DAPPS: DappCard[] = [
     risk: 'low',
   },
   {
-    id: 'opensea',
-    name: 'OpenSea',
-    origin: 'https://opensea.io',
-    url: 'https://opensea.io',
-    category: 'NFT',
-    network: 'ETHEREUM',
-    verified: true,
-    featured: true,
-    description: 'Discover and trade NFTs across major marketplaces.',
-    risk: 'low',
-  },
-  {
     id: 'aave',
     name: 'Aave',
     origin: 'https://app.aave.com',
@@ -155,7 +142,7 @@ export const DEMO_DAPPS: DappCard[] = [
     category: 'Gaming',
     network: 'ETHEREUM',
     verified: false,
-    description: 'Gaming collectibles discovery placeholder.',
+    description: 'Gaming discovery placeholder — collectibles marketplaces are out of scope.',
     risk: 'medium',
   },
   {
@@ -207,7 +194,6 @@ export const DEMO_DAPPS: DappCard[] = [
 
 export const DEMO_CATEGORIES: DappCategory[] = [
   'DeFi',
-  'NFT',
   'Gaming',
   'Social',
   'DAO',

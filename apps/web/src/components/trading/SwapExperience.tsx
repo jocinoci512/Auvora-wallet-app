@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { LineChart } from '../charts/Charts';
 import { formatApiError } from '../../lib/api-client';
+import { canUseLiveBroadcast } from '../../lib/release/config';
 import { DEMO_SWAP_HISTORY, pushTradingActivity } from '../../lib/trading/activity';
 import { formatSeconds, impactPct, tradingFetch } from '../../lib/trading/api';
 import { ENGINE_STATUS_STAGES } from '../../lib/trading/quote-engine';
@@ -117,7 +118,7 @@ export function SwapExperience(): ReactElement {
         const data = await tradingFetch<NetworkCap[]>('/api/v1/swaps/networks');
         if (!cancelled && data?.length) {
           setNetworks(data);
-          setLive(true);
+          setLive(canUseLiveBroadcast());
         }
       } catch {
         /* demo networks */
@@ -150,7 +151,7 @@ export function SwapExperience(): ReactElement {
         body: JSON.stringify({ network, sellToken, buyToken, sellAmount, slippageBps }),
       });
       setQuote(data);
-      setLive(true);
+      setLive(canUseLiveBroadcast());
       setError(null);
     } catch (err) {
       setQuote(demoQuote(sellToken, buyToken, sellAmount, slippageBps));

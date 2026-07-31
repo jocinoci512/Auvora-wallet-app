@@ -217,7 +217,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                               onChanged: null,
                               title: Text('Require confirmation before sending funds'),
                               subtitle: Text(
-                                'Always required in Closed Beta. Preference wiring ships with live send rails.',
+                                'Always required in Version 1.0 Alpha. Preference wiring ships with live send rails.',
                               ),
                             ),
                             const SwitchListTile(

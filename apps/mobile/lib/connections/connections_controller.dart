@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,8 +8,13 @@ import '../security/security_models.dart';
 import 'known_catalog.dart';
 import 'models.dart';
 import 'permission_catalog.dart';
+import 'wallet_connect_provider.dart';
 
 class ConnectionsController extends ChangeNotifier {
+  ConnectionsController({WalletConnectProviderPort? walletConnect})
+      : walletConnect = walletConnect ?? PreviewWalletConnectProvider();
+
+  final WalletConnectProviderPort walletConnect;
   SharedPreferences? _prefs;
   bool loading = true;
 
@@ -17,12 +23,14 @@ class ConnectionsController extends ChangeNotifier {
   List<SignatureRequest> pendingSignatures = const [];
   List<DappTransactionRequest> pendingTransactions = const [];
   List<Web3ActivityEvent> activity = const [];
+  final Set<String> _consumedRequestHashes = {};
 
   static const _kSessions = 'auvora_connections_sessions_v1';
   static const _kPending = 'auvora_connections_pending_v1';
   static const _kSignatures = 'auvora_connections_signatures_v1';
   static const _kTransactions = 'auvora_connections_transactions_v1';
   static const _kActivity = 'auvora_connections_activity_v1';
+  static const _defaultSessionTtl = Duration(days: 7);
 
   List<ConnectedAppSession> get activeSessions =>
       sessions.where((s) => s.active).toList(growable: false);
@@ -61,7 +69,45 @@ class ConnectionsController extends ChangeNotifier {
     activity = _readList(_kActivity, Web3ActivityEvent.fromJson);
     // Closed Beta: start empty — never invent connected apps or activity.
     loading = false;
+    await expireStaleSessions(recordActivity: true);
     notifyListeners();
+  }
+
+  /// Mark expired sessions inactive (session expiration + validation).
+  Future<int> expireStaleSessions({bool recordActivity = false}) async {
+    final now = DateTime.now();
+    var changed = 0;
+    final next = <ConnectedAppSession>[];
+    for (final s in sessions) {
+      if (s.active && s.expiresAt != null && now.isAfter(s.expiresAt!)) {
+        changed++;
+        next.add(s.copyWith(active: false, warning: 'Session expired — reconnect with fresh approval.'));
+        if (recordActivity) {
+          activity = [
+            Web3ActivityEvent(
+              id: _id('act'),
+              kind: Web3ActivityKind.sessionExpired,
+              title: 'Session expired',
+              detail: '${s.label} expired. Reconnect requires a new approval.',
+              timestamp: now,
+              status: Web3ActivityStatus.confirmed,
+              appName: s.label,
+              origin: s.origin,
+            ),
+            ...activity,
+          ];
+        }
+      } else {
+        next.add(s);
+      }
+    }
+    if (changed > 0) {
+      sessions = next;
+      await _persistSessions();
+      if (recordActivity) await _persistActivity();
+      notifyListeners();
+    }
+    return changed;
   }
 
   // --- Pairing / approval -------------------------------------------------
@@ -73,18 +119,32 @@ class ConnectionsController extends ChangeNotifier {
     String? account,
   }) async {
     await bootstrap();
-    final parsed = _parsePairInput(rawInput, method: method);
+    final validation = walletConnect.validateInboundUri(rawInput);
+    final isPairingCode =
+        method == ConnectionMethod.desktopPairing || method == ConnectionMethod.mobilePairing;
+    if (!validation.valid && !isPairingCode) {
+      final looksLikeScheme = rawInput.trim().contains(':');
+      if (looksLikeScheme &&
+          (validation.kind == DeepLinkKind.invalid || validation.kind == DeepLinkKind.unsupported)) {
+        throw ArgumentError(validation.message ?? 'Invalid pairing input');
+      }
+    }
+    final effectiveInput = validation.extractedUri ?? rawInput;
+    final parsed = _parsePairInput(effectiveInput, method: method);
     final known = lookupKnownDapp(parsed.origin);
     final previously = sessions.any(
       (s) => _normalizeOrigin(s.origin) == _normalizeOrigin(parsed.origin),
     );
     final synthetic = parsed.syntheticOrigin;
     final https = !synthetic && parsed.origin.toLowerCase().startsWith('https://');
+    final unknown = !synthetic && known == null && !previously;
     final trust = TrustIndicators(
       verifiedDomain: !synthetic && known?.verified == true,
       https: https,
       previouslyConnected: previously,
       knownProject: !synthetic && known != null,
+      unknownApplication: unknown,
+      recentlyRegisteredHint: unknown,
     );
     final permissions = parsed.permissions;
     final warnings = <String>[
@@ -95,8 +155,10 @@ class ConnectionsController extends ChangeNotifier {
       if (permissions.contains(DappPermissionCode.requestTransactions))
         'This connection can request transactions that move funds or assets.',
       if (pendingRequests.length >= 2) 'You already have other pending connection requests.',
-      if (!previously && known == null && !synthetic) 'Newly seen origin — review permissions carefully.',
+      if (unknown) 'Unknown application — review permissions carefully. Why: we have no prior connection or catalog entry for this origin.',
       if (parsed.note case final note?) note,
+      if (!walletConnect.isLiveRelay)
+        'Preview WalletConnect — not a live relay session. Approving stores a local session only.',
     ];
 
     final request = DappConnectionRequest(
@@ -118,6 +180,30 @@ class ConnectionsController extends ChangeNotifier {
     await _persistPending();
     notifyListeners();
     return request;
+  }
+
+  /// Ingest OS / QR / paste deep links; returns a pending connection request when applicable.
+  Future<DappConnectionRequest?> handleInboundDeepLink(String raw) async {
+    await bootstrap();
+    final validation = walletConnect.validateInboundUri(raw);
+    await _addActivity(
+      kind: Web3ActivityKind.deepLink,
+      title: validation.valid ? 'Deep link received' : 'Deep link rejected',
+      detail: validation.message ?? raw,
+      status: validation.valid ? Web3ActivityStatus.confirmed : Web3ActivityStatus.rejected,
+    );
+    if (!validation.valid || validation.extractedUri == null) {
+      return null;
+    }
+    if (validation.kind == DeepLinkKind.transactionRequest ||
+        validation.kind == DeepLinkKind.authentication) {
+      // Auth / tx deep links never auto-approve — surface as activity only.
+      return null;
+    }
+    final method = validation.kind == DeepLinkKind.walletConnectUri
+        ? ConnectionMethod.walletConnectUri
+        : ConnectionMethod.deepLink;
+    return createPairingRequest(rawInput: validation.extractedUri!, method: method);
   }
 
   Future<ConnectedAppSession?> approveConnection(String requestId) async {
@@ -161,6 +247,11 @@ class ConnectionsController extends ChangeNotifier {
               ? 'Unverified origin — review carefully.'
               : null),
       active: true,
+      topic: existing.isNotEmpty ? existing.first.topic : 'topic_${sessionId.hashCode.toRadixString(16)}',
+      protocolVersion: walletConnect.protocolVersion,
+      expiresAt: now.add(_defaultSessionTtl),
+      pairUri: request.pairUri,
+      lastRestoredAt: existing.isNotEmpty ? now : null,
     );
     sessions = [
       session,
@@ -222,6 +313,7 @@ class ConnectionsController extends ChangeNotifier {
       for (final s in sessions)
         if (s.id == sessionId) s.copyWith(active: false) else s,
     ];
+    await walletConnect.terminateSession(sessionId);
     await _addActivity(
       kind: Web3ActivityKind.disconnected,
       title: 'Disconnected ${session.label}',
@@ -234,6 +326,88 @@ class ConnectionsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Disconnect every active session (auth required by UI).
+  Future<int> disconnectAllSessions() async {
+    await bootstrap();
+    final active = activeSessions;
+    if (active.isEmpty) return 0;
+    for (final session in active) {
+      await walletConnect.terminateSession(session.id);
+    }
+    sessions = [
+      for (final s in sessions)
+        if (s.active) s.copyWith(active: false) else s,
+    ];
+    await _addActivity(
+      kind: Web3ActivityKind.disconnected,
+      title: 'Disconnected all apps',
+      detail: 'Ended ${active.length} active session${active.length == 1 ? '' : 's'}.',
+      status: Web3ActivityStatus.confirmed,
+    );
+    await _persistSessions();
+    notifyListeners();
+    return active.length;
+  }
+
+  /// Attempt automatic reconnection validation for an existing session topic.
+  /// Expired sessions require [reconnectSession] (fresh approval).
+  Future<ConnectedAppSession?> restoreSession(String sessionId) async {
+    await bootstrap();
+    final index = sessions.indexWhere((s) => s.id == sessionId);
+    if (index < 0) return null;
+    final current = sessions[index];
+    if (current.isExpired) {
+      await expireStaleSessions(recordActivity: true);
+      return sessions.firstWhere((s) => s.id == sessionId);
+    }
+    // Local preview sessions restore from persistence; live providers may re-validate.
+    final snapshot = await walletConnect.restoreSession(sessionId);
+    final now = DateTime.now();
+    if (snapshot != null && snapshot.status == WalletConnectSessionStatus.expired) {
+      final expired = current.copyWith(
+        active: false,
+        warning: 'Session could not be restored — reconnect with fresh approval.',
+      );
+      sessions = [
+        for (var i = 0; i < sessions.length; i++)
+          if (i == index) expired else sessions[i],
+      ];
+      await _addActivity(
+        kind: Web3ActivityKind.sessionExpired,
+        title: 'Restore failed',
+        detail: '${current.label} needs a new connection approval.',
+        appName: current.label,
+        origin: current.origin,
+        status: Web3ActivityStatus.rejected,
+      );
+      await _persistSessions();
+      notifyListeners();
+      return expired;
+    }
+    final restored = current.copyWith(
+      active: true,
+      lastUsedAt: now,
+      lastRestoredAt: now,
+    );
+    sessions = [
+      for (var i = 0; i < sessions.length; i++)
+        if (i == index) restored else sessions[i],
+    ];
+    await _addActivity(
+      kind: Web3ActivityKind.sessionRestored,
+      title: 'Session restored',
+      detail: snapshot != null
+          ? '${restored.label} reconnect validated via ${walletConnect.name}.'
+          : '${restored.label} restored from local session store (preview).',
+      appName: restored.label,
+      origin: restored.origin,
+      status: Web3ActivityStatus.confirmed,
+    );
+    await _persistSessions();
+    notifyListeners();
+    return restored;
+  }
+
   /// Reconnect creates a fresh pending approval — never silently restore grants.
   Future<DappConnectionRequest> reconnectSession(String sessionId) async {
     await bootstrap();
@@ -243,7 +417,7 @@ class ConnectionsController extends ChangeNotifier {
     }
     final session = match.first;
     return createPairingRequest(
-      rawInput: session.origin,
+      rawInput: session.pairUri ?? session.origin,
       method: session.method,
       account: session.accounts.isNotEmpty ? session.accounts.first : null,
     );
@@ -324,6 +498,12 @@ class ConnectionsController extends ChangeNotifier {
         summary.toLowerCase().contains('allowance') ||
         (purpose?.toLowerCase().contains('permit') ?? false);
     final fundsRisk = canMoveFunds ?? looksLikePermit;
+    final hash = sha256
+        .convert(utf8.encode('$sessionId|${kind.name}|$summary|${DateTime.now().millisecondsSinceEpoch ~/ 1000}'))
+        .toString();
+    if (_consumedRequestHashes.contains(hash)) {
+      throw StateError('Duplicate signature request blocked (replay protection)');
+    }
     final request = SignatureRequest(
       id: _id('sig'),
       sessionId: session.id,
@@ -341,6 +521,8 @@ class ConnectionsController extends ChangeNotifier {
       createdAt: DateTime.now(),
       risk: fundsRisk ? ConnectionRisk.elevated : ConnectionRisk.medium,
       canMoveFunds: fundsRisk,
+      requestHash: hash,
+      walletLabel: session.accounts.isNotEmpty ? session.accounts.first : 'Primary account',
     );
     pendingSignatures = [request, ...pendingSignatures];
     await _persistSignatures();
@@ -353,6 +535,15 @@ class ConnectionsController extends ChangeNotifier {
     final match = pendingSignatures.where((r) => r.id == requestId);
     if (match.isEmpty) return;
     final request = match.first;
+    if (request.requestHash != null) {
+      if (_consumedRequestHashes.contains(request.requestHash)) {
+        pendingSignatures = pendingSignatures.where((r) => r.id != requestId).toList();
+        await _persistSignatures();
+        notifyListeners();
+        throw StateError('Signature request already consumed (replay protection)');
+      }
+      _consumedRequestHashes.add(request.requestHash!);
+    }
     pendingSignatures = pendingSignatures.where((r) => r.id != requestId).toList();
     await touchSession(request.sessionId);
     await _addActivity(

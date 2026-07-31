@@ -11,11 +11,22 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('Closed Beta kill switches stay off for funding and broadcast', () {
+  test('Version 1.0 Alpha kill switches stay off for funding and broadcast', () {
     expect(ReleaseConfig.liveBroadcastEnabled, isFalse);
     expect(ReleaseConfig.allowFundingAddresses, isFalse);
     expect(ReleaseConfig.derivationMode, DerivationMode.bip32Partial);
     expect(ReleaseConfig.usesHdDerivation, isTrue);
+    expect(ReleaseConfig.isAlpha, isTrue);
+    expect(ReleaseConfig.isReleaseCandidate, isFalse);
+    expect(ReleaseConfig.releaseChannel, 'alpha');
+    expect(ReleaseConfig.marketingVersion, '1.0.0-alpha.1');
+    expect(ReleaseConfig.buildLabel, 'Version 1.0 Alpha');
+    expect(ReleaseConfig.fundingBlockedMessage.toLowerCase(), contains('qr'));
+    expect(
+      ReleaseConfig.redactAddress('0x1234567890abcdef1234567890abcdef12345678'),
+      '0x1234…5678',
+    );
+    expect(ReleaseConfig.redactAddress('short'), '••••••••');
   });
 
   test('PIN compare is constant-time for equal-length strings', () {

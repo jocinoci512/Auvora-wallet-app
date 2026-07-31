@@ -63,25 +63,48 @@ class SyncEngine {
   CacheStore get cacheStore => _cache;
 
   void recordColdStart(Duration elapsed) {
-    _diagnostics = WalletDiagnostics(
-      cacheHits: _diagnostics.cacheHits,
-      cacheMisses: _diagnostics.cacheMisses,
-      rpcRequests: _diagnostics.rpcRequests,
-      rpcFailures: _diagnostics.rpcFailures,
-      averageLatencyMs: _diagnostics.averageLatencyMs,
-      lastSyncAt: _diagnostics.lastSyncAt,
-      retryAttempts: _diagnostics.retryAttempts,
-      partialChainFailures: _diagnostics.partialChainFailures,
-      coldStartMs: elapsed.inMilliseconds,
-      lastSyncReason: _diagnostics.lastSyncReason,
-    );
+    _diagnostics = _copyDiag(coldStartMs: elapsed.inMilliseconds);
   }
 
   void noteCoordinatorEvent(String reason) {
     _lastSyncReason = reason;
   }
 
+  void recordSyncDuration(Duration elapsed) {
+    _diagnostics = _copyDiag(
+      lastSyncDurationMs: elapsed.inMilliseconds,
+      syncSampleCount: _diagnostics.syncSampleCount + 1,
+    );
+  }
+
+  void noteErrorEvent() {
+    _diagnostics = _copyDiag(errorEvents: _diagnostics.errorEvents + 1);
+  }
+
+  Future<void> warmHelpCache() async {
+    await _cache.write(
+      ns: CacheStore.nsHelp,
+      id: 'faq-bundle',
+      payload: {
+        'version': 1,
+        'warmedAt': DateTime.now().toIso8601String(),
+        'offlineReady': true,
+      },
+      ttl: const Duration(days: 7),
+    );
+  }
+
+  Future<void> persistDiagnosticsSnapshot({Map<String, Object?>? coordinator}) async {
+    await _cache.write(
+      ns: CacheStore.nsDiagnostics,
+      id: 'last',
+      payload: exportDiagnostics(coordinator: coordinator),
+      ttl: const Duration(hours: 24),
+    );
+  }
+
   Future<PortfolioSnapshot> loadPortfolio({bool empty = false}) async {
+    final syncStarted = DateTime.now();
     _prefs ??= await SharedPreferences.getInstance();
     _syncStatus = SyncStatusSnapshot(
       state: WalletSyncState.syncing,
@@ -233,6 +256,7 @@ class SyncEngine {
     final syncDelayed = _networkManager.hasDegradedEndpoints || failed.isNotEmpty;
     final priceError = quotes.values.any((item) => item.stale);
 
+    final durationMs = DateTime.now().difference(syncStarted).inMilliseconds;
     _diagnostics = WalletDiagnostics(
       cacheHits: _diagnostics.cacheHits,
       cacheMisses: _diagnostics.cacheMisses + 1,
@@ -244,6 +268,9 @@ class SyncEngine {
       partialChainFailures: _diagnostics.partialChainFailures + failed.length,
       coldStartMs: _diagnostics.coldStartMs,
       lastSyncReason: _lastSyncReason,
+      lastSyncDurationMs: durationMs,
+      syncSampleCount: _diagnostics.syncSampleCount + 1,
+      errorEvents: _diagnostics.errorEvents + failed.length,
     );
 
     final snap = PortfolioSnapshot(
@@ -308,12 +335,15 @@ class SyncEngine {
     await _prefs?.remove(_kPortfolioCache);
   }
 
+  Future<int> purgeExpiredCache({bool force = false}) => _cache.purgeExpired(force: force);
+
   Map<String, Object?> exportDiagnostics({
     Map<String, Object?>? coordinator,
   }) {
     return {
       'generatedAt': DateTime.now().toIso8601String(),
       'preview': true,
+      'privacy': 'no_keys_seeds_pins',
       'walletDiagnostics': _diagnostics.toJson(),
       'syncStatus': {
         'state': _syncStatus.state.name,
@@ -328,6 +358,16 @@ class SyncEngine {
       },
       'network': _networkManager.diagnosticsJson(),
       if (coordinator != null) 'coordinator': coordinator,
+    };
+  }
+
+  Future<Map<String, Object?>> exportDiagnosticsAsync({
+    Map<String, Object?>? coordinator,
+  }) async {
+    final sizes = await _cache.namespaceSizes();
+    return {
+      ...exportDiagnostics(coordinator: coordinator),
+      'cacheNamespaces': sizes,
     };
   }
 
@@ -372,6 +412,9 @@ class SyncEngine {
     int? partialChainFailures,
     int? coldStartMs,
     String? lastSyncReason,
+    int? lastSyncDurationMs,
+    int? syncSampleCount,
+    int? errorEvents,
   }) {
     return WalletDiagnostics(
       cacheHits: cacheHits ?? _diagnostics.cacheHits,
@@ -384,6 +427,9 @@ class SyncEngine {
       partialChainFailures: partialChainFailures ?? _diagnostics.partialChainFailures,
       coldStartMs: coldStartMs ?? _diagnostics.coldStartMs,
       lastSyncReason: lastSyncReason ?? _diagnostics.lastSyncReason,
+      lastSyncDurationMs: lastSyncDurationMs ?? _diagnostics.lastSyncDurationMs,
+      syncSampleCount: syncSampleCount ?? _diagnostics.syncSampleCount,
+      errorEvents: errorEvents ?? _diagnostics.errorEvents,
     );
   }
 

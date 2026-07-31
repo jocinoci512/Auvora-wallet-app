@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../connections/connections_controller.dart';
 import '../../connections/models.dart';
 import '../../connections/permission_catalog.dart';
+import '../../connections/signature_intelligence.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../home/home_shared.dart';
@@ -92,11 +93,25 @@ class _PermissionCenterScreenState extends State<PermissionCenterScreen> {
                   'Sessions below are preview/local unless a live connections API is linked later.',
                   style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Sample connections may appear on first launch for UI preview — they are not live WalletConnect sessions.',
-                  style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
-                ),
+                const SizedBox(height: 12),
+                if (connections.activeSessions.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final ok = await authenticateConnectionsAction(
+                        context,
+                        wallet,
+                        reason: 'Confirm before disconnecting all apps',
+                      );
+                      if (!ok) return;
+                      final count = await connections.disconnectAllSessions();
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Disconnected $count app${count == 1 ? '' : 's'}')),
+                      );
+                    },
+                    icon: const Icon(Icons.link_off_rounded),
+                    label: const Text('Disconnect all apps'),
+                  ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -222,7 +237,9 @@ class _SessionCard extends StatelessWidget {
         title: Text(session.label),
         subtitle: Text(
           '${session.origin}\n${session.activePermissionCodes.length} permissions · ${relativeTime(session.lastUsedAt)}'
-          '${session.active ? '' : ' · disconnected'}',
+          '${session.active ? '' : ' · disconnected'}'
+          '${session.isExpired ? ' · expired' : ''}'
+          '${session.expiresAt != null && session.active ? ' · expires ${relativeTime(session.expiresAt!)}' : ''}',
         ),
         isThreeLine: true,
         trailing: const Icon(Icons.chevron_right_rounded),
@@ -263,7 +280,36 @@ class _SessionDetailScreen extends StatelessWidget {
           Text('Networks: ${session.networks.join(', ')}'),
           Text('Accounts: ${session.accounts.join(', ')}'),
           Text('Method: ${session.method.label}'),
+          Text('Protocol: WalletConnect v${session.protocolVersion}'),
+          if (session.topic != null) Text('Topic: ${session.topic}'),
           Text('Connected ${relativeTime(session.connectedAt)} · Last used ${relativeTime(session.lastUsedAt)}'),
+          if (session.expiresAt != null)
+            Text(session.isExpired
+                ? 'Expired ${relativeTime(session.expiresAt!)}'
+                : 'Expires ${relativeTime(session.expiresAt!)}'),
+          if (session.lastRestoredAt != null)
+            Text('Last restored ${relativeTime(session.lastRestoredAt!)}'),
+          ...[
+            const SizedBox(height: 10),
+            for (final tip in SignatureIntelligence.connectionTips(
+              DappConnectionRequest(
+                id: session.id,
+                appName: session.appName,
+                origin: session.origin,
+                networks: session.networks,
+                account: session.accounts.isNotEmpty ? session.accounts.first : 'Primary',
+                permissions: session.activePermissionCodes,
+                method: session.method,
+                createdAt: session.connectedAt,
+                status: ConnectionRequestStatus.approved,
+                trust: session.trust,
+              ),
+            ))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('• $tip', style: const TextStyle(height: 1.4, color: AetherColors.muted)),
+              ),
+          ],
           if (session.warning != null) ...[
             const SizedBox(height: 8),
             Text(session.warning!, style: const TextStyle(color: Color(0xFFB54708))),
@@ -356,6 +402,29 @@ class _SessionDetailScreen extends StatelessWidget {
                     }
                   },
                   child: const Text('Reconnect'),
+                ),
+              if (!session.active && !session.isExpired)
+                OutlinedButton(
+                  onPressed: () async {
+                    final ok = await authenticateConnectionsAction(
+                      context,
+                      wallet,
+                      reason: 'Confirm before restoring ${session.label}',
+                    );
+                    if (!ok) return;
+                    final restored = await connections.restoreSession(session.id);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          restored?.active == true
+                              ? 'Session restored'
+                              : 'Could not restore — use Reconnect for fresh approval',
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Restore session'),
                 ),
               if (session.active) ...[
                 FilledButton.tonal(

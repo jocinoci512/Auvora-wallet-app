@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../preferences/preferences_controller.dart';
+import '../../search/fuzzy.dart';
 import '../../theme/aether_theme.dart';
 import 'about_screen.dart';
 import 'accessibility_settings_screen.dart';
@@ -144,16 +145,10 @@ class _SettingsHomeScreenState extends State<SettingsHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesController>();
-    final q = _query.trim().toLowerCase();
+    final q = _query.trim();
     final filtered = q.isEmpty
         ? _categories
-        : _categories
-            .where(
-              (c) =>
-                  c.title.toLowerCase().contains(q) ||
-                  c.description.toLowerCase().contains(q),
-            )
-            .toList();
+        : fuzzyRank(q, _categories, (c) => [c.title, c.description]);
 
     return Scaffold(
       appBar: AppBar(

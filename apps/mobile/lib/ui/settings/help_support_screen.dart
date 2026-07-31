@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../../l10n/auvora_locale.dart';
+import '../../reliability/cache_store.dart';
+import '../../search/fuzzy.dart';
 import '../../theme/aether_theme.dart';
+import '../../wallet_engine/sync_engine.dart';
 import '../beta/beta_feedback_screen.dart';
 import '../home/home_shared.dart';
+import '../intelligence/learning_center_screen.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -14,7 +20,38 @@ class HelpSupportScreen extends StatefulWidget {
 
 class _HelpSupportScreenState extends State<HelpSupportScreen> {
   String _query = '';
+  bool _cachedOffline = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _warmCache());
+  }
+
+  Future<void> _warmCache() async {
+    try {
+      final sync = context.read<SyncEngine>();
+      await sync.warmHelpCache();
+      // Persist FAQ titles for offline browse markers (content stays in binary).
+      await sync.cacheStore.write(
+        ns: CacheStore.nsHelp,
+        id: 'faq-titles',
+        payload: {
+          for (final f in _faqs) f.$1: f.$2,
+        },
+        ttl: const Duration(days: 14),
+      );
+      final hit = await sync.cacheStore.read<Map<String, Object?>>(
+        ns: CacheStore.nsHelp,
+        id: 'faq-bundle',
+        decode: (raw) => Map<String, Object?>.from(raw as Map),
+      );
+      if (!mounted) return;
+      setState(() => _cachedOffline = hit != null);
+    } catch (_) {
+      // Provider may be unavailable in isolated routes — ignore.
+    }
+  }
   static const _faqs = <(String, String)>[
     (
       'How do I hide my balances?',
@@ -26,7 +63,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     ),
     (
       'Why don’t I get push notifications?',
-      'This release uses an in-app Notification Center only. Push (FCM/APNs) is planned for a later sprint.'
+      'This release uses an in-app Notification Center. You can still grant OS notification permission to prepare for future push. Every alert category can be toggled independently in Settings → Notifications.'
     ),
     (
       'Can I add another wallet?',
@@ -36,17 +73,63 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       'Are price alerts live?',
       'Alerts are stored on device and check against preview prices when you tap Check now — not live markets.'
     ),
+    (
+      'What is a recovery phrase?',
+      'Your recovery phrase is the master key to your wallet. Anyone with it can move funds. Write it down offline and never share it in chat, email, or with a website.'
+    ),
+    (
+      'What are gas fees?',
+      'Network fees pay validators to include your transfer. They vary by network congestion and are separate from any Auvora product fee. Review the fee before you confirm.'
+    ),
+    (
+      'How do I disconnect a dApp?',
+      'Open Permission Center (More → Web3 & permissions). You can revoke individual grants or disconnect all apps. You can disconnect an application at any time.'
+    ),
+    (
+      'Can I change the theme?',
+      'Settings → Appearance. Choose System, Light, or Dark. Transitions are smooth and respect Reduce motion.'
+    ),
+    (
+      'How do I report an issue?',
+      'Use Send Alpha feedback or Report a bug below. Never include your recovery phrase in any report.'
+    ),
+  ];
+
+  static const _guides = <(String, String, String)>[
+    (
+      'Wallet basics',
+      'Keys, addresses, and first steps',
+      '1) Confirm your recovery phrase in Security Center.\n2) Set a PIN.\n3) Try a small send on a network you trust.\n\nYour recovery phrase is the master key to your wallet.',
+    ),
+    (
+      'Recovery phrase guide',
+      'Backup, verify, and never share',
+      'Write the phrase on paper (or another offline method). Verify it in Security Center. Never type it into a website or share it with support. Auvora will never ask for it in chat.',
+    ),
+    (
+      'Gas fee guide',
+      'Why networks charge and how to read estimates',
+      'Fees pay the network — not Auvora marketing. Higher congestion usually means higher fees. Always read the fee line on the confirmation screen before approving.',
+    ),
+    (
+      'Security best practices',
+      'Phishing, approvals, and safe habits',
+      'Never share your recovery phrase. Review every connection and signature. Prefer catalog-known origins, and reject lookalikes. Enable biometrics and keep a verified backup.',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final q = _query.trim().toLowerCase();
+    final q = _query.trim();
     final faqs = q.isEmpty
         ? _faqs
-        : _faqs.where((f) => f.$1.toLowerCase().contains(q) || f.$2.toLowerCase().contains(q)).toList();
+        : fuzzyRank(q, _faqs, (f) => [f.$1, f.$2]);
+    final guides = q.isEmpty
+        ? _guides
+        : fuzzyRank(q, _guides, (g) => [g.$1, g.$2, g.$3]);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Support')),
+      appBar: AppBar(title: Text(AuvoraStrings.lookup('help.title'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
@@ -54,12 +137,19 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             'Short answers first. Guides and contact options stay one tap away — not a wall of docs.',
             style: TextStyle(color: AetherColors.muted, height: 1.45),
           ),
+          if (_cachedOffline) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Help content is cached on this device for offline reading.',
+              style: TextStyle(color: AetherColors.lagoon, height: 1.35, fontSize: 13),
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Search help',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: AuvoraStrings.lookup('help.search_hint'),
+              border: const OutlineInputBorder(),
             ),
             onChanged: (v) => setState(() => _query = v),
           ),
@@ -82,31 +172,26 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           if (faqs.isEmpty) const Text('No FAQ matches.', style: TextStyle(color: AetherColors.muted)),
           const SizedBox(height: 16),
           Text('Guides', style: Theme.of(context).textTheme.titleMedium),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Getting started'),
-            subtitle: const Text('Backup, PIN, and first send'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Getting started',
-              body: '1) Confirm your recovery phrase in Security Center.\n2) Set a PIN.\n3) Try a small send on a network you trust.',
+          for (final g in guides)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(g.$1),
+              subtitle: Text(g.$2),
+              onTap: () => showActionSheet(context, title: g.$1, body: g.$3),
             ),
-          ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Security guide'),
-            subtitle: const Text('Phishing, approvals, and safe habits'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Security guide',
-              body: 'Never share your recovery phrase. Review every connection and signature. Prefer catalog-known origins, and reject lookalikes.',
+            title: const Text('Learning Center'),
+            subtitle: const Text('Short educational lessons'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const LearningCenterScreen()),
             ),
           ),
           const SizedBox(height: 8),
           Text('Contact', style: Theme.of(context).textTheme.titleMedium),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Send Closed Beta feedback'),
+            title: const Text('Send Alpha feedback'),
             subtitle: const Text('Bug, confusing UX, performance, security, accessibility'),
             onTap: () {
               Navigator.of(context).push(
@@ -121,12 +206,12 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               context,
               title: 'Contact support',
               body:
-                  'Use Beta feedback in-app for Closed Beta. Never include seed phrases in any channel.',
+                  'Use Alpha feedback in-app for Version 1.0 Alpha. Never include seed phrases in any channel.',
             ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Report a bug'),
+            title: const Text('Report an issue'),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),

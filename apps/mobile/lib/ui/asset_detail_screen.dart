@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../engine/models.dart';
@@ -177,20 +176,16 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
               ),
               if (address != null)
                 OutlinedButton(
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: address));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          ReleaseConfig.allowFundingAddresses
-                              ? 'Address copied'
-                              : 'Preview address copied — funding stays locked in Closed Beta',
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('Copy address'),
+                  onPressed: ReleaseConfig.allowFundingAddresses
+                      ? () => copyText(
+                            context,
+                            address,
+                            label: 'Address copied',
+                          )
+                      : null,
+                  child: const Text(
+                    ReleaseConfig.allowFundingAddresses ? 'Copy address' : 'Copy address (locked)',
+                  ),
                 ),
               for (final entry in [
                 ('Swap', EngineOp.swap),
@@ -228,7 +223,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           SoftBanner(
             tone: BannerTone.warn,
             message: ReleaseConfig.usesHdDerivation
-                ? 'Balances may still be preview-synced. HD addresses are active; funding receive stays locked until Closed Beta sign-off.'
+                ? 'Balances may still be preview-synced. HD addresses are active; funding receive stays locked until Version 1.0 Alpha sign-off.'
                 : 'Prices and balances in this build are a local preview until chain sync and market data are connected.',
           ),
         ],

@@ -13,6 +13,7 @@ class PreferencesController extends ChangeNotifier {
   bool loading = true;
 
   AppThemePreference theme = AppThemePreference.system;
+  AccentColorPreference accent = AccentColorPreference.lagoon;
   AccountPrefs account = const AccountPrefs();
   LocalePrefs locale = const LocalePrefs();
   WalletDisplayPrefs walletDisplay = const WalletDisplayPrefs();
@@ -148,6 +149,12 @@ class PreferencesController extends ChangeNotifier {
 
   Future<void> setTheme(AppThemePreference value) async {
     theme = value;
+    await _persistBlob();
+    notifyListeners();
+  }
+
+  Future<void> setAccent(AccentColorPreference value) async {
+    accent = value;
     await _persistBlob();
     notifyListeners();
   }
@@ -387,6 +394,7 @@ class PreferencesController extends ChangeNotifier {
       _kBlob,
       jsonEncode({
         'theme': theme.name,
+        'accent': accent.name,
         'account': account.toJson(),
         'locale': locale.toJson(),
         'walletDisplay': walletDisplay.toJson(),
@@ -422,6 +430,10 @@ class PreferencesController extends ChangeNotifier {
       theme = AppThemePreference.values.firstWhere(
         (t) => t.name == data['theme'],
         orElse: () => AppThemePreference.system,
+      );
+      accent = AccentColorPreference.values.firstWhere(
+        (a) => a.name == data['accent'],
+        orElse: () => AccentColorPreference.lagoon,
       );
       account = AccountPrefs.fromJson(Map<String, dynamic>.from(data['account'] as Map? ?? const {}));
       locale = LocalePrefs.fromJson(Map<String, dynamic>.from(data['locale'] as Map? ?? const {}));

@@ -2,6 +2,7 @@ import 'package:auvora_wallet/connections/connections_controller.dart';
 import 'package:auvora_wallet/connections/known_catalog.dart';
 import 'package:auvora_wallet/connections/models.dart';
 import 'package:auvora_wallet/connections/permission_catalog.dart';
+import 'package:auvora_wallet/connections/wallet_connect_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -223,6 +224,80 @@ void main() {
       await c.approveTransaction(tx.id);
       expect(c.pendingTransactions.any((r) => r.id == tx.id), isFalse);
       expect(c.activity.any((e) => e.kind == Web3ActivityKind.dappTransaction), isTrue);
+    });
+
+    test('session expiry, restore, and disconnect all', () async {
+      final c = ConnectionsController();
+      await c.bootstrap();
+      final session = await _approveUniswap(c);
+      expect(session.expiresAt, isNotNull);
+      expect(session.protocolVersion, '2');
+
+      final restored = await c.restoreSession(session.id);
+      expect(restored?.active, isTrue);
+      expect(c.activity.any((e) => e.kind == Web3ActivityKind.sessionRestored), isTrue);
+
+      // Force expiry
+      c.sessions = [
+        for (final s in c.sessions)
+          if (s.id == session.id)
+            s.copyWith(expiresAt: DateTime.now().subtract(const Duration(hours: 1)))
+          else
+            s,
+      ];
+      final expiredCount = await c.expireStaleSessions(recordActivity: true);
+      expect(expiredCount, 1);
+      expect(c.activeSessions, isEmpty);
+      expect(c.activity.any((e) => e.kind == Web3ActivityKind.sessionExpired), isTrue);
+
+      final again = await _approveUniswap(c);
+      expect(await c.disconnectAllSessions(), 1);
+      expect(c.activeSessions, isEmpty);
+      expect(again.id, isNotEmpty);
+    });
+
+    test('deep link validation and inbound handling', () async {
+      final c = ConnectionsController();
+      await c.bootstrap();
+      final provider = c.walletConnect;
+      expect(provider.isLiveRelay, isFalse);
+
+      final bad = provider.validateInboundUri('auvora://unknown/path');
+      expect(bad.valid, isFalse);
+
+      final wc = provider.validateInboundUri(
+        'wc:preview@2?relay-protocol=irn&symKey=demo#https://app.uniswap.org',
+      );
+      expect(wc.valid, isTrue);
+
+      final nested = provider.validateInboundUri(
+        'auvora://wc?uri=${Uri.encodeComponent('wc:topic@2?relay-protocol=irn')}',
+      );
+      expect(nested.valid, isTrue);
+      expect(nested.kind, DeepLinkKind.auvoraWc);
+
+      final request = await c.handleInboundDeepLink(
+        'auvora://wc?uri=${Uri.encodeComponent('wc:uni@2?relay=preview#https://app.uniswap.org')}',
+      );
+      expect(request, isNotNull);
+      expect(c.activity.any((e) => e.kind == Web3ActivityKind.deepLink), isTrue);
+
+      expect(
+        () => c.createPairingRequest(rawInput: 'wc:', method: ConnectionMethod.walletConnectUri),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('invalid QR / incomplete wc URI is rejected', () async {
+      final c = ConnectionsController();
+      await c.bootstrap();
+      expect(
+        () => c.createPairingRequest(
+          rawInput: 'wc:bad',
+          method: ConnectionMethod.qr,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
     });
   });
 }

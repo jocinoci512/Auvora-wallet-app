@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../connections/connections_controller.dart';
 import '../../connections/models.dart';
 import '../../connections/permission_catalog.dart';
+import '../../connections/signature_intelligence.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import 'connections_auth.dart';
@@ -29,6 +30,7 @@ class _TxBody extends StatelessWidget {
     final connections = context.read<ConnectionsController>();
     final wallet = context.read<WalletController>();
     final amountLabel = '${request.amount} ${request.assetSymbol}';
+    final intel = SignatureIntelligence.forTransaction(request);
 
     return DraggableScrollableSheet(
       expand: false,
@@ -45,7 +47,16 @@ class _TxBody extends StatelessWidget {
             Text(request.appName, style: Theme.of(context).textTheme.titleMedium),
             Text(request.origin, style: const TextStyle(color: AetherColors.muted)),
             const SizedBox(height: 14),
+            Text(intel.headline, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35)),
+            const SizedBox(height: 8),
+            for (final bullet in intel.bullets)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('• $bullet', style: const TextStyle(height: 1.4)),
+              ),
+            const SizedBox(height: 14),
             _row('Recipient', request.recipient),
+            _row('Wallet', 'Primary account'),
             _row('Network', request.network),
             _row('Amount', amountLabel),
             _row('Network fee', request.feeEstimate),
@@ -61,7 +72,7 @@ class _TxBody extends StatelessWidget {
               ),
             const SizedBox(height: 12),
             const Text(
-              'Preview simulation — not live chain state. Approving records activity only and will not broadcast.',
+              'Never signs automatically. Preview simulation — not live chain state. Approving records activity only and will not broadcast.',
               style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 18),

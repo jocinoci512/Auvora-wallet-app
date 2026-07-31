@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
+import { canUseLiveBroadcast } from '../../lib/release/config';
 import { DEMO_BRIDGE_HISTORY, pushTradingActivity } from '../../lib/trading/activity';
 import { formatSeconds, tradingFetch } from '../../lib/trading/api';
 import {
@@ -134,7 +135,7 @@ export function BridgeExperience(): ReactElement {
         const n = await tradingFetch<NetworkCap[]>('/api/v1/bridge/networks');
         if (!cancelled && n?.length) {
           setNetworks(n);
-          setLive(true);
+          setLive(canUseLiveBroadcast());
         }
       } catch (err) {
         if (!cancelled) setError(formatApiError(err));
@@ -158,7 +159,7 @@ export function BridgeExperience(): ReactElement {
       });
       setQuote(data);
       setProvider(data.best.providerCode);
-      setLive(true);
+      setLive(canUseLiveBroadcast());
       setError(null);
     } catch (err) {
       const q = demoQuote(amount, asset, source, destination);

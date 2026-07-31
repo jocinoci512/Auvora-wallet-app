@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../release/release_config.dart';
 import '../../theme/aether_theme.dart';
@@ -7,6 +8,16 @@ import '../home/home_shared.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
+
+  Future<void> _open(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open $url')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +40,7 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 20),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Send beta feedback'),
+            title: const Text('Send Alpha feedback'),
             subtitle: const Text('Bugs, UX, performance, security, accessibility'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const BetaFeedbackScreen()),
@@ -38,37 +49,42 @@ class AboutScreen extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Release notes'),
-            subtitle: const Text('What changed in this Closed Beta'),
+            subtitle: const Text('What changed in Version 1.0 Alpha'),
             onTap: () => showActionSheet(
               context,
-              title: 'RM2 Closed Beta',
+              title: 'Version 1.0 Alpha',
               body:
-                  '• Structured beta feedback with optional diagnostics consent\n'
-                  '• Receive funding locked until BIP32 derivation\n'
+                  '• Version 1.0 Alpha packaging for internal testing\n'
+                  '• Receive funding locked — QR/copy/share disabled\n'
                   '• Live broadcast kill switch off — preview sends only\n'
-                  '• Clipboard auto-clear, Android screenshot guard, balance reveal auth\n'
-                  '• Web access tokens moved to sessionStorage\n'
-                  '• Security trust theater removed (this-device sessions)',
+                  '• Reliability, offline cache, and diagnostics from Prompts 8–9\n'
+                  '• Store-ready Android icons, splash, deep links, HTTPS-only network config\n'
+                  '• Privacy / terms / support links wired for review',
             ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Website'),
+            subtitle: const Text(ReleaseConfig.websiteUrl),
+            onTap: () => _open(context, ReleaseConfig.websiteUrl),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Privacy policy'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Privacy policy',
-              body: 'Draft policy lives on web at /legal. Keys never leave this device for analytics.',
-            ),
+            subtitle: const Text('Opens the hosted draft policy'),
+            onTap: () => _open(context, ReleaseConfig.privacyPolicyUrl),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Terms of service'),
-            onTap: () => showActionSheet(
-              context,
-              title: 'Terms of service',
-              body:
-                  'Draft terms live on web at /legal. Closed Beta uses preview networks — not live chain guarantees.',
-            ),
+            subtitle: const Text('Opens the hosted draft terms'),
+            onTap: () => _open(context, ReleaseConfig.termsOfServiceUrl),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Support'),
+            subtitle: const Text(ReleaseConfig.supportEmail),
+            onTap: () => _open(context, ReleaseConfig.supportMailto),
           ),
         ],
       ),

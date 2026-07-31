@@ -1,14 +1,14 @@
-/// Closed Beta / release gates. Flip only after security sign-off.
+/// Version 1.0 Alpha / release gates. Flip kill switches only after security sign-off.
 abstract final class ReleaseConfig {
-  static const String releaseChannel = 'closed-beta';
-  static const String marketingVersion = '1.1.0-beta.2';
-  static const String buildLabel = 'RM2 Closed Beta';
+  static const String releaseChannel = 'alpha';
+  static const String marketingVersion = '1.0.0-alpha.1';
+  static const String buildLabel = 'Version 1.0 Alpha';
 
   /// Live chain broadcast. Keep false until adapters are audited end-to-end.
   static const bool liveBroadcastEnabled = false;
 
-  /// When false, Receive blocks copy/share/QR for funding addresses.
-  /// Kept locked while Closed Beta validates HD addresses off-device.
+  /// When false, Receive blocks QR, copy, and share for funding addresses.
+  /// Kept locked while Alpha validates HD addresses off-device.
   static const bool allowFundingAddresses = false;
 
   /// Address derivation quality for this build.
@@ -16,19 +16,42 @@ abstract final class ReleaseConfig {
   static const DerivationMode derivationMode = DerivationMode.bip32Partial;
 
   static const String fundingBlockedMessage =
-      'Addresses now use BIP32 / SLIP-0010 HD paths, but Receive funding stays '
-      'locked in Closed Beta until off-device verification completes. '
-      'Do not send real funds yet.';
+      'Addresses use BIP32 / SLIP-0010 HD paths, but Receive funding stays '
+      'locked in Version 1.0 Alpha until off-device verification completes. '
+      'QR, copy, and share are disabled — do not send real funds yet.';
 
   static const String broadcastPreviewMessage =
       'Transfers stay on this device as a preview. Live broadcast is off '
       '(kill switch) until network signing is audited.';
 
-  static bool get isClosedBeta => releaseChannel == 'closed-beta';
+  /// Soft client diagnostics / performance flags (no secrets).
+  static const bool clientDiagnosticsEnabled = true;
+  static const bool offlineQueueEnabled = true;
+  static const bool aggressiveCachePurge = false;
+
+  /// Public URLs for store / About (hosted companion or marketing site).
+  static const String websiteUrl = 'https://wallet.auvora.app';
+  static const String privacyPolicyUrl = 'https://wallet.auvora.app/legal/privacy';
+  static const String termsOfServiceUrl = 'https://wallet.auvora.app/legal/terms';
+  static const String supportEmail = 'alpha@auvora.app';
+  static const String supportMailto = 'mailto:alpha@auvora.app?subject=Auvora%201.0%20Alpha%20feedback';
+
+  static bool get isClosedBeta =>
+      releaseChannel == 'closed-beta' || releaseChannel == 'alpha';
+
+  static bool get isAlpha => releaseChannel == 'alpha';
+
+  static bool get isReleaseCandidate => marketingVersion.contains('-rc.');
 
   static bool get usesHdDerivation =>
       derivationMode == DerivationMode.bip32Partial ||
       derivationMode == DerivationMode.production;
+
+  /// Shape-preserving redaction while [allowFundingAddresses] is false.
+  static String redactAddress(String address) {
+    if (address.length < 12) return '••••••••';
+    return '${address.substring(0, 6)}…${address.substring(address.length - 4)}';
+  }
 }
 
 enum DerivationMode {

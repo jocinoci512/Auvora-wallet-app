@@ -58,6 +58,10 @@ enum Web3ActivityKind {
   dappTransaction,
   permissionRevoked,
   renamed,
+  sessionExpired,
+  sessionRestored,
+  deepLink,
+  security,
 }
 
 enum Web3ActivityStatus { confirmed, pending, rejected }
@@ -88,12 +92,16 @@ class TrustIndicators {
     this.https = false,
     this.previouslyConnected = false,
     this.knownProject = false,
+    this.unknownApplication = false,
+    this.recentlyRegisteredHint = false,
   });
 
   final bool verifiedDomain;
   final bool https;
   final bool previouslyConnected;
   final bool knownProject;
+  final bool unknownApplication;
+  final bool recentlyRegisteredHint;
 
   bool get anyVerified => verifiedDomain || knownProject;
 
@@ -103,6 +111,8 @@ class TrustIndicators {
     if (verifiedDomain || knownProject) out.add('In Auvora catalog (not attestation)');
     if (https) out.add('HTTPS');
     if (previouslyConnected) out.add('Previously connected');
+    if (unknownApplication) out.add('Unknown application');
+    if (recentlyRegisteredHint) out.add('Newly seen domain');
     return out;
   }
 
@@ -115,6 +125,8 @@ class TrustIndicators {
       https: https,
       previouslyConnected: value,
       knownProject: knownProject,
+      unknownApplication: unknownApplication,
+      recentlyRegisteredHint: recentlyRegisteredHint,
     );
   }
 
@@ -123,6 +135,8 @@ class TrustIndicators {
         'https': https,
         'previouslyConnected': previouslyConnected,
         'knownProject': knownProject,
+        'unknownApplication': unknownApplication,
+        'recentlyRegisteredHint': recentlyRegisteredHint,
       };
 
   factory TrustIndicators.fromJson(Map<String, dynamic> json) => TrustIndicators(
@@ -130,6 +144,8 @@ class TrustIndicators {
         https: json['https'] == true,
         previouslyConnected: json['previouslyConnected'] == true,
         knownProject: json['knownProject'] == true,
+        unknownApplication: json['unknownApplication'] == true,
+        recentlyRegisteredHint: json['recentlyRegisteredHint'] == true,
       );
 }
 
@@ -298,6 +314,11 @@ class ConnectedAppSession {
     this.faviconHint,
     this.warning,
     this.active = true,
+    this.topic,
+    this.protocolVersion = '2',
+    this.expiresAt,
+    this.lastRestoredAt,
+    this.pairUri,
   });
 
   final String id;
@@ -314,8 +335,15 @@ class ConnectedAppSession {
   final String? faviconHint;
   final String? warning;
   final bool active;
+  final String? topic;
+  final String protocolVersion;
+  final DateTime? expiresAt;
+  final DateTime? lastRestoredAt;
+  final String? pairUri;
 
   String get label => (displayName?.trim().isNotEmpty == true) ? displayName!.trim() : appName;
+
+  bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
 
   List<DappPermissionCode> get activePermissionCodes => [
         for (final g in grants)
@@ -331,6 +359,12 @@ class ConnectedAppSession {
     bool? active,
     List<String>? networks,
     List<String>? accounts,
+    String? topic,
+    String? protocolVersion,
+    DateTime? expiresAt,
+    DateTime? lastRestoredAt,
+    String? pairUri,
+    bool clearExpiry = false,
   }) {
     return ConnectedAppSession(
       id: id,
@@ -347,6 +381,11 @@ class ConnectedAppSession {
       faviconHint: faviconHint,
       warning: warning ?? this.warning,
       active: active ?? this.active,
+      topic: topic ?? this.topic,
+      protocolVersion: protocolVersion ?? this.protocolVersion,
+      expiresAt: clearExpiry ? null : (expiresAt ?? this.expiresAt),
+      lastRestoredAt: lastRestoredAt ?? this.lastRestoredAt,
+      pairUri: pairUri ?? this.pairUri,
     );
   }
 
@@ -365,6 +404,11 @@ class ConnectedAppSession {
         'faviconHint': faviconHint,
         'warning': warning,
         'active': active,
+        'topic': topic,
+        'protocolVersion': protocolVersion,
+        'expiresAt': expiresAt?.toIso8601String(),
+        'lastRestoredAt': lastRestoredAt?.toIso8601String(),
+        'pairUri': pairUri,
       };
 
   factory ConnectedAppSession.fromJson(Map<String, dynamic> json) {
@@ -389,6 +433,11 @@ class ConnectedAppSession {
       faviconHint: json['faviconHint'] as String?,
       warning: json['warning'] as String?,
       active: json['active'] != false,
+      topic: json['topic'] as String?,
+      protocolVersion: (json['protocolVersion'] as String?) ?? '2',
+      expiresAt: DateTime.tryParse((json['expiresAt'] as String?) ?? ''),
+      lastRestoredAt: DateTime.tryParse((json['lastRestoredAt'] as String?) ?? ''),
+      pairUri: json['pairUri'] as String?,
     );
   }
 }
@@ -408,6 +457,8 @@ class SignatureRequest {
     required this.risk,
     required this.canMoveFunds,
     this.status = ConnectionRequestStatus.pending,
+    this.requestHash,
+    this.walletLabel = 'Primary account',
   });
 
   final String id;
@@ -422,6 +473,9 @@ class SignatureRequest {
   final ConnectionRisk risk;
   final bool canMoveFunds;
   final ConnectionRequestStatus status;
+  /// Replay-protection fingerprint for this request payload.
+  final String? requestHash;
+  final String walletLabel;
 
   SignatureRequest copyWith({ConnectionRequestStatus? status}) {
     return SignatureRequest(
@@ -437,6 +491,8 @@ class SignatureRequest {
       risk: risk,
       canMoveFunds: canMoveFunds,
       status: status ?? this.status,
+      requestHash: requestHash,
+      walletLabel: walletLabel,
     );
   }
 
@@ -453,6 +509,8 @@ class SignatureRequest {
         'risk': risk.name,
         'canMoveFunds': canMoveFunds,
         'status': status.name,
+        'requestHash': requestHash,
+        'walletLabel': walletLabel,
       };
 
   factory SignatureRequest.fromJson(Map<String, dynamic> json) {
@@ -478,6 +536,8 @@ class SignatureRequest {
         (s) => s.name == json['status'],
         orElse: () => ConnectionRequestStatus.pending,
       ),
+      requestHash: json['requestHash'] as String?,
+      walletLabel: (json['walletLabel'] as String?) ?? 'Primary account',
     );
   }
 }
