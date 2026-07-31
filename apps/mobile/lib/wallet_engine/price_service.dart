@@ -2,91 +2,81 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'coingecko_market_data_provider.dart';
+import 'market_data_provider.dart';
 import 'models.dart';
+import 'seeded_market_data_provider.dart';
 
 class PriceService {
-  PriceService({SharedPreferences? prefs}) : _prefs = prefs;
+  PriceService({
+    SharedPreferences? prefs,
+    List<MarketDataProvider>? providers,
+  })  : _prefs = prefs,
+        _providers = providers ??
+            [
+              CoinGeckoMarketDataProvider(),
+              SeededMarketDataProvider(),
+            ];
 
   SharedPreferences? _prefs;
+  final List<MarketDataProvider> _providers;
   Map<String, PricePoint> _cache = {};
+  String? activeProviderId;
+  final Map<String, Map<ChartRange, List<double>>> _history = {};
 
   static const _kCache = 'auvora_price_cache_v1';
-
-  static const Map<String, ({double price, double change, List<double> spark})> _seed = {
-    'BTC': (
-      price: 64210,
-      change: 0.84,
-      spark: [62800, 63100, 63500, 62900, 64000, 63800, 64210],
-    ),
-    'ETH': (
-      price: 3240.12,
-      change: 1.62,
-      spark: [3100, 3180, 3150, 3220, 3190, 3260, 3240],
-    ),
-    'SOL': (
-      price: 148.2,
-      change: -0.92,
-      spark: [152, 150, 149, 151, 147, 146, 148],
-    ),
-    'USDC': (
-      price: 1,
-      change: 0.01,
-      spark: [1, 1, 1, 1, 1, 1, 1],
-    ),
-    'USDT': (
-      price: 1,
-      change: 0.01,
-      spark: [1, 1, 1, 1, 1, 1, 1],
-    ),
-    'POL': (
-      price: 0.42,
-      change: 2.4,
-      spark: [0.38, 0.39, 0.40, 0.41, 0.40, 0.41, 0.42],
-    ),
-    'BNB': (
-      price: 602,
-      change: 1.2,
-      spark: [588, 590, 592, 596, 598, 600, 602],
-    ),
-    'TRX': (
-      price: 0.135,
-      change: 1.8,
-      spark: [0.128, 0.129, 0.130, 0.132, 0.133, 0.134, 0.135],
-    ),
-    'AVAX': (
-      price: 28.4,
-      change: -1.1,
-      spark: [29.2, 28.9, 28.6, 28.8, 28.3, 28.5, 28.4],
-    ),
-  };
 
   Future<void> bootstrap() async {
     _prefs ??= await SharedPreferences.getInstance();
     final raw = _prefs?.getString(_kCache);
     if (raw != null && raw.isNotEmpty) {
       final decoded = jsonDecode(raw);
-      if (decoded is Map<String, Object?>) {
-        _cache = decoded.map(
-          (key, value) => MapEntry(
-            key,
-            PricePoint.fromJson((value as Map).cast<String, Object?>()),
-          ),
-        );
+      if (decoded is Map) {
+        _cache = {
+          for (final entry in decoded.entries)
+            if (entry.value is Map)
+              entry.key.toString(): PricePoint.fromJson(
+                Map<String, Object?>.from(entry.value as Map),
+              ),
+        };
       }
     }
     if (_cache.isEmpty) {
-      _cache = {
-        for (final entry in _seed.entries)
-          entry.key: PricePoint(
-            symbol: entry.key,
-            priceUsd: entry.value.price,
-            change24hPct: entry.value.change,
-            sparkline7d: entry.value.spark,
-            updatedAt: DateTime.now(),
-          ),
-      };
+      final seed = await SeededMarketDataProvider().fetchQuotes(SeededMarketDataProvider.seed.keys);
+      _cache = seed;
       await _persist();
     }
+    await refreshQuotes(_cache.keys);
+  }
+
+  Future<void> refreshQuotes(Iterable<String> symbols) async {
+    final list = symbols.isEmpty ? SeededMarketDataProvider.seed.keys : symbols;
+    for (final provider in _providers) {
+      try {
+        final quotes = await provider.fetchQuotes(list);
+        if (quotes.isEmpty) continue;
+        activeProviderId = provider.id;
+        for (final entry in quotes.entries) {
+          final prior = _cache[entry.key];
+          _cache[entry.key] = PricePoint(
+            symbol: entry.value.symbol,
+            priceUsd: entry.value.priceUsd,
+            change24hPct: entry.value.change24hPct,
+            sparkline7d: entry.value.sparkline7d.isNotEmpty
+                ? entry.value.sparkline7d
+                : (prior?.sparkline7d ?? const [1, 1, 1, 1, 1, 1, 1]),
+            updatedAt: entry.value.updatedAt,
+            stale: false,
+            providerId: provider.id,
+          );
+        }
+        await _persist();
+        return;
+      } catch (_) {
+        // Try next provider.
+      }
+    }
+    await markOfflineFallback();
   }
 
   Future<PricePoint> quote(String symbol, {bool allowStale = true}) async {
@@ -109,6 +99,7 @@ class PriceService {
         sparkline7d: seed.sparkline7d,
         updatedAt: seed.updatedAt,
         stale: true,
+        providerId: seed.providerId,
       );
     }
     return seed;
@@ -123,6 +114,26 @@ class PriceService {
     return out;
   }
 
+  Future<List<double>> history(String symbol, ChartRange range) async {
+    final cached = _history[symbol]?[range];
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    for (final provider in _providers) {
+      try {
+        final series = await provider.fetchHistory(symbol, range);
+        if (series.isEmpty) continue;
+        (_history[symbol] ??= {})[range] = series;
+        activeProviderId = provider.id;
+        return series;
+      } catch (_) {
+        // failover
+      }
+    }
+    final fallback = await SeededMarketDataProvider().fetchHistory(symbol, range);
+    (_history[symbol] ??= {})[range] = fallback;
+    return fallback;
+  }
+
   Future<void> markOfflineFallback() async {
     if (_cache.isEmpty) await bootstrap();
     _cache = {
@@ -134,6 +145,7 @@ class PriceService {
           sparkline7d: entry.value.sparkline7d,
           updatedAt: entry.value.updatedAt,
           stale: true,
+          providerId: entry.value.providerId,
         ),
     };
     await _persist();

@@ -180,6 +180,158 @@ export function quoteSwap(input: {
   };
 }
 
+export function quoteBridge(input: {
+  asset: string;
+  fromNetwork: string;
+  toNetwork: string;
+  amount: number;
+}): AssetQuote {
+  const amount = Math.max(0, input.amount);
+  if (input.fromNetwork === input.toNetwork) {
+    throw new Error('Choose a different destination network to bridge.');
+  }
+  const price = assetPriceUsd(input.asset);
+  const bridgeFeeUsd = 2.8;
+  const networkFeeUsd = 1.6;
+  const out = amount * (1 - (bridgeFeeUsd + networkFeeUsd) / (amount * price + 0.0001));
+  const received = Math.max(0, Math.min(amount, out));
+  const slow =
+    input.fromNetwork.toUpperCase().includes('BITCOIN') ||
+    input.toNetwork.toUpperCase().includes('BITCOIN');
+  return {
+    id: id(),
+    op: 'bridge',
+    provider: 'auvora-sim',
+    fromAsset: input.asset,
+    toAsset: input.asset,
+    fromAmount: amount,
+    toAmount: received,
+    minReceived: received * 0.995,
+    rate: 1,
+    fees: [
+      { label: 'Bridge fee', amount: bridgeFeeUsd, asset: 'USD', fiatUsd: bridgeFeeUsd },
+      {
+        label: 'Network fee (estimated)',
+        amount: networkFeeUsd,
+        asset: 'USD',
+        fiatUsd: networkFeeUsd,
+      },
+    ],
+    expiresAt: Date.now() + 40_000,
+    estimatedSeconds: slow ? 2400 : 600,
+    sourceNetwork: input.fromNetwork,
+    destNetwork: input.toNetwork,
+    routeSummary: `${input.fromNetwork} → ${input.toNetwork}`,
+  };
+}
+
+export type StakePoolPreview = {
+  id: string;
+  asset: string;
+  network: string;
+  validatorName: string;
+  apyPct: number;
+  lockDays: number;
+  minStake: number;
+  commissionPct: number;
+};
+
+export const STAKE_POOLS: StakePoolPreview[] = [
+  {
+    id: 'eth-auvora-1',
+    asset: 'ETH',
+    network: 'ETHEREUM',
+    validatorName: 'Auvora Ethos',
+    apyPct: 3.8,
+    lockDays: 1,
+    minStake: 0.01,
+    commissionPct: 4,
+  },
+  {
+    id: 'sol-auvora-1',
+    asset: 'SOL',
+    network: 'SOLANA',
+    validatorName: 'Auvora Solara',
+    apyPct: 6.4,
+    lockDays: 2,
+    minStake: 0.1,
+    commissionPct: 5,
+  },
+  {
+    id: 'pol-auvora-1',
+    asset: 'POL',
+    network: 'POLYGON',
+    validatorName: 'Auvora Polygon',
+    apyPct: 4.2,
+    lockDays: 1,
+    minStake: 10,
+    commissionPct: 5,
+  },
+];
+
+export function quoteStake(input: { pool: StakePoolPreview; amount: number }): AssetQuote {
+  const amount = Math.max(0, input.amount);
+  if (amount < input.pool.minStake) {
+    throw new Error(`Minimum stake is ${input.pool.minStake} ${input.pool.asset}.`);
+  }
+  const price = assetPriceUsd(input.pool.asset);
+  const networkFeeUsd = 1.1;
+  return {
+    id: id(),
+    op: 'stake',
+    provider: 'auvora-sim',
+    fromAsset: input.pool.asset,
+    toAsset: `st${input.pool.asset}`,
+    fromAmount: amount,
+    toAmount: amount,
+    minReceived: amount,
+    rate: 1,
+    fees: [
+      {
+        label: 'Network fee (estimated)',
+        amount: networkFeeUsd,
+        asset: 'USD',
+        fiatUsd: networkFeeUsd,
+      },
+      {
+        label: 'Validator share of rewards',
+        amount: input.pool.commissionPct,
+        asset: '%',
+        fiatUsd: (amount * price * (input.pool.commissionPct / 100)) / 12,
+      },
+    ],
+    expiresAt: Date.now() + 60_000,
+    estimatedSeconds: 120,
+    sourceNetwork: input.pool.network,
+    apyPct: input.pool.apyPct,
+    validatorName: input.pool.validatorName,
+    lockDays: input.pool.lockDays,
+    routeSummary: `Stake with ${input.pool.validatorName}`,
+  };
+}
+
+export function compareBuyProviders(input: {
+  asset: string;
+  fiatUsd: number;
+  method: 'card' | 'bank' | 'provider';
+}): Array<{ code: string; label: string; quote: AssetQuote; available: boolean }> {
+  const catalog = [
+    { code: 'auvora-sim', label: 'Auvora preview', available: true },
+    { code: 'moonpay', label: 'MoonPay', available: false },
+    { code: 'ramp', label: 'Ramp', available: false },
+    { code: 'transak', label: 'Transak', available: false },
+  ] as const;
+  return catalog.map((p) => ({
+    ...p,
+    quote: quoteBuy({
+      asset: input.asset,
+      fiatUsd: input.fiatUsd,
+      method: input.method,
+      providerCode: p.code,
+    }),
+  }));
+}
+
 export function humanizeQuoteError(raw: string | null | undefined): string {
   if (!raw) return 'Something went wrong. Nothing was submitted — you can safely try again.';
   const t = raw.toLowerCase();

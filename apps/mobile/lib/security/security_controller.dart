@@ -88,6 +88,8 @@ class SecurityController extends ChangeNotifier {
       biometricsEnabled: biometricsEnabled,
       trustedDeviceReview: preferences.reviewedTrustedDevices,
       dappReview: preferences.reviewedConnectedDapps,
+      sessionsReview: preferences.reviewedSessions,
+      notificationPrivacy: preferences.notificationPrivacy,
       appUpdated: preferences.appUpdated,
       recentReview: reviewAt != null && DateTime.now().difference(reviewAt).inDays <= 30,
       hasUntrustedDevices: devices.any((item) => !item.trusted),
@@ -138,6 +140,27 @@ class SecurityController extends ChangeNotifier {
         actionLabel: 'Review dApps',
       ),
       SecurityCheckStep(
+        id: 'sessions',
+        title: 'Active sessions reviewed',
+        description: 'Sign out anything you don’t recognize. Only this device is trusted by default.',
+        done: preferences.reviewedSessions,
+        actionLabel: 'Review sessions',
+      ),
+      SecurityCheckStep(
+        id: 'clipboard',
+        title: 'Clipboard auto-clear on',
+        description: 'Copied addresses clear after a short timeout so they don’t linger.',
+        done: preferences.clipboardTimeoutSeconds > 0,
+        actionLabel: 'Review clipboard',
+      ),
+      SecurityCheckStep(
+        id: 'notifications',
+        title: 'Notification privacy on',
+        description: 'Balance amounts stay hidden in notification previews.',
+        done: preferences.notificationPrivacy,
+        actionLabel: preferences.notificationPrivacy ? 'Enabled' : 'Enable',
+      ),
+      SecurityCheckStep(
         id: 'app',
         title: 'App is up to date',
         description: 'Security fixes ship through updates. Staying current reduces avoidable risk.',
@@ -158,6 +181,12 @@ class SecurityController extends ChangeNotifier {
       recentAlerts: alerts.take(5).toList(),
       preferences: preferences,
       checkSteps: steps,
+      recommendations: _recommendations(
+        backupComplete: backupComplete,
+        phraseVerified: phraseVerified,
+        pinEnabled: pinEnabled,
+        biometricsEnabled: biometricsEnabled,
+      ),
     );
   }
 
@@ -178,6 +207,10 @@ class SecurityController extends ChangeNotifier {
 
   Future<void> markDappsReviewed() async {
     await patchPreferences(preferences.copyWith(reviewedConnectedDapps: true, lastReviewAt: DateTime.now()));
+  }
+
+  Future<void> markSessionsReviewed() async {
+    await patchPreferences(preferences.copyWith(reviewedSessions: true, lastReviewAt: DateTime.now()));
   }
 
   Future<void> confirmAppUpdated() async {
@@ -212,6 +245,35 @@ class SecurityController extends ChangeNotifier {
     );
     await _persistSessions();
     notifyListeners();
+  }
+
+  Future<void> signOutAllOtherSessions() async {
+    final removed = sessions.where((s) => !s.current).length;
+    sessions = sessions.where((s) => s.current).toList();
+    await addAlert(
+      title: 'Other sessions signed out',
+      description: removed == 0
+          ? 'No other sessions were active on this device.'
+          : '$removed session${removed == 1 ? '' : 's'} signed out. This device stays signed in.',
+      recommendedAction: 'Change your PIN if you didn’t initiate this.',
+      severity: SecurityStatus.good,
+    );
+    await _persistSessions();
+    notifyListeners();
+  }
+
+  /// Sends always require authentication in Closed Beta — toggle cannot weaken that.
+  bool requiresAuth(AuthRequirementScope scope) {
+    switch (scope) {
+      case AuthRequirementScope.unlockApp:
+        return preferences.requireBiometricForUnlock || (_walletController?.hasPin == true);
+      case AuthRequirementScope.sendFunds:
+        return true; // Fail-closed: transfers always require PIN/biometrics.
+      case AuthRequirementScope.changeSettings:
+        return preferences.requireAuthForSettings;
+      case AuthRequirementScope.viewRecoveryPhrase:
+        return preferences.requireAuthForRecoveryPhrase;
+    }
   }
 
   Future<void> disconnectDapp(String id) async {
@@ -263,11 +325,42 @@ class SecurityController extends ChangeNotifier {
     );
     await addAlert(
       title: 'Emergency lock enabled',
-      description: 'The app was locked and sensitive notification previews were muted.',
-      recommendedAction: 'Review sessions and connected apps before continuing.',
+      description:
+          'The wallet locked, sensitive previews were muted, and temporary clipboard data should be treated as cleared.',
+      recommendedAction:
+          'Unlock with your PIN or biometrics, then review sessions and connected apps before continuing.',
       severity: SecurityStatus.fair,
     );
     await _walletController?.lock();
+  }
+
+  Future<void> requestDataExport() async {
+    await patchPreferences(preferences.copyWith(dataExportRequestedAt: DateTime.now()));
+    await addAlert(
+      title: 'Data export requested',
+      description: 'A privacy export request was recorded on this device (preview).',
+      recommendedAction: 'Exports stay local in Closed Beta. You’ll get a fuller download path at Public Beta.',
+      severity: SecurityStatus.good,
+    );
+  }
+
+  Future<void> requestDataDeletion() async {
+    await patchPreferences(preferences.copyWith(dataDeletionRequestedAt: DateTime.now()));
+    await addAlert(
+      title: 'Data deletion requested',
+      description: 'A deletion request was recorded. Local wipe still requires Security Center confirmation.',
+      recommendedAction: 'To wipe this device now, use Account settings after unlocking. Keep your recovery phrase.',
+      severity: SecurityStatus.fair,
+    );
+  }
+
+  Future<void> recordAuthFailureBurst() async {
+    await addAlert(
+      title: 'Repeated authentication failures',
+      description: 'Several incorrect passcode attempts were detected.',
+      recommendedAction: 'Wait out the lockout, then unlock carefully. If this wasn’t you, remove other sessions.',
+      severity: SecurityStatus.needsAttention,
+    );
   }
 
   Future<void> markPhraseVerified() async {
@@ -297,25 +390,58 @@ class SecurityController extends ChangeNotifier {
     required bool biometricsEnabled,
     required bool trustedDeviceReview,
     required bool dappReview,
+    required bool sessionsReview,
+    required bool notificationPrivacy,
     required bool appUpdated,
     required bool recentReview,
     required bool hasUntrustedDevices,
     required bool hasRiskyDapps,
     required bool unknownSessions,
   }) {
-    var score = 25;
+    var score = 20;
     if (pinEnabled) score += 15;
     if (biometricsEnabled) score += 10;
     if (backupComplete) score += 15;
     if (phraseVerified) score += 15;
-    if (recentReview) score += 10;
+    if (recentReview) score += 8;
     if (trustedDeviceReview) score += 5;
     if (dappReview) score += 5;
+    if (sessionsReview) score += 4;
+    if (notificationPrivacy) score += 3;
     if (appUpdated) score += 5;
     if (hasUntrustedDevices) score -= 10;
     if (hasRiskyDapps) score -= 5;
     if (unknownSessions) score -= 10;
     return score.clamp(0, 100);
+  }
+
+  List<String> _recommendations({
+    required bool backupComplete,
+    required bool phraseVerified,
+    required bool pinEnabled,
+    required bool biometricsEnabled,
+  }) {
+    final tips = <String>[];
+    if (!backupComplete) {
+      tips.add('Your recovery phrase is the only way to recover your wallet — confirm a written backup.');
+    }
+    if (!phraseVerified) {
+      tips.add('Verify your recovery phrase so recovery is proven, not assumed.');
+    }
+    if (!pinEnabled) {
+      tips.add('Set a 6-digit PIN so this wallet stays locked if biometrics fail.');
+    }
+    if (!biometricsEnabled) {
+      tips.add('Biometric authentication protects access on this device while keeping PIN fallback.');
+    }
+    if (!preferences.reviewedConnectedDapps) {
+      tips.add('Review connected applications regularly and disconnect anything you don’t recognize.');
+    }
+    if (!preferences.reviewedSessions) {
+      tips.add('Check active sessions and sign out anything unfamiliar.');
+    }
+    tips.add('Only approve transactions you fully understand.');
+    return tips.take(4).toList();
   }
 
   SecurityPreferences _readPrefs() {
@@ -329,13 +455,18 @@ class SecurityController extends ChangeNotifier {
       requireAuthForRecoveryPhrase: data['requireAuthForRecoveryPhrase'] != false,
       hideSensitiveInfo: data['hideSensitiveInfo'] == true,
       analyticsEnabled: data['analyticsEnabled'] == true,
+      crashReportingEnabled: data['crashReportingEnabled'] == true,
       notificationPrivacy: data['notificationPrivacy'] != false,
       clipboardTimeoutSeconds: (data['clipboardTimeoutSeconds'] as num?)?.toInt() ?? 30,
+      screenshotProtection: data['screenshotProtection'] == true,
       lastReviewAt: DateTime.tryParse((data['lastReviewAt'] as String?) ?? ''),
       appUpdated: data['appUpdated'] == true,
       reviewedTrustedDevices: data['reviewedTrustedDevices'] == true,
       reviewedConnectedDapps: data['reviewedConnectedDapps'] == true,
+      reviewedSessions: data['reviewedSessions'] == true,
       emergencyNotificationsMuted: data['emergencyNotificationsMuted'] == true,
+      dataExportRequestedAt: DateTime.tryParse((data['dataExportRequestedAt'] as String?) ?? ''),
+      dataDeletionRequestedAt: DateTime.tryParse((data['dataDeletionRequestedAt'] as String?) ?? ''),
     );
   }
 
@@ -427,13 +558,18 @@ class SecurityController extends ChangeNotifier {
         'requireAuthForRecoveryPhrase': preferences.requireAuthForRecoveryPhrase,
         'hideSensitiveInfo': preferences.hideSensitiveInfo,
         'analyticsEnabled': preferences.analyticsEnabled,
+        'crashReportingEnabled': preferences.crashReportingEnabled,
         'notificationPrivacy': preferences.notificationPrivacy,
         'clipboardTimeoutSeconds': preferences.clipboardTimeoutSeconds,
+        'screenshotProtection': preferences.screenshotProtection,
         'lastReviewAt': preferences.lastReviewAt?.toIso8601String(),
         'appUpdated': preferences.appUpdated,
         'reviewedTrustedDevices': preferences.reviewedTrustedDevices,
         'reviewedConnectedDapps': preferences.reviewedConnectedDapps,
+        'reviewedSessions': preferences.reviewedSessions,
         'emergencyNotificationsMuted': preferences.emergencyNotificationsMuted,
+        'dataExportRequestedAt': preferences.dataExportRequestedAt?.toIso8601String(),
+        'dataDeletionRequestedAt': preferences.dataDeletionRequestedAt?.toIso8601String(),
       }),
     );
   }

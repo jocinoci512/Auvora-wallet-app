@@ -115,6 +115,18 @@ export function AddressBookExperience(): ReactElement {
       return;
     }
     const address = form.address.trim();
+    const duplicate = items.find(
+      (c) =>
+        c.id !== editing?.id &&
+        c.network === form.network &&
+        c.address.toLowerCase() === address.toLowerCase(),
+    );
+    if (
+      duplicate &&
+      !window.confirm(`Already saved as “${duplicate.name}”. Save another contact anyway?`)
+    ) {
+      return;
+    }
     upsertContact({
       id: editing?.id,
       name: form.name.trim(),
@@ -224,7 +236,12 @@ export function AddressBookExperience(): ReactElement {
                         >
                           <Trash2 size={14} />
                         </button>
-                        <Link href="/send" className="cx-chip">
+                        <Link
+                          href={`/send?to=${encodeURIComponent(c.address)}&asset=${encodeURIComponent(
+                            NETWORKS.find((n) => n.id === c.network)?.asset ?? 'ETH',
+                          )}`}
+                          className="cx-chip"
+                        >
                           Send
                         </Link>
                       </div>

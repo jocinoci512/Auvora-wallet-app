@@ -5,7 +5,12 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
 import { DEMO_BRIDGE_HISTORY, pushTradingActivity } from '../../lib/trading/activity';
 import { formatSeconds, tradingFetch } from '../../lib/trading/api';
-import { ENGINE_STATUS_STAGES } from '../../lib/trading/quote-engine';
+import {
+  ENGINE_STATUS_STAGES,
+  arrivalLabel,
+  quoteBridge,
+  totalFeesUsd,
+} from '../../lib/trading/quote-engine';
 import {
   CxActions,
   CxProgressTrack,
@@ -47,23 +52,53 @@ const DEMO_NETS: NetworkCap[] = [
   { network: 'BITCOIN', bridgeSupported: false, reason: 'Coming soon' },
 ];
 
-function demoQuote(amount: string, asset: string): QuoteResult {
-  return {
-    quoteId: `bq-${crypto.randomUUID().slice(0, 6)}`,
-    best: {
-      providerCode: 'simulator-bridge',
-      amountOut: amount,
-      feeAmount: '1.25',
-      feeAsset: asset,
-      estimatedFeeNative: '0.002 ETH',
-      estimatedCompletionSeconds: 480,
-      routeSummary: 'Lock → message → mint',
-    },
-    alternatives: [
-      { providerCode: 'layerzero-style', amountOut: amount, feeAmount: '1.40' },
-      { providerCode: 'wormhole-style', amountOut: amount, feeAmount: '1.55' },
-    ],
-  };
+function demoQuote(
+  amount: string,
+  asset: string,
+  source: string,
+  destination: string,
+): QuoteResult {
+  try {
+    const shared = quoteBridge({
+      asset,
+      fromNetwork: source,
+      toNetwork: destination,
+      amount: Number(amount) || 0,
+    });
+    return {
+      quoteId: shared.id,
+      best: {
+        providerCode: shared.provider,
+        amountOut: String(shared.toAmount),
+        feeAmount: String(totalFeesUsd(shared).toFixed(2)),
+        feeAsset: 'USD',
+        estimatedFeeNative: arrivalLabel(shared.estimatedSeconds),
+        estimatedCompletionSeconds: shared.estimatedSeconds,
+        routeSummary: shared.routeSummary ?? `${source} → ${destination}`,
+      },
+      alternatives: [
+        { providerCode: 'layerzero-style', amountOut: amount, feeAmount: '1.40' },
+        { providerCode: 'wormhole-style', amountOut: amount, feeAmount: '1.55' },
+      ],
+    };
+  } catch {
+    return {
+      quoteId: `bq-${crypto.randomUUID().slice(0, 6)}`,
+      best: {
+        providerCode: 'simulator-bridge',
+        amountOut: amount,
+        feeAmount: '1.25',
+        feeAsset: asset,
+        estimatedFeeNative: '0.002 ETH',
+        estimatedCompletionSeconds: 480,
+        routeSummary: 'Lock → message → mint',
+      },
+      alternatives: [
+        { providerCode: 'layerzero-style', amountOut: amount, feeAmount: '1.40' },
+        { providerCode: 'wormhole-style', amountOut: amount, feeAmount: '1.55' },
+      ],
+    };
+  }
 }
 
 export function BridgeExperience(): ReactElement {
@@ -126,7 +161,7 @@ export function BridgeExperience(): ReactElement {
       setLive(true);
       setError(null);
     } catch (err) {
-      const q = demoQuote(amount, asset);
+      const q = demoQuote(amount, asset, source, destination);
       setQuote(q);
       setProvider(q.best.providerCode);
       setLive(false);

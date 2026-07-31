@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactElement } from 'rea
 import { DEMO_BUY_PROVIDERS, pushTradingActivity } from '../../lib/trading/activity';
 import {
   ENGINE_STATUS_STAGES,
+  compareBuyProviders,
   quoteBuy,
   quoteExpired,
   type AssetQuote,
@@ -239,6 +240,21 @@ export function BuyExperience(): ReactElement {
                 ))}
               </div>
             ) : null}
+            <div className="cx-alert cx-alert--info">
+              <strong>Provider comparison (preview)</strong>
+              <ul>
+                {compareBuyProviders({
+                  asset,
+                  fiatUsd: Number(fiatAmount) || 0,
+                  method: method === 'provider' ? 'card' : method,
+                }).map((o) => (
+                  <li key={o.code}>
+                    {o.label}: ~{o.quote.toAmount.toFixed(6)} {asset}
+                    {o.available ? '' : ' (live partner locked)'}
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="cx-alert cx-alert--info">
               <strong>Compliance</strong>
               <p>

@@ -2,15 +2,17 @@ import 'package:uuid/uuid.dart';
 
 import '../portfolio/models.dart';
 import 'models.dart';
+import 'quote_provider_port.dart';
 
 /// Local quote simulator — provider-swappable surface until live rails connect.
-class QuoteEngine {
+class QuoteEngine implements QuoteEnginePort {
   QuoteEngine({this.providerCode = 'auvora-sim'});
 
+  @override
   final String providerCode;
   static const _uuid = Uuid();
 
-  static const stakePools = [
+  static const defaultStakePools = [
     StakePool(
       id: 'eth-auvora-1',
       asset: 'ETH',
@@ -43,24 +45,41 @@ class QuoteEngine {
     ),
   ];
 
+  /// Backward-compatible alias used across UI.
+  static List<StakePool> get stakePools => defaultStakePools;
+
+  @override
+  List<StakePool> get availableStakePools => defaultStakePools;
+
+  @override
   Future<AssetQuote> quoteBuy({
     required String asset,
     required AssetNetwork network,
     required double fiatUsd,
     required PaymentMethod method,
     required double assetPriceUsd,
+    String? providerOverride,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 280));
     if (fiatUsd <= 0) throw QuoteException('Enter an amount to continue.');
-    final providerFeePct = method == PaymentMethod.bank ? 0.005 : 0.015;
-    final providerFee = fiatUsd * providerFeePct;
+    final code = providerOverride ?? providerCode;
+    FiatProviderMeta? meta;
+    for (final m in FiatProviderCatalog.offers) {
+      if (m.code == code) {
+        meta = m;
+        break;
+      }
+    }
+    final bump = meta?.feeBumpPct ?? 0;
+    final providerFeePct = (method == PaymentMethod.bank ? 0.005 : 0.015) + bump;
+    final providerFee = fiatUsd * providerFeePct.clamp(0.001, 0.05);
     final networkFeeUsd = network == AssetNetwork.bitcoin ? 2.5 : 1.2;
     final net = (fiatUsd - providerFee - networkFeeUsd).clamp(0.0, fiatUsd).toDouble();
     final crypto = assetPriceUsd <= 0 ? 0.0 : net / assetPriceUsd;
     return AssetQuote(
       id: 'q-${_uuid.v4().substring(0, 8)}',
       op: EngineOp.buy,
-      provider: providerCode,
+      provider: code,
       fromAsset: 'USD',
       toAsset: asset,
       fromAmount: fiatUsd,
@@ -74,10 +93,50 @@ class QuoteEngine {
       expiresAt: DateTime.now().add(const Duration(seconds: 45)),
       estimatedSeconds: method == PaymentMethod.bank ? 7200 : 180,
       sourceNetwork: network,
-      routeSummary: '${method.label} → $asset',
+      routeSummary: '${method.label} → $asset · ${meta?.label ?? code}',
     );
   }
 
+  @override
+  Future<List<BuyProviderOffer>> compareBuyProviders({
+    required String asset,
+    required AssetNetwork network,
+    required double fiatUsd,
+    required PaymentMethod method,
+    required double assetPriceUsd,
+  }) async {
+    final offers = <BuyProviderOffer>[];
+    for (final meta in FiatProviderCatalog.offers) {
+      // Live partners stay unavailable until rails connect — preview still comparable.
+      final liveLocked = meta.code != 'auvora-sim';
+      final q = await quoteBuy(
+        asset: asset,
+        network: network,
+        fiatUsd: fiatUsd,
+        method: method,
+        assetPriceUsd: assetPriceUsd,
+        providerOverride: meta.code,
+      );
+      offers.add(
+        BuyProviderOffer(
+          code: meta.code,
+          label: meta.label,
+          quote: q,
+          processingLabel: meta.processingLabel,
+          methodsLabel: meta.methodsLabel,
+          kycRequired: meta.kycRequired,
+          available: !liveLocked,
+          unavailableReason: liveLocked
+              ? 'Partner preview only — identity and payout connect after Closed Beta sign-off.'
+              : null,
+        ),
+      );
+    }
+    offers.sort((a, b) => b.youReceive.compareTo(a.youReceive));
+    return offers;
+  }
+
+  @override
   Future<AssetQuote> quoteSell({
     required String asset,
     required AssetNetwork network,
@@ -111,6 +170,7 @@ class QuoteEngine {
     );
   }
 
+  @override
   Future<AssetQuote> quoteSwap({
     required String fromAsset,
     required String toAsset,
@@ -157,6 +217,7 @@ class QuoteEngine {
     );
   }
 
+  @override
   Future<AssetQuote> quoteBridge({
     required String asset,
     required AssetNetwork fromNetwork,
@@ -195,6 +256,7 @@ class QuoteEngine {
     );
   }
 
+  @override
   Future<AssetQuote> quoteStake({
     required StakePool pool,
     required double amount,

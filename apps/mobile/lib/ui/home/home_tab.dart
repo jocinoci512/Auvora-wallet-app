@@ -120,7 +120,12 @@ class _MobileHome extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: _StatusStack(snap: snap, portfolio: portfolio, address: wallet.address),
+            child: _StatusStack(
+              snap: snap,
+              portfolio: portfolio,
+              address: wallet.address,
+              needsBackupReminder: wallet.needsBackupReminder,
+            ),
           ),
         ),
         ..._moneySection(context),
@@ -532,16 +537,32 @@ class _IntelligenceHomeStrip extends StatelessWidget {
 }
 
 class _StatusStack extends StatelessWidget {
-  const _StatusStack({required this.snap, required this.portfolio, required this.address});
+  const _StatusStack({
+    required this.snap,
+    required this.portfolio,
+    required this.address,
+    this.needsBackupReminder = false,
+  });
 
   final PortfolioSnapshot? snap;
   final PortfolioController portfolio;
   final String? address;
+  final bool needsBackupReminder;
 
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
+    if (needsBackupReminder) {
+      children.add(
+        const SoftBanner(
+          tone: BannerTone.warn,
+          message:
+              'Backup reminder: confirm your recovery phrase in Security Center so you can restore this wallet.',
+        ),
+      );
+    }
     if (snap?.offline == true) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
         SoftBanner(
           tone: BannerTone.warn,
@@ -552,6 +573,7 @@ class _StatusStack extends StatelessWidget {
         ),
       );
     } else if (snap?.fromCache == true) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
         SoftBanner(
           tone: BannerTone.warn,
@@ -659,15 +681,22 @@ class _PortfolioHero extends StatelessWidget {
             children: [
               for (final a in snap.nonZero.take(4))
                 Text(
-                  '${a.ticker} ${(a.fiatValue / snap.totalUsd * 100).toStringAsFixed(0)}%',
+                  snap.totalUsd <= 0
+                      ? a.ticker
+                      : '${a.ticker} ${(a.fiatValue / snap.totalUsd * 100).toStringAsFixed(0)}%',
                   style: const TextStyle(fontSize: 12, color: AetherColors.muted, fontWeight: FontWeight.w600),
                 ),
             ],
           ),
+          const SizedBox(height: 10),
+          Text(
+            'Updated ${relativeTime(snap.updatedAt)}',
+            style: const TextStyle(color: AetherColors.muted, fontSize: 12),
+          ),
           if (snap.isPreview) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             const Text(
-              'Preview balances · live sync next',
+              'Preview balances · HD addresses active · funding receive still locked',
               style: TextStyle(color: AetherColors.muted, fontSize: 12),
             ),
           ],

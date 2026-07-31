@@ -174,20 +174,28 @@ export function SecurityCenterExperience(): ReactElement {
   function emergencyLock(): void {
     setSecurityPrefs({
       emergencyNotificationsMuted: true,
+      hideSensitiveInfo: true,
+      notificationPrivacy: true,
+      lastUnlockedAt: null,
       lastSecurityReviewAt: new Date().toISOString(),
     });
     setEmergencyNotificationsMuted(true);
+    setHideSensitiveInfo(true);
+    setNotificationPrivacy(true);
     setAlerts((prev) => [
       {
         id: `alert-${Date.now()}`,
         title: 'Emergency mode enabled',
         detail:
-          'Security-sensitive notifications were muted and the session should be re-authenticated next.',
+          'Sensitive previews were muted and the companion session was marked for re-authentication. Unlock again from PIN & lock.',
         severity: 'warn',
         timestamp: new Date().toISOString(),
       },
       ...prev,
     ]);
+    if (typeof window !== 'undefined') {
+      window.location.assign('/security');
+    }
   }
 
   return (

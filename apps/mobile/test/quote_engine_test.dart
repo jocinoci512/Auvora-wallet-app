@@ -1,10 +1,15 @@
 import 'package:auvora_wallet/engine/models.dart';
 import 'package:auvora_wallet/engine/quote_engine.dart';
+import 'package:auvora_wallet/engine/quote_provider_port.dart';
 import 'package:auvora_wallet/portfolio/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final engine = QuoteEngine(providerCode: 'test-sim');
+
+  test('QuoteEngine implements QuoteEnginePort', () {
+    expect(engine, isA<QuoteEnginePort>());
+  });
 
   test('buy quote lists fees and expires', () async {
     final q = await engine.quoteBuy(
@@ -21,6 +26,23 @@ void main() {
     expect(q.secondsRemaining, greaterThan(0));
     expect(q.isExpired, isFalse);
     expect(q.provider, 'test-sim');
+  });
+
+  test('compareBuyProviders returns ranked offers', () async {
+    final offers = await engine.compareBuyProviders(
+      asset: 'ETH',
+      network: AssetNetwork.ethereum,
+      fiatUsd: 250,
+      method: PaymentMethod.card,
+      assetPriceUsd: 3420,
+    );
+    expect(offers.length, greaterThanOrEqualTo(3));
+    expect(offers.any((o) => o.code == 'auvora-sim' && o.available), isTrue);
+    expect(offers.any((o) => o.code == 'moonpay' && !o.available), isTrue);
+    // Sorted best receive first.
+    for (var i = 1; i < offers.length; i++) {
+      expect(offers[i - 1].youReceive, greaterThanOrEqualTo(offers[i].youReceive));
+    }
   });
 
   test('sell quote computes payout after fees', () async {
@@ -103,6 +125,29 @@ void main() {
     expect(q.apyPct, pool.apyPct);
     expect(q.validatorName, pool.validatorName);
     expect(q.lockDays, pool.lockDays);
+  });
+
+  test('receipt serializes round-trip', () {
+    final receipt = EngineReceipt(
+      id: 'r1',
+      op: EngineOp.swap,
+      status: EngineStatus.completed,
+      fromAsset: 'ETH',
+      toAsset: 'USDC',
+      fromAmount: 1,
+      toAmount: 3000,
+      fees: const [FeeLine(label: 'Network', amount: 1.2, asset: 'USD', fiatUsd: 1.2)],
+      networkLabel: 'Ethereum',
+      createdAt: DateTime.parse('2026-07-30T12:00:00Z'),
+      reference: '0xabc',
+      provider: 'auvora-sim',
+      isPreview: true,
+    );
+    final back = EngineReceipt.fromJson(receipt.toJson());
+    expect(back.id, receipt.id);
+    expect(back.op, EngineOp.swap);
+    expect(back.fees.single.label, 'Network');
+    expect(back.isPreview, isTrue);
   });
 
   test('humanizeEngineError maps expired quotes', () {

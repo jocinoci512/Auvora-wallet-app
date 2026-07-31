@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../intelligence/catalog.dart';
 import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../release/release_config.dart';
 import '../theme/aether_theme.dart';
 import 'home/home_shared.dart';
 import 'intelligence/intelligence_tip.dart';
@@ -153,13 +155,37 @@ class TransactionDetailScreen extends StatelessWidget {
             label: const Text('Copy transaction ID'),
           ),
           const SizedBox(height: 10),
-          if (explorer != null)
+          if (explorer != null) ...[
+            OutlinedButton.icon(
+              onPressed: () => _openExplorer(context, explorer),
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: const Text('Open in explorer'),
+            ),
+            const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: () => copyText(context, explorer, label: 'Explorer link copied'),
-              icon: const Icon(Icons.open_in_new_rounded),
+              icon: const Icon(Icons.link_rounded),
               label: const Text('Copy explorer link'),
             ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
+          if (tx.status == TxStatus.failed || tx.status == TxStatus.cancelled) ...[
+            SoftBanner(
+              tone: BannerTone.warn,
+              message: tx.status == TxStatus.failed
+                  ? 'If nothing left your wallet, you can try again from Send. Check network fees and balance first.'
+                  : 'This request was cancelled before completion. Start a new send if you still need to transfer.',
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (!ReleaseConfig.liveBroadcastEnabled) ...[
+            const SoftBanner(
+              tone: BannerTone.warn,
+              message:
+                  'Explorer pages may not show this preview transfer. Live broadcast is off until signing is audited.',
+            ),
+            const SizedBox(height: 10),
+          ],
           FilledButton.icon(
             onPressed: () => copyText(context, receipt, label: 'Receipt copied — paste to share'),
             icon: const Icon(Icons.ios_share_rounded),
@@ -170,15 +196,26 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _openExplorer(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open explorer. Copy the link instead.')),
+      );
+    }
+  }
+
   String _friendlyFallback(PortfolioTx tx) {
     switch (tx.status) {
       case TxStatus.pending:
-        return 'Still confirming on ${tx.network.label}. This usually finishes in a few minutes.';
+        return 'Still confirming on ${tx.network.label}. This usually finishes in a few minutes — keep this screen or check Activity later.';
       case TxStatus.completed:
         return 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.';
       case TxStatus.failed:
         return tx.note ??
-            'This transfer did not complete. Amounts beyond any network fee already paid usually stay in your wallet.';
+            'This transfer did not complete. Amounts beyond any network fee already paid usually stay in your wallet. You can retry from Send.';
       case TxStatus.cancelled:
         return 'You cancelled this request before it finished on the network.';
     }

@@ -7,6 +7,8 @@ import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 
 import '../portfolio/models.dart';
+import '../release/release_config.dart';
+import 'hd_derivation.dart';
 
 /// On-device wallet cryptography.
 /// Recovery phrase is BIP39. Private material never leaves the device.
@@ -27,16 +29,26 @@ class WalletCrypto {
     return phrase.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
 
-  /// Deterministic display fingerprint until Sprint 2 chain derivation.
+  /// Deterministic ETH-style fingerprint for display / legacy callers.
   static String fingerprintAddress(String mnemonic) {
-    final seed = bip39.mnemonicToSeed(normalizeMnemonic(mnemonic));
-    final digest = sha256.convert(seed);
-    final bytes = digest.bytes.take(20).toList();
-    return '0x${hex.encode(bytes)}';
+    return deriveAddressForNetwork(normalizeMnemonic(mnemonic), AssetNetwork.ethereum);
   }
 
+  /// Derive a receive address for [network].
+  ///
+  /// Uses BIP32 / SLIP-0010 when [ReleaseConfig.derivationMode] is
+  /// [DerivationMode.bip32Partial] or [DerivationMode.production].
+  /// Falls back to the Closed Beta preview SHA scheme only for `previewSha`.
   static String deriveAddressForNetwork(String mnemonic, AssetNetwork network, {int index = 0}) {
-    final seed = bip39.mnemonicToSeed(normalizeMnemonic(mnemonic));
+    final normalized = normalizeMnemonic(mnemonic);
+    if (ReleaseConfig.derivationMode != DerivationMode.previewSha) {
+      return HdDerivation.deriveAddress(
+        mnemonic: normalized,
+        network: network,
+        accountIndex: index,
+      );
+    }
+    final seed = bip39.mnemonicToSeed(normalized);
     final material = sha256
         .convert(utf8.encode('${hex.encode(seed)}::${network.name}::$index::auvora'))
         .bytes;
@@ -53,6 +65,9 @@ class WalletCrypto {
         return 'T${_base58(material.take(24).toList())}';
     }
   }
+
+  static String derivationPathFor(AssetNetwork network, {int accountIndex = 0}) =>
+      HdDerivation.derivationPath(network, accountIndex: accountIndex);
 
   static List<String> words(String mnemonic) => normalizeMnemonic(mnemonic).split(' ');
 

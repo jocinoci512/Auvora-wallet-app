@@ -76,14 +76,21 @@ export function ReceiveExperience(): ReactElement {
       </section>
 
       <section className="cx-panel cx-qr-stage" aria-label="Receive address">
+        <div className="cx-alert cx-alert--info" role="status">
+          Companion receive preview — addresses here are demo placeholders until funding rails are
+          unlocked on the signed mobile wallet.
+        </div>
         <div className="cx-warn">
           <strong>
-            Only send {asset} on {network}
+            Only send {asset} on {NETWORKS.find((n) => n.id === network)?.label ?? network}
           </strong>
-          <p>Estimated confirmation time: {ETA[network]}. Verify the address before sharing.</p>
+          <p>
+            Estimated confirmation time: {ETA[network]}. Verify the network and address before
+            sharing. Wrong-network deposits can be unrecoverable.
+          </p>
         </div>
         <QrPanel value={address} label={`Receive ${asset} on ${network}`} />
-        <p className="cx-meta">Address verified for {network}</p>
+        <p className="cx-meta">Demo address for {network} · practice sharing only</p>
         <div className="cx-success__cta">
           <Link href="/address-book" className="cx-btn cx-btn--ghost">
             Address book

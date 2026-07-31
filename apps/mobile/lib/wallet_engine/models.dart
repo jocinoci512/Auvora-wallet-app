@@ -160,6 +160,7 @@ class WalletVaultRecord {
     required this.accounts,
     required this.createdAt,
     required this.supportedChains,
+    this.name = 'Primary wallet',
     this.activeAccountId,
     this.backupConfirmed = false,
     this.phraseVerifiedAt,
@@ -167,6 +168,7 @@ class WalletVaultRecord {
   });
 
   final String walletId;
+  final String name;
   final List<WalletAccountRecord> accounts;
   final DateTime createdAt;
   final List<ChainId> supportedChains;
@@ -188,8 +190,30 @@ class WalletVaultRecord {
       activeAccount?.receiveAddress(chain) ??
       (accounts.isEmpty ? null : accounts.first.receiveAddress(chain));
 
+  WalletVaultRecord copyWith({
+    String? name,
+    List<WalletAccountRecord>? accounts,
+    String? activeAccountId,
+    bool? backupConfirmed,
+    DateTime? phraseVerifiedAt,
+    DateTime? lastSecurityReviewAt,
+  }) {
+    return WalletVaultRecord(
+      walletId: walletId,
+      name: name ?? this.name,
+      accounts: accounts ?? this.accounts,
+      createdAt: createdAt,
+      supportedChains: supportedChains,
+      activeAccountId: activeAccountId ?? this.activeAccountId,
+      backupConfirmed: backupConfirmed ?? this.backupConfirmed,
+      phraseVerifiedAt: phraseVerifiedAt ?? this.phraseVerifiedAt,
+      lastSecurityReviewAt: lastSecurityReviewAt ?? this.lastSecurityReviewAt,
+    );
+  }
+
   Map<String, Object?> toJson() => {
         'walletId': walletId,
+        'name': name,
         'createdAt': createdAt.toIso8601String(),
         'supportedChains': supportedChains.map((item) => item.key).toList(),
         'activeAccountId': activeAccountId,
@@ -210,6 +234,7 @@ class WalletVaultRecord {
         .toList();
     return WalletVaultRecord(
       walletId: (json['walletId'] as String?) ?? 'wallet',
+      name: (json['name'] as String?) ?? 'Primary wallet',
       createdAt: DateTime.tryParse((json['createdAt'] as String?) ?? '') ?? DateTime.now(),
       supportedChains: supported.isEmpty ? List<ChainId>.from(ChainId.values) : supported,
       activeAccountId: json['activeAccountId'] as String?,
@@ -217,15 +242,15 @@ class WalletVaultRecord {
       phraseVerifiedAt: DateTime.tryParse((json['phraseVerifiedAt'] as String?) ?? ''),
       lastSecurityReviewAt: DateTime.tryParse((json['lastSecurityReviewAt'] as String?) ?? ''),
       accounts: ((json['accounts'] as List<Object?>?) ?? const [])
-          .whereType<Map<String, Object?>>()
-          .map(WalletAccountRecord.fromJson)
+          .whereType<Map>()
+          .map((item) => WalletAccountRecord.fromJson(Map<String, Object?>.from(item)))
           .toList(),
     );
   }
 
   factory WalletVaultRecord.decode(String raw) {
     final decoded = jsonDecode(raw);
-    if (decoded is Map<String, Object?>) return WalletVaultRecord.fromJson(decoded);
+    if (decoded is Map) return WalletVaultRecord.fromJson(Map<String, Object?>.from(decoded));
     return WalletVaultRecord(
       walletId: 'wallet',
       accounts: const [],
@@ -267,6 +292,7 @@ class PricePoint {
     required this.sparkline7d,
     required this.updatedAt,
     this.stale = false,
+    this.providerId,
   });
 
   final String symbol;
@@ -275,6 +301,7 @@ class PricePoint {
   final List<double> sparkline7d;
   final DateTime updatedAt;
   final bool stale;
+  final String? providerId;
 
   Map<String, Object?> toJson() => {
         'symbol': symbol,
@@ -283,6 +310,7 @@ class PricePoint {
         'sparkline7d': sparkline7d,
         'updatedAt': updatedAt.toIso8601String(),
         'stale': stale,
+        'providerId': providerId,
       };
 
   factory PricePoint.fromJson(Map<String, Object?> json) {
@@ -295,6 +323,7 @@ class PricePoint {
           .toList(),
       updatedAt: DateTime.tryParse((json['updatedAt'] as String?) ?? '') ?? DateTime.now(),
       stale: json['stale'] == true,
+      providerId: json['providerId'] as String?,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../connections/connections_controller.dart';
@@ -64,6 +65,23 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                       ),
                       const SizedBox(height: 18),
                       _DashboardCard(snapshot: snapshot, wallet: wallet),
+                      if (snapshot.recommendations.isNotEmpty) ...[
+                        const SizedBox(height: 18),
+                        _SectionCard(
+                          title: 'Recommendations',
+                          subtitle: 'Calm guidance — never investment advice.',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (final tip in snapshot.recommendations)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: SoftBanner(message: tip),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
                       _SectionCard(
                         title: 'Security checkup',
@@ -221,6 +239,11 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                               onPressed: wallet.hasPin ? () => _changePin(wallet, security) : null,
                               child: const Text('Change PIN'),
                             ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () => _forgotPinHelp(context),
+                              child: const Text('Forgot PIN?'),
+                            ),
                           ],
                         ),
                       ),
@@ -278,6 +301,33 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                         title: 'Active sessions',
                         subtitle: 'Sign out anything you do not recognize.',
                         items: snapshot.activeSessions,
+                        footer: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            OutlinedButton(
+                              onPressed: () async {
+                                final allowed = await _authenticateSensitive(
+                                  wallet,
+                                  reason: 'Confirm before signing out other sessions',
+                                );
+                                if (!allowed) return;
+                                await security.signOutAllOtherSessions();
+                              },
+                              child: const Text('Sign out other sessions'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final allowed = await _authenticateSensitive(
+                                  wallet,
+                                  reason: 'Confirm before marking sessions reviewed',
+                                );
+                                if (!allowed) return;
+                                await security.markSessionsReviewed();
+                              },
+                              child: const Text('Mark sessions reviewed'),
+                            ),
+                          ],
+                        ),
                         itemBuilder: (session) => ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: Icon(
@@ -429,6 +479,41 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                                 },
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: () async {
+                                final allowed = await _authenticateSensitive(
+                                  wallet,
+                                  reason: 'Confirm before requesting a data export',
+                                );
+                                if (!allowed) return;
+                                await security.requestDataExport();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Export request recorded on this device')),
+                                  );
+                                }
+                              },
+                              child: const Text('Request data export'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final allowed = await _authenticateSensitive(
+                                  wallet,
+                                  reason: 'Confirm before requesting data deletion',
+                                );
+                                if (!allowed) return;
+                                await security.requestDataDeletion();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Deletion request recorded — keep your recovery phrase'),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Request data deletion'),
+                            ),
                           ],
                         ),
                       ),
@@ -478,6 +563,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                             FilledButton(
                               onPressed: () async {
                                 await portfolio.setHideBalances(true);
+                                await Clipboard.setData(const ClipboardData(text: ''));
                                 await security.emergencyLock();
                               },
                               style: FilledButton.styleFrom(backgroundColor: AetherColors.danger),
@@ -542,6 +628,18 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
         if (!dappOk) return;
         await security.markDappsReviewed();
         break;
+      case 'sessions':
+        final sessionsOk = await _authenticateSensitive(
+          wallet,
+          reason: 'Confirm before marking sessions reviewed',
+        );
+        if (!sessionsOk) return;
+        await security.markSessionsReviewed();
+        break;
+      case 'clipboard':
+      case 'notifications':
+        // Privacy section handles these toggles.
+        break;
       case 'app':
         final appOk = await _authenticateSensitive(
           wallet,
@@ -551,6 +649,23 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
         await security.confirmAppUpdated();
         break;
     }
+  }
+
+  Future<void> _forgotPinHelp(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forgot PIN?'),
+        content: const Text(
+          'Auvora cannot reset your PIN remotely. Unlock requires the PIN you set, or restore this wallet with your recovery phrase after wiping local data.\n\n'
+          'Never share your recovery phrase. Support will never ask for it.',
+          style: TextStyle(height: 1.45),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Got it')),
+        ],
+      ),
+    );
   }
 
   Future<bool> _authenticateSensitive(WalletController wallet, {required String reason}) async {

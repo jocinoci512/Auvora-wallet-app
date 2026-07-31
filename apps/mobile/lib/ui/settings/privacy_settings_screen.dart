@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
 import '../../privacy/screenshot_guard.dart';
+import '../../security/security_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../intelligence/guidance_settings_screen.dart';
 import '../security/security_center_screen.dart';
@@ -15,6 +16,7 @@ class PrivacySettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesController>();
     final portfolio = context.watch<PortfolioController>();
+    final security = context.watch<SecurityController>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Privacy')),
@@ -49,10 +51,22 @@ class PrivacySettingsScreen extends StatelessWidget {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
+            title: const Text('Hide balances in notifications'),
+            subtitle: const Text('Mask amounts in notification previews'),
+            value: security.preferences.notificationPrivacy,
+            onChanged: (v) => security.patchPreferences(
+              security.preferences.copyWith(notificationPrivacy: v),
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
             title: const Text('Analytics'),
             subtitle: const Text('Help improve Auvora with anonymous usage (off by default)'),
             value: prefs.analyticsEnabled,
-            onChanged: prefs.setAnalyticsEnabled,
+            onChanged: (v) async {
+              await prefs.setAnalyticsEnabled(v);
+              await security.patchPreferences(security.preferences.copyWith(analyticsEnabled: v));
+            },
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -61,7 +75,10 @@ class PrivacySettingsScreen extends StatelessWidget {
               'Preference saved on this device. Crash SDK wiring ships before Public Beta — nothing is sent today.',
             ),
             value: prefs.crashReportingEnabled,
-            onChanged: prefs.setCrashReportingEnabled,
+            onChanged: (v) async {
+              await prefs.setCrashReportingEnabled(v);
+              await security.patchPreferences(security.preferences.copyWith(crashReportingEnabled: v));
+            },
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -71,6 +88,7 @@ class PrivacySettingsScreen extends StatelessWidget {
             onChanged: (v) async {
               await prefs.setScreenshotProtectionHint(v);
               await ScreenshotGuard.setEnabled(v);
+              await security.patchPreferences(security.preferences.copyWith(screenshotProtection: v));
             },
           ),
           const SizedBox(height: 8),
@@ -86,6 +104,51 @@ class PrivacySettingsScreen extends StatelessWidget {
                 builder: (_) => const GuidanceSettingsScreen(),
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+          Text('Your data', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          const Text(
+            'Export and deletion requests are optional and recorded on this device in Closed Beta.',
+            style: TextStyle(color: AetherColors.muted, height: 1.4, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () async {
+              await security.requestDataExport();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Export request recorded')),
+                );
+              }
+            },
+            child: const Text('Request data export'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Request data deletion?'),
+                  content: const Text(
+                    'This records a deletion request. Wiping the wallet on this device still requires unlocking and Account settings. Keep your recovery phrase.',
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Request')),
+                  ],
+                ),
+              );
+              if (ok == true) {
+                await security.requestDataDeletion();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Deletion request recorded')),
+                  );
+                }
+              }
+            },
+            child: const Text('Request data deletion'),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(

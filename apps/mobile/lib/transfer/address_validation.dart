@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../portfolio/models.dart';
+import 'domain_resolution.dart';
 
 enum AddressIssue {
   empty,
@@ -90,6 +91,25 @@ class AddressValidation {
     final parsed = parsePaymentUri(raw);
     final input = parsed.address;
     if (input.isEmpty) return empty;
+
+    // Domain names are handled by DomainResolver — mark as ok shell for EVM nets.
+    final resolver = PreviewDomainResolver();
+    if (resolver.isNameLike(input)) {
+      if (!isEvm(expected)) {
+        return const AddressValidation._(
+          ok: false,
+          issue: AddressIssue.unsupported,
+          message: 'Domain names are supported on Ethereum, Polygon, and BNB for now.',
+        );
+      }
+      return AddressValidation._(
+        ok: true,
+        normalized: input,
+        detectedNetwork: expected,
+        embeddedAmount: parsed.embeddedAmount,
+        warning: 'Domain name — resolve on the next step before sending.',
+      );
+    }
 
     final detected = detectNetwork(input);
     if (detected == null) {
@@ -181,18 +201,70 @@ class FeeEstimate {
     required this.feeUsd,
     required this.feeAsset,
     required this.arrivalLabel,
+    this.speed = FeeSpeed.standard,
+    this.elevated = false,
   });
 
   final double feeCrypto;
   final double feeUsd;
   final String feeAsset;
   final String arrivalLabel;
+  final FeeSpeed speed;
+  final bool elevated;
+}
+
+enum FeeSpeed { slow, standard, fast }
+
+extension FeeSpeedLabel on FeeSpeed {
+  String get label => switch (this) {
+        FeeSpeed.slow => 'Economy',
+        FeeSpeed.standard => 'Standard',
+        FeeSpeed.fast => 'Faster',
+      };
+
+  String get detail => switch (this) {
+        FeeSpeed.slow => 'Lower fee · may take longer',
+        FeeSpeed.standard => 'Balanced fee and timing',
+        FeeSpeed.fast => 'Higher fee · usually quicker',
+      };
 }
 
 FeeEstimate estimateFee({
   required AssetHolding asset,
   required double amount,
+  FeeSpeed speed = FeeSpeed.standard,
 }) {
+  final base = _baseFee(asset);
+  final multiplier = switch (speed) {
+    FeeSpeed.slow => 0.7,
+    FeeSpeed.standard => 1.0,
+    FeeSpeed.fast => 1.55,
+  };
+  final feeCrypto = base.feeCrypto * multiplier;
+  final feeUsd = base.feeUsd * multiplier;
+  final arrival = switch ((asset.network, speed)) {
+    (AssetNetwork.bitcoin, FeeSpeed.slow) => 'About 30–90 minutes',
+    (AssetNetwork.bitcoin, FeeSpeed.standard) => 'About 10–40 minutes',
+    (AssetNetwork.bitcoin, FeeSpeed.fast) => 'About 10–20 minutes',
+    (AssetNetwork.ethereum, FeeSpeed.slow) => 'Usually 3–8 minutes',
+    (AssetNetwork.ethereum, FeeSpeed.standard) => 'Usually 1–3 minutes',
+    (AssetNetwork.ethereum, FeeSpeed.fast) => 'Usually under 2 minutes',
+    (_, FeeSpeed.slow) => 'May take a few minutes',
+    (_, FeeSpeed.standard) => base.arrivalLabel,
+    (_, FeeSpeed.fast) => 'Usually sooner than standard',
+  };
+  final elevated = feeUsd >= 8 || speed == FeeSpeed.fast && asset.network == AssetNetwork.ethereum;
+  return FeeEstimate(
+    feeCrypto: feeCrypto,
+    feeUsd: feeUsd,
+    feeAsset: base.feeAsset,
+    arrivalLabel: arrival,
+    speed: speed,
+    elevated: elevated,
+  );
+}
+
+FeeEstimate _baseFee(AssetHolding asset) {
   switch (asset.network) {
     case AssetNetwork.bitcoin:
       return FeeEstimate(
@@ -238,4 +310,22 @@ FeeEstimate estimateFee({
         arrivalLabel: 'Usually 1–3 minutes',
       );
   }
+}
+
+/// Build a network payment URI for QR payloads (address-only when amount is null).
+String buildPaymentUri({
+  required AssetNetwork network,
+  required String address,
+  double? amount,
+}) {
+  final scheme = switch (network) {
+    AssetNetwork.bitcoin => 'bitcoin',
+    AssetNetwork.ethereum => 'ethereum',
+    AssetNetwork.polygon => 'polygon',
+    AssetNetwork.bnbSmartChain => 'bnb',
+    AssetNetwork.solana => 'solana',
+    AssetNetwork.tron => 'tron',
+  };
+  if (amount == null || amount <= 0) return '$scheme:$address';
+  return '$scheme:$address?amount=${amount.toStringAsFixed(8)}';
 }

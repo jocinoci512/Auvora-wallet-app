@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../engine/engine_controller.dart';
 import '../../engine/models.dart';
 import '../../engine/quote_engine.dart';
+import '../../engine/quote_provider_port.dart';
+import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../state/wallet_controller.dart';
@@ -13,6 +15,7 @@ import '../../theme/aether_theme.dart';
 import '../../wallet_engine/network_manager.dart';
 import '../../wallet_engine/transaction_engine.dart';
 import '../home/home_shared.dart';
+import '../intelligence/intelligence_tip.dart';
 import 'engine_shared.dart';
 
 enum _Phase { configure, review, progress, done }
@@ -41,6 +44,9 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
   AssetNetwork _network = AssetNetwork.ethereum;
   AssetNetwork _destNetwork = AssetNetwork.polygon;
   PaymentMethod _pay = PaymentMethod.card;
+  String _buyProvider = 'auvora-sim';
+  List<BuyProviderOffer> _buyOffers = const [];
+  String _sellDestination = 'bank';
   StakePool _pool = QuoteEngine.stakePools.first;
   _StakeAction _stakeAction = _StakeAction.stake;
   int _slippageBps = 50;
@@ -85,6 +91,7 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
     }
     _amountCtrl.addListener(_onAmountChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _engine.loadHistory();
       _checkConnectivity();
       _refreshQuote();
     });
@@ -196,12 +203,21 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
       final q = await _engine.refresh(() async {
         switch (widget.op) {
           case EngineOp.buy:
+            final offers = await _engine.quotes.compareBuyProviders(
+              asset: _to,
+              network: _holding(_to)?.network ?? _network,
+              fiatUsd: amount,
+              method: _pay,
+              assetPriceUsd: _price(_to),
+            );
+            if (mounted) setState(() => _buyOffers = offers);
             return _engine.quotes.quoteBuy(
               asset: _to,
               network: _holding(_to)?.network ?? _network,
               fiatUsd: amount,
               method: _pay,
               assetPriceUsd: _price(_to),
+              providerOverride: _buyProvider,
             );
           case EngineOp.sell:
             return _engine.quotes.quoteSell(
@@ -363,6 +379,9 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
         _liveStatus = EngineStatus.completed;
         _phase = _Phase.done;
       });
+      if (mounted) {
+        context.read<IntelligenceController>().noteEvent('afterFirstTx');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -452,6 +471,10 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
             message: 'You appear offline. You can prepare a quote; confirmation waits until you’re back online.',
           ),
         ],
+        if (_engineTip != null) ...[
+          const SizedBox(height: 10),
+          SoftBanner(message: _engineTip!),
+        ],
         const SizedBox(height: 14),
         ..._configureFields(tickers),
         const SizedBox(height: 12),
@@ -517,6 +540,25 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
     );
   }
 
+  String? get _engineTip {
+    switch (widget.op) {
+      case EngineOp.buy:
+        return _quote == null
+            ? null
+            : 'This quote expires in ${_quote!.secondsRemaining}s. Refresh if the timer runs out.';
+      case EngineOp.sell:
+        return 'Sell payouts may take longer than on-chain transfers depending on the payout method.';
+      case EngineOp.swap:
+        return _quote != null && _quote!.totalFeesUsd >= 5
+            ? 'Network fees look elevated for this swap. Timing is never guaranteed.'
+            : 'Price can move while you review. Refresh if amounts change.';
+      case EngineOp.bridge:
+        return 'Bridge transfers may take longer than normal transfers and usually can’t be cancelled once started.';
+      case EngineOp.stake:
+        return 'Staking may lock your assets for a period. Estimated rewards are never guaranteed.';
+    }
+  }
+
   String get _subtitle {
     switch (widget.op) {
       case EngineOp.buy:
@@ -560,6 +602,74 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
             },
             decoration: const InputDecoration(labelText: 'Payment method'),
           ),
+          const SizedBox(height: 12),
+          Text('Payment partner', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          if (_buyOffers.isEmpty)
+            const Text(
+              'Update the amount to compare partners.',
+              style: TextStyle(color: AetherColors.muted, fontSize: 13),
+            )
+          else
+            for (final offer in _buyOffers)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: !offer.available
+                        ? null
+                        : () {
+                            setState(() => _buyProvider = offer.code);
+                            _refreshQuote();
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _buyProvider == offer.code
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: offer.available ? AetherColors.lagoon : AetherColors.muted,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(offer.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  [
+                                    offer.methodsLabel,
+                                    offer.processingLabel,
+                                    'Fees ~\$${offer.totalFeesUsd.toStringAsFixed(2)}',
+                                    'You get ~${fmtEngineAmount(offer.youReceive)} $_to',
+                                    if (!offer.available) offer.unavailableReason ?? 'Unavailable',
+                                  ].join(' · '),
+                                  style: const TextStyle(fontSize: 12, height: 1.35, color: AetherColors.muted),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          if (_buyProvider != 'auvora-sim') ...[
+            const SizedBox(height: 8),
+            const SoftBanner(
+              tone: BannerTone.warn,
+              message:
+                  'Identity verification (KYC) is required by most payment partners before live purchases. This Closed Beta shows the hook only.',
+            ),
+          ],
         ];
       case EngineOp.sell:
         return [
@@ -572,6 +682,27 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
               _refreshQuote();
             },
             decoration: const InputDecoration(labelText: 'Asset to sell'),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _sellDestination,
+            items: const [
+              DropdownMenuItem(value: 'bank', child: Text('Bank account')),
+              DropdownMenuItem(value: 'card', child: Text('Debit card')),
+              DropdownMenuItem(value: 'balance', child: Text('Cash balance (preview)')),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _sellDestination = v);
+              _refreshQuote();
+            },
+            decoration: const InputDecoration(labelText: 'Destination account'),
+          ),
+          const SizedBox(height: 8),
+          SoftBanner(
+            message: _sellDestination == 'bank'
+                ? 'Bank payouts often take 1–3 business days after partner approval.'
+                : 'Destination is a preview destination until off-ramp partners connect.',
           ),
         ];
       case EngineOp.swap:
@@ -749,6 +880,21 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
           'Confirm every fee and amount. Nothing continues until you authorize.',
           style: TextStyle(color: AetherColors.muted, height: 1.45),
         ),
+        if (_priceMoved) ...[
+          const SizedBox(height: 8),
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message: 'Price changed while reviewing your order. Refresh and confirm the new amounts.',
+          ),
+        ],
+        if (context.watch<IntelligenceController>().pendingTip case final tip?) ...[
+          const SizedBox(height: 12),
+          IntelligenceTipCard(
+            title: tip.title,
+            body: tip.body,
+            onDismiss: () => context.read<IntelligenceController>().dismissTip(tip.id),
+          ),
+        ],
         const SizedBox(height: 12),
         EngineQuoteCard(
           quote: q,

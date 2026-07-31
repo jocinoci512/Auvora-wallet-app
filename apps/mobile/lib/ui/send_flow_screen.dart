@@ -14,6 +14,7 @@ import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../transfer/address_book.dart';
 import '../transfer/address_validation.dart';
+import '../transfer/domain_resolution.dart';
 import '../wallet_engine/network_manager.dart';
 import '../wallet_engine/transaction_engine.dart';
 import 'home/home_shared.dart';
@@ -23,13 +24,16 @@ import 'qr_scanner_screen.dart';
 import 'transaction_detail_screen.dart';
 import 'widgets/passcode_entry.dart';
 
-enum _SendStep { asset, recipient, amount, review, auth, done }
+enum _TxProgressPhase { broadcasting, pending, confirming, recorded }
 
-/// Guided send — asset → recipient → amount → checklist → auth → receipt.
+enum _SendStep { wallet, asset, recipient, amount, review, auth, status, done }
+
+/// Guided send — wallet → asset → recipient → amount → checklist → auth → status → receipt.
 class SendFlowScreen extends StatefulWidget {
-  const SendFlowScreen({super.key, this.initialAssetId});
+  const SendFlowScreen({super.key, this.initialAssetId, this.initialTo});
 
   final String? initialAssetId;
+  final String? initialTo;
 
   @override
   State<SendFlowScreen> createState() => _SendFlowScreenState();
@@ -48,9 +52,14 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   bool _doubleTapGuard = false;
   bool _offline = false;
   String? _addrWarning;
+  FeeSpeed _feeSpeed = FeeSpeed.standard;
+  String? _resolvedFromName;
+  String? _domainProviderNote;
+  _TxProgressPhase _progress = _TxProgressPhase.broadcasting;
 
   final _toCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
+  final _domainResolver = PreviewDomainResolver();
 
   AddressBookStore get _book => context.read<AddressBookStore>();
   PortfolioController get _portfolio => context.read<PortfolioController>();
@@ -58,6 +67,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
 
   bool get _hasDraft =>
       _asset != null || _toCtrl.text.trim().isNotEmpty || _amountCtrl.text.trim().isNotEmpty;
+
+  bool get _showWalletStep => _wallet.vaults.length > 1;
 
   @override
   void initState() {
@@ -67,6 +78,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _book.load();
       await _checkConnectivity();
+      if (_showWalletStep) {
+        setState(() => _step = _SendStep.wallet);
+      }
+      if (widget.initialTo != null && widget.initialTo!.trim().isNotEmpty) {
+        _setTo(widget.initialTo!);
+      }
       if (widget.initialAssetId != null) {
         final a = _portfolio.assetById(widget.initialAssetId!);
         if (a != null && a.balance > 0) {
@@ -124,12 +141,27 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
 
   void _go(_SendStep s) => setState(() => _step = s);
 
-  int get _stepIndex => _SendStep.values.indexOf(_step).clamp(0, 5);
+  List<_SendStep> get _visibleSteps => [
+        if (_showWalletStep) _SendStep.wallet,
+        _SendStep.asset,
+        _SendStep.recipient,
+        _SendStep.amount,
+        _SendStep.review,
+        _SendStep.auth,
+        _SendStep.status,
+        _SendStep.done,
+      ];
+
+  int get _stepIndex {
+    final i = _visibleSteps.indexOf(_step);
+    return i < 0 ? 0 : i;
+  }
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final reduce = MediaQuery.disableAnimationsOf(context) || _wallet.reduceMotion;
+    final total = _visibleSteps.length;
 
     return PopScope(
       canPop: false,
@@ -159,14 +191,15 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                    child: _StepDots(index: _stepIndex, total: 6, animate: !reduce),
+                    child: _StepDots(index: _stepIndex, total: total, animate: !reduce),
                   ),
                   if (_offline)
                     const Padding(
                       padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
                       child: SoftBanner(
                         tone: BannerTone.warn,
-                        message: 'You appear offline. You can still prepare a transfer; submission waits until you’re back online.',
+                        message:
+                            'You appear offline. You can still prepare a transfer; submission waits until you’re back online.',
                       ),
                     ),
                   Expanded(child: _body()),
@@ -181,6 +214,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
 
   String get _title {
     switch (_step) {
+      case _SendStep.wallet:
+        return 'Wallet';
       case _SendStep.asset:
         return 'Send';
       case _SendStep.recipient:
@@ -191,6 +226,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         return 'Review';
       case _SendStep.auth:
         return 'Confirm';
+      case _SendStep.status:
+        return 'Status';
       case _SendStep.done:
         return 'Submitted';
     }
@@ -198,6 +235,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
 
   Widget _body() {
     switch (_step) {
+      case _SendStep.wallet:
+        return _walletStep();
       case _SendStep.asset:
         return _assetStep();
       case _SendStep.recipient:
@@ -208,9 +247,48 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         return _reviewStep();
       case _SendStep.auth:
         return _authStep();
+      case _SendStep.status:
+        return _statusStep();
       case _SendStep.done:
         return _doneStep();
     }
+  }
+
+  Widget _walletStep() {
+    final vaults = _wallet.vaults;
+    final activeId = _wallet.wallet?.walletId;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+      children: [
+        const Text(
+          'Choose which wallet on this device will send the transfer.',
+          style: TextStyle(color: AetherColors.muted, height: 1.4),
+        ),
+        const SizedBox(height: 16),
+        for (final v in vaults)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              child: ListTile(
+                leading: Icon(
+                  v.walletId == activeId ? Icons.check_circle : Icons.account_balance_wallet_outlined,
+                  color: AetherColors.lagoon,
+                ),
+                title: Text(v.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(v.backupConfirmed ? 'Backup confirmed' : 'Backup not confirmed'),
+                onTap: () async {
+                  if (v.walletId != activeId) {
+                    await _wallet.switchWallet(v.walletId);
+                  }
+                  if (mounted) _go(_SendStep.asset);
+                },
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _assetStep() {
@@ -390,16 +468,67 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         const SizedBox(height: 20),
         FilledButton(
           onPressed: validation.ok
-              ? () {
-                  final n = validation.normalized ?? _toCtrl.text.trim();
-                  _toCtrl.text = n;
-                  _addrWarning = validation.warning;
+              ? () async {
+                  final raw = validation.normalized ?? _toCtrl.text.trim();
+                  if (_domainResolver.isNameLike(raw)) {
+                    final resolved = await _domainResolver.resolve(raw, network: asset.network);
+                    if (!mounted) return;
+                    if (!resolved.ok || resolved.address == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(resolved.message ?? 'Could not resolve that name.')),
+                      );
+                      return;
+                    }
+                    setState(() {
+                      _resolvedFromName = raw;
+                      _domainProviderNote = resolved.message;
+                      _toCtrl.text = resolved.address!;
+                      _addrWarning = resolved.message;
+                    });
+                  } else {
+                    setState(() {
+                      _resolvedFromName = null;
+                      _domainProviderNote = null;
+                      _toCtrl.text = raw;
+                      _addrWarning = validation.warning;
+                    });
+                  }
+                  final risk = assessAddressRisk(_toCtrl.text.trim());
+                  if (risk.level != AddressRiskLevel.ok && mounted) {
+                    setState(() {
+                      _addrWarning = [
+                        if (_addrWarning != null) _addrWarning!,
+                        ...risk.reasons,
+                      ].join(' ');
+                    });
+                  }
+                  final known = _book.contacts.any(
+                    (c) =>
+                        c.network == asset.network &&
+                        c.address.toLowerCase() == _toCtrl.text.trim().toLowerCase(),
+                  );
+                  final recentHit = _book.recent.any(
+                    (c) =>
+                        c.network == asset.network &&
+                        c.address.toLowerCase() == _toCtrl.text.trim().toLowerCase(),
+                  );
+                  if (!known && !recentHit && mounted) {
+                    setState(() {
+                      _addrWarning = [
+                        if (_addrWarning != null) _addrWarning!,
+                        'You’re sending to a new address for the first time on this device.',
+                      ].join(' ');
+                    });
+                  }
                   _go(_SendStep.amount);
                 }
               : null,
           child: const Text('Continue'),
         ),
-        TextButton(onPressed: () => _go(_SendStep.asset), child: const Text('Change asset')),
+        TextButton(
+          onPressed: () => _go(_showWalletStep ? _SendStep.wallet : _SendStep.asset),
+          child: const Text('Change asset'),
+        ),
       ],
     );
   }
@@ -408,7 +537,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     final asset = _asset!;
     final p = context.watch<PortfolioController>();
     final amount = _parsedAmount(asset);
-    final fee = estimateFee(asset: asset, amount: amount);
+    final fee = estimateFee(asset: asset, amount: amount, speed: _feeSpeed);
     final feeInSame = fee.feeAsset == asset.ticker;
     final insufficient = feeInSame ? amount + fee.feeCrypto > asset.balance : amount > asset.balance;
     final large = asset.balance > 0 && amount / asset.balance >= 0.5;
@@ -464,7 +593,28 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        _kv('Estimated network fee', '${fee.feeCrypto} ${fee.feeAsset} · ${p.money(fee.feeUsd)}'),
+        Text('Network fee speed', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final s in FeeSpeed.values)
+              ChoiceChip(
+                label: Text(s.label),
+                selected: _feeSpeed == s,
+                onSelected: (_) => setState(() => _feeSpeed = s),
+              ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 12),
+          child: Text(
+            _feeSpeed.detail,
+            style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.35),
+          ),
+        ),
+        _kv('Estimated network fee', '${fee.feeCrypto.toStringAsFixed(6)} ${fee.feeAsset} · ${p.money(fee.feeUsd)}'),
         if (!feeInSame)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -478,7 +628,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         _kv('Estimated arrival', fee.arrivalLabel),
         if (context.watch<IntelligenceController>().shouldShowExplanation(IntelligenceKind.transaction)) ...[
           const SizedBox(height: 12),
-          if (fee.feeUsd >= 8)
+          if (fee.elevated || fee.feeUsd >= 8)
             IntelligenceExplainPanel(
               explanation: IntelligenceCatalog.explainFeeEstimate(
                 networkLabel: asset.network.label,
@@ -487,9 +637,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
               onLearnMore: () => openLesson(context, 'gas-fees'),
             )
           else
-            const Text(
-              'Network fee estimate — pays the network to include your transfer. Timing is never guaranteed.',
-              style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
+            Text(
+              'You’re sending on ${asset.network.label}. Network fee estimate pays the network to include your transfer. Timing is never guaranteed.',
+              style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
             ),
         ],
         if (insufficient) ...[
@@ -536,38 +686,59 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     final asset = _asset!;
     final p = context.watch<PortfolioController>();
     final amount = _parsedAmount(asset);
-    final fee = estimateFee(asset: asset, amount: amount);
+    final fee = estimateFee(asset: asset, amount: amount, speed: _feeSpeed);
     final to = _toCtrl.text.trim();
     final self = AddressValidation.looksLikeSameWallet(
       to,
       _wallet.addressFor(asset.network) ?? _wallet.address ?? '',
     );
     final short = to.length > 10 ? '…${to.substring(to.length - 6)}' : to;
+    final walletLabel = _wallet.wallet?.name ?? 'Primary wallet';
+    final risk = assessAddressRisk(to);
 
     final items = <(String, String)>[
       ('recipient', 'I checked the full recipient address (ends $short)'),
       ('network', 'I confirmed this is ${asset.network.label}'),
       ('amount', 'I confirmed ${amount.toStringAsFixed(6)} ${asset.ticker} is correct'),
+      ('irreversible', 'I understand this transfer cannot be reversed'),
       if (self) ('self', 'I intentionally want to send to my own address'),
+      if (risk.level == AddressRiskLevel.high) ('risk', 'I understand the address risk warnings above'),
     ];
     final allChecked = items.every((e) => _checks.contains(e.$1));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
       children: [
-        const Text(
-          'Crypto transfers cannot be reversed. Verify every line.',
-          style: TextStyle(color: AetherColors.muted, height: 1.45),
+        const SoftBanner(
+          tone: BannerTone.warn,
+          message:
+              'This transaction cannot be reversed. Double-check the recipient address before you continue.',
         ),
         const SizedBox(height: 16),
+        _kv('Wallet used', walletLabel),
         _kv('Asset', '${asset.name} (${asset.ticker})'),
         _kv('Network', asset.network.label),
+        if (_resolvedFromName != null) ...[
+          _kv('Resolved from', _resolvedFromName!),
+          if (_domainProviderNote != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                _domainProviderNote!,
+                style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.35),
+              ),
+            ),
+        ],
         const Text('To', style: TextStyle(color: AetherColors.muted)),
         const SizedBox(height: 4),
         SelectableText(to, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, height: 1.4)),
         const SizedBox(height: 10),
         _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}'),
-        _kv('Estimated fee', '${fee.feeCrypto} ${fee.feeAsset} · ${p.money(fee.feeUsd)}'),
+        _kv('Fee speed', fee.speed.label),
+        _kv(
+          'Estimated fee',
+          '${fee.feeCrypto.toStringAsFixed(6)} ${fee.feeAsset} · ${p.money(fee.feeUsd)}',
+        ),
         _kv('Estimated arrival', fee.arrivalLabel),
         if (_addrWarning != null) ...[
           const SizedBox(height: 10),
@@ -576,6 +747,20 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         if (self) ...[
           const SizedBox(height: 10),
           const SoftBanner(tone: BannerTone.warn, message: 'Sending to yourself.'),
+        ],
+        if (risk.level != AddressRiskLevel.ok) ...[
+          const SizedBox(height: 10),
+          SoftBanner(
+            tone: risk.level == AddressRiskLevel.high ? BannerTone.error : BannerTone.warn,
+            message: risk.reasons.join(' · '),
+          ),
+        ],
+        if (fee.elevated) ...[
+          const SizedBox(height: 10),
+          SoftBanner(
+            tone: BannerTone.warn,
+            message: 'Gas fees look higher than usual for ${asset.network.label} at this speed.',
+          ),
         ],
         const SizedBox(height: 18),
         Text('Before you continue', style: Theme.of(context).textTheme.titleMedium),
@@ -630,9 +815,6 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   }
 
   Widget _authStep() {
-    if (_submitting) {
-      return const Center(child: CircularProgressIndicator());
-    }
     final asset = _asset!;
     final amount = _parsedAmount(asset);
     return ListView(
@@ -654,12 +836,14 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: OutlinedButton.icon(
-              onPressed: () async {
-                final ok = await _wallet.authenticateForTransfer(
-                  reason: 'Confirm sending ${amount.toStringAsFixed(4)} ${asset.ticker}',
-                );
-                if (ok && mounted) await _submit();
-              },
+              onPressed: _submitting
+                  ? null
+                  : () async {
+                      final ok = await _wallet.authenticateForTransfer(
+                        reason: 'Confirm sending ${amount.toStringAsFixed(4)} ${asset.ticker}',
+                      );
+                      if (ok && mounted) await _submit();
+                    },
               icon: const Icon(Icons.fingerprint),
               label: const Text('Use biometrics'),
             ),
@@ -681,7 +865,10 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
             await _submit();
           },
         ),
-        TextButton(onPressed: () => _go(_SendStep.review), child: const Text('Back')),
+        TextButton(
+          onPressed: _submitting ? null : () => _go(_SendStep.review),
+          child: const Text('Back'),
+        ),
       ],
     );
   }
@@ -689,6 +876,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   Future<void> _submit() async {
     if (_doubleTapGuard || _submitting) return;
     final engine = context.read<TransactionEngine>();
+    final reduce = MediaQuery.disableAnimationsOf(context) || _wallet.reduceMotion;
     await _checkConnectivity();
     if (_offline) {
       if (mounted) {
@@ -702,16 +890,31 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     setState(() {
       _submitting = true;
       _pinError = null;
+      _progress = _TxProgressPhase.broadcasting;
+      _step = _SendStep.status;
+      _result = null;
     });
     try {
       final asset = _asset!;
       final amount = _parsedAmount(asset);
+      final pause = reduce ? Duration.zero : const Duration(milliseconds: 420);
+
+      await Future<void>.delayed(pause);
+      if (!mounted) return;
+      setState(() => _progress = _TxProgressPhase.pending);
+
       final result = await engine.submitSend(
         asset: asset,
         to: _toCtrl.text.trim(),
         amount: amount,
         memo: 'Sent from Auvora',
       );
+
+      if (!mounted) return;
+      setState(() => _progress = _TxProgressPhase.confirming);
+      await Future<void>.delayed(pause);
+      if (!mounted) return;
+
       final tx = result.tx;
       final snap = _portfolio.snapshot;
       if (snap != null) {
@@ -730,6 +933,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       if (!mounted) return;
       setState(() {
         _result = tx;
+        _progress = _TxProgressPhase.recorded;
+      });
+      await Future<void>.delayed(reduce ? Duration.zero : const Duration(milliseconds: 500));
+      if (!mounted) return;
+      setState(() {
         _submitting = false;
         _step = _SendStep.done;
       });
@@ -741,11 +949,110 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       setState(() {
         _submitting = false;
         _doubleTapGuard = false;
+        _step = _SendStep.auth;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Something went wrong. Nothing was sent — try again.')),
       );
     }
+  }
+
+  Widget _statusStep() {
+    final asset = _asset!;
+    final amount = _parsedAmount(asset);
+    final reduce = MediaQuery.disableAnimationsOf(context) || _wallet.reduceMotion;
+    final phases = _TxProgressPhase.values;
+    final idx = phases.indexOf(_progress);
+
+    String title;
+    String body;
+    IconData icon;
+    switch (_progress) {
+      case _TxProgressPhase.broadcasting:
+        title = 'Broadcasting';
+        body = 'Preparing your preview transfer for ${asset.network.label}.';
+        icon = Icons.cloud_upload_outlined;
+      case _TxProgressPhase.pending:
+        title = 'Pending';
+        body = 'Waiting for the local transaction engine to accept the request.';
+        icon = Icons.hourglass_top_rounded;
+      case _TxProgressPhase.confirming:
+        title = 'Confirming';
+        body = 'Recording status on this device. Live network confirmation stays off until audited.';
+        icon = Icons.sync_rounded;
+      case _TxProgressPhase.recorded:
+        title = 'Recorded';
+        body = 'Preview recorded. Open the receipt for the reference and next steps.';
+        icon = Icons.check_circle_outline_rounded;
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      children: [
+        Semantics(
+          liveRegion: true,
+          label: '$title. $body',
+          child: Column(
+            children: [
+              AnimatedSwitcher(
+                duration: reduce ? Duration.zero : const Duration(milliseconds: 280),
+                child: Icon(icon, key: ValueKey(_progress), size: 56, color: AetherColors.lagoon),
+              ),
+              const SizedBox(height: 16),
+              Text(title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AetherColors.muted, height: 1.45),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        for (var i = 0; i < phases.length; i++) ...[
+          Row(
+            children: [
+              Icon(
+                i < idx
+                    ? Icons.check_circle_rounded
+                    : i == idx
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                size: 20,
+                color: i <= idx ? AetherColors.lagoon : AetherColors.muted,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  switch (phases[i]) {
+                    _TxProgressPhase.broadcasting => 'Broadcasting',
+                    _TxProgressPhase.pending => 'Pending',
+                    _TxProgressPhase.confirming => 'Confirming',
+                    _TxProgressPhase.recorded => 'Confirmed (preview)',
+                  },
+                  style: TextStyle(
+                    fontWeight: i == idx ? FontWeight.w700 : FontWeight.w500,
+                    color: i <= idx ? AetherColors.ink : AetherColors.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (i < phases.length - 1) const SizedBox(height: 10),
+        ],
+        const SizedBox(height: 24),
+        _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker}'),
+        _kv('Network', asset.network.label),
+        _kv('To', _toCtrl.text.trim()),
+        if (_result != null) ...[
+          const SizedBox(height: 8),
+          const SoftBanner(
+            message: 'Preview only — explorer links will open after live broadcast is enabled.',
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _doneStep() {

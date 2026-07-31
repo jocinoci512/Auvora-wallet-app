@@ -124,13 +124,18 @@ class SecurityPreferences {
     this.requireAuthForRecoveryPhrase = true,
     this.hideSensitiveInfo = false,
     this.analyticsEnabled = false,
+    this.crashReportingEnabled = false,
     this.notificationPrivacy = true,
     this.clipboardTimeoutSeconds = 30,
+    this.screenshotProtection = false,
     this.lastReviewAt,
     this.appUpdated = false,
     this.reviewedTrustedDevices = false,
     this.reviewedConnectedDapps = false,
+    this.reviewedSessions = false,
     this.emergencyNotificationsMuted = false,
+    this.dataExportRequestedAt,
+    this.dataDeletionRequestedAt,
   });
 
   final bool requireBiometricForUnlock;
@@ -139,13 +144,18 @@ class SecurityPreferences {
   final bool requireAuthForRecoveryPhrase;
   final bool hideSensitiveInfo;
   final bool analyticsEnabled;
+  final bool crashReportingEnabled;
   final bool notificationPrivacy;
   final int clipboardTimeoutSeconds;
+  final bool screenshotProtection;
   final DateTime? lastReviewAt;
   final bool appUpdated;
   final bool reviewedTrustedDevices;
   final bool reviewedConnectedDapps;
+  final bool reviewedSessions;
   final bool emergencyNotificationsMuted;
+  final DateTime? dataExportRequestedAt;
+  final DateTime? dataDeletionRequestedAt;
 
   SecurityPreferences copyWith({
     bool? requireBiometricForUnlock,
@@ -154,13 +164,18 @@ class SecurityPreferences {
     bool? requireAuthForRecoveryPhrase,
     bool? hideSensitiveInfo,
     bool? analyticsEnabled,
+    bool? crashReportingEnabled,
     bool? notificationPrivacy,
     int? clipboardTimeoutSeconds,
+    bool? screenshotProtection,
     DateTime? lastReviewAt,
     bool? appUpdated,
     bool? reviewedTrustedDevices,
     bool? reviewedConnectedDapps,
+    bool? reviewedSessions,
     bool? emergencyNotificationsMuted,
+    DateTime? dataExportRequestedAt,
+    DateTime? dataDeletionRequestedAt,
   }) {
     return SecurityPreferences(
       requireBiometricForUnlock: requireBiometricForUnlock ?? this.requireBiometricForUnlock,
@@ -169,13 +184,18 @@ class SecurityPreferences {
       requireAuthForRecoveryPhrase: requireAuthForRecoveryPhrase ?? this.requireAuthForRecoveryPhrase,
       hideSensitiveInfo: hideSensitiveInfo ?? this.hideSensitiveInfo,
       analyticsEnabled: analyticsEnabled ?? this.analyticsEnabled,
+      crashReportingEnabled: crashReportingEnabled ?? this.crashReportingEnabled,
       notificationPrivacy: notificationPrivacy ?? this.notificationPrivacy,
       clipboardTimeoutSeconds: clipboardTimeoutSeconds ?? this.clipboardTimeoutSeconds,
+      screenshotProtection: screenshotProtection ?? this.screenshotProtection,
       lastReviewAt: lastReviewAt ?? this.lastReviewAt,
       appUpdated: appUpdated ?? this.appUpdated,
       reviewedTrustedDevices: reviewedTrustedDevices ?? this.reviewedTrustedDevices,
       reviewedConnectedDapps: reviewedConnectedDapps ?? this.reviewedConnectedDapps,
+      reviewedSessions: reviewedSessions ?? this.reviewedSessions,
       emergencyNotificationsMuted: emergencyNotificationsMuted ?? this.emergencyNotificationsMuted,
+      dataExportRequestedAt: dataExportRequestedAt ?? this.dataExportRequestedAt,
+      dataDeletionRequestedAt: dataDeletionRequestedAt ?? this.dataDeletionRequestedAt,
     );
   }
 }
@@ -195,6 +215,7 @@ class SecuritySnapshot {
     required this.recentAlerts,
     required this.preferences,
     required this.checkSteps,
+    this.recommendations = const [],
   });
 
   final int score;
@@ -209,6 +230,7 @@ class SecuritySnapshot {
   final List<SecurityAlertItem> recentAlerts;
   final SecurityPreferences preferences;
   final List<SecurityCheckStep> checkSteps;
+  final List<String> recommendations;
 }
 
 SecurityStatus securityStatusForScore(int score) {

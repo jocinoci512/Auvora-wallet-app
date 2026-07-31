@@ -230,12 +230,32 @@ class PreferencesController extends ChangeNotifier {
     required String body,
   }) async {
     if (!isNotificationEnabled(category)) return;
+    var safeBody = body;
+    // Honor Security Center notification privacy when available via SharedPreferences mirror.
+    final prefs = await SharedPreferences.getInstance();
+    final privacyOn = prefs.getString('auvora_security_center_prefs_v1') == null
+        ? true
+        : (() {
+            try {
+              final raw = prefs.getString('auvora_security_center_prefs_v1');
+              if (raw == null) return true;
+              final data = jsonDecode(raw) as Map<String, dynamic>;
+              return data['notificationPrivacy'] != false;
+            } catch (_) {
+              return true;
+            }
+          })();
+    if (privacyOn) {
+      safeBody = body
+          .replaceAll(RegExp(r'\$[\d,.]+'), '••••')
+          .replaceAll(RegExp(r'\b\d+\.\d+\s*[A-Z]{2,5}\b'), '••••');
+    }
     inbox = [
       AppNotificationItem(
         id: 'n-${DateTime.now().microsecondsSinceEpoch}',
         category: category,
         title: title,
-        body: body,
+        body: safeBody,
         createdAt: DateTime.now(),
       ),
       ...inbox,

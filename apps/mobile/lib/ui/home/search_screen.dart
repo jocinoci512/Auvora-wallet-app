@@ -5,12 +5,15 @@ import '../../intelligence/intelligence_controller.dart';
 import '../../intelligence/models.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
+import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../../wallet_engine/key_store.dart';
 import '../asset_detail_screen.dart';
 import '../connections/permission_center_screen.dart';
 import '../intelligence/guidance_settings_screen.dart';
 import '../intelligence/learning_center_screen.dart';
 import '../security/security_center_screen.dart';
+import '../settings/account_settings_screen.dart';
 import '../settings/help_support_screen.dart';
 import '../settings/notification_center_screen.dart';
 import '../settings/settings_home_screen.dart';
@@ -71,9 +74,16 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     final p = context.watch<PortfolioController>();
     final intel = context.watch<IntelligenceController>();
+    final wallet = context.watch<WalletController>();
     final results = p.searchResults;
     final q = p.globalQuery.trim();
     final assist = intel.searchAssist(q);
+    final vaultHits = q.isEmpty
+        ? const <VaultIndexEntry>[]
+        : [
+            for (final v in wallet.vaults)
+              if (v.name.toLowerCase().contains(q.toLowerCase())) v,
+          ];
 
     return Scaffold(
       appBar: AppBar(
@@ -84,7 +94,7 @@ class _SearchScreenState extends State<SearchScreen> {
           onChanged: p.setGlobalQuery,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
-            hintText: 'Assets, settings, fees, security…',
+            hintText: 'Assets, wallets, activity, settings…',
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
@@ -109,15 +119,22 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Text(
-                  'Find assets, activity, settings, or lessons.\nTry “fees”, “recovery”, or “security”.',
+                  'Find assets, wallets, activity, settings, or lessons.\nTry “fees”, “recovery”, or “security”.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AetherColors.muted, height: 1.5),
                 ),
               ),
             )
-          : results.isEmpty && assist.isEmpty
+          : results.isEmpty && assist.isEmpty && vaultHits.isEmpty
               ? const Center(
-                  child: Text('No matches', style: TextStyle(color: AetherColors.muted)),
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text(
+                      'No matches.\nTry a ticker, wallet name, or “security”.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AetherColors.muted, height: 1.45),
+                    ),
+                  ),
                 )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -145,7 +162,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             onTap: () => _openAssist(hit),
                           ),
                         ),
-                      if (results.isNotEmpty)
+                      if (results.isNotEmpty || vaultHits.isNotEmpty)
                         const Padding(
                           padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
                           child: Text(
@@ -158,6 +175,19 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         ),
                     ],
+                    for (final item in vaultHits)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _tile(
+                          context,
+                          title: item.name,
+                          subtitle: item.backupConfirmed ? 'Wallet · backup confirmed' : 'Wallet · backup needed',
+                          icon: Icons.account_balance_wallet_outlined,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(builder: (_) => const AccountSettingsScreen()),
+                          ),
+                        ),
+                      ),
                     for (final item in results) ...[
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),

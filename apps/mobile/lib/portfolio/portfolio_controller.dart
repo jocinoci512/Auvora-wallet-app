@@ -29,6 +29,10 @@ class PortfolioController extends ChangeNotifier {
   AssetSort sort = AssetSort.valueDesc;
   String assetQuery = '';
   String globalQuery = '';
+  String activityQuery = '';
+  TxStatus? activityStatusFilter;
+  TxType? activityTypeFilter;
+  AssetNetwork? activityNetworkFilter;
 
   void attachRepository(PortfolioRepository repository) {
     if (identical(_repo, repository)) return;
@@ -113,6 +117,65 @@ class PortfolioController extends ChangeNotifier {
   void setGlobalQuery(String q) {
     globalQuery = q;
     notifyListeners();
+  }
+
+  void setActivityQuery(String q) {
+    activityQuery = q;
+    notifyListeners();
+  }
+
+  void setActivityStatusFilter(TxStatus? status) {
+    activityStatusFilter = status;
+    notifyListeners();
+  }
+
+  void setActivityTypeFilter(TxType? type) {
+    activityTypeFilter = type;
+    notifyListeners();
+  }
+
+  void setActivityNetworkFilter(AssetNetwork? network) {
+    activityNetworkFilter = network;
+    notifyListeners();
+  }
+
+  void clearActivityFilters() {
+    activityQuery = '';
+    activityStatusFilter = null;
+    activityTypeFilter = null;
+    activityNetworkFilter = null;
+    notifyListeners();
+  }
+
+  /// Fiat share of each non-zero holding for allocation UI.
+  List<({AssetHolding asset, double pct})> get allocationSlices {
+    final assets = snapshot?.nonZero ?? const <AssetHolding>[];
+    final total = assets.fold<double>(0, (sum, a) => sum + a.fiatValue);
+    if (total <= 0) return const [];
+    return [
+      for (final asset in assets)
+        (asset: asset, pct: (asset.fiatValue / total) * 100),
+    ]..sort((a, b) => b.pct.compareTo(a.pct));
+  }
+
+  List<PortfolioTx> get filteredTransactions {
+    final txs = [...(snapshot?.transactions ?? const <PortfolioTx>[])];
+    final q = activityQuery.trim().toLowerCase();
+    return txs.where((tx) {
+      if (activityStatusFilter != null && tx.status != activityStatusFilter) return false;
+      if (activityTypeFilter != null && tx.type != activityTypeFilter) return false;
+      if (activityNetworkFilter != null && tx.network != activityNetworkFilter) return false;
+      if (q.isEmpty) return true;
+      return tx.assetTicker.toLowerCase().contains(q) ||
+          tx.hash.toLowerCase().contains(q) ||
+          tx.from.toLowerCase().contains(q) ||
+          tx.to.toLowerCase().contains(q) ||
+          tx.type.label.toLowerCase().contains(q) ||
+          tx.status.label.toLowerCase().contains(q) ||
+          tx.network.label.toLowerCase().contains(q) ||
+          (tx.note?.toLowerCase().contains(q) ?? false);
+    }).toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
   Future<void> toggleFavorite(String id) async {

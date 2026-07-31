@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@auvora/ui';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import {
   listContacts,
@@ -63,6 +64,7 @@ const DEMO_BALANCES: Partial<Record<WalletAsset, number>> = {
 };
 
 export function SendExperience(): ReactElement {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<StepId>('asset');
   const [network, setNetwork] = useState<WalletNetwork>('ethereum');
   const [asset, setAsset] = useState<WalletAsset>('ETH');
@@ -85,6 +87,7 @@ export function SendExperience(): ReactElement {
     provider: string;
   } | null>(null);
   const progressTimer = useRef<number | null>(null);
+  const deepLinked = useRef(false);
 
   useEffect(
     () => () => {
@@ -92,6 +95,28 @@ export function SendExperience(): ReactElement {
     },
     [],
   );
+
+  useEffect(() => {
+    if (deepLinked.current) return;
+    const qAsset = searchParams.get('asset')?.toUpperCase();
+    const qTo = searchParams.get('to');
+    if (!qAsset && !qTo) return;
+    deepLinked.current = true;
+    if (qAsset) {
+      const token = TOKENS.find((t) => t.id === qAsset || t.id.toUpperCase() === qAsset);
+      if (token) {
+        setAsset(token.id);
+        const net = token.networks[0];
+        if (net) setNetwork(net);
+      }
+    }
+    if (qTo) {
+      setTo(qTo);
+      setStep('to');
+    } else if (qAsset) {
+      setStep('to');
+    }
+  }, [searchParams]);
 
   const contacts = useMemo(() => listContacts().filter((c) => c.network === network), [network]);
   const recent = useMemo(() => recentRecipients(4), []);
@@ -282,8 +307,7 @@ export function SendExperience(): ReactElement {
               <strong>Name recipient</strong>
               <p>
                 Demo name resolve only — not a live ENS or Unstoppable Domains lookup. Destination
-                below is a preview address for this Internal Alpha session. on the review step
-                before anything is sent.
+                on the review step is a preview address for this session.
               </p>
             </div>
           ) : null}

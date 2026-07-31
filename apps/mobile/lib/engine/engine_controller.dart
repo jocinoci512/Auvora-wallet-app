@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../portfolio/models.dart';
@@ -6,17 +10,19 @@ import '../portfolio/portfolio_controller.dart';
 import '../wallet_engine/transaction_engine.dart';
 import 'models.dart';
 import 'quote_engine.dart';
+import 'quote_provider_port.dart';
 
 typedef EngineStatusListener = void Function(EngineStatus status);
 
 class EngineController extends ChangeNotifier {
-  EngineController({QuoteEngine? quotes, TransactionEngine? transactionEngine})
+  EngineController({QuoteEnginePort? quotes, TransactionEngine? transactionEngine})
       : _quotes = quotes ?? QuoteEngine(),
         _transactionEngine = transactionEngine;
 
-  final QuoteEngine _quotes;
+  final QuoteEnginePort _quotes;
   final TransactionEngine? _transactionEngine;
   static const _uuid = Uuid();
+  static const _historyKey = 'auvora_engine_receipts_v1';
 
   final List<EngineReceipt> history = [];
   final Set<String> _consumedQuoteIds = {};
@@ -25,8 +31,38 @@ class EngineController extends ChangeNotifier {
   String? errorMessage;
   AssetQuote? activeQuote;
   EngineStatus? liveStatus;
+  bool _historyLoaded = false;
 
-  QuoteEngine get quotes => _quotes;
+  QuoteEnginePort get quotes => _quotes;
+
+  Future<void> loadHistory() async {
+    if (_historyLoaded) return;
+    _historyLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_historyKey);
+      if (raw == null || raw.isEmpty) return;
+      final list = jsonDecode(raw) as List<dynamic>;
+      history
+        ..clear()
+        ..addAll(
+          list.map((e) => EngineReceipt.fromJson(Map<String, dynamic>.from(e as Map))),
+        );
+      notifyListeners();
+    } catch (_) {
+      // Corrupt cache — keep in-memory empty.
+    }
+  }
+
+  Future<void> _persistHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = jsonEncode(history.take(40).map((e) => e.toJson()).toList());
+      await prefs.setString(_historyKey, payload);
+    } catch (_) {
+      // Ignore persistence failures (private mode / quota).
+    }
+  }
 
   Future<AssetQuote> refresh(Future<AssetQuote> Function() builder) async {
     busy = true;
@@ -127,6 +163,7 @@ class EngineController extends ChangeNotifier {
             : 'Secured on this device. You can review this anytime in Activity.',
       );
       history.insert(0, receipt);
+      await _persistHistory();
       notifyListeners();
 
       await Future<void>.delayed(const Duration(milliseconds: 450));
@@ -187,6 +224,7 @@ class EngineController extends ChangeNotifier {
       history.insert(0, r);
     }
     notifyListeners();
+    unawaited(_persistHistory());
   }
 
   Future<void> _applyPortfolio(

@@ -10,7 +10,7 @@ import {
   pushTradingActivity,
 } from '../../lib/trading/activity';
 import { tradingFetch } from '../../lib/trading/api';
-import { ENGINE_STATUS_STAGES } from '../../lib/trading/quote-engine';
+import { ENGINE_STATUS_STAGES, STAKE_POOLS, quoteStake } from '../../lib/trading/quote-engine';
 import {
   CxActions,
   CxProgressTrack,
@@ -113,6 +113,17 @@ export function StakingExperience(): ReactElement {
   }, [positions]);
 
   const validator = validators.find((v) => v.id === selectedValidator) ?? validators[0]!;
+
+  const stakePreview = useMemo(() => {
+    const pool =
+      STAKE_POOLS.find((p) => p.network.toLowerCase().includes(validator.network.toLowerCase())) ??
+      STAKE_POOLS[0]!;
+    try {
+      return quoteStake({ pool, amount: Number(amount) || pool.minStake });
+    } catch {
+      return null;
+    }
+  }, [amount, validator.network]);
 
   function begin(next: 'stake' | 'unstake' | 'claim'): void {
     setAction(next);
@@ -258,7 +269,10 @@ export function StakingExperience(): ReactElement {
                     error,
                     'Live staking service unavailable — showing curated dashboard data.',
                   )
-                : 'Showing curated dashboard data until staking positions connect.'}
+                : 'Rewards and APY are estimates only — never guaranteed. Lock periods may apply when you unstake.'}
+            </p>
+            <p className="cx-meta">
+              Preview pools: {STAKE_POOLS.map((p) => `${p.asset} ~${p.apyPct}%`).join(' · ')}
             </p>
           </div>
         ) : null}
@@ -433,7 +447,20 @@ export function StakingExperience(): ReactElement {
                   <dt>Amount</dt>
                   <dd>{amount}</dd>
                 </div>
+                {stakePreview ? (
+                  <div>
+                    <dt>Preview quote</dt>
+                    <dd>
+                      ~{stakePreview.apyPct?.toFixed(1)}% APY · lock ~{stakePreview.lockDays}d ·
+                      fees ${stakePreview.fees.reduce((s, f) => s + f.fiatUsd, 0).toFixed(2)}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
+            </div>
+            <div className="cx-alert cx-alert--info">
+              Staking may lock your assets for a period. Estimated rewards are educational only —
+              never guaranteed.
             </div>
             <QuoteChecklist
               feesChecked={feesOk}

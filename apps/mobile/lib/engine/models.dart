@@ -28,6 +28,20 @@ class FeeLine {
   final double amount;
   final String asset;
   final double fiatUsd;
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'amount': amount,
+        'asset': asset,
+        'fiatUsd': fiatUsd,
+      };
+
+  static FeeLine fromJson(Map<String, dynamic> j) => FeeLine(
+        label: j['label'] as String? ?? '',
+        amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        asset: j['asset'] as String? ?? 'USD',
+        fiatUsd: (j['fiatUsd'] as num?)?.toDouble() ?? 0,
+      );
 }
 
 @immutable
@@ -169,6 +183,51 @@ class EngineReceipt {
   String get providerLabel {
     if (isPreview || provider == null || provider == 'auvora-sim') return 'Auvora preview';
     return provider!;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'op': op.name,
+        'status': status.name,
+        'fromAsset': fromAsset,
+        'toAsset': toAsset,
+        'fromAmount': fromAmount,
+        'toAmount': toAmount,
+        'fees': fees.map((f) => f.toJson()).toList(),
+        'networkLabel': networkLabel,
+        'createdAt': createdAt.toIso8601String(),
+        'reference': reference,
+        'provider': provider,
+        'note': note,
+        'isPreview': isPreview,
+      };
+
+  static EngineReceipt fromJson(Map<String, dynamic> j) {
+    return EngineReceipt(
+      id: j['id'] as String? ?? '',
+      op: EngineOp.values.firstWhere(
+        (o) => o.name == j['op'],
+        orElse: () => EngineOp.swap,
+      ),
+      status: EngineStatus.values.firstWhere(
+        (s) => s.name == j['status'],
+        orElse: () => EngineStatus.completed,
+      ),
+      fromAsset: j['fromAsset'] as String? ?? '',
+      toAsset: j['toAsset'] as String? ?? '',
+      fromAmount: (j['fromAmount'] as num?)?.toDouble() ?? 0,
+      toAmount: (j['toAmount'] as num?)?.toDouble() ?? 0,
+      fees: [
+        for (final f in (j['fees'] as List<dynamic>? ?? const []))
+          FeeLine.fromJson(Map<String, dynamic>.from(f as Map)),
+      ],
+      networkLabel: j['networkLabel'] as String? ?? '',
+      createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+      reference: j['reference'] as String? ?? '',
+      provider: j['provider'] as String?,
+      note: j['note'] as String?,
+      isPreview: j['isPreview'] as bool? ?? true,
+    );
   }
 }
 

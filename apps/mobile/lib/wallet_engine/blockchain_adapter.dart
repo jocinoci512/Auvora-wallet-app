@@ -88,17 +88,11 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
     required String mnemonic,
     required int accountIndex,
   }) {
-    final path = switch (chain) {
-      ChainId.bitcoin => "m/84'/0'/$accountIndex'/0/0",
-      ChainId.ethereum => "m/44'/60'/$accountIndex'/0/0",
-      ChainId.solana => "m/44'/501'/$accountIndex'/0'",
-      ChainId.bnbSmartChain => "m/44'/60'/$accountIndex'/0/1",
-      ChainId.tron => "m/44'/195'/$accountIndex'/0/0",
-      ChainId.polygon => "m/44'/966'/$accountIndex'/0/0",
-    };
+    final network = chain.assetNetwork;
+    final path = WalletCrypto.derivationPathFor(network, accountIndex: accountIndex);
     return WalletAddressRecord(
       chain: chain,
-      address: WalletCrypto.deriveAddressForNetwork(mnemonic, chain.assetNetwork, index: accountIndex),
+      address: WalletCrypto.deriveAddressForNetwork(mnemonic, network, index: accountIndex),
       derivationPath: path,
       label: '${chain.label} main',
     );

@@ -403,7 +403,10 @@ function AssetCard({
         </span>
       </button>
       <div className="pf-card__body" hidden={!open}>
-        <p className="cx-meta">24h path is illustrative for preview — not a live price chart.</p>
+        <p className="cx-meta">
+          Companion preview holdings — not live vault balances. Use the mobile app for on-device
+          keys. 24h path is illustrative until market history is wired end-to-end.
+        </p>
         <LineChart
           data={[
             { v: holding.valueUsd * (1 - holding.change24hPct / 200) },

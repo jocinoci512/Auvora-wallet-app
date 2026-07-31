@@ -13,7 +13,11 @@ class ActivityTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<PortfolioController>();
-    final txs = p.snapshot?.transactions ?? const <PortfolioTx>[];
+    final txs = p.filteredTransactions;
+    final hasFilters = p.activityQuery.isNotEmpty ||
+        p.activityStatusFilter != null ||
+        p.activityTypeFilter != null ||
+        p.activityNetworkFilter != null;
 
     return CustomScrollView(
       slivers: [
@@ -25,7 +29,72 @@ class ActivityTab extends StatelessWidget {
               children: [
                 Text('Activity', style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 4),
-                const Text('Every move with clear status and network.', style: TextStyle(color: AetherColors.muted)),
+                const Text(
+                  'Search, filter, and open any transfer for status and explorer details.',
+                  style: TextStyle(color: AetherColors.muted),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  onChanged: p.setActivityQuery,
+                  decoration: InputDecoration(
+                    hintText: 'Search hash, asset, address…',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: hasFilters
+                        ? IconButton(
+                            tooltip: 'Clear filters',
+                            onPressed: p.clearActivityFilters,
+                            icon: const Icon(Icons.close_rounded),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        label: const Text('All'),
+                        selected: p.activityStatusFilter == null,
+                        onSelected: (_) => p.setActivityStatusFilter(null),
+                      ),
+                      const SizedBox(width: 8),
+                      for (final status in [TxStatus.pending, TxStatus.completed, TxStatus.failed, TxStatus.cancelled]) ...[
+                        FilterChip(
+                          label: Text(status.label),
+                          selected: p.activityStatusFilter == status,
+                          onSelected: (selected) =>
+                              p.setActivityStatusFilter(selected ? status : null),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final type in [
+                        TxType.send,
+                        TxType.receive,
+                        TxType.swap,
+                        TxType.buy,
+                        TxType.sell,
+                        TxType.bridge,
+                        TxType.stake,
+                      ]) ...[
+                        FilterChip(
+                          label: Text(type.label),
+                          selected: p.activityTypeFilter == type,
+                          onSelected: (selected) => p.setActivityTypeFilter(selected ? type : null),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -38,13 +107,25 @@ class ActivityTab extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('No transactions yet', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Receive or buy crypto to start your history. Pending, completed, failed, and cancelled states will appear here.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AetherColors.muted, height: 1.45),
+                  Text(
+                    hasFilters ? 'No matching activity' : 'No transactions yet',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    hasFilters
+                        ? 'Try a different search or clear filters to see your full history.'
+                        : 'Receive or buy crypto to start your history. Pending, completed, failed, and cancelled states will appear here.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AetherColors.muted, height: 1.45),
+                  ),
+                  if (hasFilters) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: p.clearActivityFilters,
+                      child: const Text('Clear filters'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -83,7 +164,11 @@ class ActivityTab extends StatelessWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   '${tx.status.label} · ${tx.network.label}',
-                                  style: TextStyle(color: statusColor(tx.status), fontSize: 12, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: statusColor(tx.status),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 Text(
                                   relativeTime(tx.timestamp),
@@ -98,10 +183,16 @@ class ActivityTab extends StatelessWidget {
                               Text(
                                 p.hideBalances
                                     ? '••••'
-                                    : '${inbound ? '+' : '−'}${tx.amount} ${tx.assetTicker}',
-                                style: const TextStyle(fontWeight: FontWeight.w700),
+                                    : '${inbound ? '+' : '−'}${p.crypto(tx.amount, tx.assetTicker)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: inbound ? const Color(0xFF067647) : null,
+                                ),
                               ),
-                              Text(p.money(tx.amountUsd), style: const TextStyle(color: AetherColors.muted, fontSize: 12)),
+                              Text(
+                                p.money(tx.amountUsd),
+                                style: const TextStyle(color: AetherColors.muted, fontSize: 12),
+                              ),
                             ],
                           ),
                         ],

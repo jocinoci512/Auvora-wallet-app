@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
+import '../wallet_engine/key_store.dart';
 import '../wallet_engine/models.dart';
 import '../wallet_engine/wallet_engine.dart';
 
@@ -332,6 +333,7 @@ class WalletController extends ChangeNotifier {
       unlocked = true;
       stage = AppStage.dashboard;
       _engine?.setSessionUnlocked(true);
+      await _afterUnlock();
     } finally {
       busy = false;
       notifyListeners();
@@ -354,11 +356,72 @@ class WalletController extends ChangeNotifier {
       errorMessage = null;
       stage = AppStage.dashboard;
       _engine?.setSessionUnlocked(true);
+      await _afterUnlock();
       notifyListeners();
     } catch (_) {
       errorMessage = 'Biometrics unavailable. Use your passcode.';
       notifyListeners();
     }
+  }
+
+  Future<void> _afterUnlock() async {
+    final engine = _engine;
+    if (engine == null) return;
+    wallet = await engine.rebuildAddressesIfNeeded() ?? engine.wallet;
+    address = wallet?.primaryAddress() ?? address;
+    if (address != null) {
+      await _secure.write(key: _kAddress, value: address!);
+    }
+  }
+
+  List<VaultIndexEntry> get vaults => _engine?.vaults ?? const [];
+
+  bool get needsBackupReminder => _engine?.needsBackupReminder ?? false;
+
+  Future<bool> switchWallet(String walletId) async {
+    final engine = _engine;
+    if (engine == null || !unlocked) return false;
+    final ok = await engine.switchWallet(walletId);
+    if (!ok) return false;
+    wallet = await engine.rebuildAddressesIfNeeded() ?? engine.wallet;
+    address = wallet?.primaryAddress();
+    if (address != null) await _secure.write(key: _kAddress, value: address!);
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> renameWallet(String walletId, String name) async {
+    final engine = _engine;
+    if (engine == null || !unlocked) return;
+    await engine.renameWallet(walletId, name);
+    wallet = engine.wallet;
+    notifyListeners();
+  }
+
+  Future<bool> deleteWallet(String walletId) async {
+    final engine = _engine;
+    if (engine == null || !unlocked) return false;
+    final ok = await engine.deleteWallet(walletId);
+    if (!ok) return false;
+    wallet = engine.wallet;
+    address = wallet?.primaryAddress();
+    if (address != null) await _secure.write(key: _kAddress, value: address!);
+    notifyListeners();
+    return true;
+  }
+
+  Future<WalletVaultRecord?> createAdditionalWallet({
+    required String mnemonic,
+    String? name,
+  }) async {
+    final engine = _engine;
+    if (engine == null || !unlocked) return null;
+    final created = await engine.createWallet(mnemonic: mnemonic, name: name, backupConfirmed: false);
+    wallet = created;
+    address = created.primaryAddress();
+    if (address != null) await _secure.write(key: _kAddress, value: address!);
+    notifyListeners();
+    return created;
   }
 
   Future<bool> canCheckBiometrics() async {

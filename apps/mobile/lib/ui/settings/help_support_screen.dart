@@ -30,7 +30,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     ),
     (
       'Can I add another wallet?',
-      'Not yet. Account shows a preview list for switch/archive labels. A full multi-wallet vault comes later.'
+      'Yes. Account settings let you create, import, rename, switch, and delete encrypted vaults on this device.'
     ),
     (
       'Are price alerts live?',

@@ -57,7 +57,42 @@ void main() {
   });
 
   test('fee estimate includes arrival label', () {
-    const asset = AssetHolding(
+    final asset = _eth();
+    final fee = estimateFee(asset: asset, amount: 0.1);
+    expect(fee.arrivalLabel, isNotEmpty);
+    expect(fee.feeCrypto, greaterThan(0));
+  });
+
+  test('fee speed changes estimate', () {
+    final asset = _eth();
+    final slow = estimateFee(asset: asset, amount: 0.1, speed: FeeSpeed.slow);
+    final fast = estimateFee(asset: asset, amount: 0.1, speed: FeeSpeed.fast);
+    expect(fast.feeCrypto, greaterThan(slow.feeCrypto));
+    expect(fast.speed, FeeSpeed.fast);
+  });
+
+  test('buildPaymentUri embeds amount', () {
+    final uri = buildPaymentUri(
+      network: AssetNetwork.ethereum,
+      address: '0x8f3a21b9c4d5e6f708192a3b4c5d6e7f8191c2d3',
+      amount: 1.25,
+    );
+    expect(uri, startsWith('ethereum:'));
+    expect(uri, contains('amount='));
+  });
+
+  test('domain-like names are accepted as validation shell on EVM', () {
+    final v = AddressValidation.validate('vitalik.eth', expected: AssetNetwork.ethereum);
+    expect(v.ok, isTrue);
+  });
+
+  test('domain-like names rejected on bitcoin', () {
+    final v = AddressValidation.validate('vitalik.eth', expected: AssetNetwork.bitcoin);
+    expect(v.ok, isFalse);
+  });
+}
+
+AssetHolding _eth() => const AssetHolding(
       id: 'eth',
       name: 'Ethereum',
       ticker: 'ETH',
@@ -67,8 +102,3 @@ void main() {
       change24hPct: 1,
       color: 0xFF000000,
     );
-    final fee = estimateFee(asset: asset, amount: 0.1);
-    expect(fee.arrivalLabel, isNotEmpty);
-    expect(fee.feeCrypto, greaterThan(0));
-  });
-}

@@ -14,7 +14,8 @@ void main() {
   test('Closed Beta kill switches stay off for funding and broadcast', () {
     expect(ReleaseConfig.liveBroadcastEnabled, isFalse);
     expect(ReleaseConfig.allowFundingAddresses, isFalse);
-    expect(ReleaseConfig.derivationMode, DerivationMode.previewSha);
+    expect(ReleaseConfig.derivationMode, DerivationMode.bip32Partial);
+    expect(ReleaseConfig.usesHdDerivation, isTrue);
   });
 
   test('PIN compare is constant-time for equal-length strings', () {

@@ -15,6 +15,8 @@ class SavedContact {
     required this.network,
     this.favorite = false,
     this.lastUsed,
+    this.walletLabel,
+    this.notes,
   });
 
   final String id;
@@ -23,6 +25,8 @@ class SavedContact {
   final AssetNetwork network;
   final bool favorite;
   final DateTime? lastUsed;
+  final String? walletLabel;
+  final String? notes;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -42,6 +46,8 @@ class SavedContact {
     AssetNetwork? network,
     bool? favorite,
     DateTime? lastUsed,
+    String? walletLabel,
+    String? notes,
   }) {
     return SavedContact(
       id: id,
@@ -50,6 +56,8 @@ class SavedContact {
       network: network ?? this.network,
       favorite: favorite ?? this.favorite,
       lastUsed: lastUsed ?? this.lastUsed,
+      walletLabel: walletLabel ?? this.walletLabel,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -60,6 +68,8 @@ class SavedContact {
         'network': network.name,
         'favorite': favorite,
         'lastUsed': lastUsed?.toIso8601String(),
+        'walletLabel': walletLabel,
+        'notes': notes,
       };
 
   static SavedContact fromJson(Map<String, dynamic> j) {
@@ -73,6 +83,8 @@ class SavedContact {
       ),
       favorite: j['favorite'] as bool? ?? false,
       lastUsed: j['lastUsed'] != null ? DateTime.tryParse(j['lastUsed'] as String) : null,
+      walletLabel: j['walletLabel'] as String?,
+      notes: j['notes'] as String?,
     );
   }
 }
@@ -121,6 +133,37 @@ class AddressBookStore extends ChangeNotifier {
     return recent.where((c) => c.network == network).toList();
   }
 
+  List<SavedContact> search(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
+      return [...contacts]..sort((a, b) {
+          if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
+          return a.name.compareTo(b.name);
+        });
+    }
+    return contacts.where((c) {
+      return c.name.toLowerCase().contains(q) ||
+          c.address.toLowerCase().contains(q) ||
+          c.network.label.toLowerCase().contains(q) ||
+          (c.walletLabel?.toLowerCase().contains(q) ?? false) ||
+          (c.notes?.toLowerCase().contains(q) ?? false);
+    }).toList();
+  }
+
+  /// Returns an existing contact when the same address+network is already saved.
+  SavedContact? findDuplicate({
+    required String address,
+    required AssetNetwork network,
+    String? excludingId,
+  }) {
+    final needle = address.trim().toLowerCase();
+    for (final c in contacts) {
+      if (excludingId != null && c.id == excludingId) continue;
+      if (c.network == network && c.address.toLowerCase() == needle) return c;
+    }
+    return null;
+  }
+
   Future<void> upsert(SavedContact contact) async {
     final i = contacts.indexWhere((c) => c.id == contact.id);
     if (i >= 0) {
@@ -136,12 +179,16 @@ class AddressBookStore extends ChangeNotifier {
     required String name,
     required String address,
     required AssetNetwork network,
+    String? walletLabel,
+    String? notes,
   }) async {
     final c = SavedContact(
       id: const Uuid().v4(),
       name: name.trim(),
       address: address.trim(),
       network: network,
+      walletLabel: walletLabel?.trim().isEmpty == true ? null : walletLabel?.trim(),
+      notes: notes?.trim().isEmpty == true ? null : notes?.trim(),
     );
     await upsert(c);
     return c;
