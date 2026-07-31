@@ -135,35 +135,40 @@ class _HomeShellState extends State<HomeShell> {
       ),
       bottomNavigationBar: wide
           ? null
-          : NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: openTab,
-              height: 64,
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              indicatorColor: AetherColors.lagoon.withValues(alpha: 0.12),
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded, color: AetherColors.lagoon),
-                  label: 'Home',
+          : DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  top: BorderSide(color: AetherColors.borderFor(context).withValues(alpha: 0.85)),
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.pie_chart_outline_rounded),
-                  selectedIcon: Icon(Icons.pie_chart_rounded, color: AetherColors.lagoon),
-                  label: 'Assets',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  selectedIcon: Icon(Icons.receipt_long_rounded, color: AetherColors.lagoon),
-                  label: 'Activity',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outline_rounded),
-                  selectedIcon: Icon(Icons.person_rounded, color: AetherColors.lagoon),
-                  label: 'More',
-                ),
-              ],
+              ),
+              child: NavigationBar(
+                selectedIndex: _index,
+                onDestinationSelected: openTab,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.pie_chart_outline_rounded),
+                    selectedIcon: Icon(Icons.pie_chart_rounded),
+                    label: 'Assets',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.receipt_long_outlined),
+                    selectedIcon: Icon(Icons.receipt_long_rounded),
+                    label: 'Activity',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.person_outline_rounded),
+                    selectedIcon: Icon(Icons.person_rounded),
+                    label: 'More',
+                  ),
+                ],
+              ),
             ),
     );
   }

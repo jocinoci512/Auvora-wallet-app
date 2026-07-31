@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/wallet_controller.dart';
+import '../theme/aether_theme.dart';
 import 'widgets/passcode_entry.dart';
 
 class UnlockScreen extends StatelessWidget {
@@ -10,33 +11,52 @@ class UnlockScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.watch<WalletController>();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
-          child: Column(
-            children: [
-              Text('Auvora', style: Theme.of(context).textTheme.headlineLarge),
-              const SizedBox(height: 8),
-              Text(
-                'Enter your passcode to continue',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 28),
-              Expanded(
-                child: PasscodeEntry(
-                  enabled: !c.busy,
-                  errorText: c.errorMessage,
-                  onCompleted: c.unlockWithPin,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? const [Color(0xFF0F1318), Color(0xFF141B21)]
+                : const [Color(0xFFF7FAFB), AetherColors.mist],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 36, 24, 20),
+            child: Column(
+              children: [
+                Text(
+                  'Auvora',
+                  style: theme.textTheme.headlineLarge?.copyWith(letterSpacing: -0.8),
                 ),
-              ),
-              if (c.biometricsEnabled)
-                TextButton.icon(
-                  onPressed: c.busy ? null : c.unlockWithBiometrics,
-                  icon: const Icon(Icons.fingerprint_rounded),
-                  label: const Text('Use biometrics'),
+                const SizedBox(height: 10),
+                Text(
+                  'Enter your passcode to continue',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: AetherColors.mutedFor(context),
+                  ),
                 ),
-            ],
+                const SizedBox(height: 32),
+                Expanded(
+                  child: PasscodeEntry(
+                    enabled: !c.busy,
+                    errorText: c.errorMessage,
+                    onCompleted: c.unlockWithPin,
+                  ),
+                ),
+                if (c.biometricsEnabled)
+                  TextButton.icon(
+                    onPressed: c.busy ? null : c.unlockWithBiometrics,
+                    icon: const Icon(Icons.fingerprint_rounded),
+                    label: const Text('Use biometrics'),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

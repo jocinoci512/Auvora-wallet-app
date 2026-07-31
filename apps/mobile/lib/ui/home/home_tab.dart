@@ -400,7 +400,7 @@ class _HomeHeader extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: secured ? const Color(0xFF067647) : AetherColors.muted,
+                          color: secured ? AetherColors.success : AetherColors.mutedFor(context),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -409,7 +409,7 @@ class _HomeHeader extends StatelessWidget {
                         secured
                             ? (wallet.biometricsEnabled ? 'Protected · biometrics' : 'Protected · passcode')
                             : 'Ready on this device',
-                        style: const TextStyle(color: AetherColors.muted, fontSize: 13),
+                        style: TextStyle(color: AetherColors.mutedFor(context), fontSize: 13),
                       ),
                     ],
                   ),
@@ -638,69 +638,107 @@ class _PortfolioHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final up = snap.change24hPct >= 0;
-    final changeColor = up ? const Color(0xFF067647) : AetherColors.danger;
+    final changeColor = up ? AetherColors.success : AetherColors.danger;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Semantics(
       label: portfolio.hideBalances
           ? 'Total portfolio hidden'
           : 'Total portfolio ${portfolio.money(snap.totalUsd)}, '
               '${up ? 'up' : 'down'} ${snap.change24hPct.abs().toStringAsFixed(2)} percent today',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Your money', style: TextStyle(color: AetherColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          AnimatedDefaultTextStyle(
-            duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.8,
-                  height: 1.05,
-                ),
-            child: Text(portfolio.money(snap.totalUsd)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF1C2730),
+                    AetherColors.surfaceDark,
+                  ]
+                : [
+                    Colors.white,
+                    const Color(0xFFF3F8F9),
+                  ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            portfolio.hideBalances
-                ? '•••• today'
-                : '${up ? '+' : ''}${snap.change24hPct.toStringAsFixed(2)}% · ${portfolio.money(snap.change24hUsd)} today',
-            style: TextStyle(color: changeColor, fontWeight: FontWeight.w600, fontSize: 14),
-          ),
-          const SizedBox(height: 18),
-          ExcludeSemantics(
-            child: TrendChart(values: snap.trend7d, height: 56, color: AetherColors.lagoonSoft),
-          ),
-          const SizedBox(height: 6),
-          const Text('Last 7 days', style: TextStyle(color: AetherColors.muted, fontSize: 12)),
-          const SizedBox(height: 16),
-          AllocationBar(assets: snap.assets),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 14,
-            runSpacing: 6,
+          border: Border.all(color: AetherColors.borderFor(context)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final a in snap.nonZero.take(4))
-                Text(
-                  snap.totalUsd <= 0
-                      ? a.ticker
-                      : '${a.ticker} ${(a.fiatValue / snap.totalUsd * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(fontSize: 12, color: AetherColors.muted, fontWeight: FontWeight.w600),
+              Text(
+                'Your money',
+                style: TextStyle(
+                  color: AetherColors.mutedFor(context),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
                 ),
+              ),
+              const SizedBox(height: 8),
+              AnimatedDefaultTextStyle(
+                duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                style: Theme.of(context).textTheme.displaySmall!.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1,
+                      height: 1.02,
+                    ),
+                child: Text(portfolio.money(snap.totalUsd)),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                portfolio.hideBalances
+                    ? '•••• today'
+                    : '${up ? '+' : ''}${snap.change24hPct.toStringAsFixed(2)}% · ${portfolio.money(snap.change24hUsd)} today',
+                style: TextStyle(color: changeColor, fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 18),
+              ExcludeSemantics(
+                child: TrendChart(values: snap.trend7d, height: 64, color: AetherColors.lagoonSoft),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Last 7 days',
+                style: TextStyle(color: AetherColors.mutedFor(context), fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              AllocationBar(assets: snap.assets),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 14,
+                runSpacing: 6,
+                children: [
+                  for (final a in snap.nonZero.take(4))
+                    Text(
+                      snap.totalUsd <= 0
+                          ? a.ticker
+                          : '${a.ticker} ${(a.fiatValue / snap.totalUsd * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AetherColors.mutedFor(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Updated ${relativeTime(snap.updatedAt)}',
+                style: TextStyle(color: AetherColors.mutedFor(context), fontSize: 12),
+              ),
+              if (snap.isPreview) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Preview balances · HD addresses active · funding receive still locked',
+                  style: TextStyle(color: AetherColors.mutedFor(context), fontSize: 12),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Updated ${relativeTime(snap.updatedAt)}',
-            style: const TextStyle(color: AetherColors.muted, fontSize: 12),
-          ),
-          if (snap.isPreview) ...[
-            const SizedBox(height: 8),
-            const Text(
-              'Preview balances · HD addresses active · funding receive still locked',
-              style: TextStyle(color: AetherColors.muted, fontSize: 12),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -846,10 +884,9 @@ class _ActionButton extends StatelessWidget {
       button: true,
       label: label,
       child: Material(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           onTap: () {
             if (label == 'Send') {
               Navigator.of(context).push(
@@ -874,16 +911,25 @@ class _ActionButton extends StatelessWidget {
           },
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AetherColors.border),
+              borderRadius: BorderRadius.circular(18),
+              color: Theme.of(context).colorScheme.surface,
+              border: Border.all(color: AetherColors.borderFor(context)),
             ),
             child: SizedBox(
-              height: 76,
+              height: 84,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, color: AetherColors.lagoon, size: 24),
-                  const SizedBox(height: 6),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AetherColors.softLagoon(context, alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: AetherColors.lagoon, size: 22),
+                  ),
+                  const SizedBox(height: 8),
                   Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 ],
               ),
@@ -933,42 +979,51 @@ class HomeAssetTile extends StatelessWidget {
           '${portfolio.money(asset.fiatValue)}',
       child: Material(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            child: Row(
-              children: [
-                AssetAvatar(asset: asset, size: 40),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AetherColors.borderFor(context).withValues(alpha: 0.9)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              child: Row(
+                children: [
+                  AssetAvatar(asset: asset, size: 40),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(asset.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(
+                          asset.ticker,
+                          style: TextStyle(color: AetherColors.mutedFor(context), fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(asset.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(asset.ticker, style: const TextStyle(color: AetherColors.muted, fontSize: 13)),
+                      Text(portfolio.money(asset.fiatValue), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        portfolio.hideBalances
+                            ? '••••'
+                            : '${portfolio.crypto(asset.balance, asset.ticker)} · ${up ? '+' : ''}${asset.change24hPct.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: up ? AetherColors.success : AetherColors.danger,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(portfolio.money(asset.fiatValue), style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(
-                      portfolio.hideBalances
-                          ? '••••'
-                          : '${portfolio.crypto(asset.balance, asset.ticker)} · ${up ? '+' : ''}${asset.change24hPct.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        color: up ? const Color(0xFF067647) : AetherColors.danger,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -992,41 +1047,47 @@ class HomeTxTile extends StatelessWidget {
       label: '${tx.type.label} ${tx.assetTicker}, ${tx.status.label}, ${relativeTime(tx.timestamp)}',
       child: Material(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: statusColor(tx.status).withValues(alpha: 0.12),
-                  child: Icon(typeIcon(tx.type), color: statusColor(tx.status), size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${tx.type.label} · ${tx.assetTicker}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(
-                        '${tx.status.label} · ${relativeTime(tx.timestamp)}',
-                        style: TextStyle(color: statusColor(tx.status), fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ],
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AetherColors.borderFor(context).withValues(alpha: 0.9)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: statusColor(tx.status).withValues(alpha: 0.12),
+                    child: Icon(typeIcon(tx.type), color: statusColor(tx.status), size: 20),
                   ),
-                ),
-                Text(
-                  portfolio.hideBalances
-                      ? '••••'
-                      : '${inbound ? '+' : '−'}${tx.amount} ${tx.assetTicker}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: inbound ? const Color(0xFF067647) : Theme.of(context).colorScheme.onSurface,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${tx.type.label} · ${tx.assetTicker}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(
+                          '${tx.status.label} · ${relativeTime(tx.timestamp)}',
+                          style: TextStyle(color: statusColor(tx.status), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    portfolio.hideBalances
+                        ? '••••'
+                        : '${inbound ? '+' : '−'}${tx.amount} ${tx.assetTicker}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: inbound ? AetherColors.success : Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

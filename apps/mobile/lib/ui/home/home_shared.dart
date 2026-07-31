@@ -98,13 +98,18 @@ class SoftBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = switch (tone) {
       BannerTone.info => AetherColors.lagoon.withValues(alpha: 0.08),
-      BannerTone.warn => const Color(0xFFB54708).withValues(alpha: 0.1),
+      BannerTone.warn => AetherColors.warn.withValues(alpha: 0.1),
       BannerTone.error => AetherColors.danger.withValues(alpha: 0.1),
     };
     final fg = switch (tone) {
       BannerTone.info => AetherColors.lagoon,
-      BannerTone.warn => const Color(0xFFB54708),
+      BannerTone.warn => AetherColors.warn,
       BannerTone.error => AetherColors.danger,
+    };
+    final icon = switch (tone) {
+      BannerTone.info => Icons.info_outline_rounded,
+      BannerTone.warn => Icons.warning_amber_rounded,
+      BannerTone.error => Icons.error_outline_rounded,
     };
     final roleLabel = switch (tone) {
       BannerTone.info => 'Status',
@@ -118,15 +123,19 @@ class SoftBanner extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: fg.withValues(alpha: 0.14)),
+        ),
         child: Row(
           children: [
-            Icon(Icons.info_outline_rounded, size: 18, color: fg),
+            Icon(icon, size: 18, color: fg),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(color: fg, height: 1.35, fontSize: 13),
+                style: TextStyle(color: fg, height: 1.35, fontSize: 13, fontWeight: FontWeight.w500),
               ),
             ),
             if (actionLabel != null && onAction != null)

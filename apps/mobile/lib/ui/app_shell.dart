@@ -159,7 +159,9 @@ class ScreenScaffold extends StatelessWidget {
                           label: 'Step ${c.onboardingStep} of ${c.onboardingStepCount}',
                           child: Text(
                             '${c.onboardingStep} / ${c.onboardingStepCount}',
-                            style: theme.textTheme.labelLarge?.copyWith(color: AetherColors.muted),
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: AetherColors.mutedFor(context),
+                            ),
                           ),
                         ),
                     ],
@@ -182,7 +184,10 @@ class ScreenScaffold extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       subtitle!,
-                      style: theme.textTheme.bodyLarge?.copyWith(color: AetherColors.muted, height: 1.45),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AetherColors.mutedFor(context),
+                        height: 1.45,
+                      ),
                     ),
                   ],
                   if (reassure != null) ...[
