@@ -926,7 +926,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
                 );
               }).toList()
             : snap.assets;
-        _portfolio.applyLocalSnapshot(assets: nextAssets, prependTx: tx);
+        await _portfolio.applyLocalSnapshot(assets: nextAssets, prependTx: tx);
       }
       await _book.rememberRecipient(address: _toCtrl.text.trim(), network: asset.network);
       HapticFeedback.mediumImpact();

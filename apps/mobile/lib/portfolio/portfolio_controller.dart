@@ -64,7 +64,17 @@ class PortfolioController extends ChangeNotifier {
       loading = true;
       notifyListeners();
     }
-    await refresh(address, soft: snapshot != null);
+    // Soft refresh must never stall first paint — hard timeout + keep cache.
+    try {
+      await refresh(address, soft: snapshot != null)
+          .timeout(const Duration(seconds: 20));
+    } catch (_) {
+      loading = false;
+      refreshing = false;
+      lastSyncError ??=
+          'Network sync timed out. Your wallet is available; balances may be cached.';
+      notifyListeners();
+    }
   }
 
   /// [soft] keeps existing holdings visible while a background sync runs.
@@ -75,8 +85,13 @@ class PortfolioController extends ChangeNotifier {
     refreshing = true;
     lastSyncError = null;
     notifyListeners();
+    final previous = snapshot;
     try {
-      snapshot = await _repo.load(walletAddress: address, empty: emptyMode);
+      final loaded = await _repo
+          .load(walletAddress: address, empty: emptyMode)
+          .timeout(const Duration(seconds: 18));
+      // Soft/resume sync must not drop on-device activity that adapters omit.
+      snapshot = mergeDeviceActivity(loaded, previous: previous);
       lastSyncError = null;
     } catch (_) {
       lastSyncError =
@@ -91,6 +106,23 @@ class PortfolioController extends ChangeNotifier {
       refreshing = false;
       notifyListeners();
     }
+  }
+
+  /// Unions [previous] device txs into [loaded] by id (loaded wins on collision).
+  static PortfolioSnapshot mergeDeviceActivity(
+    PortfolioSnapshot loaded, {
+    PortfolioSnapshot? previous,
+  }) {
+    if (previous == null || previous.transactions.isEmpty) return loaded;
+    final seen = {for (final t in loaded.transactions) t.id};
+    final extras = [
+      for (final t in previous.transactions)
+        if (!seen.contains(t.id)) t,
+    ];
+    if (extras.isEmpty) return loaded;
+    final merged = [...extras, ...loaded.transactions]
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return loaded.copyWith(transactions: merged);
   }
 
   Future<void> setHideBalances(bool value) async {
@@ -348,15 +380,17 @@ class PortfolioController extends ChangeNotifier {
       syncDelayed: snap.syncDelayed,
     );
     notifyListeners();
+    await _persistSnapshot();
 
     // Settle pending → completed after a short confirmation window.
     Future<void>.delayed(const Duration(seconds: 3), () {
+      // ignore: discarded_futures
       finalizeTxStatus(id, TxStatus.completed);
     });
     return tx;
   }
 
-  void finalizeTxStatus(String id, TxStatus status) {
+  Future<void> finalizeTxStatus(String id, TxStatus status) async {
     final snap = snapshot;
     if (snap == null) return;
     final txs = snap.transactions.map((t) {
@@ -392,28 +426,49 @@ class PortfolioController extends ChangeNotifier {
       syncDelayed: snap.syncDelayed,
     );
     notifyListeners();
+    await _persistSnapshot();
   }
 
-  void applyLocalSnapshot({
+  /// Records a device-originated tx immediately and persists so sync cannot wipe it.
+  Future<void> applyLocalSnapshot({
     required List<AssetHolding> assets,
     required PortfolioTx prependTx,
-  }) {
+  }) async {
+    final snap = snapshot;
+    if (snap == null) {
+      snapshot = PortfolioSnapshot(
+        assets: assets,
+        transactions: [prependTx],
+        contacts: const [],
+        trend7d: const [0, 0, 0, 0, 0, 0, 0],
+        change24hUsd: 0,
+        change24hPct: 0,
+        updatedAt: DateTime.now(),
+        isPreview: true,
+      );
+    } else {
+      snapshot = PortfolioSnapshot(
+        assets: assets,
+        transactions: [prependTx, ...snap.transactions],
+        contacts: snap.contacts,
+        trend7d: snap.trend7d,
+        change24hUsd: snap.change24hUsd,
+        change24hPct: snap.change24hPct,
+        updatedAt: DateTime.now(),
+        isPreview: snap.isPreview,
+        offline: snap.offline,
+        priceError: snap.priceError,
+        syncDelayed: snap.syncDelayed,
+      );
+    }
+    notifyListeners();
+    await _persistSnapshot();
+  }
+
+  Future<void> _persistSnapshot() async {
     final snap = snapshot;
     if (snap == null) return;
-    snapshot = PortfolioSnapshot(
-      assets: assets,
-      transactions: [prependTx, ...snap.transactions],
-      contacts: snap.contacts,
-      trend7d: snap.trend7d,
-      change24hUsd: snap.change24hUsd,
-      change24hPct: snap.change24hPct,
-      updatedAt: DateTime.now(),
-      isPreview: snap.isPreview,
-      offline: snap.offline,
-      priceError: snap.priceError,
-      syncDelayed: snap.syncDelayed,
-    );
-    notifyListeners();
+    await _repo.persist(snap);
   }
 
   List<Object> get searchResults {

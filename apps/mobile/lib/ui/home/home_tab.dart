@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../engine/models.dart';
 import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
+import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
-import '../../engine/models.dart';
 import '../asset_detail_screen.dart';
 import '../connections/connect_dapp_screen.dart';
 import '../engine/digital_asset_flow.dart';
@@ -156,6 +157,7 @@ class _MobileHome extends StatelessWidget {
           child: portfolio.isEmptyPortfolio
               ? _EmptyPortfolio(
                   address: wallet.address ?? '',
+                  fundingUnlocked: ReleaseConfig.allowFundingAddresses,
                   onReceive: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
                   ),
@@ -587,7 +589,7 @@ class _StatusStack extends StatelessWidget {
       children.add(
         SoftBanner(
           tone: BannerTone.warn,
-          message: '${snap!.cacheAgeLabel}. Refreshing live preview balances in the background.',
+          message: '${snap!.cacheAgeLabel}. Refreshing preview balances now — pull again if figures look stale.',
           actionLabel: 'Refresh',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
@@ -758,16 +760,26 @@ class _PortfolioHero extends StatelessWidget {
 class _EmptyPortfolio extends StatelessWidget {
   const _EmptyPortfolio({
     required this.address,
+    required this.fundingUnlocked,
     required this.onReceive,
     required this.onBuy,
   });
 
   final String address;
+  final bool fundingUnlocked;
   final VoidCallback onReceive;
   final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
+    final displayAddress = address.isEmpty
+        ? ''
+        : fundingUnlocked
+            ? (address.length > 14
+                ? '${address.substring(0, 8)}…${address.substring(address.length - 4)}'
+                : address)
+            : ReleaseConfig.redactAddress(address);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -775,20 +787,31 @@ class _EmptyPortfolio extends StatelessWidget {
         const SizedBox(height: 6),
         Text('\$0.00', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
-        Text('Add funds to get started', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          fundingUnlocked ? 'Add funds to get started' : 'Explore Version 1.0 Alpha',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 6),
-        const Text(
-          'Your keys are secured on this device. Receive crypto or buy to see your portfolio here.',
-          style: TextStyle(color: AetherColors.muted, height: 1.45),
+        Text(
+          fundingUnlocked
+              ? 'Your keys are secured on this device. Receive crypto or buy to see your portfolio here.'
+              : 'Your keys are secured on this device. Real funding receive is locked in Alpha — explore Buy (preview) or open Receive to see why QR/copy stay off.',
+          style: const TextStyle(color: AetherColors.muted, height: 1.45),
         ),
         const SizedBox(height: 18),
-        FilledButton(onPressed: onReceive, child: const Text('Receive crypto')),
-        const SizedBox(height: 10),
-        OutlinedButton(onPressed: onBuy, child: const Text('Buy')),
-        if (address.isNotEmpty) ...[
+        if (fundingUnlocked) ...[
+          FilledButton(onPressed: onReceive, child: const Text('Receive crypto')),
+          const SizedBox(height: 10),
+          OutlinedButton(onPressed: onBuy, child: const Text('Buy')),
+        ] else ...[
+          FilledButton(onPressed: onBuy, child: const Text('Buy (preview)')),
+          const SizedBox(height: 10),
+          OutlinedButton(onPressed: onReceive, child: const Text('Receive (locked)')),
+        ],
+        if (displayAddress.isNotEmpty) ...[
           const SizedBox(height: 14),
           Text(
-            address.length > 14 ? '${address.substring(0, 8)}…${address.substring(address.length - 4)}' : address,
+            displayAddress,
             style: const TextStyle(color: AetherColors.muted, fontSize: 12),
           ),
         ],
@@ -800,6 +823,7 @@ class _EmptyPortfolio extends StatelessWidget {
 class _PrimaryActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final fundingUnlocked = ReleaseConfig.allowFundingAddresses;
     const primary = [
       (Icons.arrow_upward_rounded, 'Send'),
       (Icons.arrow_downward_rounded, 'Receive'),
@@ -809,6 +833,14 @@ class _PrimaryActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (!fundingUnlocked) ...[
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message:
+                'Receive funding is locked in Alpha. Send/Swap/Buy run as on-device previews — live broadcast stays off.',
+          ),
+          const SizedBox(height: 10),
+        ],
         Row(
           children: [
             for (var i = 0; i < primary.length; i++) ...[
@@ -851,6 +883,11 @@ class _PrimaryActions extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('More actions', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const SoftBanner(
+                message:
+                    'Sell, Bridge, Stake, and Connect run as on-device previews in Version 1.0 Alpha — no live broadcast or partner rails.',
+              ),
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -868,8 +905,8 @@ class _PrimaryActions extends StatelessWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(a.$1, color: AetherColors.lagoon),
-                  title: Text(a.$2),
-                  subtitle: Text('${a.$2} with clear fees and status tracking'),
+                  title: Text('${a.$2} (preview)'),
+                  subtitle: Text('${a.$2} with clear fees and status tracking — preview only'),
                   onTap: () {
                     Navigator.pop(ctx);
                     openDigitalAssetFlow(context, a.$3);

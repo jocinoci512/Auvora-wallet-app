@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../reliability/cache_store.dart';
+import 'coincap_market_data_provider.dart';
 import 'coingecko_market_data_provider.dart';
 import 'market_data_provider.dart';
 import 'models.dart';
@@ -19,6 +20,7 @@ class PriceService {
         _providers = providers ??
             [
               CoinGeckoMarketDataProvider(),
+              CoinCapMarketDataProvider(),
               SeededMarketDataProvider(),
             ];
 
@@ -34,7 +36,8 @@ class PriceService {
 
   static const _kCache = 'auvora_price_cache_v1';
 
-  bool get usingLiveProvider => activeProviderId == 'coingecko';
+  bool get usingLiveProvider =>
+      activeProviderId != null && activeProviderId != 'seeded-offline';
 
   bool get cacheNeedsRefresh {
     if (_cache.isEmpty) return true;
@@ -93,7 +96,9 @@ class PriceService {
         activeProviderId = provider.id;
         lastRefreshError = null;
         lastSuccessfulRefreshAt = DateTime.now();
-        final seededFallback = provider.id == 'seeded-offline' && _providers.length > 1;
+        // Only mark seeded stale when live providers exist and we failed over to seed.
+        final seededFallback =
+            provider.id == 'seeded-offline' && _providers.any((p) => p.id != 'seeded-offline');
         for (final entry in quotes.entries) {
           final prior = _cache[entry.key];
           _cache[entry.key] = PricePoint(
@@ -104,8 +109,7 @@ class PriceService {
                 ? entry.value.sparkline7d
                 : (prior?.sparkline7d ?? const [1, 1, 1, 1, 1, 1, 1]),
             updatedAt: entry.value.updatedAt,
-            // Seeded quotes after a live-provider miss should surface as stale.
-            stale: seededFallback,
+            stale: seededFallback || entry.value.stale,
             providerId: provider.id,
           );
         }

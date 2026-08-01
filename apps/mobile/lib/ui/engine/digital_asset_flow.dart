@@ -2,14 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../engine/engine_controller.dart';
 import '../../engine/models.dart';
+import '../../engine/onramp_config.dart';
 import '../../engine/quote_engine.dart';
 import '../../engine/quote_provider_port.dart';
 import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
+import '../../release/integration_config.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../../wallet_engine/network_manager.dart';
@@ -223,7 +226,7 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
               fiatUsd: amount,
               method: _pay,
               assetPriceUsd: _price(_to),
-              providerOverride: _buyProvider == 'auvora-sim' ? _buyProvider : 'auvora-sim',
+              providerOverride: _buyProvider,
             );
           case EngineOp.sell:
             return _engine.quotes.quoteSell(
@@ -347,6 +350,33 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
     }
     if (_insufficient) {
       setState(() => _error = 'There isn’t enough balance for this amount.');
+      return;
+    }
+
+    // Partner hosted checkout — opens external browser; no local preview settlement.
+    if (widget.op == EngineOp.buy &&
+        _buyProvider != 'auvora-sim' &&
+        IntegrationConfig.partnerCheckoutReady(_buyProvider)) {
+      final uri = OnRampConfig.widgetUri(
+        code: _buyProvider,
+        assetSymbol: quote.toAsset,
+        fiatUsd: quote.fromAmount,
+      );
+      if (uri == null) {
+        setState(() => _error = 'Partner checkout URL could not be built. Check API key configuration.');
+        return;
+      }
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      if (!launched) {
+        setState(() => _error = 'Could not open partner checkout. Try again or use Auvora preview.');
+        return;
+      }
+      setState(() {
+        _error = null;
+        _phase = _Phase.done;
+        _liveStatus = EngineStatus.completed;
+      });
       return;
     }
 
@@ -614,12 +644,18 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
           const SizedBox(height: 12),
           Text('Payment partner', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
-          const SoftBanner(
-            tone: BannerTone.warn,
-            message:
-                'Live buy partners (MoonPay, Ramp, Transak) are not operational in Version 1.0 Alpha. '
-                'Use Auvora preview to explore the flow — real purchases unlock after partner rails connect.',
-          ),
+          if (IntegrationConfig.onRampPartnerCheckoutEnabled)
+            const SoftBanner(
+              tone: BannerTone.warn,
+              message:
+                  'Partner hosted checkout is enabled for keys present in this build. '
+                  'KYC and card settlement happen on the partner site — Auvora does not charge cards itself.',
+            )
+          else
+            const SoftBanner(
+              tone: BannerTone.warn,
+              message: OnRampConfig.partnerOnboardingMessage,
+            ),
           const SizedBox(height: 8),
           if (_buyOffers.isEmpty)
             const Text(
@@ -669,11 +705,20 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
                                       ),
                                       if (!offer.available)
                                         const Text(
-                                          'Coming soon',
+                                          'Partner onboarding',
                                           style: TextStyle(
                                             fontSize: 11,
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: FontWeight.w700,
                                             color: AetherColors.muted,
+                                          ),
+                                        )
+                                      else if (offer.externalCheckout)
+                                        const Text(
+                                          'External checkout',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AetherColors.lagoon,
                                           ),
                                         ),
                                     ],
@@ -687,6 +732,8 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
                                       'You get ~${fmtEngineAmount(offer.youReceive)} $_to',
                                       if (!offer.available)
                                         offer.unavailableReason ?? 'Unavailable in Alpha',
+                                      if (offer.externalCheckout)
+                                        'Opens partner site — settlement & KYC handled by ${offer.label}.',
                                     ].join(' · '),
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -704,12 +751,12 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
                   ),
                 ),
               ),
-          if (_buyProvider != 'auvora-sim') ...[
+          if (_buyProvider != 'auvora-sim' &&
+              !IntegrationConfig.partnerCheckoutReady(_buyProvider)) ...[
             const SizedBox(height: 8),
-            const SoftBanner(
+            SoftBanner(
               tone: BannerTone.warn,
-              message:
-                  'This partner is not connected in Alpha. Switch back to Auvora preview to continue exploring.',
+              message: OnRampConfig.unavailableReason(_buyProvider),
             ),
           ],
         ];

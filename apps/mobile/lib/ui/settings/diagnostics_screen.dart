@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../release/integration_config.dart';
 import '../../theme/aether_theme.dart';
 import '../../wallet_engine/models.dart';
 import '../../wallet_engine/network_manager.dart';
 import '../../wallet_engine/sync_coordinator.dart';
 import '../../wallet_engine/sync_engine.dart';
+import '../home/home_shared.dart';
 
 /// Developer / support diagnostics — no keys, seeds, or PINs.
 class DiagnosticsScreen extends StatefulWidget {
@@ -81,6 +83,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             'Developer and support only. Counters stay on this device. Keys and recovery phrases are never exported.',
             style: TextStyle(color: AetherColors.muted, height: 1.45),
           ),
+          const SizedBox(height: 12),
+          const SoftBanner(
+            message:
+                'OS background sync (WorkManager) is not wired in Version 1.0 Alpha. '
+                'Refresh runs on app resume (connectivity probe first), reconnect, pull-to-refresh, '
+                'pending-tx foreground polls, and periodic health checks. Device-local activity is persisted and merged on sync.',
+          ),
           if (_toast != null) ...[
             const SizedBox(height: 12),
             Text(_toast!, style: const TextStyle(color: AetherColors.lagoon)),
@@ -106,6 +115,16 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           _tile('Coalesced syncs', '${coordinator.coalescedCount}'),
           _tile('Offline queue drained', '${coordinator.offlineQueueDrained}'),
           _tile('RPC failovers / timeouts', '${network.failoverAttempts} / ${network.timeoutEvents}'),
+          _tile(
+            'RPC health probes',
+            IntegrationConfig.rpcHealthProbeEnabled ? 'enabled (public/configured URLs)' : 'disabled',
+          ),
+          _tile(
+            'Integrations readiness',
+            IntegrationConfig.readinessSummary().entries
+                .map((e) => '${e.key}:${e.value}')
+                .join(' · '),
+          ),
           if (_cacheSizes.isNotEmpty)
             _tile(
               'Cache namespaces',

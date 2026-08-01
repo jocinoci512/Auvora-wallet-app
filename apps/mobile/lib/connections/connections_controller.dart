@@ -361,7 +361,15 @@ class ConnectionsController extends ChangeNotifier {
       return sessions.firstWhere((s) => s.id == sessionId);
     }
     // Local preview sessions restore from persistence; live providers may re-validate.
-    final snapshot = await walletConnect.restoreSession(sessionId);
+    // Hard timeout — optional WC must never block dashboard / reconnect UI.
+    WalletConnectSessionSnapshot? snapshot;
+    try {
+      snapshot = await walletConnect
+          .restoreSession(sessionId)
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      snapshot = null;
+    }
     final now = DateTime.now();
     if (snapshot != null && snapshot.status == WalletConnectSessionStatus.expired) {
       final expired = current.copyWith(

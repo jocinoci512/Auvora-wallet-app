@@ -8,11 +8,20 @@ import 'package:auvora_wallet/wallet_engine/key_store.dart';
 import 'package:auvora_wallet/wallet_engine/models.dart';
 import 'package:auvora_wallet/wallet_engine/network_manager.dart';
 import 'package:auvora_wallet/wallet_engine/price_service.dart';
+import 'package:auvora_wallet/wallet_engine/rpc_endpoints.dart';
+import 'package:auvora_wallet/wallet_engine/rpc_health_probe.dart';
 import 'package:auvora_wallet/wallet_engine/sync_engine.dart';
 import 'package:auvora_wallet/wallet_engine/wallet_engine.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _OfflineProbe extends RpcHealthProbe {
+  @override
+  Future<({String endpoint, int latencyMs, bool ok})> probe(ChainId chain) async {
+    return (endpoint: 'test-probe-skip', latencyMs: 0, ok: false);
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -147,6 +156,13 @@ void main() {
     expect(await queue.peek(), isEmpty);
   });
 
+  test('NetworkManager exposes real public RPC URL pools', () {
+    final urls = RpcEndpoints.urlsFor(ChainId.ethereum);
+    expect(urls, isNotEmpty);
+    expect(urls.first, contains('https://'));
+    expect(RpcEndpoints.displayLabel(urls.first), isNotEmpty);
+  });
+
   test('NetworkManager forceOffline marks endpoints offline', () async {
     final layer = BlockchainLayer(
       adapters: [
@@ -157,7 +173,8 @@ void main() {
         ),
       ],
     );
-    final network = NetworkManager(blockchainLayer: layer)..forceOffline = true;
+    final network = NetworkManager(blockchainLayer: layer, healthProbe: _OfflineProbe())
+      ..forceOffline = true;
     await network.refresh();
     expect(network.offline, isTrue);
     expect(network.allStatuses.single.state, EndpointState.offline);
@@ -181,7 +198,8 @@ void main() {
         ),
       ],
     );
-    final network = NetworkManager(blockchainLayer: layer)..forceOffline = false;
+    final network = NetworkManager(blockchainLayer: layer, healthProbe: _OfflineProbe())
+      ..forceOffline = false;
 
     final engine = WalletEngine(
       keyStore: SecureKeyStore(),

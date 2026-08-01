@@ -12,6 +12,8 @@ export const ReleaseConfig = {
   privacyPolicyUrl: 'https://wallet.auvora.app/legal/privacy',
   termsOfServiceUrl: 'https://wallet.auvora.app/legal/terms',
   supportEmail: 'alpha@auvora.app',
+  /** See docs/API_AND_INTEGRATIONS_GUIDE.md for mobile dart-define counterparts. */
+  integrationsGuidePath: '/docs/API_AND_INTEGRATIONS_GUIDE.md',
 } as const;
 
 export const isAlpha = ReleaseConfig.releaseChannel === 'alpha';

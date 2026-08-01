@@ -169,7 +169,20 @@ class SyncCoordinator extends ChangeNotifier with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       resumeRefreshCount += 1;
-      requestRefresh(reason: 'resume', debounce: const Duration(milliseconds: 200));
+      // Refresh connectivity first so reconnect/offline banners stay accurate.
+      // Hard timeout — never leave resume stuck waiting on RPC/Alchemy.
+      // ignore: discarded_futures
+      () async {
+        try {
+          await _networkManager.refresh().timeout(const Duration(seconds: 12));
+          requestRefresh(reason: 'resume', debounce: const Duration(milliseconds: 200));
+        } catch (_) {
+          requestRefresh(
+            reason: 'resume-degraded',
+            debounce: const Duration(milliseconds: 200),
+          );
+        }
+      }();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       pauseCancelCount += 1;
       _debounce?.cancel();

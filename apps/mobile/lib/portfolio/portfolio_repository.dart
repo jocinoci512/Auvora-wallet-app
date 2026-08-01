@@ -15,6 +15,13 @@ class PortfolioRepository {
 
   SyncEngine? get syncEngine => _syncEngine;
 
+  /// Persists an in-memory portfolio (including device-local activity) to cache.
+  Future<void> persist(PortfolioSnapshot snapshot) async {
+    final sync = _syncEngine;
+    if (sync == null) return;
+    await sync.persistPortfolio(snapshot);
+  }
+
   Future<PortfolioSnapshot?> loadCached() async {
     final sync = _syncEngine;
     if (sync == null) return null;

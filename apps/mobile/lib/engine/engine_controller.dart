@@ -289,7 +289,7 @@ class EngineController extends ChangeNotifier {
       note: quote.isPreview ? 'Preview · ${quote.routeSummary ?? quote.op.label}' : quote.routeSummary,
     );
 
-    portfolio.applyLocalSnapshot(
+    await portfolio.applyLocalSnapshot(
       assets: assets,
       prependTx: tx,
     );

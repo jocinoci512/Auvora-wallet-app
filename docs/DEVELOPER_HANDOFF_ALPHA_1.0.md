@@ -70,17 +70,19 @@ Suggested drop folder (local, not committed): `dist/alpha-1.0.0/`
 
 ## Docs map
 
-| Doc                                                                    | Why                              |
-| ---------------------------------------------------------------------- | -------------------------------- |
-| [`MASTER_BUILD_PROMPT_10_REPORT.md`](MASTER_BUILD_PROMPT_10_REPORT.md) | Executive Prompt 10 verification |
-| [`ALPHA_1.0_RELEASE_NOTES.md`](ALPHA_1.0_RELEASE_NOTES.md)             | Tester notes                     |
-| [`ALPHA_1.0_LAUNCH_CHECKLIST.md`](ALPHA_1.0_LAUNCH_CHECKLIST.md)       | Go / no-go                       |
-| [`STORE_READINESS_ALPHA_1.0.md`](STORE_READINESS_ALPHA_1.0.md)         | Store metadata gaps              |
-| [`TESTING_GUIDE_ALPHA_1.0.md`](TESTING_GUIDE_ALPHA_1.0.md)             | Automate + UAT                   |
-| [`CHANGELOG_ALPHA_1.0.md`](CHANGELOG_ALPHA_1.0.md)                     | Delta log                        |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md)                                   | Platform architecture            |
-| [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md)                         | Env / secrets                    |
-| [`SECURITY_GUIDE.md`](SECURITY_GUIDE.md)                               | Security posture                 |
+| Doc                                                                      | Why                                |
+| ------------------------------------------------------------------------ | ---------------------------------- |
+| [`MASTER_BUILD_PROMPT_10_REPORT.md`](MASTER_BUILD_PROMPT_10_REPORT.md)   | Executive Prompt 10 verification   |
+| [`ALPHA_1.0_RELEASE_NOTES.md`](ALPHA_1.0_RELEASE_NOTES.md)               | Tester notes                       |
+| [`ALPHA_1.0_LAUNCH_CHECKLIST.md`](ALPHA_1.0_LAUNCH_CHECKLIST.md)         | Go / no-go                         |
+| [`STORE_READINESS_ALPHA_1.0.md`](STORE_READINESS_ALPHA_1.0.md)           | Store metadata gaps                |
+| [`TESTING_GUIDE_ALPHA_1.0.md`](TESTING_GUIDE_ALPHA_1.0.md)               | Automate + UAT                     |
+| [`CHANGELOG_ALPHA_1.0.md`](CHANGELOG_ALPHA_1.0.md)                       | Delta log                          |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md)                                     | Platform architecture              |
+| [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md)                           | Env / secrets                      |
+| [`API_AND_INTEGRATIONS_GUIDE.md`](API_AND_INTEGRATIONS_GUIDE.md)         | Mobile APIs, dart-define, partners |
+| [`API_INTEGRATIONS_SPRINT_REPORT.md`](API_INTEGRATIONS_SPRINT_REPORT.md) | Closed Beta API readiness evidence |
+| [`SECURITY_GUIDE.md`](SECURITY_GUIDE.md)                                 | Security posture                   |
 
 ---
 

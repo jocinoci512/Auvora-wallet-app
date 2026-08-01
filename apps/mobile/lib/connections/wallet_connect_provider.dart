@@ -5,6 +5,7 @@
 /// Permission Center, approval sheets, or signing UI.
 library;
 
+import '../release/integration_config.dart';
 import 'models.dart';
 
 class WalletConnectProposal {
@@ -85,6 +86,9 @@ abstract class WalletConnectProviderPort {
   /// True when this provider talks to a live relay (never claim this for preview).
   bool get isLiveRelay;
 
+  /// Reown / WalletConnect Cloud project id when compiled in (may be empty).
+  String get projectId;
+
   Future<WalletConnectProposal> createProposal({
     required List<String> networks,
     required List<DappPermissionCode> permissions,
@@ -130,15 +134,21 @@ class DeepLinkValidation {
 }
 
 /// Local preview provider — WalletConnect-shaped payloads without a live relay.
+///
+/// Compile `--dart-define=WC_PROJECT_ID=...` from https://cloud.reown.com so
+/// Closed Beta builds carry the project id; live relay still requires the Reown SDK.
 class PreviewWalletConnectProvider implements WalletConnectProviderPort {
   PreviewWalletConnectProvider({
     Duration proposalTtl = const Duration(minutes: 5),
     Duration sessionTtl = const Duration(days: 7),
+    String? projectId,
   })  : _proposalTtl = proposalTtl,
-        _sessionTtl = sessionTtl;
+        _sessionTtl = sessionTtl,
+        _projectId = projectId ?? IntegrationConfig.wcProjectId;
 
   final Duration _proposalTtl;
   final Duration _sessionTtl;
+  final String _projectId;
   final Map<String, WalletConnectProposal> _proposals = {};
   final Map<String, WalletConnectSessionSnapshot> _sessions = {};
 
@@ -146,13 +156,18 @@ class PreviewWalletConnectProvider implements WalletConnectProviderPort {
   String get code => 'walletconnect_preview';
 
   @override
-  String get name => 'WalletConnect (preview)';
+  String get name => _projectId.isEmpty
+      ? 'WalletConnect (preview)'
+      : 'WalletConnect (project configured · relay pending SDK)';
 
   @override
   String get protocolVersion => '2';
 
   @override
   bool get isLiveRelay => false;
+
+  @override
+  String get projectId => _projectId;
 
   @override
   DeepLinkValidation validateInboundUri(String raw) {

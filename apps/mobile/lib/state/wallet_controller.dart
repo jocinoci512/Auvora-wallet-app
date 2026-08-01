@@ -103,6 +103,23 @@ class WalletController extends ChangeNotifier {
 
   Future<void> bootstrap({bool systemReduceMotion = false}) async {
     final started = DateTime.now();
+    try {
+      await _bootstrapBody(systemReduceMotion: systemReduceMotion)
+          .timeout(const Duration(seconds: 12));
+    } catch (_) {
+      // Secure storage / engine hiccup must never leave splash forever.
+      if (stage == AppStage.splash) {
+        stage = AppStage.welcome;
+        errorMessage =
+            'Couldn’t finish wallet restore quickly. You can continue — your keys stay on device.';
+      }
+      coldStartMs ??= DateTime.now().difference(started).inMilliseconds;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _bootstrapBody({required bool systemReduceMotion}) async {
+    final started = DateTime.now();
     final engine = _engine;
     final prefs = await SharedPreferences.getInstance();
     onboardingComplete = prefs.getBool(_kOnboarded) ?? false;
@@ -350,7 +367,8 @@ class WalletController extends ChangeNotifier {
     try {
       final available = await canCheckBiometrics();
       if (!available) {
-        errorMessage = 'Biometrics aren’t available on this device. Use your passcode.';
+        errorMessage =
+            'Biometrics aren’t enrolled on this device anymore. Use your passcode, or re-enable biometrics in Security after adding a fingerprint or face unlock.';
         return;
       }
       final ok = await _localAuth.authenticate(

@@ -2,20 +2,20 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../release/integration_config.dart';
 import 'models.dart';
 import 'market_data_provider.dart';
 
 /// CoinGecko simple price + market_chart provider. Fails soft on network errors.
 ///
 /// Optional compile-time key (never commit secrets):
-/// `--dart-define=COINGECKO_API_KEY=...`
+/// `--dart-define=COINGECKO_API_KEY=...` → [IntegrationConfig.coinGeckoApiKey]
 class CoinGeckoMarketDataProvider implements MarketDataProvider {
   CoinGeckoMarketDataProvider({
     http.Client? client,
     String? apiKey,
   })  : _client = client ?? http.Client(),
-        _apiKey = apiKey ??
-            const String.fromEnvironment('COINGECKO_API_KEY', defaultValue: '');
+        _apiKey = apiKey ?? IntegrationConfig.coinGeckoApiKey;
 
   final http.Client _client;
   final String _apiKey;

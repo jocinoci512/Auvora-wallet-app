@@ -1,4 +1,8 @@
+import 'integration_config.dart';
+
 /// Version 1.0 Alpha / release gates. Flip kill switches only after security sign-off.
+///
+/// Secrets and partner keys live in [IntegrationConfig] (`--dart-define`), never here.
 abstract final class ReleaseConfig {
   static const String releaseChannel = 'alpha';
   static const String marketingVersion = '1.0.0-alpha.1';
@@ -29,9 +33,13 @@ abstract final class ReleaseConfig {
   static const bool offlineQueueEnabled = true;
   static const bool aggressiveCachePurge = false;
 
-  /// Live CoinGecko quotes are attempted without a committed API key.
-  /// Optional: `--dart-define=COINGECKO_API_KEY=...` for higher rate limits.
+  /// Live CoinGecko → CoinCap → seeded quotes (no committed API key required).
+  /// Optional keys: see [IntegrationConfig] / `docs/API_AND_INTEGRATIONS_GUIDE.md`.
   static const bool liveMarketPricesEnabled = true;
+
+  /// Public RPC tip probes for diagnostics (not live broadcast).
+  /// Override with `--dart-define=RPC_HEALTH_PROBE_ENABLED=false` if needed.
+  static bool get rpcHealthProbeEnabled => IntegrationConfig.rpcHealthProbeEnabled;
 
   /// Public URLs for store / About (hosted companion or marketing site).
   static const String websiteUrl = 'https://wallet.auvora.app';

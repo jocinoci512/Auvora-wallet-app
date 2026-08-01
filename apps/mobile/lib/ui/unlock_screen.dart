@@ -12,8 +12,20 @@ class UnlockScreen extends StatefulWidget {
   State<UnlockScreen> createState() => _UnlockScreenState();
 }
 
-class _UnlockScreenState extends State<UnlockScreen> {
+class _UnlockScreenState extends State<UnlockScreen> with WidgetsBindingObserver {
   bool _autoPrompted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -24,12 +36,24 @@ class _UnlockScreenState extends State<UnlockScreen> {
     _autoPrompted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final wallet = context.read<WalletController>();
-      if (wallet.biometricsEnabled && !wallet.unlocked && !wallet.busy) {
-        // ignore: discarded_futures
-        wallet.unlockWithBiometrics();
-      }
+      _promptBiometrics();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    final c = context.read<WalletController>();
+    if (!c.biometricsEnabled || c.unlocked || c.busy) return;
+    // Re-prompt after returning from background / system biometric settings.
+    _promptBiometrics();
+  }
+
+  void _promptBiometrics() {
+    final wallet = context.read<WalletController>();
+    if (!wallet.biometricsEnabled || wallet.unlocked || wallet.busy) return;
+    // ignore: discarded_futures
+    wallet.unlockWithBiometrics();
   }
 
   @override

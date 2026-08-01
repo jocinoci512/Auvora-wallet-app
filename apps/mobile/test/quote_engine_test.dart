@@ -39,6 +39,14 @@ void main() {
     expect(offers.length, greaterThanOrEqualTo(3));
     expect(offers.any((o) => o.code == 'auvora-sim' && o.available), isTrue);
     expect(offers.any((o) => o.code == 'moonpay' && !o.available), isTrue);
+    expect(offers.any((o) => o.code == 'ramp' && !o.available), isTrue);
+    expect(offers.any((o) => o.code == 'transak' && !o.available), isTrue);
+    final locked = offers.where((o) => !o.available);
+    expect(locked.every((o) => (o.unavailableReason ?? '').isNotEmpty), isTrue);
+    expect(
+      locked.any((o) => (o.unavailableReason ?? '').toLowerCase().contains('partner')),
+      isTrue,
+    );
     // Sorted best receive first.
     for (var i = 1; i < offers.length; i++) {
       expect(offers[i - 1].youReceive, greaterThanOrEqualTo(offers[i].youReceive));

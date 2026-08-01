@@ -241,10 +241,11 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
   @override
   Future<EndpointHealth> ping() async {
     // Preview adapters stay healthy so Alpha sync UX isn't polluted by random
-    // simulated degradation. Real RPC latency lands with live broadcast.
+    // simulated degradation. Real tip latency is measured by NetworkManager's
+    // RpcHealthProbe against [RpcEndpoints] when probes are enabled.
     return EndpointHealth(
       chain: chain,
-      endpoint: '$providerCode.${chain.key}.preview',
+      endpoint: '$providerCode.${chain.key}',
       latencyMs: 95,
       state: EndpointState.healthy,
       lastCheckedAt: DateTime.now(),

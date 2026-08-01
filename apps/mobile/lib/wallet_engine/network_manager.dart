@@ -4,22 +4,33 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../reliability/retry.dart';
+import '../release/integration_config.dart';
 import 'blockchain_adapter.dart';
 import 'models.dart';
+import 'rpc_endpoints.dart';
+import 'rpc_health_probe.dart';
 
-/// Preview / Closed Beta RPC health with labeled primary→backup failover.
+/// Closed Beta RPC health with labeled primary→backup failover.
 ///
-/// Real multi-URL RPC pools land when live broadcast is enabled; until then
-/// adapters report simulated endpoints and NetworkManager tracks failover attempts.
+/// Endpoint pools come from [RpcEndpoints] (public defaults + dart-define /
+/// Alchemy overrides). When [IntegrationConfig.rpcHealthProbeEnabled] is true,
+/// NetworkManager probes real tip/RPC URLs for latency. Live broadcast remains
+/// gated separately by [ReleaseConfig.liveBroadcastEnabled].
 class NetworkManager extends ChangeNotifier {
   NetworkManager({
     required BlockchainLayer blockchainLayer,
     Map<ChainId, List<String>>? backupEndpoints,
+    RpcHealthProbe? healthProbe,
   })  : _blockchainLayer = blockchainLayer,
-        _backupEndpoints = backupEndpoints ?? _defaultBackups;
+        _backupEndpoints = backupEndpoints ??
+            {
+              for (final chain in ChainId.values) chain: RpcEndpoints.urlsFor(chain),
+            },
+        _healthProbe = healthProbe ?? RpcHealthProbe();
 
   final BlockchainLayer _blockchainLayer;
   final Map<ChainId, List<String>> _backupEndpoints;
+  final RpcHealthProbe _healthProbe;
   final Map<ChainId, EndpointHealth> _health = {};
 
   bool offline = false;
@@ -33,15 +44,6 @@ class NetworkManager extends ChangeNotifier {
 
   /// Test / diagnostics hook — when set, skips DNS lookup.
   bool? forceOffline;
-
-  static final Map<ChainId, List<String>> _defaultBackups = {
-    for (final chain in ChainId.values)
-      chain: [
-        '${chain.key}-rpc-primary.preview',
-        '${chain.key}-rpc-backup.preview',
-        '${chain.key}-rpc-fallback.preview',
-      ],
-  };
 
   EndpointHealth? statusFor(ChainId chain) => _health[chain];
 
@@ -61,9 +63,11 @@ class NetworkManager extends ChangeNotifier {
     if (offline) {
       for (final chain in _blockchainLayer.supportedChains) {
         final prior = _health[chain];
+        final urls = _backupEndpoints[chain] ?? RpcEndpoints.urlsFor(chain);
         _health[chain] = EndpointHealth(
           chain: chain,
-          endpoint: prior?.endpoint ?? 'offline',
+          endpoint: prior?.endpoint ??
+              (urls.isEmpty ? 'offline' : RpcEndpoints.displayLabel(urls.first)),
           latencyMs: 0,
           state: EndpointState.offline,
           lastCheckedAt: now,
@@ -76,19 +80,64 @@ class NetworkManager extends ChangeNotifier {
     }
 
     lastOnlineAt = now;
-    for (final adapter in _blockchainLayer.adapters) {
-      _health[adapter.chain] = await _pingWithBackup(adapter);
+    // Probe chains in parallel with a hard ceiling so one slow RPC cannot hang
+    // portfolio refresh / home restore indefinitely.
+    final adapters = _blockchainLayer.adapters.toList(growable: false);
+    try {
+      final results = await Future.wait([
+        for (final adapter in adapters) _pingWithBackup(adapter),
+      ]).timeout(const Duration(seconds: 12));
+      for (var i = 0; i < adapters.length; i++) {
+        _health[adapters[i].chain] = results[i];
+      }
+    } on TimeoutException {
+      timeoutEvents += 1;
+      for (final adapter in adapters) {
+        if (_health.containsKey(adapter.chain)) continue;
+        final urls = _backupEndpoints[adapter.chain] ?? RpcEndpoints.urlsFor(adapter.chain);
+        _health[adapter.chain] = EndpointHealth(
+          chain: adapter.chain,
+          endpoint: urls.isEmpty
+              ? 'refresh-timeout'
+              : '${RpcEndpoints.displayLabel(urls.first)} (timeout)',
+          latencyMs: 0,
+          state: EndpointState.degraded,
+          lastCheckedAt: DateTime.now(),
+          failoverCount: 1,
+        );
+      }
     }
     lastRefreshAt = now;
     notifyListeners();
   }
 
   Future<EndpointHealth> _pingWithBackup(BlockchainAdapter adapter) async {
-    final labels = _backupEndpoints[adapter.chain] ??
-        ['${adapter.providerCode}-primary', '${adapter.providerCode}-backup'];
+    final labels = _backupEndpoints[adapter.chain] ?? RpcEndpoints.urlsFor(adapter.chain);
     var failovers = 0;
-    Object? lastError;
 
+    if (IntegrationConfig.rpcHealthProbeEnabled && labels.isNotEmpty) {
+      try {
+        final probed = await _healthProbe.probe(adapter.chain);
+        if (probed.ok) {
+          return EndpointHealth(
+            chain: adapter.chain,
+            endpoint: probed.endpoint,
+            latencyMs: probed.latencyMs,
+            state: EndpointState.healthy,
+            lastCheckedAt: DateTime.now(),
+            failoverCount: 0,
+          );
+        }
+        // Probe miss — fall through to adapter ping + label failover accounting.
+        failoverAttempts += 1;
+        failovers = 1;
+      } catch (_) {
+        failoverAttempts += 1;
+        failovers = 1;
+      }
+    }
+
+    Object? lastError;
     for (var i = 0; i < labels.length; i++) {
       final label = labels[i];
       try {
@@ -102,10 +151,10 @@ class NetworkManager extends ChangeNotifier {
           failoverAttempts += 1;
           failovers = i;
         }
-        final degraded = health.state != EndpointState.healthy || i > 0;
+        final degraded = health.state != EndpointState.healthy || i > 0 || failovers > 0;
         return EndpointHealth(
           chain: health.chain,
-          endpoint: i == 0 ? health.endpoint : '$label (failover)',
+          endpoint: RpcEndpoints.displayLabel(label),
           latencyMs: health.latencyMs,
           state: degraded ? EndpointState.degraded : EndpointState.healthy,
           lastCheckedAt: DateTime.now(),
@@ -125,9 +174,10 @@ class NetworkManager extends ChangeNotifier {
 
     assert(lastError != null || failovers > 0);
     final now = DateTime.now();
+    final miss = labels.isEmpty ? 'rpc-miss' : '${RpcEndpoints.displayLabel(labels.last)}-miss';
     return EndpointHealth(
       chain: adapter.chain,
-      endpoint: '${labels.last}-miss',
+      endpoint: miss,
       latencyMs: 0,
       state: EndpointState.degraded,
       lastCheckedAt: now,
@@ -185,6 +235,8 @@ class NetworkManager extends ChangeNotifier {
         'pingRetries': pingRetries,
         'failoverAttempts': failoverAttempts,
         'timeoutEvents': timeoutEvents,
+        'rpcHealthProbeEnabled': IntegrationConfig.rpcHealthProbeEnabled,
+        'integrations': IntegrationConfig.readinessSummary(),
         'endpoints': [
           for (final item in allStatuses)
             {
@@ -193,6 +245,10 @@ class NetworkManager extends ChangeNotifier {
               'latencyMs': item.latencyMs,
               'state': item.state.name,
               'failoverCount': item.failoverCount,
+              'configuredUrls': [
+                for (final u in (_backupEndpoints[item.chain] ?? RpcEndpoints.urlsFor(item.chain)))
+                  RpcEndpoints.displayLabel(u),
+              ],
             },
         ],
       };

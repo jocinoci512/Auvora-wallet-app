@@ -38,9 +38,15 @@ class _HomeShellState extends State<HomeShell> {
       if (cold != null) {
         syncEngine.recordColdStart(Duration(milliseconds: cold));
       }
-      await portfolio.bootstrap(address);
-      // Wire lifecycle/reconnect listeners; bootstrap already ran the first refresh.
+      // Start lifecycle listeners immediately so the dashboard is interactive
+      // even if RPC/market probes are slow or Alchemy is unavailable.
       sync.start(address: address, initialRefresh: false);
+      try {
+        await portfolio.bootstrap(address).timeout(const Duration(seconds: 22));
+      } catch (_) {
+        // PortfolioController already surfaces lastSyncError + cache; never
+        // leave HomeShell waiting on external provider approval.
+      }
     });
   }
 

@@ -118,7 +118,13 @@ class SyncEngine {
       lastSyncReason: _lastSyncReason,
     );
 
-    await _networkManager.refresh();
+    // Network + market probes are best-effort. Never block wallet restore on
+    // Alchemy / public RPC / session Agent Wallet approval.
+    try {
+      await _networkManager.refresh().timeout(const Duration(seconds: 14));
+    } catch (_) {
+      // Keep prior health / offline flags; UI shows degraded banners.
+    }
     try {
       await withRetry(
         () => _priceService.bootstrap(),
@@ -126,7 +132,7 @@ class SyncEngine {
         onRetry: (_, __) {
           _diagnostics = _bumpRetries(_diagnostics);
         },
-      );
+      ).timeout(const Duration(seconds: 12));
     } catch (_) {
       await _priceService.markOfflineFallback();
     }
@@ -243,6 +249,14 @@ class SyncEngine {
     }
 
     _failedChains = List.unmodifiable(failed);
+    // Keep device-local activity (sends/swaps/buys) across successful syncs.
+    // Adapter history alone would otherwise wipe preview txs created on-device.
+    if (prior != null) {
+      final seen = {for (final t in txs) t.id};
+      for (final t in prior.transactions) {
+        if (seen.add(t.id)) txs.add(t);
+      }
+    }
     txs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final total = assets.fold<double>(0, (sum, item) => sum + item.fiatValue);
     final weighted = assets.fold<double>(0, (sum, item) => sum + (item.change24hPct * item.fiatValue));
@@ -374,6 +388,9 @@ class SyncEngine {
     };
   }
 
+  /// Public persist for device-local activity recorded outside a full sync.
+  Future<void> persistPortfolio(PortfolioSnapshot snap) => _persist(snap);
+
   Future<void> _persist(PortfolioSnapshot snap) async {
     _prefs ??= await SharedPreferences.getInstance();
     final map = _encodePortfolio(snap);
@@ -385,6 +402,7 @@ class SyncEngine {
       payload: map,
       ttl: const Duration(hours: 12),
     );
+    _setIdleStatus(snap);
   }
 
   void _setIdleStatus(PortfolioSnapshot snap, {WalletSyncState state = WalletSyncState.idle}) {

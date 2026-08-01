@@ -70,6 +70,7 @@ class BuyProviderOffer {
     this.kycRequired = true,
     this.available = true,
     this.unavailableReason,
+    this.externalCheckout = false,
   });
 
   final String code;
@@ -80,6 +81,9 @@ class BuyProviderOffer {
   final bool kycRequired;
   final bool available;
   final String? unavailableReason;
+
+  /// True when ops enabled partner hosted widget via dart-define.
+  final bool externalCheckout;
 
   double get youReceive => quote.toAmount;
   double get totalFeesUsd => quote.totalFeesUsd;

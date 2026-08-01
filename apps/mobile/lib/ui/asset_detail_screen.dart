@@ -223,8 +223,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           SoftBanner(
             tone: BannerTone.warn,
             message: ReleaseConfig.usesHdDerivation
-                ? 'Balances may still be preview-synced. HD addresses are active; funding receive stays locked until Version 1.0 Alpha sign-off.'
-                : 'Prices and balances in this build are a local preview until chain sync and market data are connected.',
+                ? 'Balances use preview chain sync. Market prices refresh when CoinGecko is reachable. HD addresses are active; funding receive stays locked until Version 1.0 Alpha sign-off.'
+                : 'Balances in this build are a local preview until chain sync connects. Market prices refresh when available.',
           ),
         ],
       ),

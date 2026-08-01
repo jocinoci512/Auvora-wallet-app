@@ -1,7 +1,9 @@
 import 'package:uuid/uuid.dart';
 
 import '../portfolio/models.dart';
+import '../release/integration_config.dart';
 import 'models.dart';
+import 'onramp_config.dart';
 import 'quote_provider_port.dart';
 
 /// Local quote simulator — provider-swappable surface until live rails connect.
@@ -107,8 +109,9 @@ class QuoteEngine implements QuoteEnginePort {
   }) async {
     final offers = <BuyProviderOffer>[];
     for (final meta in FiatProviderCatalog.offers) {
-      // Live partners stay unavailable until rails connect — preview still comparable.
-      final liveLocked = meta.code != 'auvora-sim';
+      final isPreview = meta.code == 'auvora-sim';
+      final checkoutReady = !isPreview && IntegrationConfig.partnerCheckoutReady(meta.code);
+      final available = isPreview || checkoutReady;
       final q = await quoteBuy(
         asset: asset,
         network: network,
@@ -125,10 +128,9 @@ class QuoteEngine implements QuoteEnginePort {
           processingLabel: meta.processingLabel,
           methodsLabel: meta.methodsLabel,
           kycRequired: meta.kycRequired,
-          available: !liveLocked,
-          unavailableReason: liveLocked
-              ? 'Coming soon after Alpha — live on-ramp partners are not connected yet.'
-              : null,
+          available: available,
+          unavailableReason: available ? null : OnRampConfig.unavailableReason(meta.code),
+          externalCheckout: checkoutReady,
         ),
       );
     }

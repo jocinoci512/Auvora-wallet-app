@@ -57,9 +57,14 @@ class AboutScreen extends StatelessWidget {
                   '• Version 1.0 Alpha packaging for internal testing\n'
                   '• Receive funding locked — QR/copy/share disabled\n'
                   '• Live broadcast kill switch off — preview sends only\n'
-                  '• Reliability, offline cache, and diagnostics from Prompts 8–9\n'
+                  '• Recovery: on-device activity persists across sync; CoinGecko→CoinCap→seeded price failover\n'
+                  '• Integrations: public RPC health probes; optional dart-define keys (never committed)\n'
+                  '• Stabilization: biometrics (FragmentActivity), HTTPS offline probe, stale price banners\n'
+                  '• Soft-gates: Buy partners / Sell / Bridge / Stake — partner onboarding or hosted checkout when enabled\n'
+                  '• Sync is foreground-only (resume, reconnect, pull-to-refresh) — no OS WorkManager yet\n'
+                  '• English only; other languages Coming Soon\n'
                   '• Store-ready Android icons, splash, deep links, HTTPS-only network config\n'
-                  '• Privacy / terms / support links wired for review',
+                  '• Security Center, Help, Diagnostics, Alpha feedback',
             ),
           ),
           ListTile(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
 import '../../privacy/screenshot_guard.dart';
+import '../../release/integration_config.dart';
 import '../../security/security_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../intelligence/guidance_settings_screen.dart';
@@ -67,11 +68,15 @@ class PrivacySettingsScreen extends StatelessWidget {
             value: false,
             onChanged: null,
           ),
-          const SwitchListTile(
+          SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Crash reporting'),
+            title: const Text('Crash reporting'),
             subtitle: Text(
-              'Not available in Version 1.0 Alpha. Preference is stored locally only — no crash SDK is wired, so nothing leaves this device.',
+              IntegrationConfig.sentryReady
+                  ? 'Sentry DSN is compiled in and SENTRY_ENABLED=true — wire the Sentry Flutter SDK in a follow-up build to activate.'
+                  : IntegrationConfig.hasSentryDsn
+                      ? 'Sentry DSN is present but SENTRY_ENABLED is false. No crash SDK is active; nothing leaves this device.'
+                      : 'Not available in Version 1.0 Alpha. Pass SENTRY_DSN + SENTRY_ENABLED via dart-define when ready — no crash SDK is wired yet.',
             ),
             value: false,
             onChanged: null,

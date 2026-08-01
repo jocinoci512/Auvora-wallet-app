@@ -261,6 +261,7 @@ void main() {
       await c.bootstrap();
       final provider = c.walletConnect;
       expect(provider.isLiveRelay, isFalse);
+      expect(provider.projectId, isA<String>());
 
       final bad = provider.validateInboundUri('auvora://unknown/path');
       expect(bad.valid, isFalse);
