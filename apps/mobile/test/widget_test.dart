@@ -1,8 +1,27 @@
 import 'package:auvora_wallet/crypto/wallet_crypto.dart';
 import 'package:auvora_wallet/main.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (call) async => null,
+    );
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      null,
+    );
+  });
+
   test('BIP39 generate and validate round-trip', () {
     final phrase = WalletCrypto.generateMnemonic();
     expect(WalletCrypto.words(phrase).length, 12);
@@ -34,7 +53,11 @@ void main() {
 
   testWidgets('Auvora app boots with brand mark', (tester) async {
     await tester.pumpWidget(const AuvoraApp());
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+    // Allow splash settle + WalletController bootstrap to finish so the
+    // restore timeout timer is cancelled (not left pending after dispose).
+    await tester.pump(const Duration(milliseconds: 200));
     expect(find.textContaining('Auvora'), findsWidgets);
+    await tester.pump(const Duration(seconds: 1));
   });
 }

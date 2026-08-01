@@ -100,7 +100,10 @@ void main() {
 
   testWidgets('app cold boot shows Auvora brand', (tester) async {
     await tester.pumpWidget(const AuvoraApp());
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.textContaining('Auvora'), findsWidgets);
+    // Drain any remaining bootstrap settle timers before dispose.
+    await tester.pump(const Duration(seconds: 1));
   });
 }
