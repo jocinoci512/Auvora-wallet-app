@@ -236,10 +236,25 @@ Before deleting or reformatting this PC:
 
 ## 12. Summary for migration
 
-| Item                                               | Status           |
-| -------------------------------------------------- | ---------------- |
-| GitHub is authoritative for **source**             | **YES**          |
-| Docs / tests / templates / scripts on GitHub       | **YES**          |
-| Secrets / env / Alchemy keys / APKs on GitHub      | **NO** (correct) |
-| Uncommitted work left behind                       | **NONE**         |
-| Safe to delete local project without extra backups | **NO**           |
+| Item                                               | Status                                          |
+| -------------------------------------------------- | ----------------------------------------------- |
+| GitHub is authoritative for **source**             | **YES**                                         |
+| Docs / tests / templates / scripts on GitHub       | **YES**                                         |
+| Secrets / env / Alchemy keys / APKs on GitHub      | **NO** (correct)                                |
+| Uncommitted work left behind                       | **NONE**                                        |
+| Safe to delete local project without extra backups | **NO** until the §13 pack is copied off this PC |
+
+---
+
+## 13. Offline local-only backup pack (nothing left behind)
+
+Created on this machine so GitHub-excluded material is gathered in one place:
+
+| Artifact      | Path                                                                                          |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| Backup folder | `D:\auvora-migration-backup\auvora-local-only-20260801-152526\`                               |
+| Zip for USB   | `D:\auvora-migration-backup\auvora-local-only-20260801-152526.zip` (~222 MB unpacked content) |
+
+**Included:** root `.env`, `apps/web/.env.local`, Alchemy CLI config + wallet key files, Android `local.properties` + debug keystore, latest session-reconnect APK + full APK inventory, `.local-data` (postgres/logs), restore README, git fingerprint (`304866d`).
+
+**Your action:** copy the **zip** to an encrypted USB/external drive and confirm it opens on the new PC. Then: `git clone` + restore from this zip = complete migration. Do **not** upload the zip to GitHub.
