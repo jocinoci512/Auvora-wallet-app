@@ -178,7 +178,10 @@ class SyncEngine {
     Map<String, PricePoint> quotes;
     try {
       quotes = await withRetry(
-        () => _priceService.quotes(_assetRegistry.all.map((item) => item.symbol)),
+        () => _priceService.quotes(
+          _assetRegistry.all.map((item) => item.symbol),
+          forceRefresh: true,
+        ),
         maxAttempts: 2,
         onRetry: (_, __) => retries += 1,
       );

@@ -141,18 +141,39 @@ class NetworkManager extends ChangeNotifier {
       // Browser navigator.onLine is owned by the web shell; treat as online here.
       return false;
     }
+    // Prefer DNS, then HTTPS probe — some Android carriers/VPNs break lookup alone.
+    if (await _dnsReachable('one.one.one.one')) return false;
+    if (await _dnsReachable('dns.google')) return false;
+    if (await _httpReachable()) return false;
+    return true;
+  }
+
+  Future<bool> _dnsReachable(String host) async {
     try {
-      final lookup = await InternetAddress.lookup('one.one.one.one').timeout(const Duration(seconds: 2));
-      if (lookup.isNotEmpty && lookup.first.rawAddress.isNotEmpty) return false;
-      final fallback = await InternetAddress.lookup('dns.google').timeout(const Duration(seconds: 2));
-      return fallback.isEmpty || fallback.first.rawAddress.isEmpty;
+      final lookup = await InternetAddress.lookup(host).timeout(const Duration(seconds: 2));
+      return lookup.isNotEmpty && lookup.first.rawAddress.isNotEmpty;
     } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _httpReachable() async {
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
       try {
-        final fallback = await InternetAddress.lookup('dns.google').timeout(const Duration(seconds: 2));
-        return fallback.isEmpty;
-      } catch (_) {
-        return true;
+        final request = await client
+            .getUrl(Uri.parse('https://connectivitycheck.gstatic.com/generate_204'))
+            .timeout(const Duration(seconds: 3));
+        request.followRedirects = false;
+        final response = await request.close().timeout(const Duration(seconds: 3));
+        await response.drain<void>();
+        // 204 is ideal; any response means the device has a working network path.
+        return response.statusCode >= 200 && response.statusCode < 500;
+      } finally {
+        client.close(force: true);
       }
+    } catch (_) {
+      return false;
     }
   }
 

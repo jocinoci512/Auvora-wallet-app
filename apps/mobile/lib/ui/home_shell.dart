@@ -39,7 +39,8 @@ class _HomeShellState extends State<HomeShell> {
         syncEngine.recordColdStart(Duration(milliseconds: cold));
       }
       await portfolio.bootstrap(address);
-      sync.start(address: address);
+      // Wire lifecycle/reconnect listeners; bootstrap already ran the first refresh.
+      sync.start(address: address, initialRefresh: false);
     });
   }
 

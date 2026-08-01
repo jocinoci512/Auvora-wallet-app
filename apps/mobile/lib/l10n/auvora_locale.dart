@@ -121,3 +121,6 @@ const kLanguagePackCatalog = <({String code, String label, bool ready})>[
   (code: 'pt', label: 'Português', ready: false),
   (code: 'ar', label: 'العربية (RTL-ready)', ready: false),
 ];
+
+/// True when [code] has a ready Alpha language pack (English only today).
+bool isLanguagePackReady(String code) => AuvoraStrings.supportedLanguageCodes.contains(code);

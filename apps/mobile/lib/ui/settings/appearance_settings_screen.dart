@@ -62,10 +62,10 @@ class AppearanceSettingsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Text('Language framework', style: Theme.of(context).textTheme.titleMedium),
+          Text('Language', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           const Text(
-            'UI strings are English in this release. Selecting a future language pack will not require redesigning screens.',
+            'English is the only active language in Version 1.0 Alpha. Other languages are listed as Coming Soon so partial localization never appears.',
             style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 8),
@@ -75,7 +75,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
             children: [
               for (final pack in kLanguagePackCatalog)
                 ChoiceChip(
-                  label: Text(pack.ready ? pack.label : '${pack.label} (soon)'),
+                  label: Text(pack.ready ? pack.label : '${pack.label} · Coming Soon'),
                   selected: prefs.locale.languageCode == pack.code,
                   onSelected: pack.ready
                       ? (_) => prefs.setLocale(prefs.locale.copyWith(languageCode: pack.code))

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
 import 'models.dart';
@@ -242,16 +240,15 @@ class PreviewBlockchainAdapter implements BlockchainAdapter {
 
   @override
   Future<EndpointHealth> ping() async {
-    final rng = Random(chain.index + 7);
-    final latency = 80 + rng.nextInt(110);
-    final state = latency > 160 ? EndpointState.degraded : EndpointState.healthy;
+    // Preview adapters stay healthy so Alpha sync UX isn't polluted by random
+    // simulated degradation. Real RPC latency lands with live broadcast.
     return EndpointHealth(
       chain: chain,
       endpoint: '$providerCode.${chain.key}.preview',
-      latencyMs: latency,
-      state: state,
+      latencyMs: 95,
+      state: EndpointState.healthy,
       lastCheckedAt: DateTime.now(),
-      failoverCount: state == EndpointState.degraded ? 1 : 0,
+      failoverCount: 0,
     );
   }
 }

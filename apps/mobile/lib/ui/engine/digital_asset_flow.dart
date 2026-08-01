@@ -210,14 +210,20 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
               method: _pay,
               assetPriceUsd: _price(_to),
             );
-            if (mounted) setState(() => _buyOffers = offers);
+            if (mounted) {
+              setState(() {
+                _buyOffers = offers;
+                final selected = offers.where((o) => o.code == _buyProvider && o.available);
+                if (selected.isEmpty) _buyProvider = 'auvora-sim';
+              });
+            }
             return _engine.quotes.quoteBuy(
               asset: _to,
               network: _holding(_to)?.network ?? _network,
               fiatUsd: amount,
               method: _pay,
               assetPriceUsd: _price(_to),
-              providerOverride: _buyProvider,
+              providerOverride: _buyProvider == 'auvora-sim' ? _buyProvider : 'auvora-sim',
             );
           case EngineOp.sell:
             return _engine.quotes.quoteSell(
@@ -608,6 +614,13 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
           const SizedBox(height: 12),
           Text('Payment partner', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message:
+                'Live buy partners (MoonPay, Ramp, Transak) are not operational in Version 1.0 Alpha. '
+                'Use Auvora preview to explore the flow — real purchases unlock after partner rails connect.',
+          ),
+          const SizedBox(height: 8),
           if (_buyOffers.isEmpty)
             const Text(
               'Update the amount to compare partners.',
@@ -628,38 +641,64 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
                             setState(() => _buyProvider = offer.code);
                             _refreshQuote();
                           },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            _buyProvider == offer.code
-                                ? Icons.radio_button_checked_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            color: offer.available ? AetherColors.lagoon : AetherColors.muted,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(offer.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  [
-                                    offer.methodsLabel,
-                                    offer.processingLabel,
-                                    'Fees ~\$${offer.totalFeesUsd.toStringAsFixed(2)}',
-                                    'You get ~${fmtEngineAmount(offer.youReceive)} $_to',
-                                    if (!offer.available) offer.unavailableReason ?? 'Unavailable',
-                                  ].join(' · '),
-                                  style: const TextStyle(fontSize: 12, height: 1.35, color: AetherColors.muted),
-                                ),
-                              ],
+                    child: Opacity(
+                      opacity: offer.available ? 1 : 0.72,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              _buyProvider == offer.code
+                                  ? Icons.radio_button_checked_rounded
+                                  : Icons.radio_button_unchecked_rounded,
+                              color: offer.available ? AetherColors.lagoon : AetherColors.muted,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          offer.label,
+                                          style: const TextStyle(fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                      if (!offer.available)
+                                        const Text(
+                                          'Coming soon',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AetherColors.muted,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    [
+                                      offer.methodsLabel,
+                                      offer.processingLabel,
+                                      'Fees ~\$${offer.totalFeesUsd.toStringAsFixed(2)}',
+                                      'You get ~${fmtEngineAmount(offer.youReceive)} $_to',
+                                      if (!offer.available)
+                                        offer.unavailableReason ?? 'Unavailable in Alpha',
+                                    ].join(' · '),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      height: 1.35,
+                                      color: AetherColors.muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -670,7 +709,7 @@ class _DigitalAssetFlowScreenState extends State<DigitalAssetFlowScreen> {
             const SoftBanner(
               tone: BannerTone.warn,
               message:
-                  'Identity verification (KYC) is required by most payment partners before live purchases. This Alpha build shows the hook only.',
+                  'This partner is not connected in Alpha. Switch back to Auvora preview to continue exploring.',
             ),
           ],
         ];

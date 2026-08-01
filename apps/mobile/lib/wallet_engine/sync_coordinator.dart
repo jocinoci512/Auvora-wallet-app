@@ -125,6 +125,9 @@ class SyncCoordinator extends ChangeNotifier with WidgetsBindingObserver {
       lastSyncDurationMs = DateTime.now().difference(started).inMilliseconds;
       _syncEngine.noteCoordinatorEvent(reason);
       _syncEngine.recordSyncDuration(Duration(milliseconds: lastSyncDurationMs!));
+      if (_portfolio.lastSyncError != null) {
+        _syncEngine.noteErrorEvent();
+      }
       if (!_networkManager.offline) {
         offlineQueueDrained += await _offlineQueue.drain(_handleQueuedAction);
       }

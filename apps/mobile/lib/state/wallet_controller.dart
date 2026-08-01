@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -342,14 +344,25 @@ class WalletController extends ChangeNotifier {
 
   Future<void> unlockWithBiometrics() async {
     if (!biometricsEnabled) return;
+    busy = true;
+    errorMessage = null;
+    notifyListeners();
     try {
+      final available = await canCheckBiometrics();
+      if (!available) {
+        errorMessage = 'Biometrics aren’t available on this device. Use your passcode.';
+        return;
+      }
       final ok = await _localAuth.authenticate(
         localizedReason: 'Unlock Auvora',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+          useErrorDialogs: true,
+        ),
       );
       if (!ok) {
         errorMessage = 'Biometrics weren’t confirmed. Use your passcode.';
-        notifyListeners();
         return;
       }
       unlocked = true;
@@ -357,9 +370,12 @@ class WalletController extends ChangeNotifier {
       stage = AppStage.dashboard;
       _engine?.setSessionUnlocked(true);
       await _afterUnlock();
-      notifyListeners();
+    } on PlatformException catch (e) {
+      errorMessage = _biometricErrorMessage(e);
     } catch (_) {
       errorMessage = 'Biometrics unavailable. Use your passcode.';
+    } finally {
+      busy = false;
       notifyListeners();
     }
   }
@@ -426,7 +442,12 @@ class WalletController extends ChangeNotifier {
 
   Future<bool> canCheckBiometrics() async {
     try {
-      return await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      final supported = await _localAuth.isDeviceSupported();
+      if (!supported) return false;
+      final canCheck = await _localAuth.canCheckBiometrics;
+      if (!canCheck) return false;
+      final enrolled = await _localAuth.getAvailableBiometrics();
+      return enrolled.isNotEmpty;
     } catch (_) {
       return false;
     }
@@ -434,12 +455,33 @@ class WalletController extends ChangeNotifier {
 
   Future<void> enableBiometrics(bool enabled) async {
     if (enabled) {
-      final ok = await _localAuth.authenticate(
-        localizedReason: 'Use biometrics to unlock Auvora on this device',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
-      );
-      if (!ok) {
-        errorMessage = 'Biometrics weren’t confirmed. You can turn them on later.';
+      try {
+        final available = await canCheckBiometrics();
+        if (!available) {
+          errorMessage =
+              'No enrolled biometrics found. Add a fingerprint or face unlock in system settings, then try again.';
+          notifyListeners();
+          return;
+        }
+        final ok = await _localAuth.authenticate(
+          localizedReason: 'Use biometrics to unlock Auvora on this device',
+          options: const AuthenticationOptions(
+            biometricOnly: true,
+            stickyAuth: true,
+            useErrorDialogs: true,
+          ),
+        );
+        if (!ok) {
+          errorMessage = 'Biometrics weren’t confirmed. You can turn them on later.';
+          notifyListeners();
+          return;
+        }
+      } on PlatformException catch (e) {
+        errorMessage = _biometricErrorMessage(e, enabling: true);
+        notifyListeners();
+        return;
+      } catch (_) {
+        errorMessage = 'Biometrics unavailable right now. Continue with passcode — you can enable later.';
         notifyListeners();
         return;
       }
@@ -455,6 +497,24 @@ class WalletController extends ChangeNotifier {
       stage = AppStage.permissions;
     }
     notifyListeners();
+  }
+
+  String _biometricErrorMessage(PlatformException e, {bool enabling = false}) {
+    final code = e.code;
+    if (code == auth_error.notAvailable || code == auth_error.notEnrolled) {
+      return enabling
+          ? 'Biometrics aren’t set up on this device. Continue with passcode — you can enable later.'
+          : 'Biometrics aren’t available. Use your passcode.';
+    }
+    if (code == auth_error.lockedOut || code == auth_error.permanentlyLockedOut) {
+      return 'Biometrics locked after too many attempts. Use your passcode.';
+    }
+    if (code == auth_error.passcodeNotSet) {
+      return 'Set a device screen lock in system settings before using biometrics.';
+    }
+    return enabling
+        ? 'Biometrics couldn’t be confirmed. Continue with passcode — you can enable later.'
+        : 'Biometrics unavailable. Use your passcode.';
   }
 
   Future<void> finishPermissions() async {
@@ -515,10 +575,19 @@ class WalletController extends ChangeNotifier {
   Future<bool> authenticateForTransfer({String reason = 'Confirm this transfer'}) async {
     if (!biometricsEnabled) return false;
     try {
+      final available = await canCheckBiometrics();
+      if (!available) return false;
       return await _localAuth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+          useErrorDialogs: true,
+        ),
       );
+    } on PlatformException {
+      // Caller falls through to PIN when biometrics fail/cancel/unavailable.
+      return false;
     } catch (_) {
       return false;
     }

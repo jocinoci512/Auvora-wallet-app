@@ -572,6 +572,16 @@ class _StatusStack extends StatelessWidget {
           onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
+    } else if (portfolio.lastSyncError != null) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
+      children.add(
+        SoftBanner(
+          tone: BannerTone.error,
+          message: portfolio.lastSyncError!,
+          actionLabel: 'Retry',
+          onAction: () => portfolio.refresh(address, soft: true),
+        ),
+      );
     } else if (snap?.fromCache == true) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
@@ -597,7 +607,8 @@ class _StatusStack extends StatelessWidget {
       children.add(
         SoftBanner(
           tone: BannerTone.error,
-          message: 'Prices are temporarily unavailable. Crypto balances still show.',
+          message:
+              'Live market prices are temporarily unavailable. Showing last known quotes — pull to refresh.',
           actionLabel: 'Retry',
           onAction: () => portfolio.refresh(address, soft: true),
         ),

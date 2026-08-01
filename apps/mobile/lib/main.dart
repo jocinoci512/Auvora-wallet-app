@@ -109,16 +109,21 @@ class AuvoraApp extends StatelessWidget {
           ),
         ),
         ProxyProvider5<WalletEngine, BlockchainLayer, AssetRegistry, PriceService, NetworkManager, SyncEngine>(
-          update: (_, walletEngine, blockchainLayer, assetRegistry, priceService, networkManager, __) => SyncEngine(
-            walletEngine: walletEngine,
-            blockchainLayer: blockchainLayer,
-            assetRegistry: assetRegistry,
-            priceService: priceService,
-            networkManager: networkManager,
-          ),
+          update: (_, walletEngine, blockchainLayer, assetRegistry, priceService, networkManager, previous) {
+            // Reuse the same SyncEngine so coordinator diagnostics and portfolio
+            // refreshes share one cache / status surface across rebuilds.
+            return previous ??
+                SyncEngine(
+                  walletEngine: walletEngine,
+                  blockchainLayer: blockchainLayer,
+                  assetRegistry: assetRegistry,
+                  priceService: priceService,
+                  networkManager: networkManager,
+                );
+          },
         ),
         ProxyProvider<SyncEngine, PortfolioRepository>(
-          update: (_, syncEngine, __) => PortfolioRepository(syncEngine: syncEngine),
+          update: (_, syncEngine, previous) => previous ?? PortfolioRepository(syncEngine: syncEngine),
         ),
         ChangeNotifierProxyProvider<WalletEngine, WalletController>(
           create: (_) => WalletController(),

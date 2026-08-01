@@ -397,8 +397,9 @@ class LocalePrefs {
       };
 
   factory LocalePrefs.fromJson(Map<String, dynamic> json) {
+    // Alpha: English UI only — ignore any persisted non-English language code.
     return LocalePrefs(
-      languageCode: (json['languageCode'] as String?) ?? 'en',
+      languageCode: 'en',
       regionCode: (json['regionCode'] as String?) ?? 'US',
       currency: FiatCurrency.values.firstWhere(
         (c) => c.name == json['currency'],

@@ -13,6 +13,7 @@ class PriceService {
     SharedPreferences? prefs,
     List<MarketDataProvider>? providers,
     CacheStore? cacheStore,
+    this.refreshInterval = const Duration(minutes: 2),
   })  : _prefs = prefs,
         _cacheStore = cacheStore ?? CacheStore(prefs: prefs),
         _providers = providers ??
@@ -24,11 +25,27 @@ class PriceService {
   SharedPreferences? _prefs;
   final CacheStore _cacheStore;
   final List<MarketDataProvider> _providers;
+  final Duration refreshInterval;
   Map<String, PricePoint> _cache = {};
   String? activeProviderId;
+  DateTime? lastSuccessfulRefreshAt;
+  String? lastRefreshError;
   final Map<String, Map<ChartRange, List<double>>> _history = {};
 
   static const _kCache = 'auvora_price_cache_v1';
+
+  bool get usingLiveProvider => activeProviderId == 'coingecko';
+
+  bool get cacheNeedsRefresh {
+    if (_cache.isEmpty) return true;
+    final anchor = lastSuccessfulRefreshAt ??
+        _cache.values.map((p) => p.updatedAt).fold<DateTime?>(null, (best, at) {
+          if (best == null || at.isBefore(best)) return at;
+          return best;
+        });
+    if (anchor == null) return true;
+    return DateTime.now().difference(anchor) > refreshInterval;
+  }
 
   Future<void> bootstrap() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -68,11 +85,15 @@ class PriceService {
 
   Future<void> refreshQuotes(Iterable<String> symbols) async {
     final list = symbols.isEmpty ? SeededMarketDataProvider.seed.keys : symbols;
+    Object? lastError;
     for (final provider in _providers) {
       try {
         final quotes = await provider.fetchQuotes(list);
         if (quotes.isEmpty) continue;
         activeProviderId = provider.id;
+        lastRefreshError = null;
+        lastSuccessfulRefreshAt = DateTime.now();
+        final seededFallback = provider.id == 'seeded-offline' && _providers.length > 1;
         for (final entry in quotes.entries) {
           final prior = _cache[entry.key];
           _cache[entry.key] = PricePoint(
@@ -83,16 +104,19 @@ class PriceService {
                 ? entry.value.sparkline7d
                 : (prior?.sparkline7d ?? const [1, 1, 1, 1, 1, 1, 1]),
             updatedAt: entry.value.updatedAt,
-            stale: false,
+            // Seeded quotes after a live-provider miss should surface as stale.
+            stale: seededFallback,
             providerId: provider.id,
           );
         }
         await _persist();
         return;
-      } catch (_) {
+      } catch (error) {
+        lastError = error;
         // Try next provider.
       }
     }
+    lastRefreshError = lastError?.toString() ?? 'Price providers unavailable';
     await markOfflineFallback();
   }
 
@@ -108,7 +132,8 @@ class PriceService {
           stale: true,
         );
     final age = DateTime.now().difference(seed.updatedAt);
-    if (!allowStale && age > const Duration(hours: 2)) {
+    final tooOld = age > const Duration(minutes: 15);
+    if ((!allowStale && age > const Duration(hours: 2)) || tooOld || seed.stale) {
       return PricePoint(
         symbol: seed.symbol,
         priceUsd: seed.priceUsd,
@@ -122,8 +147,14 @@ class PriceService {
     return seed;
   }
 
-  Future<Map<String, PricePoint>> quotes(Iterable<String> symbols) async {
+  Future<Map<String, PricePoint>> quotes(
+    Iterable<String> symbols, {
+    bool forceRefresh = false,
+  }) async {
     if (_cache.isEmpty) await bootstrap();
+    if (forceRefresh || cacheNeedsRefresh) {
+      await refreshQuotes(symbols);
+    }
     final out = <String, PricePoint>{};
     for (final symbol in symbols) {
       out[symbol] = await quote(symbol);

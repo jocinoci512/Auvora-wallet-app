@@ -6,10 +6,19 @@ import 'models.dart';
 import 'market_data_provider.dart';
 
 /// CoinGecko simple price + market_chart provider. Fails soft on network errors.
+///
+/// Optional compile-time key (never commit secrets):
+/// `--dart-define=COINGECKO_API_KEY=...`
 class CoinGeckoMarketDataProvider implements MarketDataProvider {
-  CoinGeckoMarketDataProvider({http.Client? client}) : _client = client ?? http.Client();
+  CoinGeckoMarketDataProvider({
+    http.Client? client,
+    String? apiKey,
+  })  : _client = client ?? http.Client(),
+        _apiKey = apiKey ??
+            const String.fromEnvironment('COINGECKO_API_KEY', defaultValue: '');
 
   final http.Client _client;
+  final String _apiKey;
 
   static const _ids = {
     'BTC': 'bitcoin',
@@ -26,6 +35,18 @@ class CoinGeckoMarketDataProvider implements MarketDataProvider {
   @override
   String get id => 'coingecko';
 
+  Map<String, String> get _headers {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'User-Agent': 'AuvoraWallet/1.0-alpha (Flutter; Android)',
+    };
+    if (_apiKey.isNotEmpty) {
+      // Demo keys use x-cg-demo-api-key; Pro keys use x-cg-pro-api-key.
+      headers[_apiKey.startsWith('CG-') ? 'x-cg-demo-api-key' : 'x-cg-pro-api-key'] = _apiKey;
+    }
+    return headers;
+  }
+
   @override
   Future<Map<String, PricePoint>> fetchQuotes(Iterable<String> symbols) async {
     final wanted = [
@@ -39,8 +60,13 @@ class CoinGeckoMarketDataProvider implements MarketDataProvider {
       'https://api.coingecko.com/api/v3/simple/price'
       '?ids=$ids&vs_currencies=usd&include_24hr_change=true',
     );
-    final response = await _client.get(uri).timeout(const Duration(seconds: 8));
-    if (response.statusCode != 200) return {};
+    final response = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 10));
+    if (response.statusCode == 429) {
+      throw StateError('CoinGecko rate limited (429)');
+    }
+    if (response.statusCode != 200) {
+      throw StateError('CoinGecko HTTP ${response.statusCode}');
+    }
     final decoded = jsonDecode(response.body);
     if (decoded is! Map) return {};
 
@@ -61,6 +87,9 @@ class CoinGeckoMarketDataProvider implements MarketDataProvider {
         updatedAt: now,
       );
     }
+    if (out.isEmpty) {
+      throw StateError('CoinGecko returned no usable quotes');
+    }
     return out;
   }
 
@@ -79,8 +108,13 @@ class CoinGeckoMarketDataProvider implements MarketDataProvider {
       'https://api.coingecko.com/api/v3/coins/$id/market_chart'
       '?vs_currency=usd&days=$days',
     );
-    final response = await _client.get(uri).timeout(const Duration(seconds: 10));
-    if (response.statusCode != 200) return const [];
+    final response = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 12));
+    if (response.statusCode == 429) {
+      throw StateError('CoinGecko rate limited (429)');
+    }
+    if (response.statusCode != 200) {
+      throw StateError('CoinGecko HTTP ${response.statusCode}');
+    }
     final decoded = jsonDecode(response.body);
     if (decoded is! Map) return const [];
     final prices = decoded['prices'];

@@ -29,6 +29,10 @@ abstract final class ReleaseConfig {
   static const bool offlineQueueEnabled = true;
   static const bool aggressiveCachePurge = false;
 
+  /// Live CoinGecko quotes are attempted without a committed API key.
+  /// Optional: `--dart-define=COINGECKO_API_KEY=...` for higher rate limits.
+  static const bool liveMarketPricesEnabled = true;
+
   /// Public URLs for store / About (hosted companion or marketing site).
   static const String websiteUrl = 'https://wallet.auvora.app';
   static const String privacyPolicyUrl = 'https://wallet.auvora.app/legal/privacy';

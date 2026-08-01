@@ -127,7 +127,7 @@ class QuoteEngine implements QuoteEnginePort {
           kycRequired: meta.kycRequired,
           available: !liveLocked,
           unavailableReason: liveLocked
-              ? 'Partner preview only — identity and payout connect after Closed Beta sign-off.'
+              ? 'Coming soon after Alpha — live on-ramp partners are not connected yet.'
               : null,
         ),
       );

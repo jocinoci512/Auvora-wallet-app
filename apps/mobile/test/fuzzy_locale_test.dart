@@ -34,6 +34,13 @@ void main() {
       expect(AuvoraStrings.lookup('settings.title'), 'Settings');
       expect(AuvoraStrings.lookup('intelligence.send_irreversible'), contains('reversed'));
     });
+
+    test('non-English language packs are not ready in Alpha', () {
+      expect(isLanguagePackReady('en'), isTrue);
+      expect(isLanguagePackReady('es'), isFalse);
+      expect(kLanguagePackCatalog.where((p) => p.ready).length, 1);
+      expect(LocalePrefs.fromJson(const {'languageCode': 'es'}).languageCode, 'en');
+    });
   });
 
   group('accent preference', () {

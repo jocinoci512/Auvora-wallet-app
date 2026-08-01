@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/auvora_locale.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
 import 'models.dart';
@@ -160,7 +161,11 @@ class PreferencesController extends ChangeNotifier {
   }
 
   Future<void> setLocale(LocalePrefs value) async {
-    locale = value;
+    // Alpha ships English UI only — never persist an unready language pack.
+    final code = AuvoraStrings.supportedLanguageCodes.contains(value.languageCode)
+        ? value.languageCode
+        : 'en';
+    locale = value.copyWith(languageCode: code);
     await _persistBlob();
     notifyListeners();
   }

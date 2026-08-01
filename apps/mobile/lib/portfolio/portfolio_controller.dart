@@ -22,6 +22,7 @@ class PortfolioController extends ChangeNotifier {
   PortfolioSnapshot? snapshot;
   bool loading = true;
   bool refreshing = false;
+  String? lastSyncError;
   bool hideBalances = false;
   bool hideZeroBalances = false;
   bool emptyMode = false;
@@ -72,9 +73,19 @@ class PortfolioController extends ChangeNotifier {
       loading = true;
     }
     refreshing = true;
+    lastSyncError = null;
     notifyListeners();
     try {
       snapshot = await _repo.load(walletAddress: address, empty: emptyMode);
+      lastSyncError = null;
+    } catch (_) {
+      lastSyncError =
+          'Couldn’t refresh balances. Check your connection and try again. Cached figures stay visible when available.';
+      // Keep prior snapshot when soft refresh fails.
+      if (snapshot == null) {
+        final cached = await _repo.loadCached();
+        if (cached != null) snapshot = cached;
+      }
     } finally {
       loading = false;
       refreshing = false;

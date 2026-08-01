@@ -5,8 +5,32 @@ import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'widgets/passcode_entry.dart';
 
-class UnlockScreen extends StatelessWidget {
+class UnlockScreen extends StatefulWidget {
   const UnlockScreen({super.key});
+
+  @override
+  State<UnlockScreen> createState() => _UnlockScreenState();
+}
+
+class _UnlockScreenState extends State<UnlockScreen> {
+  bool _autoPrompted = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_autoPrompted) return;
+    final c = context.read<WalletController>();
+    if (!c.biometricsEnabled || c.unlocked || c.busy) return;
+    _autoPrompted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final wallet = context.read<WalletController>();
+      if (wallet.biometricsEnabled && !wallet.unlocked && !wallet.busy) {
+        // ignore: discarded_futures
+        wallet.unlockWithBiometrics();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +60,10 @@ class UnlockScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Enter your passcode to continue',
+                  c.biometricsEnabled
+                      ? 'Unlock with biometrics or enter your passcode'
+                      : 'Enter your passcode to continue',
+                  textAlign: TextAlign.center,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: AetherColors.mutedFor(context),
                   ),
