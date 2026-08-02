@@ -1,8 +1,7 @@
 # Auvora — C: → D: Migration Verification
 
-**Date:** 2026-08-01 (final clearance same day)  
-**Mode:** Full migration readiness — agent did **not** delete C:.  
-**Cursor workspace:** `D:\auvora-wallet` (primary).
+**Date:** 2026-08-01  
+**Constraint honored:** No re-copy, no deletes, no app/wallet/API/signing changes. Verification + dependency restore + Android rebuild only.
 
 ---
 
@@ -10,33 +9,7 @@
 
 # MIGRATION VERIFIED — D: CAN BECOME PRIMARY WORKSPACE
 
-# YOU MAY MANUALLY DELETE THE C: COPY
-
-Nothing **critical** remains only on C:. Exact delete path is in §16.  
-**Confirm the migration zip still opens, then delete C: yourself.**
-
----
-
-## Final clearance recheck
-
-| Check                                                                | Result                                                                            |
-| -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Files only on C: (excl. node_modules/build/.next/.dart_tool/.git)    | **0**                                                                             |
-| `.env` / web `.env.local` / `local.properties` / `.local-data` on D: | **PRESENT** (sizes match)                                                         |
-| Flutter analyze (D:)                                                 | **No issues found**                                                               |
-| Flutter tests (D:)                                                   | **108 passed**                                                                    |
-| Web deps on D:                                                       | **Fixed** via `pnpm install --frozen-lockfile` (jest was missing after copy)      |
-| Web tests (D:)                                                       | **9 passed**                                                                      |
-| Web typecheck (D:)                                                   | **Pass**                                                                          |
-| Android APK on D:                                                    | **Present**                                                                       |
-| Migration backup zip                                                 | **Present** at `D:\auvora-migration-backup\auvora-local-only-20260801-152526.zip` |
-| Alchemy CLI (user profile)                                           | **Present** (outside project trees)                                               |
-| GitHub remote / `main` sync                                          | **Yes** @ `6a12b02` (+ this report when pushed)                                   |
-
-**Fixes applied (environment only, no app/API/wallet changes):**
-
-1. Cleared read-only / stale CMake `.cxx` so Android release APK builds on D:.
-2. Reinstalled monorepo deps with frozen lockfile so web Jest/tools work on D:.
+All required gates passed. **Do not delete C: until you manually approve.** Exact delete candidate is listed in §16.
 
 ---
 
@@ -54,56 +27,155 @@ https://github.com/jocinoci512/Auvora-wallet-app
 
 ## 4. Branch
 
-`main`
+`main` (tracks `origin/main`)
 
-## 5. Commit hash (clearance baseline)
+## 5. Commit hash
 
-`6a12b025ba5a9fb91992bb808ef8501d7bbbe945`
+`6a12b025ba5a9fb91992bb808ef8501d7bbbe945`  
+(`6a12b02` — docs: record offline migration backup pack location)
 
-## 6. Git status
+## 6. Git synchronization status
 
-Remote: `origin` → `https://github.com/jocinoci512/Auvora-wallet-app.git`  
-HEAD matched `origin/main` at clearance. Tracked files: **2411** on both C: and D:.
+| Check                      | D: result                                                         |
+| -------------------------- | ----------------------------------------------------------------- |
+| `.git` present             | YES                                                               |
+| `git status`               | Clean; up to date with `origin/main`                              |
+| Remote                     | `origin` → `https://github.com/jocinoci512/Auvora-wallet-app.git` |
+| `HEAD` == `origin/main`    | **YES** (same hash)                                               |
+| C: HEAD == D: HEAD         | **YES**                                                           |
+| Tracked file count         | **2411** on both (identical `git ls-files`)                       |
+| Dirty working tree (C / D) | **0 / 0**                                                         |
+| Unexpected copy drift      | **None detected** for tracked source                              |
 
-## 7. Comparison
+## 7. C:/D: comparison result
 
-Non-cache files only on C: **0**. Source trees aligned.
+| Area                                                                        | Result                                                 |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Top-level names                                                             | Match (nothing only-on-C / only-on-D at root listing)  |
+| `apps/`, `packages/`, `docs/`, `tools/`                                     | Present both                                           |
+| Templates (`.env.example`, `key.properties.example`, mobile `.env.example`) | Present both                                           |
+| Tracked sources                                                             | Identical set (2411 files)                             |
+| Project size                                                                | C ≈ **8273.3 MB** · D ≈ **8273.4 MB** (near-identical) |
 
-## 8. Local-only config
+## 8. Local-only configuration status
 
-| Item                       | Status                 |
-| -------------------------- | ---------------------- |
-| `.env`                     | PRESENT                |
-| `apps/web/.env.local`      | PRESENT                |
-| `apps/mobile/.env`         | NOT APPLICABLE         |
-| `android/local.properties` | PRESENT                |
-| `android/key.properties`   | NOT APPLICABLE         |
-| `.local-data`              | PRESENT (~171 MB both) |
+| Item                                   | C:                                                          | D:                 |
+| -------------------------------------- | ----------------------------------------------------------- | ------------------ |
+| `.env`                                 | **PRESENT**                                                 | **PRESENT**        |
+| `apps/web/.env.local`                  | **PRESENT**                                                 | **PRESENT**        |
+| `apps/mobile/.env`                     | **NOT APPLICABLE** (never used; template is `.env.example`) | **NOT APPLICABLE** |
+| `apps/mobile/android/key.properties`   | **NOT APPLICABLE** (missing both; example only)             | **NOT APPLICABLE** |
+| `apps/mobile/android/local.properties` | **PRESENT**                                                 | **PRESENT**        |
+| `.local-data`                          | **PRESENT**                                                 | **PRESENT**        |
+| `apps/mobile/.env.example`             | **PRESENT**                                                 | **PRESENT**        |
+| `key.properties.example`               | **PRESENT**                                                 | **PRESENT**        |
 
-## 9–11. Gates
+Secret **values** were not printed.
 
-Analyze clean · Mobile 108 tests · Web 9 tests + typecheck · APK built on D:.
+## 9. Flutter analyze result
 
-## 12. Must remain after C: delete
+From `D:\auvora-wallet\apps\mobile`:
 
-- `D:\auvora-wallet`
-- `D:\auvora-build\`
-- `D:\auvora-migration-backup\`
-- `%USERPROFILE%\.config\alchemy\`
-- Flutter SDK + Android SDK (user profile installs)
-- Phone recovery phrases (on-device)
+- `flutter pub get` — **OK** (lockfile respected; no upgrades)
+- `flutter analyze lib test` — **No issues found**
 
-## 13–15. Storage
+## 10. Test result
 
-C: project ~**8.1 GB** recoverable. D: free ~**114 GB**. C: free was ~**4.2 GB**.
+`flutter test` from D: — **108 tests passed**
 
-## 16. Exact folder to delete manually
+## 11. Android build result
+
+| Attempt                                        | Result                                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| First (default TEMP on C:)                     | **FAILED** — CMake/Gradle failure; Flutter reported execution/permission symptoms while **C: had only ~4.2 GB free** |
+| Second (`TEMP`/`TMP`/`GRADLE_USER_HOME` on D:) | **SUCCEEDED**                                                                                                        |
+
+Generated APK:
+
+`D:\auvora-wallet\apps\mobile\build\app\outputs\flutter-apk\app-release.apk` (~41.0 MB arm64 release)
+
+Live broadcast / API / wallet configs were **not** changed.
+
+**Operational note for D: as primary:** keep Gradle/temp on D: when C: is low on space, e.g.:
+
+```bat
+set GRADLE_USER_HOME=D:\auvora-build\gradle-home
+set TEMP=D:\auvora-build\temp
+set TMP=D:\auvora-build\temp
+```
+
+## 12. External Auvora directories
+
+| Path                             | Status      | Notes                                                                                |
+| -------------------------------- | ----------- | ------------------------------------------------------------------------------------ |
+| `D:\auvora-build\`               | **PRESENT** | Dist APKs, Gradle home, build cache — **outside** project folder                     |
+| `D:\auvora-migration-backup\`    | **PRESENT** | Local-only secrets zip pack — **outside** project folder                             |
+| `%USERPROFILE%\.config\alchemy\` | **PRESENT** | CLI auth + local wallet keys — **outside** project folder (under user profile on C:) |
+
+Deleting **only** `C:\Users\kwasi\Projects\auvora-wallet` does **not** remove `D:\auvora-build`, `D:\auvora-migration-backup`, or `%USERPROFILE%\.config\alchemy\`.
+
+## 13. C: project size
+
+≈ **8273.3 MB** (~8.27 GB)
+
+## 14. D: project size
+
+≈ **8273.4 MB** (~8.27 GB)
+
+## 15. Estimated recoverable storage
+
+Deleting the old C: project folder recovers roughly **~8.3 GB** on C: (more if you also later purge disposable caches under that tree).
+
+At verification time: **C: ~4.2 GB free** · **D: ~114 GB free**.
+
+### Disposable (regenerable; not required for source truth)
+
+- `node_modules/` (~0.9 GB each copy)
+- `apps/mobile/build/`, `.dart_tool/`
+- `D:\auvora-build\gradle-home` caches (regenerable)
+- `.local-data` logs (optional; DB content may matter for local services)
+
+## 16. Exact folder that can eventually be deleted
+
+After you manually confirm Cursor opens `D:\auvora-wallet` as primary:
 
 ```text
 C:\Users\kwasi\Projects\auvora-wallet
 ```
 
-## 17–18. Decision
+**This agent did not delete it.**
 
-**MIGRATION VERIFIED — D: CAN BECOME PRIMARY WORKSPACE**  
-C: project folder is **safe to delete manually** when you choose.
+## 17. Anything that MUST remain
+
+| Keep                             | Why                                              |
+| -------------------------------- | ------------------------------------------------ |
+| `D:\auvora-wallet`               | Primary source workspace                         |
+| `D:\auvora-migration-backup\`    | Offline secrets/APK pack                         |
+| `D:\auvora-build\`               | Build artifacts / Gradle home / recommended TEMP |
+| `%USERPROFILE%\.config\alchemy\` | Alchemy CLI wallets/auth (not inside project)    |
+| GitHub `main` @ `6a12b02…`       | Cloud source of truth                            |
+| Phone recovery phrases           | On-device only — never in these folders          |
+
+## 18. Gate checklist
+
+| Gate                                      | Pass?                        |
+| ----------------------------------------- | ---------------------------- |
+| D: project opens / path valid             | ✓                            |
+| Git works                                 | ✓                            |
+| Correct GitHub remote                     | ✓                            |
+| `main` matches `origin/main`              | ✓                            |
+| Source complete vs C:                     | ✓                            |
+| Required local config present             | ✓                            |
+| Flutter dependencies                      | ✓                            |
+| Flutter analyze                           | ✓                            |
+| Tests                                     | ✓                            |
+| Android build                             | ✓ (with TEMP on D:)          |
+| No critical files only on C: project copy | ✓ (for project-scoped files) |
+
+---
+
+## Cursor workspace recommendation
+
+Open folder: **`D:\auvora-wallet`**
+
+Keep using Flutter at `C:\Users\kwasi\flutter` (or reinstall Flutter on D: later). Point Android SDK via `local.properties` as already present on D:.
