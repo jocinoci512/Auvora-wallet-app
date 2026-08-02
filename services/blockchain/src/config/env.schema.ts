@@ -24,7 +24,7 @@ export const envSchema = z.object({
     .transform((value) => value === 'true'),
   /**
    * Primary blockchain infrastructure mode.
-   * - `alchemy` (default): use Alchemy for ETH/BSC/SOL/TRON/BTC when credentials exist
+   * - `alchemy` (default): use Alchemy for ETH/POLYGON/BSC/SOL/TRON/BTC when credentials exist
    * - `simulator`: force local simulators even if Alchemy env is present
    */
   BLOCKCHAIN_PRIMARY_PROVIDER: z.enum(['alchemy', 'simulator']).default('alchemy'),
@@ -32,6 +32,7 @@ export const envSchema = z.object({
   /** Alchemy API key — used to construct per-chain RPC URLs when explicit URLs are unset. */
   ALCHEMY_API_KEY: z.string().min(1).optional(),
   ALCHEMY_ETHEREUM_RPC_URL: z.string().url().optional(),
+  ALCHEMY_POLYGON_RPC_URL: z.string().url().optional(),
   ALCHEMY_BSC_RPC_URL: z.string().url().optional(),
   ALCHEMY_SOLANA_RPC_URL: z.string().url().optional(),
   ALCHEMY_TRON_RPC_URL: z.string().url().optional(),
@@ -69,6 +70,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   const hasAlchemy =
     Boolean(parsed.data.ALCHEMY_API_KEY) ||
     Boolean(parsed.data.ALCHEMY_ETHEREUM_RPC_URL) ||
+    Boolean(parsed.data.ALCHEMY_POLYGON_RPC_URL) ||
     Boolean(parsed.data.ALCHEMY_BSC_RPC_URL) ||
     Boolean(parsed.data.ALCHEMY_SOLANA_RPC_URL) ||
     Boolean(parsed.data.ALCHEMY_TRON_RPC_URL) ||

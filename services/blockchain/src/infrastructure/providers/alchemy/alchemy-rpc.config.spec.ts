@@ -9,10 +9,11 @@ function env(partial: Partial<ServiceEnv>): ServiceEnv {
 describe('alchemy-rpc.config', () => {
   it('builds all chain URLs from ALCHEMY_API_KEY', () => {
     const urls = resolveAlchemyRpcUrls(env({ ALCHEMY_API_KEY: 'test-key-123' }));
-    expect(urls.size).toBe(5);
+    expect(urls.size).toBe(6);
     expect(urls.get(ChainNetwork.ETHEREUM)).toBe(
       'https://eth-mainnet.g.alchemy.com/v2/test-key-123',
     );
+    expect(urls.get(ChainNetwork.POLYGON)).toContain('polygon-mainnet');
     expect(urls.get(ChainNetwork.BNB_SMART_CHAIN)).toContain('bnb-mainnet');
     expect(urls.get(ChainNetwork.SOLANA)).toContain('solana-mainnet');
     expect(urls.get(ChainNetwork.TRON)).toContain('tron-mainnet');

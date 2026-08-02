@@ -1,5 +1,6 @@
 import 'package:auvora_wallet/engine/onramp_config.dart';
 import 'package:auvora_wallet/release/integration_config.dart';
+import 'package:auvora_wallet/wallet_engine/alchemy_prices_market_data_provider.dart';
 import 'package:auvora_wallet/wallet_engine/models.dart';
 import 'package:auvora_wallet/wallet_engine/rpc_endpoints.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,5 +53,11 @@ void main() {
     final reason = OnRampConfig.unavailableReason('moonpay');
     expect(reason, isNotEmpty);
     expect(reason.toLowerCase(), contains('partner'));
+  });
+
+  test('AlchemyPricesMarketDataProvider skips when no client key', () async {
+    final provider = AlchemyPricesMarketDataProvider(apiKey: '');
+    expect(provider.isConfigured, isFalse);
+    expect(() => provider.fetchQuotes(['ETH']), throwsA(isA<StateError>()));
   });
 }

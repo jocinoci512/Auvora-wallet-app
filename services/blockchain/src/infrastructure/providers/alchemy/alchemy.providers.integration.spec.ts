@@ -25,7 +25,7 @@ describe('Alchemy providers (integration with mocked RPC)', () => {
     }) as unknown as typeof fetch;
   }
 
-  it('initializes all five live providers from API key', () => {
+  it('initializes all six live providers from API key', () => {
     const map = createAlchemyProviders({
       ALCHEMY_API_KEY: 'test-key',
       ALCHEMY_RPC_TIMEOUT_MS: 5_000,
@@ -35,6 +35,7 @@ describe('Alchemy providers (integration with mocked RPC)', () => {
         ChainNetwork.BITCOIN,
         ChainNetwork.BNB_SMART_CHAIN,
         ChainNetwork.ETHEREUM,
+        ChainNetwork.POLYGON,
         ChainNetwork.SOLANA,
         ChainNetwork.TRON,
       ].sort(),

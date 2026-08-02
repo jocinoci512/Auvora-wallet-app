@@ -8,6 +8,7 @@ import '../../release/integration_config.dart';
 import '../../theme/aether_theme.dart';
 import '../../wallet_engine/models.dart';
 import '../../wallet_engine/network_manager.dart';
+import '../../wallet_engine/price_service.dart';
 import '../../wallet_engine/sync_coordinator.dart';
 import '../../wallet_engine/sync_engine.dart';
 import '../home/home_shared.dart';
@@ -120,6 +121,30 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             IntegrationConfig.rpcHealthProbeEnabled ? 'enabled (public/configured URLs)' : 'disabled',
           ),
           _tile(
+            'Price provider',
+            context.watch<PriceService>().priceSourceLabel,
+          ),
+          _tile(
+            'Price freshness',
+            () {
+              final prices = context.read<PriceService>();
+              final at = prices.lastSuccessfulRefreshAt;
+              if (at == null) return 'n/a';
+              final age = DateTime.now().difference(at);
+              final label = age.inMinutes < 1
+                  ? '${age.inSeconds}s ago'
+                  : '${age.inMinutes}m ago';
+              final stale = prices.showingStaleOrDemo ? ' · stale/demo' : ' · live poll';
+              return '$label$stale';
+            }(),
+          ),
+          _tile(
+            'Alchemy client key',
+            IntegrationConfig.hasAlchemyApiKey
+                ? 'present (dev dart-define — avoid in release APK)'
+                : 'absent (Alpha-safe; backend holds server key)',
+          ),
+          _tile(
             'Integrations readiness',
             IntegrationConfig.readinessSummary().entries
                 .map((e) => '${e.key}:${e.value}')
@@ -136,7 +161,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(ep.chain.label),
-              subtitle: Text('${ep.state.name} · ${ep.latencyMs} ms · ${ep.endpoint}'),
+              subtitle: Text(
+                '${_rpcStatusLabel(ep.state)} · ${ep.latencyMs} ms · ${ep.endpoint}'
+                '${ep.failoverCount > 0 ? ' · failover×${ep.failoverCount}' : ''}',
+              ),
             ),
           const SizedBox(height: 12),
           FilledButton(
@@ -165,4 +193,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       subtitle: Text(value, style: const TextStyle(height: 1.35)),
     );
   }
+
+  String _rpcStatusLabel(EndpointState state) => switch (state) {
+        EndpointState.healthy => 'Connected',
+        EndpointState.degraded => 'Degraded',
+        EndpointState.offline => 'Offline',
+      };
 }

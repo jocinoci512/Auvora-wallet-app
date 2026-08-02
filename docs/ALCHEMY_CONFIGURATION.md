@@ -3,7 +3,7 @@
 **Status:** Primary blockchain infrastructure for enabled mainnets  
 **Service:** `@auvora/blockchain-service`
 
-Alchemy is the **default primary** provider for Ethereum, BNB Smart Chain, Solana, Tron, and Bitcoin mainnets. Simulators remain only as local/dev fallback when credentials are absent (or when `BLOCKCHAIN_PRIMARY_PROVIDER=simulator`).
+ALCHEMY is the **default primary** provider for Ethereum, Polygon, BNB Smart Chain, Solana, Tron, and Bitcoin mainnets. Simulators remain only as local/dev fallback when credentials are absent (or when `BLOCKCHAIN_PRIMARY_PROVIDER=simulator`).
 
 ## Environment variables
 
@@ -14,6 +14,7 @@ Validated by `services/blockchain/src/config/env.schema.ts`. Put secrets in root
 | `BLOCKCHAIN_PRIMARY_PROVIDER`  | No       | `alchemy` (default) or `simulator`                               |
 | `ALCHEMY_API_KEY`              | Yes*     | Shared key used to construct default per-chain URLs              |
 | `ALCHEMY_ETHEREUM_RPC_URL`     | No*      | Explicit Ethereum JSON-RPC URL override                          |
+| `ALCHEMY_POLYGON_RPC_URL`      | No*      | Explicit Polygon JSON-RPC URL override                           |
 | `ALCHEMY_BSC_RPC_URL`          | No*      | Explicit BNB Smart Chain JSON-RPC URL                            |
 | `ALCHEMY_SOLANA_RPC_URL`       | No*      | Explicit Solana JSON-RPC URL                                     |
 | `ALCHEMY_TRON_RPC_URL`         | No*      | Explicit Tron JSON-RPC / HTTP base URL                           |
@@ -47,10 +48,13 @@ Default hosts:
 | Chain           | Host                            |
 | --------------- | ------------------------------- |
 | Ethereum        | `eth-mainnet.g.alchemy.com`     |
+| Polygon         | `polygon-mainnet.g.alchemy.com` |
 | BNB Smart Chain | `bnb-mainnet.g.alchemy.com`     |
 | Solana          | `solana-mainnet.g.alchemy.com`  |
 | Tron            | `tron-mainnet.g.alchemy.com`    |
 | Bitcoin         | `bitcoin-mainnet.g.alchemy.com` |
+
+**Ops note:** Enable each network on the Alchemy app dashboard. If Polygon returns HTTP 403 `MATIC_MAINNET is not enabled`, turn on Polygon in the app settings — code already constructs the host.
 
 ## Local setup
 
@@ -62,6 +66,7 @@ Default hosts:
 ```bash
 # Live connectivity probe (redacts the key in output)
 node scripts/verify-alchemy-rpc.mjs
+node scripts/verify-alchemy-live.mjs
 
 # Service
 pnpm --filter @auvora/blockchain-service dev
@@ -73,6 +78,7 @@ pnpm --filter @auvora/blockchain-service dev
 - `.env.example` contains **empty** placeholders only.
 - Logs use `redactRpcUrl()` / provider labels — API keys must not appear in log lines.
 - Wallet / gateway services must not receive Alchemy env vars for outbound RPC; they call blockchain via `BLOCKCHAIN_SERVICE_URL`.
+- **Mobile release APKs must not** inject `ALCHEMY_API_KEY` via `--dart-define` (binary-extractable). Keep the key server-side; mobile Alpha uses public RPC tip probes.
 - If a key was pasted into chat or tickets, rotate it in the Alchemy dashboard.
 
 ## Error handling
@@ -92,4 +98,4 @@ pnpm --filter @auvora/blockchain-service dev
 GET http://127.0.0.1:3003/health/providers
 ```
 
-Expect `alchemyConfigured: true` and `backend: "alchemy"` for the five enabled mainnets when RPC responds.
+Expect `alchemyConfigured: true` and `backend: "alchemy"` for enabled mainnets when RPC responds.

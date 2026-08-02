@@ -48,9 +48,13 @@ class RpcHealthProbe {
     try {
       switch (chain) {
         case ChainId.bitcoin:
+          // Alchemy Bitcoin is JSON-RPC; Mempool/Blockstream tip probes are REST.
+          if (url.contains('alchemy.com')) {
+            return _jsonRpc(client, url, 'getblockcount', const []);
+          }
           return _getOk(client, url);
         case ChainId.tron:
-          // TronGrid base → getnowblock; publicnode may speak JSON-RPC.
+          // TronGrid base → getnowblock; Alchemy / publicnode may speak JSON-RPC.
           if (url.contains('trongrid')) {
             return _getOk(client, '$url/wallet/getnowblock');
           }

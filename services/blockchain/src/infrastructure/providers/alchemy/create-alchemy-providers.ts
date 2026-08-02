@@ -26,6 +26,14 @@ export function createAlchemyProviders(env: ServiceEnv): Map<ChainNetwork, Alche
     );
   }
 
+  const polygonUrl = urls.get(ChainNetwork.POLYGON);
+  if (polygonUrl) {
+    providers.set(
+      ChainNetwork.POLYGON,
+      new AlchemyEvmProvider(ChainNetwork.POLYGON, polygonUrl, 'POL', timeoutMs),
+    );
+  }
+
   const bscUrl = urls.get(ChainNetwork.BNB_SMART_CHAIN);
   if (bscUrl) {
     providers.set(

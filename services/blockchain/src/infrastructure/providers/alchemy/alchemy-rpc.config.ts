@@ -1,9 +1,10 @@
 import { ChainNetwork } from '@auvora/database';
 import type { ServiceEnv } from '../../../config/env.schema';
 
-/** Chains Phase 17 wires to Alchemy (or Alchemy-compatible) RPC. */
+/** Chains wired to Alchemy (or Alchemy-compatible) RPC. */
 export const ALCHEMY_SUPPORTED_CHAINS = [
   ChainNetwork.ETHEREUM,
+  ChainNetwork.POLYGON,
   ChainNetwork.BNB_SMART_CHAIN,
   ChainNetwork.SOLANA,
   ChainNetwork.TRON,
@@ -14,6 +15,7 @@ export type AlchemySupportedChain = (typeof ALCHEMY_SUPPORTED_CHAINS)[number];
 
 const DEFAULT_HOSTS: Record<AlchemySupportedChain, string> = {
   [ChainNetwork.ETHEREUM]: 'eth-mainnet.g.alchemy.com',
+  [ChainNetwork.POLYGON]: 'polygon-mainnet.g.alchemy.com',
   [ChainNetwork.BNB_SMART_CHAIN]: 'bnb-mainnet.g.alchemy.com',
   [ChainNetwork.SOLANA]: 'solana-mainnet.g.alchemy.com',
   [ChainNetwork.TRON]: 'tron-mainnet.g.alchemy.com',
@@ -32,6 +34,7 @@ export function resolveAlchemyRpcUrls(env: ServiceEnv): Map<ChainNetwork, string
   const urls = new Map<ChainNetwork, string>();
   const explicit: Partial<Record<AlchemySupportedChain, string | undefined>> = {
     [ChainNetwork.ETHEREUM]: env.ALCHEMY_ETHEREUM_RPC_URL,
+    [ChainNetwork.POLYGON]: env.ALCHEMY_POLYGON_RPC_URL,
     [ChainNetwork.BNB_SMART_CHAIN]: env.ALCHEMY_BSC_RPC_URL,
     [ChainNetwork.SOLANA]: env.ALCHEMY_SOLANA_RPC_URL,
     [ChainNetwork.TRON]: env.ALCHEMY_TRON_RPC_URL,

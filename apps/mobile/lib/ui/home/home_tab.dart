@@ -9,6 +9,7 @@ import '../../preferences/preferences_controller.dart';
 import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
+import '../../wallet_engine/price_service.dart';
 import '../asset_detail_screen.dart';
 import '../connections/connect_dapp_screen.dart';
 import '../engine/digital_asset_flow.dart';
@@ -610,8 +611,21 @@ class _StatusStack extends StatelessWidget {
         SoftBanner(
           tone: BannerTone.error,
           message:
-              'Live market prices are temporarily unavailable. Showing last known quotes — pull to refresh.',
+              'Live market prices are temporarily unavailable (${context.read<PriceService>().priceSourceLabel}). '
+              'Showing last known quotes — pull to refresh (periodic poll, not a live stream).',
           actionLabel: 'Retry',
+          onAction: () => portfolio.refresh(address, soft: true),
+        ),
+      );
+    } else if (context.watch<PriceService>().showingStaleOrDemo) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
+      final prices = context.read<PriceService>();
+      children.add(
+        SoftBanner(
+          tone: BannerTone.warn,
+          message:
+              'Prices: ${prices.priceSourceLabel}. Figures may be cached or demo — pull to refresh.',
+          actionLabel: 'Refresh',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
       );

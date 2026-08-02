@@ -116,6 +116,9 @@ export class MultiChainProviderManager {
     const aliases: Record<string, ChainNetwork> = {
       ETH: ChainNetwork.ETHEREUM,
       ETHEREUM: ChainNetwork.ETHEREUM,
+      MATIC: ChainNetwork.POLYGON,
+      POL: ChainNetwork.POLYGON,
+      POLYGON: ChainNetwork.POLYGON,
       BSC: ChainNetwork.BNB_SMART_CHAIN,
       BNB: ChainNetwork.BNB_SMART_CHAIN,
       BNB_SMART_CHAIN: ChainNetwork.BNB_SMART_CHAIN,

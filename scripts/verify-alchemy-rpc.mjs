@@ -40,6 +40,12 @@ const chains = [
     params: [],
   },
   {
+    name: 'Polygon',
+    url: process.env.ALCHEMY_POLYGON_RPC_URL || `https://polygon-mainnet.g.alchemy.com/v2/${key}`,
+    method: 'eth_blockNumber',
+    params: [],
+  },
+  {
     name: 'BNB Smart Chain',
     url: process.env.ALCHEMY_BSC_RPC_URL || `https://bnb-mainnet.g.alchemy.com/v2/${key}`,
     method: 'eth_blockNumber',

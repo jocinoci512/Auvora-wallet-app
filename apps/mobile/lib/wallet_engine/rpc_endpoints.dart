@@ -51,16 +51,17 @@ abstract final class RpcEndpoints {
   static List<String> _alchemyUrls(ChainId chain) {
     final key = IntegrationConfig.alchemyApiKey.trim();
     if (key.isEmpty) return const [];
+    // Prefer Alchemy when keyed, then public defaults in [urlsFor].
+    // Alpha release APKs should leave the key empty (server-side Alchemy only).
     return switch (chain) {
       ChainId.ethereum => ['https://eth-mainnet.g.alchemy.com/v2/$key'],
       ChainId.polygon => ['https://polygon-mainnet.g.alchemy.com/v2/$key'],
-      ChainId.bnbSmartChain => [
-          // Alchemy BSC requires enabled app; fall through to public if unused.
-          'https://bnb-mainnet.g.alchemy.com/v2/$key',
-        ],
+      ChainId.bnbSmartChain => ['https://bnb-mainnet.g.alchemy.com/v2/$key'],
       ChainId.solana => ['https://solana-mainnet.g.alchemy.com/v2/$key'],
-      ChainId.bitcoin => const [],
-      ChainId.tron => const [],
+      // Alchemy Bitcoin JSON-RPC (getblockcount) — probe handles JSON-RPC vs REST.
+      ChainId.bitcoin => ['https://bitcoin-mainnet.g.alchemy.com/v2/$key'],
+      // Alchemy Tron speaks eth_blockNumber-compatible tip probes.
+      ChainId.tron => ['https://tron-mainnet.g.alchemy.com/v2/$key'],
     };
   }
 

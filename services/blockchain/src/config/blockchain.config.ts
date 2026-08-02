@@ -10,11 +10,12 @@ import type { ServiceEnv } from './env.schema';
 
 /**
  * Centralized blockchain network configuration for Auvora Wallet.
- * Alchemy is the primary infrastructure provider for the five enabled mainnets.
+ * Alchemy is the primary infrastructure provider for the six enabled mainnets.
  */
 
 export const ENABLED_MAINNETS = [
   ChainNetwork.ETHEREUM,
+  ChainNetwork.POLYGON,
   ChainNetwork.BNB_SMART_CHAIN,
   ChainNetwork.SOLANA,
   ChainNetwork.TRON,
@@ -44,6 +45,16 @@ export const NETWORK_RUNTIME_CONFIG: Record<EnabledMainnet, NetworkRuntimeConfig
     explorerUrl: 'https://etherscan.io',
     requiredConfirmations: 12,
     blockTimeSeconds: 12,
+    clientStack: 'evm-json-rpc',
+  },
+  [ChainNetwork.POLYGON]: {
+    chain: ChainNetwork.POLYGON,
+    displayName: 'Polygon Mainnet',
+    nativeSymbol: 'POL',
+    alchemyHost: 'polygon-mainnet.g.alchemy.com',
+    explorerUrl: 'https://polygonscan.com',
+    requiredConfirmations: 64,
+    blockTimeSeconds: 2,
     clientStack: 'evm-json-rpc',
   },
   [ChainNetwork.BNB_SMART_CHAIN]: {

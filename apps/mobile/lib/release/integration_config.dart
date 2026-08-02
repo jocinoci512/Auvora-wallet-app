@@ -68,7 +68,12 @@ abstract final class IntegrationConfig {
 
   // ── RPC (public defaults + optional overrides / Alchemy) ─────────────────
 
-  /// Optional Alchemy key — when set, EVM/Solana/TRON RPC URLs prefer Alchemy.
+  /// Optional Alchemy key — when set, RPC tip pools prefer Alchemy and
+  /// [AlchemyPricesMarketDataProvider] can call Prices API.
+  ///
+  /// **Do not** inject the production server key into release APKs via
+  /// `--dart-define` (extractable from the binary). Prefer blockchain /
+  /// market-data services holding `ALCHEMY_API_KEY` from root `.env` / secrets.
   static const String alchemyApiKey = String.fromEnvironment(
     'ALCHEMY_API_KEY',
     defaultValue: '',

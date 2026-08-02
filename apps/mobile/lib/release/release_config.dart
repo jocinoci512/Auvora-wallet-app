@@ -33,8 +33,9 @@ abstract final class ReleaseConfig {
   static const bool offlineQueueEnabled = true;
   static const bool aggressiveCachePurge = false;
 
-  /// Live CoinGecko → CoinCap → seeded quotes (no committed API key required).
-  /// Optional keys: see [IntegrationConfig] / `docs/API_AND_INTEGRATIONS_GUIDE.md`.
+  /// Live CoinGecko → CoinCap → Alchemy Prices → cached → seeded.
+  /// Alchemy Prices activates only when a client key is present (dev); Alpha APK
+  /// keeps Alchemy server-side. See [IntegrationConfig] / API guide.
   static const bool liveMarketPricesEnabled = true;
 
   /// Public RPC tip probes for diagnostics (not live broadcast).

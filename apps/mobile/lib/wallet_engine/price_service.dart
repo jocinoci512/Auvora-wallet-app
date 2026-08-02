@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../reliability/cache_store.dart';
+import 'alchemy_prices_market_data_provider.dart';
 import 'coincap_market_data_provider.dart';
 import 'coingecko_market_data_provider.dart';
 import 'market_data_provider.dart';
@@ -21,6 +22,7 @@ class PriceService {
             [
               CoinGeckoMarketDataProvider(),
               CoinCapMarketDataProvider(),
+              AlchemyPricesMarketDataProvider(),
               SeededMarketDataProvider(),
             ];
 
@@ -32,12 +34,41 @@ class PriceService {
   String? activeProviderId;
   DateTime? lastSuccessfulRefreshAt;
   String? lastRefreshError;
+  DateTime? _lastRefreshAttemptAt;
   final Map<String, Map<ChartRange, List<double>>> _history = {};
 
   static const _kCache = 'auvora_price_cache_v1';
+  static const _minRefreshGap = Duration(seconds: 20);
 
   bool get usingLiveProvider =>
-      activeProviderId != null && activeProviderId != 'seeded-offline';
+      activeProviderId != null &&
+      activeProviderId != 'seeded-offline' &&
+      activeProviderId != 'cached';
+
+  /// Human-readable active source for diagnostics / Home badges.
+  String get priceSourceLabel {
+    switch (activeProviderId) {
+      case 'coingecko':
+        return 'CoinGecko (live)';
+      case 'coincap':
+        return 'CoinCap (failover)';
+      case 'alchemy-prices':
+        return 'Alchemy Prices (failover)';
+      case 'seeded-offline':
+        return 'Demo / seeded';
+      case null:
+        return _cache.isEmpty ? 'Unavailable' : 'Cached last-known';
+      default:
+        return activeProviderId!;
+    }
+  }
+
+  bool get showingStaleOrDemo {
+    if (activeProviderId == 'seeded-offline') return true;
+    if (usingLiveProvider) return false;
+    if (_cache.values.any((p) => p.stale)) return true;
+    return _cache.isNotEmpty;
+  }
 
   bool get cacheNeedsRefresh {
     if (_cache.isEmpty) return true;
@@ -80,13 +111,34 @@ class PriceService {
     }
     if (_cache.isEmpty) {
       final seed = await SeededMarketDataProvider().fetchQuotes(SeededMarketDataProvider.seed.keys);
-      _cache = seed;
+      _cache = {
+        for (final e in seed.entries)
+          e.key: PricePoint(
+            symbol: e.value.symbol,
+            priceUsd: e.value.priceUsd,
+            change24hPct: e.value.change24hPct,
+            sparkline7d: e.value.sparkline7d,
+            updatedAt: e.value.updatedAt,
+            stale: true,
+            providerId: 'seeded-offline',
+          ),
+      };
+      activeProviderId = 'seeded-offline';
       await _persist();
     }
     await refreshQuotes(_cache.keys);
   }
 
-  Future<void> refreshQuotes(Iterable<String> symbols) async {
+  Future<void> refreshQuotes(Iterable<String> symbols, {bool force = false}) async {
+    final now = DateTime.now();
+    if (!force &&
+        _lastRefreshAttemptAt != null &&
+        now.difference(_lastRefreshAttemptAt!) < _minRefreshGap &&
+        !cacheNeedsRefresh) {
+      return;
+    }
+    _lastRefreshAttemptAt = now;
+
     final list = symbols.isEmpty ? SeededMarketDataProvider.seed.keys : symbols;
     Object? lastError;
     for (final provider in _providers) {
@@ -96,7 +148,7 @@ class PriceService {
         activeProviderId = provider.id;
         lastRefreshError = null;
         lastSuccessfulRefreshAt = DateTime.now();
-        // Only mark seeded stale when live providers exist and we failed over to seed.
+        // Seeded is demo-only when live providers exist and we failed over to seed.
         final seededFallback =
             provider.id == 'seeded-offline' && _providers.any((p) => p.id != 'seeded-offline');
         for (final entry in quotes.entries) {
@@ -121,6 +173,7 @@ class PriceService {
       }
     }
     lastRefreshError = lastError?.toString() ?? 'Price providers unavailable';
+    // Keep last-known cache (stale) rather than wiping.
     await markOfflineFallback();
   }
 
@@ -157,7 +210,7 @@ class PriceService {
   }) async {
     if (_cache.isEmpty) await bootstrap();
     if (forceRefresh || cacheNeedsRefresh) {
-      await refreshQuotes(symbols);
+      await refreshQuotes(symbols, force: forceRefresh);
     }
     final out = <String, PricePoint>{};
     for (final symbol in symbols) {

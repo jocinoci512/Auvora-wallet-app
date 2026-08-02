@@ -39,11 +39,13 @@ describe('blockchain.config', () => {
     ).toThrow(/Alchemy is required/);
   });
 
-  it('lists all five enabled mainnets', () => {
+  it('lists all six enabled mainnets including Polygon', () => {
     expect(ENABLED_MAINNETS).toContain(ChainNetwork.ETHEREUM);
+    expect(ENABLED_MAINNETS).toContain(ChainNetwork.POLYGON);
     expect(ENABLED_MAINNETS).toContain(ChainNetwork.SOLANA);
     expect(ENABLED_MAINNETS).toContain(ChainNetwork.BNB_SMART_CHAIN);
     expect(ENABLED_MAINNETS).toContain(ChainNetwork.TRON);
     expect(ENABLED_MAINNETS).toContain(ChainNetwork.BITCOIN);
+    expect(ENABLED_MAINNETS).toHaveLength(6);
   });
 });
