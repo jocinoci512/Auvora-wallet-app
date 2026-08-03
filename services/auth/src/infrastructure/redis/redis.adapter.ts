@@ -13,6 +13,13 @@ export class RedisAdapter implements RedisPort, RateLimiterPort, OnModuleDestroy
     this.client = new Redis(env.REDIS_URL, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
+      // Bounded reconnect backoff for managed Redis (Railway private networking).
+      retryStrategy: (times: number) => {
+        if (times > 10) {
+          return null;
+        }
+        return Math.min(times * 200, 3_000);
+      },
     });
     this.client.on('error', (error: Error) => {
       this.logger.error(`Redis error: ${error.message}`);

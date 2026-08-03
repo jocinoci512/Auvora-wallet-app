@@ -1,5 +1,5 @@
 export { PrismaModule } from './prisma.module';
-export { PrismaService } from './prisma.service';
+export { PrismaService, connectPrismaWithRetry } from './prisma.service';
 export { applyDatabasePoolEnv, withDatabaseUrlPool, type DatabasePoolOptions } from './pool';
 export {
   Prisma,

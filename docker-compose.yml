@@ -33,7 +33,7 @@ services:
       retries: 5
 
   # Optional application services (Phase 2).
-  # Dockerfile.service currently copies only services/gateway — extend it for auth before enabling.
+  # Dockerfile.service builds any Nest service via --build-arg SERVICE=<name> (includes database/ for Prisma).
   # Run with: docker compose --profile services up -d
   #
   # auth:

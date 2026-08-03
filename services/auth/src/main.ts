@@ -19,6 +19,11 @@ async function bootstrap(): Promise<void> {
   });
 
   app.useLogger(app.get(Logger));
+  // Trust one proxy hop (gateway / platform edge) for req.ip behind private networking.
+  const authHttp = app.getHttpAdapter().getInstance() as {
+    set?: (key: string, value: unknown) => void;
+  };
+  authHttp.set?.('trust proxy', 1);
   app.use(helmet());
   app.use(cookieParser(env.CSRF_SECRET));
   // Explicit allowlist (APP_PUBLIC_URL + CORS_ORIGINS). Never `*` / never reflect arbitrary Origin.

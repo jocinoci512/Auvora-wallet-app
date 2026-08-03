@@ -10,6 +10,10 @@ RUN corepack enable
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY packages ./packages
+# Workspace member `database` (@auvora/database-schema) is required by pnpm-workspace.yaml
+# and by all Nest services that depend on @auvora/database.
+COPY database/package.json ./database/
+COPY scripts ./scripts
 COPY services/gateway/package.json ./services/gateway/
 COPY services/auth/package.json ./services/auth/
 COPY services/wallet/package.json ./services/wallet/
@@ -31,7 +35,10 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 ARG SERVICE=gateway
+COPY database ./database
 COPY services/${SERVICE} ./services/${SERVICE}
+# Generate Linux Prisma engines inside the image (do not use the Windows-oriented ensure script).
+RUN pnpm --filter @auvora/database-schema exec prisma generate
 RUN pnpm turbo run build --filter=@auvora/${SERVICE}-service
 
 FROM node:22-alpine AS runner

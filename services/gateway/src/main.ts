@@ -47,6 +47,12 @@ async function bootstrap(): Promise<void> {
   });
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
+  // Railway / managed reverse proxies terminate TLS and forward X-Forwarded-*.
+  // Trust one hop so Express derives client IP / proto correctly without open proxy risk.
+  const gatewayHttp = app.getHttpAdapter().getInstance() as {
+    set?: (key: string, value: unknown) => void;
+  };
+  gatewayHttp.set?.('trust proxy', 1);
 
   // Explicit allowlist only — never `*` and never reflect arbitrary Origin (credentials: true).
   app.enableCors({
