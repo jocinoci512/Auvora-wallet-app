@@ -165,6 +165,10 @@ class DappConnectionRequest {
     this.faviconHint,
     this.pairUri,
     this.riskWarnings = const [],
+    this.wcProposalId,
+    this.proposerIcon,
+    this.requestedMethods = const [],
+    this.requestedEvents = const [],
   });
 
   final String id;
@@ -180,6 +184,10 @@ class DappConnectionRequest {
   final String? faviconHint;
   final String? pairUri;
   final List<String> riskWarnings;
+  final int? wcProposalId;
+  final String? proposerIcon;
+  final List<String> requestedMethods;
+  final List<String> requestedEvents;
 
   DappConnectionRequest copyWith({
     ConnectionRequestStatus? status,
@@ -200,6 +208,10 @@ class DappConnectionRequest {
       faviconHint: faviconHint,
       pairUri: pairUri,
       riskWarnings: riskWarnings ?? this.riskWarnings,
+      wcProposalId: wcProposalId,
+      proposerIcon: proposerIcon,
+      requestedMethods: requestedMethods,
+      requestedEvents: requestedEvents,
     );
   }
 
@@ -217,6 +229,10 @@ class DappConnectionRequest {
         'faviconHint': faviconHint,
         'pairUri': pairUri,
         'riskWarnings': riskWarnings,
+        'wcProposalId': wcProposalId,
+        'proposerIcon': proposerIcon,
+        'requestedMethods': requestedMethods,
+        'requestedEvents': requestedEvents,
       };
 
   factory DappConnectionRequest.fromJson(Map<String, dynamic> json) {
@@ -243,6 +259,10 @@ class DappConnectionRequest {
       faviconHint: json['faviconHint'] as String?,
       pairUri: json['pairUri'] as String?,
       riskWarnings: (json['riskWarnings'] as List<dynamic>?)?.cast<String>() ?? const [],
+      wcProposalId: json['wcProposalId'] as int?,
+      proposerIcon: json['proposerIcon'] as String?,
+      requestedMethods: (json['requestedMethods'] as List<dynamic>?)?.cast<String>() ?? const [],
+      requestedEvents: (json['requestedEvents'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   }
 }
@@ -459,6 +479,11 @@ class SignatureRequest {
     this.status = ConnectionRequestStatus.pending,
     this.requestHash,
     this.walletLabel = 'Primary account',
+    this.wcTopic,
+    this.wcRequestId,
+    this.wcMethod,
+    this.wcChainId,
+    this.wcRawPayload,
   });
 
   final String id;
@@ -476,6 +501,12 @@ class SignatureRequest {
   /// Replay-protection fingerprint for this request payload.
   final String? requestHash;
   final String walletLabel;
+  final String? wcTopic;
+  final int? wcRequestId;
+  final String? wcMethod;
+  final String? wcChainId;
+  /// Raw payload for local signing — never log / never persist.
+  final String? wcRawPayload;
 
   SignatureRequest copyWith({ConnectionRequestStatus? status}) {
     return SignatureRequest(
@@ -493,6 +524,11 @@ class SignatureRequest {
       status: status ?? this.status,
       requestHash: requestHash,
       walletLabel: walletLabel,
+      wcTopic: wcTopic,
+      wcRequestId: wcRequestId,
+      wcMethod: wcMethod,
+      wcChainId: wcChainId,
+      wcRawPayload: wcRawPayload,
     );
   }
 
@@ -511,6 +547,10 @@ class SignatureRequest {
         'status': status.name,
         'requestHash': requestHash,
         'walletLabel': walletLabel,
+        'wcTopic': wcTopic,
+        'wcRequestId': wcRequestId,
+        'wcMethod': wcMethod,
+        'wcChainId': wcChainId,
       };
 
   factory SignatureRequest.fromJson(Map<String, dynamic> json) {
@@ -538,6 +578,10 @@ class SignatureRequest {
       ),
       requestHash: json['requestHash'] as String?,
       walletLabel: (json['walletLabel'] as String?) ?? 'Primary account',
+      wcTopic: json['wcTopic'] as String?,
+      wcRequestId: json['wcRequestId'] as int?,
+      wcMethod: json['wcMethod'] as String?,
+      wcChainId: json['wcChainId'] as String?,
     );
   }
 }
@@ -561,6 +605,10 @@ class DappTransactionRequest {
         'Preview simulation — not live chain state. Fee and outcome estimates are illustrative only.',
     this.status = ConnectionRequestStatus.pending,
     this.warnings = const [],
+    this.wcTopic,
+    this.wcRequestId,
+    this.wcChainId,
+    this.wcTxJson,
   });
 
   final String id;
@@ -578,6 +626,11 @@ class DappTransactionRequest {
   final String simulationNote;
   final ConnectionRequestStatus status;
   final List<String> warnings;
+  final String? wcTopic;
+  final int? wcRequestId;
+  final String? wcChainId;
+  /// Raw tx JSON for preview — never log full calldata in production logs.
+  final String? wcTxJson;
 
   DappTransactionRequest copyWith({ConnectionRequestStatus? status}) {
     return DappTransactionRequest(
@@ -596,6 +649,10 @@ class DappTransactionRequest {
       simulationNote: simulationNote,
       status: status ?? this.status,
       warnings: warnings,
+      wcTopic: wcTopic,
+      wcRequestId: wcRequestId,
+      wcChainId: wcChainId,
+      wcTxJson: wcTxJson,
     );
   }
 
@@ -615,6 +672,9 @@ class DappTransactionRequest {
         'simulationNote': simulationNote,
         'status': status.name,
         'warnings': warnings,
+        'wcTopic': wcTopic,
+        'wcRequestId': wcRequestId,
+        'wcChainId': wcChainId,
       };
 
   factory DappTransactionRequest.fromJson(Map<String, dynamic> json) {
@@ -641,6 +701,9 @@ class DappTransactionRequest {
         orElse: () => ConnectionRequestStatus.pending,
       ),
       warnings: (json['warnings'] as List<dynamic>?)?.cast<String>() ?? const [],
+      wcTopic: json['wcTopic'] as String?,
+      wcRequestId: json['wcRequestId'] as int?,
+      wcChainId: json['wcChainId'] as String?,
     );
   }
 }

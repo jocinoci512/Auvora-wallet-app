@@ -30,6 +30,8 @@ export interface LoginInput {
   password: string;
   deviceFingerprint?: string;
   deviceName?: string;
+  devicePlatform?: string;
+  appVersion?: string;
 }
 
 export interface UserProfile {
@@ -1602,6 +1604,7 @@ export class AuvoraClient {
   private readonly credentials: 'include' | 'omit' | 'same-origin';
   private readonly timeoutMs: number;
   private accessToken: string | null = null;
+  private csrfToken: string | null = null;
 
   constructor(options: AuvoraClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
@@ -1611,6 +1614,14 @@ export class AuvoraClient {
     this.defaultHeaders = options.defaultHeaders ?? {};
     this.credentials = options.credentials ?? 'include';
     this.timeoutMs = options.timeoutMs === undefined ? 30_000 : options.timeoutMs;
+  }
+
+  setCsrfToken(token: string | null): void {
+    this.csrfToken = token;
+  }
+
+  getCsrfToken(): string | null {
+    return this.csrfToken;
   }
 
   private requestSignal(): AbortSignal | undefined {
@@ -1649,30 +1660,129 @@ export class AuvoraClient {
     return this.request('POST', '/api/v1/auth/register', input);
   }
 
-  async login(input: LoginInput): Promise<AuthTokens & { csrfToken: string }> {
-    const result = await this.request<AuthTokens & { csrfToken: string }>(
+  async login(input: LoginInput): Promise<AuthTokens & { csrfToken: string; sessionId?: string }> {
+    const result = await this.request<AuthTokens & { csrfToken: string; sessionId?: string }>(
       'POST',
       '/api/v1/auth/login',
       input,
     );
     this.accessToken = result.accessToken;
+    if (result.csrfToken) this.csrfToken = result.csrfToken;
     return result;
   }
 
-  async refresh(): Promise<AuthTokens> {
-    const result = await this.request<AuthTokens>('POST', '/api/v1/auth/refresh', {});
+  async refresh(): Promise<AuthTokens & { csrfToken?: string; sessionId?: string }> {
+    const result = await this.request<AuthTokens & { csrfToken?: string; sessionId?: string }>(
+      'POST',
+      '/api/v1/auth/refresh',
+      {},
+    );
     this.accessToken = result.accessToken;
+    if (result.csrfToken) this.csrfToken = result.csrfToken;
     return result;
   }
 
   async logout(): Promise<{ message: string }> {
     const result = await this.request<{ message: string }>('POST', '/api/v1/auth/logout', {});
     this.accessToken = null;
+    this.csrfToken = null;
     return result;
+  }
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('POST', '/api/v1/auth/verify-email', { token });
+  }
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('POST', '/api/v1/auth/resend-verification', {
+      email,
+    });
+  }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('POST', '/api/v1/auth/forgot-password', { email });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('POST', '/api/v1/auth/reset-password', {
+      token,
+      newPassword,
+    });
   }
 
   async getMe(): Promise<UserProfile> {
     return this.request<UserProfile>('GET', '/api/v1/me');
+  }
+
+  async listSessions(): Promise<unknown[]> {
+    return this.request<unknown[]>('GET', '/api/v1/me/sessions');
+  }
+
+  async revokeSession(sessionId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('DELETE', `/api/v1/me/sessions/${sessionId}`);
+  }
+
+  async listDevices(): Promise<unknown[]> {
+    return this.request<unknown[]>('GET', '/api/v1/me/devices');
+  }
+
+  async revokeDevice(deviceId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('DELETE', `/api/v1/me/devices/${deviceId}`);
+  }
+
+  async listWatchAddresses(): Promise<unknown[]> {
+    return this.request<unknown[]>('GET', '/api/v1/connections/watch');
+  }
+
+  async addWatchAddress(input: {
+    network: string;
+    address: string;
+    label?: string;
+  }): Promise<unknown> {
+    return this.request('POST', '/api/v1/connections/watch', input);
+  }
+
+  async removeWatchAddress(watchId: string): Promise<unknown> {
+    return this.request('DELETE', `/api/v1/connections/watch/${watchId}`);
+  }
+
+  async createOwnershipChallenge(input: { network: string; address: string }): Promise<{
+    challengeId: string;
+    nonce: string;
+    message: string;
+    expiresAt: string;
+    network: string;
+    address: string;
+  }> {
+    return this.request('POST', '/api/v1/connections/ownership/challenge', input);
+  }
+
+  async verifyOwnershipChallenge(input: {
+    challengeId: string;
+    signature: string;
+  }): Promise<unknown> {
+    return this.request('POST', '/api/v1/connections/ownership/verify', input);
+  }
+
+  async getWalletEnginePortfolio(userId?: string): Promise<unknown> {
+    const qs = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.request('GET', `/api/v1/wallet-engine/portfolio${qs}`);
+  }
+
+  async getPublicChainBalance(chain: string, address: string): Promise<unknown> {
+    return this.request(
+      'GET',
+      `/api/v1/blockchain/balances/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`,
+    );
+  }
+
+  async importPublicWalletAddress(input: {
+    assetCode: string;
+    address: string;
+    alias?: string;
+    label?: string;
+  }): Promise<unknown> {
+    return this.request('POST', '/api/v1/wallet-engine/wallets/import', input);
   }
 
   async listWallets(skip = 0, take = 50): Promise<WalletListResult> {
@@ -2795,6 +2905,19 @@ export class AuvoraClient {
     );
   }
 
+  private resolveCsrfToken(): string | null {
+    if (this.csrfToken) return this.csrfToken;
+    const doc = (globalThis as { document?: { cookie?: string } }).document;
+    if (!doc?.cookie) return null;
+    const match = doc.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+    if (!match?.[1]) return null;
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       Accept: 'application/json',
@@ -2807,6 +2930,14 @@ export class AuvoraClient {
 
     if (this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
+    }
+
+    const mutating = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+    if (mutating) {
+      const csrf = this.resolveCsrfToken();
+      if (csrf) {
+        headers['x-csrf-token'] = csrf;
+      }
     }
 
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {

@@ -60,6 +60,8 @@ export interface LoginInput {
   password: string;
   deviceFingerprint: string;
   deviceName?: string;
+  devicePlatform?: string;
+  appVersion?: string;
 }
 
 export interface AuthResult extends Omit<AuthTokens, 'refreshToken'> {
@@ -139,7 +141,7 @@ export class AuthService {
     const expiresAt = new Date(this.clock.now().getTime() + 24 * 60 * 60 * 1000);
     await this.users.createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
-    const verifyUrl = `${this.env.APP_PUBLIC_URL}/verify-email?token=${rawToken}`;
+    const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
     await this.mail.send({
       to: email,
       subject: 'Verify your Auvora Wallet account',
@@ -201,7 +203,11 @@ export class AuthService {
     }
 
     if (!user.emailVerified) {
-      throw new ForbiddenError('Email address must be verified before signing in');
+      const allowUnverified =
+        this.env.NODE_ENV !== 'production' && this.env.AUTH_ALLOW_UNVERIFIED_LOGIN;
+      if (!allowUnverified) {
+        throw new ForbiddenError('Email address must be verified before signing in');
+      }
     }
 
     await this.users.resetFailedLogin(user.id);
@@ -211,6 +217,8 @@ export class AuthService {
       userId: user.id,
       fingerprint: input.deviceFingerprint,
       name: input.deviceName,
+      platform: input.devicePlatform ?? 'web',
+      appVersion: input.appVersion,
       userAgent: ctx.userAgent,
     });
 
@@ -419,7 +427,7 @@ export class AuthService {
     const expiresAt = new Date(this.clock.now().getTime() + 24 * 60 * 60 * 1000);
     await this.users.createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
-    const verifyUrl = `${this.env.APP_PUBLIC_URL}/verify-email?token=${rawToken}`;
+    const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
     await this.mail.send({
       to: user.email,
       subject: 'Verify your Auvora Wallet account',
@@ -442,7 +450,7 @@ export class AuthService {
       const expiresAt = new Date(this.clock.now().getTime() + 60 * 60 * 1000);
       await this.users.createPasswordResetToken(user.id, tokenHash, expiresAt);
 
-      const resetUrl = `${this.env.APP_PUBLIC_URL}/reset-password?token=${rawToken}`;
+      const resetUrl = `${this.env.APP_PUBLIC_URL}/auth/reset-password?token=${rawToken}`;
       await this.mail.send({
         to: user.email,
         subject: 'Reset your Auvora Wallet password',
@@ -574,6 +582,8 @@ export class AuthService {
       id: d.id,
       fingerprint: d.fingerprint,
       name: d.name,
+      platform: d.platform,
+      appVersion: d.appVersion,
       userAgent: d.userAgent,
       trusted: d.trusted,
       lastSeenAt: d.lastSeenAt.toISOString(),

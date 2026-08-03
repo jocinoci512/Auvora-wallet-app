@@ -14,11 +14,13 @@ import {
   ConfirmSignDto,
   ConnectBrowserDto,
   CreateDappConnectionRequestDto,
+  CreateOwnershipChallengeDto,
   CreateWcSessionDto,
   PairDeviceDto,
   PrepareDappSignDto,
   PrepareSignDto,
   UpdateDappPermissionDto,
+  VerifyOwnershipChallengeDto,
   VisitDappDto,
 } from '../dto/connections.dto';
 
@@ -30,11 +32,13 @@ const _connectionsDtoRuntime = {
   ConfirmSignDto,
   ConnectBrowserDto,
   CreateDappConnectionRequestDto,
+  CreateOwnershipChallengeDto,
   CreateWcSessionDto,
   PairDeviceDto,
   PrepareDappSignDto,
   PrepareSignDto,
   UpdateDappPermissionDto,
+  VerifyOwnershipChallengeDto,
   VisitDappDto,
 };
 void _connectionsDtoRuntime;
@@ -152,6 +156,24 @@ export class ConnectionsController {
   @Permissions(CONNECTIONS_PERMISSIONS.WRITE)
   async removeWatch(@CurrentUser() user: JwtAccessClaims, @Param('watchId') watchId: string) {
     return successResponse(await this.engine.removeWatchAddress(user.sub, watchId));
+  }
+
+  @Post('ownership/challenge')
+  @Permissions(CONNECTIONS_PERMISSIONS.WRITE)
+  async createOwnershipChallenge(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() body: CreateOwnershipChallengeDto,
+  ) {
+    return successResponse(await this.engine.createOwnershipChallenge(user.sub, body));
+  }
+
+  @Post('ownership/verify')
+  @Permissions(CONNECTIONS_PERMISSIONS.WRITE)
+  async verifyOwnershipChallenge(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() body: VerifyOwnershipChallengeDto,
+  ) {
+    return successResponse(await this.engine.verifyOwnershipChallenge(user.sub, body));
   }
 
   @Get('dapps/requests')

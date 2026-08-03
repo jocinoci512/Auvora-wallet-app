@@ -15,6 +15,7 @@ import {
 import { buildPortfolioInsights, computePortfolioHealthScore } from '../../lib/insights/demo';
 import { OFFLINE_CACHE_NS, readOfflineCache, writeOfflineCache } from '../../lib/offline/cache';
 import { useOnlineStatus } from '../../lib/offline/online-status';
+import { loadLivePortfolio, type PortfolioDataState } from '../../lib/portfolio/live-portfolio';
 import { PlatformShell } from '../platform/PlatformShell';
 import '../../app/dashboard.css';
 
@@ -41,39 +42,81 @@ export function PortfolioExperience(): ReactElement {
   const [holdings, setHoldings] = useState<Holding[]>(DEMO_HOLDINGS);
   const [fromCache, setFromCache] = useState(false);
   const [cacheAgeLabel, setCacheAgeLabel] = useState<string | null>(null);
+  const [dataState, setDataState] = useState<PortfolioDataState>('demo');
+  const [dataMessage, setDataMessage] = useState<string>('Loading portfolio…');
+  const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
   const [factors, setFactors] = useState(() => computePortfolioHealthScore(DEMO_HOLDINGS).factors);
   const [insights, setInsights] = useState(() => buildPortfolioInsights(DEMO_HOLDINGS).slice(0, 3));
 
-  const hydrate = useCallback((preferLive: boolean) => {
-    const cached = readOfflineCache<PortfolioCachePayload>(OFFLINE_CACHE_NS.portfolio, 'holdings', {
-      allowStale: true,
-    });
-    if (!preferLive && cached?.data?.holdings?.length) {
-      setHoldings(cached.data.holdings);
-      setFromCache(true);
-      const ageMin = Math.max(0, Math.round((Date.now() - cached.savedAt) / 60_000));
-      setCacheAgeLabel(ageMin < 1 ? 'Cached just now' : `Cached ${ageMin}m ago`);
-      return;
-    }
-    const payload: PortfolioCachePayload = {
-      holdings: DEMO_HOLDINGS,
-      performance: DEMO_PERFORMANCE,
-    };
-    writeOfflineCache(OFFLINE_CACHE_NS.portfolio, 'holdings', payload, 1000 * 60 * 60 * 12);
-    setHoldings(DEMO_HOLDINGS);
-    setFromCache(false);
-    setCacheAgeLabel(null);
-  }, []);
+  const hydrate = useCallback(
+    async (preferLive: boolean) => {
+      setLoading(true);
+      const cached = readOfflineCache<PortfolioCachePayload>(
+        OFFLINE_CACHE_NS.portfolio,
+        'holdings',
+        {
+          allowStale: true,
+        },
+      );
+      if (!preferLive && cached?.data?.holdings?.length) {
+        setHoldings(cached.data.holdings);
+        setFromCache(true);
+        setDataState('cached');
+        const ageMin = Math.max(0, Math.round((Date.now() - cached.savedAt) / 60_000));
+        setCacheAgeLabel(ageMin < 1 ? 'Cached just now' : `Cached ${ageMin}m ago`);
+        setDataMessage('Showing cached holdings while refreshing.');
+        setLoading(false);
+        return;
+      }
+      if (!online) {
+        if (cached?.data?.holdings?.length) {
+          setHoldings(cached.data.holdings);
+          setFromCache(true);
+          setDataState('cached');
+          setDataMessage('Offline — showing cached holdings.');
+        } else {
+          setDataState('unavailable');
+          setHoldings([]);
+          setDataMessage('Offline and no cache available.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      const live = await loadLivePortfolio();
+      setDataState(live.state);
+      setDataMessage(live.message);
+      setHoldings(
+        live.holdings.length ? live.holdings : live.state === 'demo' ? DEMO_HOLDINGS : [],
+      );
+      setFromCache(false);
+      setCacheAgeLabel(null);
+      if (live.state === 'live' || live.state === 'demo') {
+        writeOfflineCache(
+          OFFLINE_CACHE_NS.portfolio,
+          'holdings',
+          {
+            holdings: live.holdings.length ? live.holdings : DEMO_HOLDINGS,
+            performance: live.performance,
+          },
+          1000 * 60 * 60 * 12,
+        );
+      }
+      if (live.holdings[0]?.id) setOpenId(live.holdings[0].id);
+      setLoading(false);
+    },
+    [online],
+  );
 
   useEffect(() => {
-    hydrate(false);
-    if (online) hydrate(true);
+    void hydrate(false);
+    if (online) void hydrate(true);
   }, [hydrate, online]);
 
   useEffect(() => {
     if (!online || !since) return;
-    hydrate(true);
+    void hydrate(true);
   }, [online, since, hydrate]);
 
   useEffect(() => {
@@ -128,7 +171,7 @@ export function PortfolioExperience(): ReactElement {
     <PlatformShell
       title="Smart Portfolio"
       subtitle="Allocation, performance, and health — calm numbers you can act on."
-      reassure="Illustrative data until live balances connect. Insights educate; they never trade for you."
+      reassure="Blockchain balances are authoritative. Insights educate; they never trade for you."
       backHref="/dashboard"
       backLabel="Wallet"
       actions={
@@ -142,9 +185,21 @@ export function PortfolioExperience(): ReactElement {
         </>
       }
     >
-      <div className="cx-alert cx-alert--info" role="status">
-        Sample holdings until live balances connect. Unrealized P/L uses demo cost basis where
-        present — estimates, not advice. Insights never trade for you.
+      <div
+        className={`cx-alert ${dataState === 'live' ? 'cx-alert--success' : dataState === 'unavailable' ? 'cx-alert--warn' : 'cx-alert--info'}`}
+        role="status"
+      >
+        <strong>
+          {dataState === 'live'
+            ? 'Live'
+            : dataState === 'cached'
+              ? 'Cached'
+              : dataState === 'unavailable'
+                ? 'Unavailable'
+                : 'Demo'}
+        </strong>
+        {' — '}
+        {loading ? 'Loading…' : dataMessage}
       </div>
       {!online || fromCache ? (
         <div className="cx-alert cx-alert--warn" role="status" style={{ marginTop: '0.75rem' }}>

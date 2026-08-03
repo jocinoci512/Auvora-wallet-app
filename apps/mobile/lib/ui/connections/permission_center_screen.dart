@@ -89,9 +89,12 @@ class _PermissionCenterScreenState extends State<PermissionCenterScreen> {
                   style: TextStyle(color: AetherColors.muted, height: 1.45),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Sessions below are preview/local unless a live connections API is linked later.',
-                  style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
+                Text(
+                  connections.isLiveRelay
+                      ? 'Connected dApps via Reown WalletKit (live relay). Status: ${connections.liveRelayStatus ?? "live"}.'
+                      : (connections.liveRelayStatus ??
+                          'Sessions below are preview/local unless a live Reown Project ID is compiled in.'),
+                  style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 if (connections.activeSessions.isNotEmpty)

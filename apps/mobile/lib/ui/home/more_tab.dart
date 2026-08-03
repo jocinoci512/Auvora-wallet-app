@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../portfolio/portfolio_controller.dart';
 import '../../release/release_config.dart';
+import '../../connections/connections_controller.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../address_book_screen.dart';
@@ -81,6 +82,34 @@ class MoreTab extends StatelessWidget {
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.cloud_outlined, color: AetherColors.lagoon),
+          title: const Text('Auvora account'),
+          subtitle: const Text('Identity sync — public addresses only; keys stay on device'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('One Auvora account'),
+                content: const Text(
+                  'Your local vault (PIN/biometrics + seed) stays on this device.\n\n'
+                  'An Auvora account can sync identity, preferences, public addresses, '
+                  'labels, and sessions — never private keys or recovery phrases.\n\n'
+                  'Link ownership on the web companion via a signed challenge, or pair '
+                  'with Reown for mobile approval. Encrypted seed sync is not available yet.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Got it'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.inbox_outlined, color: AetherColors.lagoon),
           title: const Text('Notification center'),
           subtitle: const Text('In-app alerts for this device'),
@@ -127,7 +156,11 @@ class MoreTab extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.add_link_rounded, color: AetherColors.lagoon),
           title: const Text('Connect dApp'),
-          subtitle: const Text('QR, WalletConnect URI, or pairing code (preview)'),
+          subtitle: Text(
+            context.watch<ConnectionsController>().isLiveRelay
+                ? 'QR, WalletConnect URI, or pairing code (Reown live)'
+                : 'QR, WalletConnect URI, or pairing code',
+          ),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const ConnectDappScreen()),

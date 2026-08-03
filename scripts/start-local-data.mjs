@@ -27,9 +27,17 @@ const redis = new RedisMemoryServer({ instance: { port: 6379 } });
 
 async function main() {
   process.stdout.write(JSON.stringify({ level: 'info', msg: 'starting embedded postgres' }) + '\n');
-  await postgres.initialise();
+  // Reuse an existing cluster (do not re-run initdb on non-empty data dir).
+  const alreadyInitialized = fs.existsSync(path.join(dataDir, 'PG_VERSION'));
+  if (!alreadyInitialized) {
+    await postgres.initialise();
+  }
   await postgres.start();
-  await postgres.createDatabase('auvora_wallet');
+  try {
+    await postgres.createDatabase('auvora_wallet');
+  } catch {
+    // Database may already exist on subsequent runs.
+  }
 
   process.stdout.write(
     JSON.stringify({ level: 'info', msg: 'starting redis-memory-server' }) + '\n',

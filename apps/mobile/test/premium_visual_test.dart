@@ -99,7 +99,7 @@ void main() {
   });
 
   testWidgets('app cold boot shows Auvora brand', (tester) async {
-    await tester.pumpWidget(const AuvoraApp());
+    await tester.pumpWidget(AuvoraApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.textContaining('Auvora'), findsWidgets);

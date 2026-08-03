@@ -77,6 +77,24 @@ class _DeepLinkListenerState extends State<DeepLinkListener> {
       return;
     }
 
+    if (validation.kind == DeepLinkKind.companionPair) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            validation.message ??
+                'Companion link received — paste a WalletConnect URI to continue.',
+          ),
+        ),
+      );
+      if (wallet.unlocked && wallet.stage == AppStage.dashboard) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ConnectDappScreen()),
+        );
+      }
+      return;
+    }
+
     if (!wallet.unlocked || wallet.stage != AppStage.dashboard) {
       // Queue until the user unlocks; Connect screen can consume pending URI.
       return;

@@ -5,11 +5,15 @@ import 'package:provider/provider.dart';
 
 import 'connections/connections_controller.dart';
 import 'connections/deep_link_router.dart';
+import 'connections/wallet_connect_bootstrap.dart';
+import 'connections/wallet_connect_provider.dart';
+import 'connections/wc_chain_catalog.dart';
 import 'intelligence/intelligence_controller.dart';
 import 'portfolio/portfolio_controller.dart';
 import 'portfolio/portfolio_repository.dart';
 import 'preferences/models.dart';
 import 'preferences/preferences_controller.dart';
+import 'release/integration_config.dart';
 import 'security/security_controller.dart';
 import 'state/wallet_controller.dart';
 import 'theme/aether_theme.dart';
@@ -42,11 +46,29 @@ Future<void> main() async {
       systemNavigationBarColor: Colors.transparent,
     ),
   );
-  runApp(const AuvoraApp());
+
+  // Bootstrap WalletConnect / Reown (preview fallback if Project ID missing or init fails).
+  // Never log WC_PROJECT_ID value. Never inject Alchemy key here.
+  final wcBootstrap = await WalletConnectBootstrap.create(
+    projectId: IntegrationConfig.wcProjectId,
+  );
+
+  runApp(AuvoraApp(wcBootstrap: wcBootstrap));
 }
 
 class AuvoraApp extends StatelessWidget {
-  const AuvoraApp({super.key});
+  AuvoraApp({
+    super.key,
+    WalletConnectBootstrapResult? wcBootstrap,
+  }) : wcBootstrap = wcBootstrap ??
+            WalletConnectBootstrapResult(
+              provider: PreviewWalletConnectProvider(),
+              liveInitAttempted: false,
+              liveInitSucceeded: false,
+              fallbackReason: 'test/default preview',
+            );
+
+  final WalletConnectBootstrapResult wcBootstrap;
 
   @override
   Widget build(BuildContext context) {
@@ -161,8 +183,26 @@ class AuvoraApp extends StatelessWidget {
             return coordinator;
           },
         ),
-        ChangeNotifierProvider(create: (_) => ConnectionsController()),
-        ChangeNotifierProvider(create: (_) => DeepLinkRouter()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final c = ConnectionsController(walletConnect: wcBootstrap.provider);
+            c.liveRelayStatus = wcBootstrap.usingLiveRelay
+                ? 'Live Reown WalletKit'
+                : (wcBootstrap.fallbackReason ?? 'Preview WalletConnect');
+            c.bootstrapFallbackReason = wcBootstrap.fallbackReason;
+            // ignore: discarded_futures
+            c.bootstrap();
+            return c;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DeepLinkRouter(provider: wcBootstrap.provider),
+        ),
+        ChangeNotifierProxyProvider2<WalletController, ConnectionsController, _WcAccountBinder>(
+          create: (_) => _WcAccountBinder(wcBootstrap),
+          update: (_, wallet, connections, binder) =>
+              binder!..bind(wallet: wallet, connections: connections),
+        ),
         ChangeNotifierProvider(
           create: (_) {
             final controller = IntelligenceController();
@@ -181,6 +221,8 @@ class AuvoraApp extends StatelessWidget {
       ],
       child: Consumer<PreferencesController>(
         builder: (context, prefs, _) {
+          // Ensure WC account registration + mnemonic binding when wallet unlocks.
+          context.watch<_WcAccountBinder>();
           final a11y = prefs.accessibility;
           final scale = a11y.textScale.clamp(0.85, 1.35);
           final light = buildAetherTheme(
@@ -231,5 +273,42 @@ class AuvoraApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// Registers EVM CAIP accounts with Reown and binds mnemonic for local WC signing.
+class _WcAccountBinder extends ChangeNotifier {
+  _WcAccountBinder(this._bootstrap);
+
+  final WalletConnectBootstrapResult _bootstrap;
+  String? _lastAddress;
+  bool _boundMnemonic = false;
+
+  void bind({
+    required WalletController wallet,
+    required ConnectionsController connections,
+  }) {
+    if (!_boundMnemonic) {
+      connections.attachMnemonicProvider(() async {
+        try {
+          return await wallet.revealRecoveryPhrase();
+        } catch (_) {
+          return null;
+        }
+      });
+      _boundMnemonic = true;
+    }
+
+    final address = wallet.address;
+    if (address == null || address.isEmpty || address == _lastAddress) return;
+    if (!_bootstrap.usingLiveRelay) return;
+    _lastAddress = address;
+
+    final accounts = <String, String>{
+      for (final caip in WcChainCatalog.supportedEip155Chains) caip: address,
+    };
+    // Same ETH derivation for BSC/Polygon (m/44'/60').
+    // ignore: discarded_futures
+    connections.walletConnect.registerAccounts(accounts);
   }
 }

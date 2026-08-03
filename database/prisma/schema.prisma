@@ -146,6 +146,9 @@ model Device {
   userId      String    @map("user_id") @db.Uuid
   fingerprint String
   name        String?
+  /// Coarse platform label (web / android / ios / desktop) — not a hardware fingerprint.
+  platform    String?
+  appVersion  String?   @map("app_version")
   userAgent   String?   @map("user_agent")
   trusted     Boolean   @default(false)
   lastSeenAt  DateTime  @default(now()) @map("last_seen_at")
@@ -158,6 +161,7 @@ model Device {
 
   @@unique([userId, fingerprint])
   @@index([userId])
+  @@index([userId, revokedAt])
   @@map("devices")
 }
 
@@ -4461,19 +4465,40 @@ model WalletConnectSession {
 }
 
 model WatchAddress {
-  id        String             @id @default(uuid()) @db.Uuid
-  userId    String             @map("user_id") @db.Uuid
-  network   ChainNetwork
-  address   String
-  label     String?
-  status    WatchAddressStatus @default(ACTIVE)
-  metadata  Json?
-  createdAt DateTime           @default(now()) @map("created_at")
-  updatedAt DateTime           @updatedAt @map("updated_at")
+  id                   String             @id @default(uuid()) @db.Uuid
+  userId               String             @map("user_id") @db.Uuid
+  network              ChainNetwork
+  address              String
+  label                String?
+  status               WatchAddressStatus @default(ACTIVE)
+  /// watch_only | ownership_verified — never stores private keys
+  linkMode             String             @default("watch_only") @map("link_mode")
+  ownershipVerifiedAt  DateTime?          @map("ownership_verified_at")
+  metadata             Json?
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
 
   @@unique([userId, network, address])
   @@index([userId, status])
+  @@index([userId, ownershipVerifiedAt])
   @@map("watch_addresses")
+}
+
+/// Public-address ownership challenge (nonce → wallet sign → verify). Never stores seeds/keys.
+model AddressOwnershipChallenge {
+  id         String       @id @default(uuid()) @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  network    ChainNetwork
+  address    String
+  nonce      String       @unique
+  message    String
+  expiresAt  DateTime     @map("expires_at")
+  consumedAt DateTime?    @map("consumed_at")
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  @@index([userId, address])
+  @@index([expiresAt])
+  @@map("address_ownership_challenges")
 }
 
 model ExternalWalletConnection {

@@ -41,6 +41,11 @@ export const envSchema = z
       .default('false')
       .transform((value) => value === 'true'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().default('http://localhost:4318'),
+    /** Non-production only: allow login before email verification (local Alpha). */
+    AUTH_ALLOW_UNVERIFIED_LOGIN: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production' && !data.COOKIE_SECURE) {
@@ -50,13 +55,22 @@ export const envSchema = z
         message: 'COOKIE_SECURE must be true in production',
       });
     }
+    if (data.NODE_ENV === 'production' && data.AUTH_ALLOW_UNVERIFIED_LOGIN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_ALLOW_UNVERIFIED_LOGIN'],
+        message: 'AUTH_ALLOW_UNVERIFIED_LOGIN must be false in production',
+      });
+    }
   });
 
 export type ServiceEnv = z.infer<typeof envSchema>;
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
+  // Monorepo root `.env` often sets PORT=4000 for the gateway. Prefer AUTH_PORT when present.
   const withDefaults: NodeJS.ProcessEnv = {
     ...source,
+    PORT: source.AUTH_PORT ?? source.PORT ?? '4001',
     COOKIE_SECURE: source.COOKIE_SECURE ?? (source.NODE_ENV === 'production' ? 'true' : 'false'),
   };
   const parsed = envSchema.safeParse(withDefaults);

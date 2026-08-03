@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Vercel / CI often inject empty strings for unset UI fields — treat as omitted. */
+/** Vercel / CI often inject empty strings for unset UI fields â€” treat as omitted. */
 function emptyToUndefined(value: string | undefined): string | undefined {
   return value === '' ? undefined : value;
 }
@@ -14,6 +14,8 @@ const envSchema = z.object({
   NEXT_PUBLIC_STATUS_URL: z.string().url().optional(),
   NEXT_PUBLIC_MARKETING_URL: z.string().url().optional(),
   NEXT_PUBLIC_CDN_ASSET_BASE_URL: z.string().url().optional(),
+  /** Public Reown/WalletConnect Project ID only — never a Reown Secret. */
+  NEXT_PUBLIC_WC_PROJECT_ID: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -27,4 +29,5 @@ export const env: AppEnv = envSchema.parse({
   NEXT_PUBLIC_STATUS_URL: emptyToUndefined(process.env['NEXT_PUBLIC_STATUS_URL']),
   NEXT_PUBLIC_MARKETING_URL: emptyToUndefined(process.env['NEXT_PUBLIC_MARKETING_URL']),
   NEXT_PUBLIC_CDN_ASSET_BASE_URL: emptyToUndefined(process.env['NEXT_PUBLIC_CDN_ASSET_BASE_URL']),
+  NEXT_PUBLIC_WC_PROJECT_ID: emptyToUndefined(process.env['NEXT_PUBLIC_WC_PROJECT_ID']),
 });

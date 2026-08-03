@@ -12,9 +12,16 @@ export interface CookieOptions {
 }
 
 function baseCookieOptions(env: ServiceEnv): CookieOptions {
+  // Empty / "localhost" domain breaks host-only cookies in many browsers — omit Domain.
+  const domain =
+    env.COOKIE_DOMAIN &&
+    env.COOKIE_DOMAIN.trim() !== '' &&
+    env.COOKIE_DOMAIN.trim().toLowerCase() !== 'localhost'
+      ? env.COOKIE_DOMAIN.trim()
+      : undefined;
   return {
     secure: env.COOKIE_SECURE,
-    domain: env.COOKIE_DOMAIN,
+    domain,
     sameSite: 'lax',
     httpOnly: true,
     path: '/',

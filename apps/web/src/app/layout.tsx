@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Mono, Manrope, Source_Serif_4, Syne } from 'next/font/google';
 import type { ReactElement, ReactNode } from 'react';
-import { AppShell } from '@auvora/ui';
-import { AccessTokenPanel } from '../components/AccessTokenPanel';
-import { Nav } from '../components/Nav';
+import { AppChrome } from '../components/Nav';
 import { Providers } from '../components/Providers';
 import { env } from '../env';
 import '@auvora/ui/styles.css';
@@ -46,11 +44,11 @@ const appUrl = env.NEXT_PUBLIC_APP_URL;
 
 export const metadata: Metadata = {
   title: {
-    default: `${appName} — The quiet operating system for digital value`,
-    template: `%s · ${appName}`,
+    default: `${appName} â€” The quiet operating system for digital value`,
+    template: `%s Â· ${appName}`,
   },
   description:
-    'Auvora web companion for Internal Alpha — preview flows and settings. Mobile holds on-device signing.',
+    'Auvora web companion for Internal Alpha â€” preview flows and settings. Mobile holds on-device signing.',
   applicationName: appName,
   keywords: [
     'Auvora',
@@ -67,16 +65,16 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: appName,
-    title: `${appName} — Internal Alpha companion`,
+    title: `${appName} â€” Internal Alpha companion`,
     description:
-      'Web companion for Auvora Internal Alpha. Preview balances and flows — not a live custodian.',
+      'Web companion for Auvora Internal Alpha. Preview balances and flows â€” not a live custodian.',
     ...(appUrl ? { url: appUrl } : {}),
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${appName} — Internal Alpha companion`,
+    title: `${appName} â€” Internal Alpha companion`,
     description:
-      'Web companion for Auvora Internal Alpha. Preview balances and flows — not a live custodian.',
+      'Web companion for Auvora Internal Alpha. Preview balances and flows â€” not a live custodian.',
   },
   robots: {
     index: false,
@@ -113,10 +111,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
           <a className="auvora-skip-link" href="#main-content">
             Skip to content
           </a>
-          <AppShell header={<Nav />}>
-            {process.env.NODE_ENV !== 'production' ? <AccessTokenPanel /> : null}
-            <main id="main-content">{children}</main>
-          </AppShell>
+          <AppChrome>{children}</AppChrome>
         </Providers>
       </body>
     </html>

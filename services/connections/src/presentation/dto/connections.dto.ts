@@ -64,6 +64,29 @@ export class AddWatchAddressDto {
   label?: string;
 }
 
+export class CreateOwnershipChallengeDto {
+  @ApiProperty({ enum: ChainNetwork })
+  @IsEnum(ChainNetwork)
+  network!: ChainNetwork;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  address!: string;
+}
+
+export class VerifyOwnershipChallengeDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  challengeId!: string;
+
+  @ApiProperty({ description: 'personal_sign hex signature — never a seed or private key' })
+  @IsString()
+  @MinLength(80)
+  signature!: string;
+}
+
 export class PrepareSignDto {
   @ApiProperty({ enum: ['HARDWARE', 'WALLETCONNECT', 'BROWSER', 'READONLY'] })
   @IsEnum(['HARDWARE', 'WALLETCONNECT', 'BROWSER', 'READONLY'] as const)

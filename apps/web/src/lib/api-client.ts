@@ -5,6 +5,7 @@ import { env } from '../env';
 import { isTransientHttpError, withGetRetry } from './reliability/get-retry';
 
 export const ACCESS_TOKEN_KEY = 'auvora_access_token';
+const CSRF_KEY = 'auvora_csrf_token_v1';
 
 export function getStoredAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -30,6 +31,19 @@ export function setStoredAccessToken(token: string | null): void {
   }
 }
 
+function readCsrfHint(): string | null {
+  if (typeof window === 'undefined') return null;
+  const fromSession = sessionStorage.getItem(CSRF_KEY);
+  if (fromSession) return fromSession;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
 export function createApiClient(options?: { timeoutMs?: number }): AuvoraClient {
   const client = new AuvoraClient({
     baseUrl: env.NEXT_PUBLIC_API_URL,
@@ -37,6 +51,8 @@ export function createApiClient(options?: { timeoutMs?: number }): AuvoraClient 
     ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
   });
   client.setAccessToken(getStoredAccessToken());
+  const csrf = readCsrfHint();
+  if (csrf) client.setCsrfToken(csrf);
   return client;
 }
 
@@ -54,7 +70,17 @@ export async function apiGetWithRetry<T>(
 
 export function formatApiError(error: unknown): string {
   if (error instanceof Error) {
-    return error.message;
+    const msg = error.message.trim() || 'Request failed';
+    if (/429|rate.?limit|too many/i.test(msg)) {
+      return 'Too many attempts. Wait a minute and try again.';
+    }
+    if (/csrf/i.test(msg)) {
+      return 'Security check failed. Refresh the page and try again.';
+    }
+    if (/failed to fetch|networkerror|econnrefused|load failed/i.test(msg)) {
+      return 'Cannot reach API. Confirm gateway is running at NEXT_PUBLIC_API_URL.';
+    }
+    return msg;
   }
   return 'An unexpected error occurred';
 }

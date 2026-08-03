@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type ChainNetwork, type Prisma, PrismaService } from '@auvora/database';
 import type { ConnectionKind } from '../../domain/connection-provider.port';
@@ -8,14 +9,24 @@ import {
 import {
   ConnectionsNotFoundError,
   ConnectionsSigningNotAllowedError,
+  ConnectionsUnsupportedError,
   ConnectionsValidationError,
 } from '../../domain/errors';
 import { CONNECTIONS_EVENTS } from '../../domain/events';
+import {
+  EVM_OWNERSHIP_NETWORKS,
+  isSupportedPublicNetwork,
+  validatePublicAddressFormat,
+} from '../../domain/supported-networks';
 import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
 } from '../../infrastructure/analytics/analytics-publisher.adapter';
+import {
+  addressesEqual,
+  recoverPersonalSignAddress,
+} from '../../infrastructure/crypto/eth-personal-sign';
 import {
   NOTIFICATIONS_PUBLISHER,
   type NotificationsPublisherPort,
@@ -308,24 +319,35 @@ export class ConnectionsEngineService {
     userId: string,
     input: { network: ChainNetwork; address: string; label?: string },
   ) {
-    if (!input.address || input.address.length < 8) {
-      throw new ConnectionsValidationError('address required');
+    if (!isSupportedPublicNetwork(input.network)) {
+      throw new ConnectionsValidationError(
+        'Unsupported network. Allowed: BTC, ETH, SOL, BSC, TRON, Polygon.',
+      );
+    }
+    const address = input.address.trim();
+    if (!validatePublicAddressFormat(input.network, address)) {
+      throw new ConnectionsValidationError(`Invalid ${input.network} address`);
+    }
+    // Reject accidental private-key shaped payloads (never accept custody material).
+    if (/mnemonic|private.?key|seed/i.test(address) || address.split(/\s+/).length >= 12) {
+      throw new ConnectionsValidationError('Private keys and seed phrases are never accepted');
     }
     const watch = await this.prisma.watchAddress.upsert({
       where: {
         userId_network_address: {
           userId,
           network: input.network,
-          address: input.address,
+          address,
         },
       },
       create: {
         id: this.ids.uuid(),
         userId,
         network: input.network,
-        address: input.address,
+        address,
         label: input.label ?? 'Watch address',
         status: 'ACTIVE',
+        linkMode: 'watch_only',
       },
       update: { label: input.label ?? 'Watch address', status: 'ACTIVE' },
     });
@@ -339,16 +361,135 @@ export class ConnectionsEngineService {
         label: watch.label,
         externalRef: watch.id,
         canSign: false,
-        metadata: { network: input.network, address: input.address } as Prisma.InputJsonValue,
+        metadata: { network: input.network, address } as Prisma.InputJsonValue,
         connectedAt: this.clock.now(),
       },
     });
     void this.notifications.publishEvent({
       eventType: CONNECTIONS_EVENTS.WATCH_ADDED,
       aggregateId: watch.id,
-      payload: { userId, address: input.address, network: input.network },
+      payload: { userId, address, network: input.network },
     });
     return watch;
+  }
+
+  async createOwnershipChallenge(
+    userId: string,
+    input: { network: ChainNetwork; address: string },
+  ) {
+    if (!isSupportedPublicNetwork(input.network)) {
+      throw new ConnectionsValidationError(
+        'Unsupported network. Allowed: BTC, ETH, SOL, BSC, TRON, Polygon.',
+      );
+    }
+    const address = input.address.trim();
+    if (!validatePublicAddressFormat(input.network, address)) {
+      throw new ConnectionsValidationError(`Invalid ${input.network} address`);
+    }
+    if (!EVM_OWNERSHIP_NETWORKS.has(input.network)) {
+      throw new ConnectionsUnsupportedError(
+        'Ownership challenge signing is Alpha-ready for EVM chains (ETH / BSC / Polygon). Other chains can be registered as watch-only.',
+        { network: input.network },
+      );
+    }
+    const nonce = randomBytes(16).toString('hex');
+    const expiresAt = new Date(this.clock.now().getTime() + 10 * 60 * 1000);
+    const message = [
+      'Auvora account ownership challenge',
+      `User: ${userId}`,
+      `Network: ${input.network}`,
+      `Address: ${address}`,
+      `Nonce: ${nonce}`,
+      `Expires: ${expiresAt.toISOString()}`,
+      'Never share your seed phrase. Signing proves address control only.',
+    ].join('\n');
+
+    const challenge = await this.prisma.addressOwnershipChallenge.create({
+      data: {
+        id: this.ids.uuid(),
+        userId,
+        network: input.network,
+        address,
+        nonce,
+        message,
+        expiresAt,
+      },
+    });
+
+    return {
+      challengeId: challenge.id,
+      nonce: challenge.nonce,
+      message: challenge.message,
+      expiresAt: challenge.expiresAt.toISOString(),
+      network: challenge.network,
+      address: challenge.address,
+      signingMethod: 'personal_sign',
+    };
+  }
+
+  async verifyOwnershipChallenge(
+    userId: string,
+    input: { challengeId: string; signature: string },
+  ) {
+    const challenge = await this.prisma.addressOwnershipChallenge.findFirst({
+      where: { id: input.challengeId, userId },
+    });
+    if (!challenge) throw new ConnectionsNotFoundError('Ownership challenge not found');
+    if (challenge.consumedAt) {
+      throw new ConnectionsValidationError('Ownership challenge already used (replay blocked)');
+    }
+    if (challenge.expiresAt.getTime() <= this.clock.now().getTime()) {
+      throw new ConnectionsValidationError('Ownership challenge expired');
+    }
+    if (!EVM_OWNERSHIP_NETWORKS.has(challenge.network)) {
+      throw new ConnectionsUnsupportedError('Ownership verification unsupported for this network');
+    }
+
+    const recovered = recoverPersonalSignAddress(challenge.message, input.signature.trim());
+    if (!recovered || !addressesEqual(recovered, challenge.address)) {
+      throw new ConnectionsValidationError('Signature does not prove ownership of the address');
+    }
+
+    await this.prisma.addressOwnershipChallenge.update({
+      where: { id: challenge.id },
+      data: { consumedAt: this.clock.now() },
+    });
+
+    const watch = await this.prisma.watchAddress.upsert({
+      where: {
+        userId_network_address: {
+          userId,
+          network: challenge.network,
+          address: challenge.address,
+        },
+      },
+      create: {
+        id: this.ids.uuid(),
+        userId,
+        network: challenge.network,
+        address: challenge.address,
+        label: 'Linked wallet',
+        status: 'ACTIVE',
+        linkMode: 'ownership_verified',
+        ownershipVerifiedAt: this.clock.now(),
+        metadata: { challengeId: challenge.id } as Prisma.InputJsonValue,
+      },
+      update: {
+        status: 'ACTIVE',
+        linkMode: 'ownership_verified',
+        ownershipVerifiedAt: this.clock.now(),
+        metadata: { challengeId: challenge.id } as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      watchId: watch.id,
+      network: watch.network,
+      address: watch.address,
+      linkMode: watch.linkMode,
+      ownershipVerifiedAt: watch.ownershipVerifiedAt?.toISOString() ?? null,
+      containsPrivateKeys: false,
+    };
   }
 
   async listWatchAddresses(userId: string) {

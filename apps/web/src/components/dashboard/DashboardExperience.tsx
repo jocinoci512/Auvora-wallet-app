@@ -38,6 +38,7 @@ import {
   type TxPreview,
 } from '../../lib/dashboard-demo';
 import { getStoredAccessToken } from '../../lib/api-client';
+import { fetchPricesWithFailover } from '../../lib/portfolio/price-failover';
 import { getSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { getUserPrefs } from '../../lib/wallet-experience/user-prefs';
 import '../../app/wallet-dashboard.css';
@@ -47,14 +48,16 @@ const ALLOCATION_COLORS = ['#0E4F5C', '#5C6570', '#185FA5', '#9A7B4F', '#3D9AAA'
 const PRIMARY_ACTIONS = [
   { href: '/send', label: 'Send', icon: ArrowUpRight, primary: true },
   { href: '/receive', label: 'Receive', icon: ArrowDownLeft, primary: true },
-  { href: '/swap', label: 'Swap', icon: ArrowLeftRight, primary: true },
-  { href: '/buy', label: 'Buy', icon: ShoppingCart, primary: true },
+  { href: '/web3/pair', label: 'Pair mobile', icon: ArrowLeftRight, primary: true },
+  { href: '/activity', label: 'Activity', icon: Bell, primary: true },
 ] as const;
 
 const MORE_ACTIONS = [
-  { href: '/sell', label: 'Sell', icon: Banknote },
-  { href: '/staking', label: 'Stake', icon: Landmark },
-  { href: '/bridge', label: 'Bridge', icon: Boxes },
+  { href: '/swap', label: 'Swap (soon)', icon: ArrowLeftRight },
+  { href: '/buy', label: 'Buy (soon)', icon: ShoppingCart },
+  { href: '/sell', label: 'Sell (soon)', icon: Banknote },
+  { href: '/staking', label: 'Stake (soon)', icon: Landmark },
+  { href: '/bridge', label: 'Bridge (soon)', icon: Boxes },
 ] as const;
 
 const RANGES: ChartRange[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
@@ -93,11 +96,27 @@ export function DashboardExperience(): ReactElement {
   const [movers, setMovers] = useState<Mover[]>(DEMO_MOVERS);
   const [watchlist, setWatchlist] = useState<Mover[]>(DEMO_WATCHLIST);
   const [txs] = useState<TxPreview[]>(DEMO_TXS);
-  const [liveHint, setLiveHint] = useState('Showing curated preview data');
+  const [liveHint, setLiveHint] = useState('Demonstration portfolio - not live balances');
   const [range, setRange] = useState<ChartRange>('1W');
   const [query, setQuery] = useState('');
   const [network, setNetwork] = useState('all');
   const [sort, setSort] = useState<SortKey>('value');
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await fetchPricesWithFailover(['btc', 'eth', 'sol', 'bnb', 'matic', 'trx']);
+      if (cancelled) return;
+      if (result.live) {
+        setLiveHint('Demonstration holdings - live prices via ' + result.sourceLabel);
+      } else {
+        setLiveHint('Demonstration portfolio - ' + result.sourceLabel);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set(['h-btc', 'h-eth']));
   const [hideBalances, setHideBalances] = useState(false);
   const [hideZero, setHideZero] = useState(false);
@@ -150,11 +169,11 @@ export function DashboardExperience(): ReactElement {
   }
 
   function money(n: number): string {
-    return hideBalances ? '••••••' : formatUsd(n);
+    return hideBalances ? 'â€¢â€¢â€¢â€¢â€¢â€¢' : formatUsd(n);
   }
 
   function units(balance: number, symbol: string): string {
-    return hideBalances ? `•••• ${symbol}` : `${balance} ${symbol}`;
+    return hideBalances ? `â€¢â€¢â€¢â€¢ ${symbol}` : `${balance} ${symbol}`;
   }
 
   useEffect(() => {
@@ -215,7 +234,7 @@ export function DashboardExperience(): ReactElement {
             })),
           );
           setLiveHint(
-            overview.provider ? `Market data · ${overview.provider}` : 'Market overview live',
+            overview.provider ? `Market data Â· ${overview.provider}` : 'Market overview live',
           );
         }
 
@@ -372,7 +391,7 @@ export function DashboardExperience(): ReactElement {
 
       <p className="wd-hint" aria-live="polite">
         {liveHint}
-        {currencyHint ? ` · ${currencyHint}` : ''}
+        {currencyHint ? ` Â· ${currencyHint}` : ''}
       </p>
 
       <section className="wd-hero" aria-labelledby="wd-portfolio-label">
@@ -380,21 +399,25 @@ export function DashboardExperience(): ReactElement {
           Total portfolio
         </p>
         <p className="wd-hero__balance" aria-live="polite">
-          {hideBalances ? '••••••' : <CountUp value={totals.total} format={(n) => formatUsd(n)} />}
+          {hideBalances ? (
+            'â€¢â€¢â€¢â€¢â€¢â€¢'
+          ) : (
+            <CountUp value={totals.total} format={(n) => formatUsd(n)} />
+          )}
         </p>
         <div className="wd-hero__delta">
           <span className={totals.dayPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? '••••' : money(totals.day)} ·{' '}
-            {hideBalances ? '••••' : formatPct(totals.dayPct)} <span>24h</span>
+            {hideBalances ? 'â€¢â€¢â€¢â€¢' : money(totals.day)} Â·{' '}
+            {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(totals.dayPct)} <span>24h</span>
           </span>
           <span className={totals.weekPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? '••••' : formatPct(totals.weekPct)} <span>1W</span>
+            {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(totals.weekPct)} <span>1W</span>
           </span>
           <span className={totals.monthPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? '••••' : formatPct(totals.monthPct)} <span>1M</span>
+            {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(totals.monthPct)} <span>1M</span>
           </span>
           <span className={totals.unrealized >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? '••••' : money(totals.unrealized)} <span>P&amp;L</span>
+            {hideBalances ? 'â€¢â€¢â€¢â€¢' : money(totals.unrealized)} <span>P&amp;L</span>
           </span>
         </div>
         <div className="wd-ranges" role="tablist" aria-label="Chart range">
@@ -432,7 +455,7 @@ export function DashboardExperience(): ReactElement {
             {slices.slice(0, 4).map((s) => (
               <li key={s.label}>
                 <span className="wd-dot" style={{ background: s.color }} aria-hidden />
-                {s.label} · {((s.value / (totals.total || 1)) * 100).toFixed(0)}%
+                {s.label} Â· {((s.value / (totals.total || 1)) * 100).toFixed(0)}%
               </li>
             ))}
           </ul>
@@ -531,7 +554,7 @@ export function DashboardExperience(): ReactElement {
                     aria-pressed={favorites.has(h.id)}
                     onClick={() => toggleFav(h.id)}
                   >
-                    ★
+                    â˜…
                   </button>
                   <button
                     type="button"
@@ -564,7 +587,7 @@ export function DashboardExperience(): ReactElement {
                         </span>
                       </strong>
                       <small>
-                        {units(h.balance, h.symbol)} · {h.network}
+                        {units(h.balance, h.symbol)} Â· {h.network}
                       </small>
                     </span>
                   </button>
@@ -592,7 +615,7 @@ export function DashboardExperience(): ReactElement {
                   >
                     <strong>{money(h.valueUsd)}</strong>
                     <small className={h.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-                      {hideBalances ? '••••' : formatPct(h.change24hPct)}
+                      {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(h.change24hPct)}
                     </small>
                   </button>
                 </div>
@@ -605,7 +628,7 @@ export function DashboardExperience(): ReactElement {
                       ariaLabel={`${h.symbol} recent performance`}
                     />
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--wd-muted)' }}>
-                      Allocation {h.allocationPct.toFixed(1)}% · {h.walletLabel} · Price{' '}
+                      Allocation {h.allocationPct.toFixed(1)}% Â· {h.walletLabel} Â· Price{' '}
                       {money(h.priceUsd)}
                     </p>
                     <div className="wd-asset__detail-actions">
@@ -653,14 +676,14 @@ export function DashboardExperience(): ReactElement {
               {g.items.map((tx) => (
                 <Link key={tx.id} href={`/activity/${tx.id}`} className="wd-tx">
                   <span className="wd-tx__icon" aria-hidden>
-                    {tx.type === 'receive' ? '↓' : tx.type === 'send' ? '↑' : '⇄'}
+                    {tx.type === 'receive' ? 'â†“' : tx.type === 'send' ? 'â†‘' : 'â‡„'}
                   </span>
                   <span className="wd-tx__body">
                     <strong>
                       {tx.type} {tx.asset}
                     </strong>
                     <small>
-                      {tx.network} · {tx.at}
+                      {tx.network} Â· {tx.at}
                     </small>
                   </span>
                   <span className="wd-tx__amt">
@@ -707,7 +730,7 @@ export function DashboardExperience(): ReactElement {
             <div className="wd-stat-row">
               <span>Fear &amp; Greed</span>
               <strong>
-                {DEMO_MARKET_SNAPSHOT.fearGreed} · {DEMO_MARKET_SNAPSHOT.fearGreedLabel}
+                {DEMO_MARKET_SNAPSHOT.fearGreed} Â· {DEMO_MARKET_SNAPSHOT.fearGreedLabel}
               </strong>
             </div>
             <div className="wd-stat-row">
@@ -739,7 +762,7 @@ export function DashboardExperience(): ReactElement {
           {watchlist.map((m) => (
             <div key={m.symbol} className="wd-mover">
               <span>
-                <strong>{m.symbol}</strong> · {formatUsd(m.priceUsd)}
+                <strong>{m.symbol}</strong> Â· {formatUsd(m.priceUsd)}
               </span>
               <strong className={m.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
                 {formatPct(m.change24hPct)}
@@ -797,18 +820,18 @@ export function DashboardExperience(): ReactElement {
               <li>Review connected dApps monthly</li>
               <li>Enable biometrics on this device</li>
               <li>
-                Pair hardware when ready — <Link href="/wallets/hardware">Hardware</Link>
+                Pair hardware when ready â€” <Link href="/wallets/hardware">Hardware</Link>
               </li>
             </ul>
             <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem' }}>
               <Link className="wd-section__link" href="/web3/permissions">
                 Connected dApps
               </Link>
-              {' · '}
+              {' Â· '}
               <Link className="wd-section__link" href="/settings/devices">
                 Devices
               </Link>
-              {' · '}
+              {' Â· '}
               <Link className="wd-section__link" href="/address-book">
                 Address book
               </Link>

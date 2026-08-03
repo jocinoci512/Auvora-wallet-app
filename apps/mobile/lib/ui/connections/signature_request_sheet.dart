@@ -92,9 +92,11 @@ class _SignatureBody extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 8),
-            const Text(
-              'Never signs automatically. Preview signing — no live relay broadcast.',
-              style: TextStyle(color: AetherColors.muted, fontSize: 13),
+            Text(
+              request.wcTopic != null
+                  ? 'Never signs automatically. Local on-device signing after biometric/PIN — keys never leave this device.'
+                  : 'Never signs automatically. Preview signing — no live relay broadcast.',
+              style: const TextStyle(color: AetherColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 16),
             FilledButton(

@@ -52,7 +52,7 @@ void main() {
   });
 
   testWidgets('Auvora app boots with brand mark', (tester) async {
-    await tester.pumpWidget(const AuvoraApp());
+    await tester.pumpWidget(AuvoraApp());
     await tester.pump();
     // Allow splash settle + WalletController bootstrap to finish so the
     // restore timeout timer is cancelled (not left pending after dispose).

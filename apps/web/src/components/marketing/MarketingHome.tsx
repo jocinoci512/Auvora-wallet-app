@@ -1,16 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useState,
-  type ReactElement,
-  type ReactNode,
-  type SVGProps,
-} from 'react';
-import { Reveal, useCountUp, useInView, usePrefersReducedMotion } from './motion';
+import { useId, useState, type ReactElement, type ReactNode, type SVGProps } from 'react';
+import { Reveal, useInView, usePrefersReducedMotion } from './motion';
 import { WalletPreview } from './WalletPreview';
 
 function Icon({
@@ -34,7 +26,7 @@ function Icon({
 const FEATURES = [
   {
     title: 'Multi-chain by design',
-    body: 'One balance stage across networks — without a maze of disconnected apps.',
+    body: 'One calm stage for Bitcoin, Ethereum, Solana, BNB, Polygon, and Tron — without a maze of disconnected apps.',
     icon: (
       <Icon>
         <circle cx="12" cy="12" r="9" />
@@ -43,17 +35,8 @@ const FEATURES = [
     ),
   },
   {
-    title: 'One-click swaps',
-    body: 'Clear quotes, visible fees, and a confirmation you can actually read.',
-    icon: (
-      <Icon>
-        <path d="M7 7h11l-3-3M17 17H6l3 3" />
-      </Icon>
-    ),
-  },
-  {
     title: 'Portfolio clarity',
-    body: 'Editorial balances and calm charts — signal first, decoration never.',
+    body: 'Editorial balances and calm charts — signal first, decoration never. Demo holdings are labeled as demonstration.',
     icon: (
       <Icon>
         <path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6" />
@@ -61,8 +44,8 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Security that teaches',
-    body: 'Passcodes, biometrics, and recovery guidance without fear or jargon.',
+    title: 'Self-custody first',
+    body: 'Keys stay on your devices. Auvora servers sync identity and preferences — never seed phrases.',
     icon: (
       <Icon>
         <path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6l7-3z" />
@@ -70,27 +53,8 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Staking, simplified',
-    body: 'See rewards and risk in plain language before you commit.',
-    icon: (
-      <Icon>
-        <path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5" />
-      </Icon>
-    ),
-  },
-  {
-    title: 'Real-time prices',
-    body: 'Live context when you need it — never a flashing casino ticker.',
-    icon: (
-      <Icon>
-        <path d="M4 14l4-4 4 3 7-8" />
-        <path d="M15 5h5v5" />
-      </Icon>
-    ),
-  },
-  {
-    title: 'Security you can feel',
-    body: 'Readable confirms, clear permissions, and no security theater.',
+    title: 'Readable confirms',
+    body: 'Plain-language reviews before irreversible moments — no security theater.',
     icon: (
       <Icon>
         <path d="M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z" />
@@ -98,8 +62,18 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Biometrics',
-    body: 'Unlock with the same calm gesture you use for everything else.',
+    title: 'Mobile signing',
+    body: 'Android holds the vault. Pair the web companion via Reown when you need desktop context.',
+    icon: (
+      <Icon>
+        <rect x="7" y="2" width="10" height="20" rx="2" />
+        <path d="M11 18h2" />
+      </Icon>
+    ),
+  },
+  {
+    title: 'One account layer',
+    body: 'Sign in to sync labels, watch-only lists, sessions, and preferences across devices — not private keys.',
     icon: (
       <Icon>
         <path d="M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
@@ -107,34 +81,14 @@ const FEATURES = [
       </Icon>
     ),
   },
-  {
-    title: 'Encrypted backup',
-    body: 'Recovery that respects self-custody — guided, never careless.',
-    icon: (
-      <Icon>
-        <path d="M6 10V8a6 6 0 1 1 12 0v2" />
-        <rect x="5" y="10" width="14" height="10" rx="2" />
-      </Icon>
-    ),
-  },
-  {
-    title: 'Hardware ready',
-    body: 'Pair cold storage when you are ready — without rewriting your workflow.',
-    icon: (
-      <Icon>
-        <rect x="6" y="3" width="12" height="18" rx="2" />
-        <path d="M10 7h4M10 11h4M10 15h2" />
-      </Icon>
-    ),
-  },
 ];
 
 const PROOF = [
   { label: 'Self-custody first', detail: 'Keys stay yours' },
-  { label: 'Open architecture', detail: 'Composable platform' },
-  { label: 'Fast by design', detail: 'Perceived speed matters' },
-  { label: 'Cross-chain', detail: 'One calm interface' },
-  { label: 'Institutional rigor', detail: 'Audit-ready posture' },
+  { label: 'Quiet interface', detail: 'Hierarchy over neon' },
+  { label: 'Honest Alpha', detail: 'No fabricated metrics' },
+  { label: 'Broadcast off', detail: 'Safety kill switch' },
+  { label: 'Cross-device account', detail: 'Identity — not seeds' },
 ];
 
 const FRUSTRATIONS = [
@@ -156,88 +110,44 @@ const FRUSTRATIONS = [
   },
 ];
 
-const NETWORKS = [
+const NETWORKS_LIVE = [
   { name: 'Bitcoin', code: 'BTC' },
   { name: 'Ethereum', code: 'ETH' },
   { name: 'Solana', code: 'SOL' },
-  { name: 'BNB', code: 'BNB' },
+  { name: 'BNB Smart Chain', code: 'BNB' },
   { name: 'Polygon', code: 'POL' },
+  { name: 'Tron', code: 'TRX' },
+];
+
+const NETWORKS_SOON = [
   { name: 'Avalanche', code: 'AVAX' },
   { name: 'Base', code: 'BASE' },
   { name: 'Arbitrum', code: 'ARB' },
   { name: 'Optimism', code: 'OP' },
-  { name: 'Tron', code: 'TRX' },
-];
-
-const TESTIMONIALS = [
-  {
-    quote:
-      'Auvora is the first wallet that feels like software for adults — calm enough for my parents, precise enough for treasury.',
-    name: 'Maya Chen',
-    role: 'Head of Finance, Northline',
-    initials: 'MC',
-  },
-  {
-    quote:
-      'We evaluated six wallets for our team. Auvora won on confirmations alone — people finally understood what they were signing.',
-    name: 'Jordan Blake',
-    role: 'Security Lead, Lattice Labs',
-    initials: 'JB',
-  },
-  {
-    quote:
-      'It disappears when I need speed and appears when I need certainty. That is rare in this category.',
-    name: 'Elena Voss',
-    role: 'Independent trader',
-    initials: 'EV',
-  },
 ];
 
 const FAQS = [
   {
     q: 'Is Auvora a custodial wallet?',
-    a: 'No. Auvora is built for self-custody. You control your keys; we design the interface so that control feels clear instead of frightening.',
+    a: 'No. Auvora is built for self-custody. Private keys and recovery phrases stay on your devices. The Auvora account syncs identity and preferences — never seed material.',
   },
   {
-    q: 'Which networks can I use?',
-    a: 'Major networks including Bitcoin, Ethereum, Solana, BNB, Polygon, Avalanche, Base, Arbitrum, Optimism, and Tron — with a future-ready architecture for more.',
+    q: 'Which networks are live today?',
+    a: 'Bitcoin, Ethereum, Solana, BNB Smart Chain, Polygon, and Tron are the supported set. Avalanche, Base, Arbitrum, and Optimism are marked Coming soon — not claimed as live.',
   },
   {
-    q: 'How do you keep my funds safe?',
-    a: 'Encryption, biometric unlock, guided recovery, and readable confirmations. We prioritize preventing irreversible mistakes over looking “crypto.”',
+    q: 'Can I swap, stake, or bridge now?',
+    a: 'Those surfaces exist as Coming soon / preview UI. Live broadcast remains off in Version 1.0 Alpha. Prefer mobile signing via Reown when pairing is configured.',
   },
   {
-    q: 'Can beginners and professionals share one app?',
-    a: 'Yes. Density and language adapt — guided paths for first sends, compact tools for daily power users — without splitting into three products.',
+    q: 'Does the website store my recovery phrase?',
+    a: 'Never. Do not enter a real recovery phrase into the web companion. Encrypted cross-device wallet-secret sync is a separate security milestone.',
   },
   {
     q: 'Does Auvora work on mobile and desktop?',
-    a: 'Mobile feels native. Desktop feels like a premium terminal. Tablet sits between — touch-first, never a shrunk dashboard.',
+    a: 'Android is the self-custody home. Web is the calm companion for portfolio context, account settings, and pairing — one ecosystem, not unrelated products.',
   },
 ];
-
-function ProofStat({
-  value,
-  suffix,
-  label,
-  active,
-}: {
-  value: number;
-  suffix: string;
-  label: string;
-  active: boolean;
-}): ReactElement {
-  const n = useCountUp(value, active, 1400);
-  return (
-    <div className="mh-stat">
-      <p className="mh-stat__value">
-        {n}
-        {suffix}
-      </p>
-      <p className="mh-stat__label">{label}</p>
-    </div>
-  );
-}
 
 function FaqItem({
   q,
@@ -281,26 +191,12 @@ function FaqItem({
 }
 
 export function MarketingHome(): ReactElement {
-  const reduced = usePrefersReducedMotion();
+  usePrefersReducedMotion();
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
-  const [testimonial, setTestimonial] = useState(0);
-  const [statsRef, statsInView] = useInView<HTMLDivElement>();
-  const [showcaseTab, setShowcaseTab] = useState<'portfolio' | 'swap' | 'security'>('portfolio');
-
-  const nextTestimonial = useCallback(() => {
-    setTestimonial((i) => (i + 1) % TESTIMONIALS.length);
-  }, []);
-  const prevTestimonial = useCallback(() => {
-    setTestimonial((i) => (i - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
-  }, []);
-
-  useEffect(() => {
-    if (reduced) return;
-    const id = window.setInterval(nextTestimonial, 7000);
-    return () => window.clearInterval(id);
-  }, [nextTestimonial, reduced]);
-
-  const t = TESTIMONIALS[testimonial]!;
+  const [statsRef] = useInView<HTMLDivElement>();
+  const [showcaseTab, setShowcaseTab] = useState<'portfolio' | 'activity' | 'security'>(
+    'portfolio',
+  );
 
   return (
     <main className="mh" id="top">
@@ -314,11 +210,11 @@ export function MarketingHome(): ReactElement {
           </h1>
           <p className="mh-hero__lede">
             A premium self-custody wallet that feels as calm as Apple, as precise as Stripe —
-            without the noise of typical crypto.
+            without the noise of typical crypto. Version 1.0 Alpha companion.
           </p>
           <div className="mh-hero__cta">
             <Link href="/wallets/onboarding" className="mh-btn mh-btn--primary">
-              Create wallet
+              Get started
             </Link>
             <Link href="/dashboard" className="mh-btn mh-btn--ghost">
               Open app
@@ -328,18 +224,20 @@ export function MarketingHome(): ReactElement {
             <li>Self-custody</li>
             <li>Readable confirms</li>
             <li>Multi-chain</li>
-            <li>WCAG-minded</li>
+            <li>Broadcast off</li>
           </ul>
           <p className="mh-hero__chains-label">Supported networks</p>
           <ul className="mh-hero__chains">
-            {NETWORKS.slice(0, 6).map((n) => (
+            {NETWORKS_LIVE.map((n) => (
               <li key={n.code}>{n.code}</li>
             ))}
-            <li>+{NETWORKS.length - 6}</li>
           </ul>
         </div>
         <div className="mh-hero__visual">
           <WalletPreview />
+          <p className="mh-hero__demo-note">
+            Portfolio preview is a demonstration — not live balances.
+          </p>
         </div>
       </section>
 
@@ -361,9 +259,18 @@ export function MarketingHome(): ReactElement {
           ))}
         </div>
         <div className="mh-proof__stats" ref={statsRef}>
-          <ProofStat value={10} suffix="+" label="Networks ready" active={statsInView} />
-          <ProofStat value={3} suffix="" label="User altitudes, one product" active={statsInView} />
-          <ProofStat value={99} suffix="%" label="Clarity over clutter" active={statsInView} />
+          <div className="mh-stat">
+            <p className="mh-stat__value">{NETWORKS_LIVE.length}</p>
+            <p className="mh-stat__label">Networks supported</p>
+          </div>
+          <div className="mh-stat">
+            <p className="mh-stat__value">1</p>
+            <p className="mh-stat__label">Ecosystem — mobile + web</p>
+          </div>
+          <div className="mh-stat">
+            <p className="mh-stat__value">0</p>
+            <p className="mh-stat__label">Fabricated user counts</p>
+          </div>
         </div>
       </section>
 
@@ -374,7 +281,8 @@ export function MarketingHome(): ReactElement {
             Everything essential. Nothing loud.
           </h2>
           <p className="mh-lede">
-            Features earn their place by reducing friction — not by filling a grid.
+            Features earn their place by reducing friction — not by filling a grid. Swap, bridge,
+            staking, hardware, and encrypted cloud backup are Coming soon — not claimed as live.
           </p>
         </Reveal>
         <div className="mh-features__grid">
@@ -398,14 +306,14 @@ export function MarketingHome(): ReactElement {
               A wallet that feels alive — never restless.
             </h2>
             <p className="mh-lede">
-              Portfolio, activity, security, send, receive, and swap in one composed surface. Motion
+              Portfolio, activity, security, send, and receive in one composed surface. Motion
               explains change; it never performs.
             </p>
             <div className="mh-showcase__tabs" role="tablist" aria-label="Product views">
               {(
                 [
                   ['portfolio', 'Portfolio'],
-                  ['swap', 'Swap'],
+                  ['activity', 'Activity'],
                   ['security', 'Security'],
                 ] as const
               ).map(([id, label]) => (
@@ -425,22 +333,22 @@ export function MarketingHome(): ReactElement {
               {showcaseTab === 'portfolio' ? (
                 <>
                   <li>Balance-first home stage</li>
-                  <li>Asset rows with tabular figures</li>
+                  <li>Demonstration holdings clearly labeled</li>
                   <li>Quiet sparkline context</li>
                 </>
               ) : null}
-              {showcaseTab === 'swap' ? (
+              {showcaseTab === 'activity' ? (
                 <>
-                  <li>Visible rate and fee</li>
-                  <li>Human confirmation sheet</li>
-                  <li>Progress you can trust</li>
+                  <li>Unified activity architecture</li>
+                  <li>Mobile history remains authoritative</li>
+                  <li>Web companion stays preview-honest</li>
                 </>
               ) : null}
               {showcaseTab === 'security' ? (
                 <>
-                  <li>Passcode and biometrics</li>
-                  <li>Recovery phrase education</li>
-                  <li>Calm, plain-language guidance</li>
+                  <li>PIN on device where available</li>
+                  <li>Recovery phrase education — never uploaded</li>
+                  <li>Devices & sessions without fake sync claims</li>
                 </>
               ) : null}
             </ul>
@@ -448,22 +356,6 @@ export function MarketingHome(): ReactElement {
           <Reveal delay={80}>
             <div className="mh-showcase__stage">
               <WalletPreview />
-              <div className={`mh-showcase__overlay mh-showcase__overlay--${showcaseTab}`}>
-                {showcaseTab === 'swap' ? (
-                  <div className="mh-mini-swap" aria-hidden>
-                    <p>Swap</p>
-                    <span>2.0 ETH → 6,420 USDC</span>
-                    <span className="mh-mini-swap__cta">Review swap</span>
-                  </div>
-                ) : null}
-                {showcaseTab === 'security' ? (
-                  <div className="mh-mini-swap" aria-hidden>
-                    <p>Security</p>
-                    <span>Passcode · Biometrics · Backup</span>
-                    <span className="mh-mini-swap__cta">Review protection</span>
-                  </div>
-                ) : null}
-              </div>
             </div>
           </Reveal>
         </div>
@@ -476,35 +368,34 @@ export function MarketingHome(): ReactElement {
             Protection you can understand.
           </h2>
           <p className="mh-lede">
-            Encryption, self-custody, recovery, biometrics, and secure backup — explained in human
-            language, designed for irreversible moments.
+            Self-custody, readable confirms, and honest Alpha gates — explained in human language.
           </p>
         </Reveal>
         <div className="mh-security__grid">
           {[
             {
-              t: 'Encryption',
-              d: 'Sensitive material stays protected at rest — never casually exposed in the UI.',
-            },
-            {
               t: 'Self-custody',
-              d: 'You hold the keys. Auvora holds the clarity.',
+              d: 'You hold the keys on device. Auvora holds the clarity.',
             },
             {
-              t: 'Recovery',
-              d: 'Guided backup flows that respect how easy it is to rush — and how costly that is.',
+              t: 'No server seeds',
+              d: 'Recovery phrases and private keys are never stored plaintext on Auvora servers.',
             },
             {
-              t: 'Biometrics',
-              d: 'Unlock with Face ID, Touch ID, or device biometrics where available.',
+              t: 'Broadcast kill switch',
+              d: 'Live chain broadcast stays off until adapters are audited and deliberately enabled.',
             },
             {
-              t: 'Secure backup',
-              d: 'Encrypted recovery paths with explicit confirmations at every critical step.',
+              t: 'Account sync (safe)',
+              d: 'Identity, prefs, public addresses, and sessions — not wallet secrets.',
             },
             {
-              t: 'Audit-ready posture',
-              d: 'Architecture meant to be inspected — not a black box wrapped in slogans.',
+              t: 'Mobile biometrics',
+              d: 'Where the OS provides them on Android. Web does not fake biometric toggles.',
+            },
+            {
+              t: 'Encrypted restore',
+              d: 'Cross-device wallet-secret sync is a separate security milestone — not claimed live.',
             },
           ].map((item, i) => (
             <Reveal key={item.t} delay={i * 50}>
@@ -540,12 +431,12 @@ export function MarketingHome(): ReactElement {
         <Reveal>
           <p className="mh-eyebrow">Networks</p>
           <h2 id="mh-networks-title" className="mh-h2">
-            Future-ready. Present-complete.
+            Supported today. Honest about tomorrow.
           </h2>
-          <p className="mh-lede">Premium coverage across the chains people actually use.</p>
+          <p className="mh-lede">Live coverage matches implementation — not a wish list.</p>
         </Reveal>
         <ul className="mh-networks__grid">
-          {NETWORKS.map((n, i) => (
+          {NETWORKS_LIVE.map((n, i) => (
             <Reveal key={n.code} delay={(i % 5) * 40}>
               <li className="mh-network">
                 <span className="mh-network__mark" data-net={n.code}>
@@ -553,64 +444,25 @@ export function MarketingHome(): ReactElement {
                 </span>
                 <span>
                   <strong>{n.name}</strong>
-                  <small>{n.code}</small>
+                  <small>{n.code} · Supported</small>
+                </span>
+              </li>
+            </Reveal>
+          ))}
+          {NETWORKS_SOON.map((n, i) => (
+            <Reveal key={n.code} delay={(i % 5) * 40}>
+              <li className="mh-network">
+                <span className="mh-network__mark" data-net={n.code}>
+                  {n.code.slice(0, 1)}
+                </span>
+                <span>
+                  <strong>{n.name}</strong>
+                  <small>{n.code} · Coming soon</small>
                 </span>
               </li>
             </Reveal>
           ))}
         </ul>
-      </section>
-
-      <section className="mh-section mh-testimonials" aria-labelledby="mh-testimonials-title">
-        <Reveal>
-          <p className="mh-eyebrow">Voices</p>
-          <h2 id="mh-testimonials-title" className="mh-h2">
-            Chosen for composure.
-          </h2>
-        </Reveal>
-        <div className="mh-testimonial" aria-live="polite">
-          <blockquote>
-            <p>“{t.quote}”</p>
-            <footer>
-              <span className="mh-testimonial__avatar" aria-hidden>
-                {t.initials}
-              </span>
-              <span>
-                <cite>{t.name}</cite>
-                <span className="mh-testimonial__role">{t.role}</span>
-              </span>
-            </footer>
-          </blockquote>
-          <div className="mh-testimonial__controls">
-            <button
-              type="button"
-              className="mh-btn mh-btn--ghost mh-btn--sm"
-              onClick={prevTestimonial}
-            >
-              Previous
-            </button>
-            <div className="mh-testimonial__dots" role="tablist" aria-label="Testimonials">
-              {TESTIMONIALS.map((_, i) => (
-                <button
-                  key={TESTIMONIALS[i]!.name}
-                  type="button"
-                  role="tab"
-                  aria-selected={i === testimonial}
-                  aria-label={`Show testimonial ${i + 1}`}
-                  className={i === testimonial ? 'is-active' : undefined}
-                  onClick={() => setTestimonial(i)}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              className="mh-btn mh-btn--ghost mh-btn--sm"
-              onClick={nextTestimonial}
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </section>
 
       <section className="mh-section mh-faq" aria-labelledby="mh-faq-title">
@@ -638,24 +490,19 @@ export function MarketingHome(): ReactElement {
           <h2 id="mh-final-title" className="mh-final__title">
             Open Auvora. Feel certain.
           </h2>
-          <p className="mh-final__lede">One product. Three altitudes. Zero noise.</p>
-          <Link href="/wallets/onboarding" className="mh-btn mh-btn--primary mh-btn--lg">
-            Get started
+          <p className="mh-final__lede">One ecosystem. Calm software. Honest Alpha.</p>
+          <Link href="/dashboard" className="mh-btn mh-btn--primary mh-btn--lg">
+            Open app
           </Link>
         </Reveal>
       </section>
 
       <footer className="mh-footer">
-        <p>
-          <span className="mh-brand mh-brand--sm">Auvora</span>
-          <span className="mh-footer__tag">The quiet operating system for digital value.</span>
-        </p>
-        <nav aria-label="Footer">
-          <Link href="/security">Security</Link>
-          <Link href="/settings/help">Help</Link>
-          <Link href="/status">Status</Link>
-          <Link href="/dashboard">App</Link>
-        </nav>
+        <Link href="/">Auvora</Link>
+        <Link href="/trust">Trust</Link>
+        <Link href="/legal/privacy">Privacy</Link>
+        <Link href="/legal/terms">Terms</Link>
+        <Link href="/status">Status</Link>
       </footer>
     </main>
   );

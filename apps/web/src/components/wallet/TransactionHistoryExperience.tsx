@@ -3,13 +3,21 @@
 import { Download, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useDeferredValue, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { getStoredAccessToken } from '../../lib/api-client';
+import { loadLiveActivity, type ActivityDataState } from '../../lib/activity/live-activity';
 import { tradingAsActivityTx } from '../../lib/trading/activity';
 import {
   DEMO_ACTIVITY,
   exportActivityCsv,
   groupActivityByDay,
 } from '../../lib/wallet-experience/demo-activity';
-import type { ActivityTx, TxDirection, TxStatus } from '../../lib/wallet-experience/types';
+import type {
+  ActivityTx,
+  TxDirection,
+  TxStatus,
+  WalletAsset,
+  WalletNetwork,
+} from '../../lib/wallet-experience/types';
 import { TransactionShell } from '../transaction/TransactionShell';
 import '../../app/core-experience.css';
 
@@ -26,6 +34,24 @@ function badgeClass(status: TxStatus): string {
   return `cx-badge cx-badge--${status}`;
 }
 
+function mapLiveStatus(raw: string): TxStatus {
+  const s = raw.toLowerCase();
+  if (s.includes('fail') || s.includes('error') || s.includes('revert')) return 'failed';
+  if (s.includes('drop') || s.includes('cancel')) return 'dropped';
+  if (s.includes('pend') || s.includes('queued')) return 'pending';
+  return 'confirmed';
+}
+
+function mapLiveNetwork(raw?: string): WalletNetwork {
+  const n = (raw ?? '').toLowerCase();
+  if (n.includes('bitcoin') || n === 'btc') return 'bitcoin';
+  if (n.includes('solana') || n === 'sol') return 'solana';
+  if (n.includes('polygon') || n === 'matic' || n === 'pol') return 'polygon';
+  if (n.includes('bnb') || n.includes('bsc')) return 'bnb';
+  if (n.includes('tron') || n === 'trx') return 'tron';
+  return 'ethereum';
+}
+
 export function TransactionHistoryExperience({
   initial,
 }: {
@@ -38,6 +64,14 @@ export function TransactionHistoryExperience({
   const [network, setNetwork] = useState<'all' | ActivityTx['network']>('all');
   const [selected, setSelected] = useState<ActivityTx | null>(null);
   const [trading, setTrading] = useState<ActivityTx[]>([]);
+  const [liveRows, setLiveRows] = useState<ActivityTx[]>([]);
+  const [dataState, setDataState] = useState<ActivityDataState>('demo');
+  const [dataMessage, setDataMessage] = useState('Loading activity…');
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    setSignedIn(Boolean(getStoredAccessToken()));
+  }, []);
 
   useEffect(() => {
     const refresh = (): void => {
@@ -57,10 +91,49 @@ export function TransactionHistoryExperience({
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const live = await loadLiveActivity();
+      if (cancelled) return;
+      setDataState(live.state);
+      setDataMessage(live.message);
+      if (live.state === 'live' || live.state === 'empty') {
+        setLiveRows(
+          live.items.map((item) => ({
+            id: item.id,
+            hash: item.subtitle,
+            direction: 'contract' as TxDirection,
+            status: mapLiveStatus(item.status),
+            network: mapLiveNetwork(item.network),
+            asset: 'ETH' as WalletAsset,
+            amount: '—',
+            amountUsd: 0,
+            from: '—',
+            to: '—',
+            timestamp: item.createdAt,
+            note: item.title,
+            explorerUrl: `/activity/${encodeURIComponent(item.id)}`,
+          })),
+        );
+      } else {
+        setLiveRows([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const source = useMemo(() => {
-    const base = initial?.length ? initial : DEMO_ACTIVITY;
+    // Signed-in: never silently inject DEMO_ACTIVITY. Unsigned / demo: sample ok.
+    const base = initial?.length
+      ? initial
+      : signedIn || dataState === 'live' || dataState === 'empty' || dataState === 'unavailable'
+        ? liveRows
+        : DEMO_ACTIVITY;
     return [...trading, ...base].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  }, [initial, trading]);
+  }, [initial, trading, liveRows, signedIn, dataState]);
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -98,15 +171,24 @@ export function TransactionHistoryExperience({
     <TransactionShell
       title="Activity"
       subtitle="Grouped history with status, fees, hashes, and explorer links."
-      reassure="Sample and local preview activity until live history connects. Pending transfers stay visible when live."
+      reassure={
+        dataState === 'live'
+          ? 'Live activity from registered addresses / account-linked chain records. Broadcast remains off.'
+          : dataState === 'empty'
+            ? 'No on-chain activity recorded for this account yet.'
+            : dataState === 'unavailable'
+              ? 'Activity API unavailable — no manufactured history is shown.'
+              : 'Sample and local preview activity until you sign in. Pending transfers stay visible when live.'
+      }
       backHref="/dashboard"
       backLabel="Wallet"
     >
-      {!initial?.length ? (
-        <div className="cx-alert cx-alert--info" role="status">
-          Sample / local preview history — not a complete live ledger.
-        </div>
-      ) : null}
+      <div className="cx-alert cx-alert--info" role="status">
+        {dataMessage}
+        {dataState === 'demo' && !signedIn
+          ? ' Sample / local preview history — not a complete live ledger.'
+          : ''}
+      </div>
       <div className="cx-wide">
         <div className="cx-toolbar" role="search">
           <label className="cx-field cx-field--grow">

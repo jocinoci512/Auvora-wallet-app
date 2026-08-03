@@ -29,6 +29,17 @@ class HdDerivation {
     return Uint8List.fromList(bip39.mnemonicToSeed(mnemonic, passphrase: passphrase));
   }
 
+  /// EVM account private key (m/44'/60'/account'/0/0). Caller must not log or export.
+  static Uint8List deriveEvmPrivateKey({
+    required String mnemonic,
+    int accountIndex = 0,
+    String passphrase = '',
+  }) {
+    final seed = seedFromMnemonic(mnemonic, passphrase: passphrase);
+    final node = _deriveSecpPath(seed, "m/44'/60'/$accountIndex'/0/0");
+    return Uint8List.fromList(node.privateKey);
+  }
+
   static String deriveAddress({
     required String mnemonic,
     required AssetNetwork network,

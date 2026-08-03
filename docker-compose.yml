@@ -80,6 +80,19 @@ services:
   #     redis:
   #       condition: service_healthy
 
+  # Local-only SMTP catcher for auth verification / reset emails.
+  # Usage: docker compose --profile mail up -d
+  # Then set in .env: MAIL_DRIVER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_FROM=noreply@auvora.local
+  # UI: http://127.0.0.1:8025  (never use in production)
+  mailpit:
+    profiles: [mail]
+    image: axllent/mailpit:v1.22
+    container_name: auvora-mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
 volumes:
   auvora-postgres-data:
   auvora-redis-data:

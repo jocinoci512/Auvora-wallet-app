@@ -3,6 +3,8 @@ export interface DeviceRecord {
   userId: string;
   fingerprint: string;
   name: string | null;
+  platform: string | null;
+  appVersion: string | null;
   userAgent: string | null;
   trusted: boolean;
   lastSeenAt: Date;
@@ -14,6 +16,8 @@ export interface UpsertDeviceInput {
   userId: string;
   fingerprint: string;
   name?: string;
+  platform?: string;
+  appVersion?: string;
   userAgent?: string;
 }
 

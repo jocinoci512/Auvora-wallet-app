@@ -5,15 +5,36 @@ import { env } from '../../env';
 import { getStoredAccessToken } from '../api-client';
 import type { DemoDevice, DemoSession } from './demo';
 
+function readCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  try {
+    const fromSession = sessionStorage.getItem('auvora_csrf_token_v1');
+    if (fromSession) return fromSession;
+  } catch {
+    /* ignore */
+  }
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
 /** Shared JSON fetch for auth `/me` and related settings gateway routes. */
 export async function settingsFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getStoredAccessToken();
+  const method = (init?.method ?? 'GET').toUpperCase();
+  const mutating = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+  const csrf = mutating ? readCsrfToken() : null;
   const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
     ...init,
     headers: {
       'content-type': 'application/json',
       accept: 'application/json',
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(csrf ? { 'x-csrf-token': csrf } : {}),
       ...(init?.headers ?? {}),
     },
     credentials: 'include',
@@ -95,8 +116,8 @@ export function mapDevices(raw: unknown): DemoDevice[] {
       label: String(r.name ?? 'Device'),
       trusted: Boolean(r.trusted),
       current: i === 0,
-      platform: guessPlatform(ua),
-      browser: guessBrowser(ua),
+      platform: String(r.platform ?? guessPlatform(ua)),
+      browser: r.appVersion ? `v${String(r.appVersion)}` : guessBrowser(ua),
       lastLogin: String(r.lastSeenAt ?? r.createdAt ?? new Date().toISOString()),
       location: 'Approximate · Unknown',
     });

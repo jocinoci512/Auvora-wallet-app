@@ -50,6 +50,18 @@ export class LoginDto {
   @IsString()
   @MaxLength(128)
   deviceName?: string;
+
+  @ApiPropertyOptional({ description: 'Coarse platform label (web/android/ios)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  devicePlatform?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  appVersion?: string;
 }
 
 export class RefreshDto {

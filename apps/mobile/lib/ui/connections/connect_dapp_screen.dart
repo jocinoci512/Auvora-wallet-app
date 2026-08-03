@@ -67,8 +67,13 @@ class _ConnectDappScreenState extends State<ConnectDappScreen> {
       final approved = await showConnectionApprovalSheet(context, request: request);
       if (!mounted) return;
       if (approved == true) {
+        final live = connections.isLiveRelay;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connection approved (preview session)')),
+          SnackBar(
+            content: Text(
+              live ? 'Connection approved (live Reown session)' : 'Connection approved (preview session)',
+            ),
+          ),
         );
         Navigator.pop(context);
       }
@@ -108,13 +113,21 @@ class _ConnectDappScreenState extends State<ConnectDappScreen> {
           Text('Pair safely', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 6),
           const Text(
-            'Scan a QR, paste a WalletConnect-shaped URI, or enter a desktop pairing code. Every connection still needs your approval.',
+            'Scan a QR, paste a WalletConnect URI, or enter a desktop pairing code. Every connection still needs your approval — never auto-approved.',
             style: TextStyle(color: AetherColors.muted, height: 1.45),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Preview pairing — sessions are stored on this device and are not a live WalletConnect relay.',
-            style: TextStyle(color: AetherColors.muted, height: 1.4, fontSize: 13),
+          Consumer<ConnectionsController>(
+            builder: (context, c, _) {
+              final live = c.isLiveRelay;
+              return Text(
+                live
+                    ? 'Live Reown WalletKit — pairing uses the official relay. Review every proposal carefully.'
+                    : (c.liveRelayStatus ??
+                        'Preview pairing — sessions are stored on this device and are not a live WalletConnect relay.'),
+                style: const TextStyle(color: AetherColors.muted, height: 1.4, fontSize: 13),
+              );
+            },
           ),
           const SizedBox(height: 20),
           FilledButton.icon(

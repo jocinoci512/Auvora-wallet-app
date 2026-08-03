@@ -1,22 +1,29 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../release/release_config.dart';
 import '../security/security_models.dart';
+import 'evm_local_signer.dart';
 import 'known_catalog.dart';
 import 'models.dart';
 import 'permission_catalog.dart';
+import 'wc_chain_catalog.dart';
+import 'wc_request_parser.dart';
 import 'wallet_connect_provider.dart';
 
 class ConnectionsController extends ChangeNotifier {
   ConnectionsController({WalletConnectProviderPort? walletConnect})
       : walletConnect = walletConnect ?? PreviewWalletConnectProvider();
 
-  final WalletConnectProviderPort walletConnect;
+  WalletConnectProviderPort walletConnect;
   SharedPreferences? _prefs;
   bool loading = true;
+  String? liveRelayStatus;
+  String? bootstrapFallbackReason;
 
   List<ConnectedAppSession> sessions = const [];
   List<DappConnectionRequest> pendingRequests = const [];
@@ -24,6 +31,9 @@ class ConnectionsController extends ChangeNotifier {
   List<DappTransactionRequest> pendingTransactions = const [];
   List<Web3ActivityEvent> activity = const [];
   final Set<String> _consumedRequestHashes = {};
+  final List<StreamSubscription<dynamic>> _liveSubs = [];
+  Future<String?> Function()? _mnemonicProvider;
+  final _signer = const EvmLocalSigner();
 
   static const _kSessions = 'auvora_connections_sessions_v1';
   static const _kPending = 'auvora_connections_pending_v1';
@@ -34,6 +44,8 @@ class ConnectionsController extends ChangeNotifier {
 
   List<ConnectedAppSession> get activeSessions =>
       sessions.where((s) => s.active).toList(growable: false);
+
+  bool get isLiveRelay => walletConnect.isLiveRelay && walletConnect.isInitialized;
 
   /// Snapshot for Security Center score / checkup.
   List<ConnectedDapp> get connectedDappsSummary => [
@@ -52,6 +64,253 @@ class ConnectionsController extends ChangeNotifier {
                     : null),
           ),
       ];
+
+  /// Attach mnemonic accessor for local WC signing (never logged).
+  void attachMnemonicProvider(Future<String?> Function() provider) {
+    _mnemonicProvider = provider;
+  }
+
+  /// Swap provider after [WalletConnectBootstrap] (preview → live or fallback).
+  Future<void> attachWalletConnectProvider(
+    WalletConnectProviderPort provider, {
+    String? fallbackReason,
+  }) async {
+    for (final s in _liveSubs) {
+      await s.cancel();
+    }
+    _liveSubs.clear();
+    await walletConnect.dispose();
+    walletConnect = provider;
+    bootstrapFallbackReason = fallbackReason;
+    liveRelayStatus = provider.isLiveRelay
+        ? 'Live Reown WalletKit'
+        : (fallbackReason ?? 'Preview WalletConnect (local only)');
+    _bindLiveStreams();
+    notifyListeners();
+  }
+
+  void _bindLiveStreams() {
+    if (!walletConnect.isLiveRelay) return;
+    _liveSubs.add(walletConnect.sessionProposals.listen(_onLiveProposal));
+    _liveSubs.add(walletConnect.sessionRequests.listen(_onLiveRequest));
+    _liveSubs.add(walletConnect.sessionDeletes.listen(_onLiveSessionDelete));
+  }
+
+  Future<void> _onLiveProposal(LiveSessionProposalEvent event) async {
+    await bootstrap();
+    final origin = event.proposerUrl.isNotEmpty
+        ? event.proposerUrl
+        : 'auvora://walletconnect/pending';
+    final known = lookupKnownDapp(origin);
+    final chains = {
+      ...event.requiredChains,
+      ...event.optionalChains,
+    };
+    final unsupported = chains.where((c) => !WcChainCatalog.isSupportedCaip(c)).toList();
+    final supported = chains.where(WcChainCatalog.isSupportedCaip).toList();
+    final https = origin.toLowerCase().startsWith('https://');
+    final warnings = <String>[
+      if (unsupported.isNotEmpty)
+        'Unsupported chains requested (ignored): ${unsupported.join(", ")}',
+      if (supported.isEmpty) 'No supported EVM chains in this proposal — reject unless metadata is wrong.',
+      if (event.methods.any(WcChainCatalog.isUnsafeRejectedMethod))
+        'dApp requested eth_sign — Auvora will reject that method.',
+      if (event.verifyRisk != null && event.verifyRisk!.toLowerCase().contains('invalid'))
+        'Reown Verify flagged this origin — treat as untrusted.',
+      'Live WalletConnect proposal — approve only if you trust this dApp.',
+    ];
+    final request = DappConnectionRequest(
+      id: _id('req'),
+      appName: event.proposerName,
+      origin: origin,
+      networks: supported.isEmpty
+          ? WcChainCatalog.labelsForCaips(chains)
+          : WcChainCatalog.labelsForCaips(supported),
+      account: 'Primary account',
+      permissions: const [
+        DappPermissionCode.viewAddresses,
+        DappPermissionCode.viewBalances,
+        DappPermissionCode.requestSignatures,
+        DappPermissionCode.requestTransactions,
+        DappPermissionCode.sessionManage,
+      ],
+      method: ConnectionMethod.walletConnectUri,
+      createdAt: DateTime.now(),
+      status: ConnectionRequestStatus.pending,
+      trust: TrustIndicators(
+        verifiedDomain: known?.verified == true,
+        https: https,
+        knownProject: known != null,
+        unknownApplication: known == null,
+      ),
+      faviconHint: event.proposerName.isNotEmpty
+          ? event.proposerName.substring(0, 1).toUpperCase()
+          : '?',
+      pairUri: null,
+      riskWarnings: warnings,
+      wcProposalId: event.proposalId,
+      proposerIcon: event.proposerIcon,
+      requestedMethods: event.methods,
+      requestedEvents: event.events,
+    );
+    pendingRequests = [request, ...pendingRequests];
+    await _persistPending();
+    await _addActivity(
+      kind: Web3ActivityKind.deepLink,
+      title: 'Live session proposal',
+      detail: '${event.proposerName} · ${event.proposerUrl}',
+      appName: event.proposerName,
+      origin: origin,
+      status: Web3ActivityStatus.pending,
+    );
+    notifyListeners();
+  }
+
+  Future<void> _onLiveRequest(LiveSessionRequestEvent event) async {
+    await bootstrap();
+    final parsed = WcRequestParser.parse(
+      method: event.method,
+      chainId: event.chainId,
+      params: event.params,
+    );
+    final session = sessions
+        .where((s) => s.topic == event.topic || s.id == event.topic)
+        .cast<ConnectedAppSession?>()
+        .followedBy([activeSessions.isNotEmpty ? activeSessions.first : null])
+        .first;
+
+    if (parsed.kind == WcRequestKind.unsafeRejected ||
+        parsed.kind == WcRequestKind.unsupported) {
+      await walletConnect.respondLiveRequest(
+        topic: event.topic,
+        requestId: event.requestId,
+        errorCode: 5101,
+        errorMessage: parsed.rejectReason ?? 'Unsupported method',
+      );
+      await _addActivity(
+        kind: Web3ActivityKind.security,
+        title: 'Rejected WC method',
+        detail: parsed.summary,
+        appName: session?.label,
+        origin: session?.origin,
+        status: Web3ActivityStatus.rejected,
+      );
+      notifyListeners();
+      return;
+    }
+
+    if (parsed.kind == WcRequestKind.sendTransaction) {
+      final preview = parsed.txPreview!;
+      final request = DappTransactionRequest(
+        id: _id('dtx'),
+        sessionId: session?.id ?? event.topic,
+        appName: session?.label ?? 'Connected dApp',
+        origin: session?.origin ?? 'walletconnect',
+        recipient: preview.to,
+        network: parsed.networkLabel,
+        assetSymbol: 'ETH',
+        amount: double.tryParse(preview.valueEthLabel.split(' ').first) ?? 0,
+        feeEstimate: preview.gas != null
+            ? 'Gas ${preview.gas} (estimate from dApp — not live fee oracle)'
+            : 'Fee estimate unavailable until broadcast audit',
+        purpose: 'eth_sendTransaction',
+        createdAt: DateTime.now(),
+        risk: ConnectionRisk.elevated,
+        simulationNote: ReleaseConfig.liveBroadcastEnabled
+            ? 'Live broadcast enabled'
+            : 'Live broadcast is OFF — approving will refuse to broadcast and return an error to the dApp.',
+        warnings: [
+          'This can move funds if broadcast were enabled.',
+          if (preview.hasContractInteraction) 'Contract calldata present — review carefully.',
+          if (!ReleaseConfig.liveBroadcastEnabled)
+            'Kill switch: liveBroadcastEnabled=false — WC cannot bypass.',
+        ],
+        wcTopic: event.topic,
+        wcRequestId: event.requestId,
+        wcChainId: event.chainId,
+        wcTxJson: jsonEncode(
+          event.params is List && (event.params as List).isNotEmpty
+              ? (event.params as List).first
+              : event.params,
+        ),
+      );
+      pendingTransactions = [request, ...pendingTransactions];
+      await _persistTransactions();
+      notifyListeners();
+      return;
+    }
+
+    final kind = parsed.kind == WcRequestKind.signTypedDataV4
+        ? SignatureKind.typedData
+        : SignatureKind.message;
+    String? rawPayload;
+    if (parsed.kind == WcRequestKind.personalSign) {
+      final list = event.params is List ? event.params as List : const [];
+      rawPayload = list.isNotEmpty ? list.first.toString() : '';
+      if (list.length >= 2) {
+        final a = list[0].toString();
+        final b = list[1].toString();
+        rawPayload = (a.toLowerCase().startsWith('0x') && a.length == 42) ? b : a;
+      }
+    } else if (parsed.kind == WcRequestKind.signTypedDataV4) {
+      final list = event.params is List ? event.params as List : const [];
+      if (list.length >= 2) {
+        final raw = list[1];
+        rawPayload = raw is String ? raw : jsonEncode(raw);
+      }
+    }
+
+    final request = SignatureRequest(
+      id: _id('sig'),
+      sessionId: session?.id ?? event.topic,
+      appName: session?.label ?? 'Connected dApp',
+      origin: session?.origin ?? 'walletconnect',
+      kind: kind,
+      purpose: parsed.method,
+      payloadSummary: parsed.summary,
+      network: parsed.networkLabel,
+      createdAt: DateTime.now(),
+      risk: parsed.canMoveFunds ? ConnectionRisk.elevated : ConnectionRisk.medium,
+      canMoveFunds: parsed.canMoveFunds,
+      requestHash: sha256.convert(utf8.encode('${event.topic}|${event.requestId}')).toString(),
+      walletLabel: parsed.fromAddress ??
+          (session != null && session.accounts.isNotEmpty
+              ? session.accounts.first
+              : 'Primary account'),
+      wcTopic: event.topic,
+      wcRequestId: event.requestId,
+      wcMethod: event.method,
+      wcChainId: event.chainId,
+      wcRawPayload: rawPayload,
+    );
+    pendingSignatures = [request, ...pendingSignatures];
+    await _persistSignatures();
+    notifyListeners();
+  }
+
+  Future<void> _onLiveSessionDelete(String topic) async {
+    await bootstrap();
+    final match = sessions.where((s) => s.id == topic || s.topic == topic);
+    if (match.isEmpty) return;
+    final session = match.first;
+    sessions = [
+      for (final s in sessions)
+        if (s.id == session.id)
+          s.copyWith(active: false, warning: 'Disconnected by dApp or relay.')
+        else
+          s,
+    ];
+    await _addActivity(
+      kind: Web3ActivityKind.disconnected,
+      title: 'Session ended remotely',
+      detail: '${session.label} disconnected.',
+      appName: session.label,
+      origin: session.origin,
+      status: Web3ActivityStatus.confirmed,
+    );
+    await _persistSessions();
+    notifyListeners();
+  }
 
   Future<void> bootstrap() async {
     if (!loading) return;
@@ -112,7 +371,7 @@ class ConnectionsController extends ChangeNotifier {
 
   // --- Pairing / approval -------------------------------------------------
 
-  /// Accept a WalletConnect-shaped URI, pairing code, or deep-link preview payload.
+  /// Accept a WalletConnect URI, pairing code, or deep-link payload.
   Future<DappConnectionRequest> createPairingRequest({
     required String rawInput,
     required ConnectionMethod method,
@@ -130,6 +389,51 @@ class ConnectionsController extends ChangeNotifier {
       }
     }
     final effectiveInput = validation.extractedUri ?? rawInput;
+
+    // Live Reown path: pair wc: URI and wait for session proposal (never auto-approve).
+    if (walletConnect.isLiveRelay &&
+        effectiveInput.toLowerCase().startsWith('wc:') &&
+        !isPairingCode) {
+      try {
+        await walletConnect.pairUri(effectiveInput).timeout(const Duration(seconds: 25));
+      } on TimeoutException {
+        throw StateError('Pairing timed out. Check internet and try a fresh QR/URI.');
+      } catch (e) {
+        if (e is ArgumentError || e is StateError) rethrow;
+        throw StateError('Pairing failed. URI may be expired or relay unavailable.');
+      }
+      // Proposal arrives via stream → pendingRequests. Return a placeholder marker.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      final livePending = pendingRequests.where((r) => r.wcProposalId != null).toList();
+      if (livePending.isNotEmpty) {
+        return livePending.first;
+      }
+      // Still waiting — surface a synthetic pending that UI can show as "waiting".
+      final waiting = DappConnectionRequest(
+        id: _id('req'),
+        appName: 'Waiting for dApp proposal…',
+        origin: 'auvora://walletconnect/pairing',
+        networks: WcChainCatalog.labelsForCaips(WcChainCatalog.supportedEip155Chains),
+        account: account?.trim().isNotEmpty == true ? account!.trim() : 'Primary account',
+        permissions: const [
+          DappPermissionCode.viewAddresses,
+          DappPermissionCode.requestSignatures,
+        ],
+        method: method,
+        createdAt: DateTime.now(),
+        status: ConnectionRequestStatus.pending,
+        trust: const TrustIndicators(unknownApplication: true),
+        pairUri: effectiveInput,
+        riskWarnings: const [
+          'Paired with Reown relay — waiting for session proposal. Never auto-approved.',
+        ],
+      );
+      pendingRequests = [waiting, ...pendingRequests];
+      await _persistPending();
+      notifyListeners();
+      return waiting;
+    }
+
     final parsed = _parsePairInput(effectiveInput, method: method);
     final known = lookupKnownDapp(parsed.origin);
     final previously = sessions.any(
@@ -159,6 +463,8 @@ class ConnectionsController extends ChangeNotifier {
       if (parsed.note case final note?) note,
       if (!walletConnect.isLiveRelay)
         'Preview WalletConnect — not a live relay session. Approving stores a local session only.',
+      if (walletConnect.isLiveRelay)
+        'Live Reown relay is active for this build.',
     ];
 
     final request = DappConnectionRequest(
@@ -214,6 +520,79 @@ class ConnectionsController extends ChangeNotifier {
     final now = DateTime.now();
     final normalized = _normalizeOrigin(request.origin);
 
+    // Live Reown proposal approval.
+    if (request.wcProposalId != null && walletConnect.isLiveRelay) {
+      final evmAddress = request.account.startsWith('0x')
+          ? request.account
+          : (request.account.contains(':')
+              ? request.account.split(':').last
+              : request.account);
+      try {
+        final snapshot = await walletConnect.approveLiveProposal(
+          proposalId: request.wcProposalId!,
+          accounts: [if (evmAddress.isNotEmpty) evmAddress],
+        );
+        final session = ConnectedAppSession(
+          id: snapshot.sessionId,
+          appName: snapshot.peerName,
+          origin: snapshot.peerUrl ?? request.origin,
+          networks: snapshot.networks,
+          accounts: snapshot.accounts,
+          method: request.method,
+          connectedAt: now,
+          lastUsedAt: now,
+          trust: request.trust.copyWithPreviouslyConnected(true),
+          grants: [
+            for (final code in request.permissions)
+              PermissionGrant(
+                id: _id('grant'),
+                sessionId: snapshot.sessionId,
+                code: code,
+                grantedAt: now,
+                lastUsedAt: now,
+              ),
+          ],
+          faviconHint: request.faviconHint,
+          warning: 'Live Reown session — disconnect anytime in Permission Center.',
+          active: true,
+          topic: snapshot.topic,
+          protocolVersion: snapshot.protocolVersion,
+          expiresAt: snapshot.expiresAt,
+          pairUri: request.pairUri,
+        );
+        sessions = [
+          session,
+          for (final s in sessions)
+            if (s.id != session.id && _normalizeOrigin(s.origin) != _normalizeOrigin(session.origin)) s,
+        ];
+        pendingRequests = pendingRequests
+            .where((r) => r.id != requestId)
+            .toList();
+        await _addActivity(
+          kind: Web3ActivityKind.connected,
+          title: 'Connected ${session.label}',
+          detail: 'Live Reown session for ${session.origin}.',
+          appName: session.label,
+          origin: session.origin,
+          status: Web3ActivityStatus.confirmed,
+        );
+        await _persistSessions();
+        await _persistPending();
+        notifyListeners();
+        return session;
+      } catch (e) {
+        await _addActivity(
+          kind: Web3ActivityKind.rejected,
+          title: 'Live session approval failed',
+          detail: e.toString(),
+          appName: request.appName,
+          origin: request.origin,
+          status: Web3ActivityStatus.rejected,
+        );
+        rethrow;
+      }
+    }
+
     // Upsert by origin — avoid duplicate active sessions for the same dApp.
     final existing = sessions.where((s) => _normalizeOrigin(s.origin) == normalized).toList();
     final sessionId = existing.isNotEmpty ? existing.first.id : _id('sess');
@@ -265,7 +644,9 @@ class ConnectionsController extends ChangeNotifier {
     await _addActivity(
       kind: Web3ActivityKind.connected,
       title: 'Connected ${session.label}',
-      detail: 'Preview session approved for ${session.origin}. Not a live WalletConnect relay.',
+      detail: walletConnect.isLiveRelay
+          ? 'Session approved for ${session.origin}.'
+          : 'Preview session approved for ${session.origin}. Not a live WalletConnect relay.',
       appName: session.label,
       origin: session.origin,
       status: Web3ActivityStatus.confirmed,
@@ -289,6 +670,11 @@ class ConnectionsController extends ChangeNotifier {
     final match = pendingRequests.where((r) => r.id == requestId);
     if (match.isEmpty) return;
     final request = match.first;
+    if (request.wcProposalId != null && walletConnect.isLiveRelay) {
+      try {
+        await walletConnect.rejectLiveProposal(request.wcProposalId!);
+      } catch (_) {}
+    }
     pendingRequests = pendingRequests.where((r) => r.id != requestId).toList();
     await _addActivity(
       kind: Web3ActivityKind.rejected,
@@ -552,11 +938,57 @@ class ConnectionsController extends ChangeNotifier {
       }
       _consumedRequestHashes.add(request.requestHash!);
     }
+
+    // Live WC: local sign then respond (keys never leave device / never logged).
+    if (request.wcTopic != null &&
+        request.wcRequestId != null &&
+        walletConnect.isLiveRelay) {
+      final mnemonic = await _mnemonicProvider?.call();
+      if (mnemonic == null || mnemonic.isEmpty) {
+        await walletConnect.respondLiveRequest(
+          topic: request.wcTopic!,
+          requestId: request.wcRequestId!,
+          errorMessage: 'Wallet keys unavailable',
+          errorCode: 5001,
+        );
+        throw StateError('Wallet keys unavailable for local signing.');
+      }
+      try {
+        final String signature;
+        if (request.wcMethod == 'eth_signTypedData_v4') {
+          signature = _signer.signTypedDataV4(
+            mnemonic: mnemonic,
+            typedDataJson: request.wcRawPayload ?? '{}',
+          );
+        } else {
+          signature = _signer.personalSign(
+            mnemonic: mnemonic,
+            message: request.wcRawPayload ?? request.payloadSummary,
+          );
+        }
+        await walletConnect.respondLiveRequest(
+          topic: request.wcTopic!,
+          requestId: request.wcRequestId!,
+          result: signature,
+        );
+      } catch (e) {
+        await walletConnect.respondLiveRequest(
+          topic: request.wcTopic!,
+          requestId: request.wcRequestId!,
+          errorMessage: 'Local signing failed',
+          errorCode: 5001,
+        );
+        rethrow;
+      }
+    }
+
     pendingSignatures = pendingSignatures.where((r) => r.id != requestId).toList();
     await touchSession(request.sessionId);
     await _addActivity(
       kind: Web3ActivityKind.signature,
-      title: 'Signature approved',
+      title: walletConnect.isLiveRelay && request.wcTopic != null
+          ? 'Signature approved (local sign)'
+          : 'Signature approved',
       detail: '${request.purpose} · ${request.payloadSummary}',
       appName: request.appName,
       origin: request.origin,
@@ -571,6 +1003,16 @@ class ConnectionsController extends ChangeNotifier {
     final match = pendingSignatures.where((r) => r.id == requestId);
     if (match.isEmpty) return;
     final request = match.first;
+    if (request.wcTopic != null && request.wcRequestId != null) {
+      try {
+        await walletConnect.respondLiveRequest(
+          topic: request.wcTopic!,
+          requestId: request.wcRequestId!,
+          errorMessage: 'User rejected method',
+          errorCode: 5001,
+        );
+      } catch (_) {}
+    }
     pendingSignatures = pendingSignatures.where((r) => r.id != requestId).toList();
     await _addActivity(
       kind: Web3ActivityKind.signature,
@@ -622,6 +1064,47 @@ class ConnectionsController extends ChangeNotifier {
     final match = pendingTransactions.where((r) => r.id == requestId);
     if (match.isEmpty) return;
     final request = match.first;
+
+    // Live WC eth_sendTransaction — parse OK, broadcast blocked by kill switch.
+    if (request.wcTopic != null && request.wcRequestId != null) {
+      if (!ReleaseConfig.liveBroadcastEnabled) {
+        try {
+          await walletConnect.respondLiveRequest(
+            topic: request.wcTopic!,
+            requestId: request.wcRequestId!,
+            errorCode: 5001,
+            errorMessage:
+                'Live transaction broadcast is disabled on Auvora Wallet '
+                '(kill switch). WalletConnect cannot bypass this safety gate.',
+          );
+        } catch (_) {}
+        pendingTransactions = pendingTransactions.where((r) => r.id != requestId).toList();
+        await _addActivity(
+          kind: Web3ActivityKind.dappTransaction,
+          title: 'dApp tx refused (broadcast off)',
+          detail:
+              '${request.amount} ${request.assetSymbol} → ${request.recipient}. '
+              'Parsed and previewed; liveBroadcastEnabled=false.',
+          appName: request.appName,
+          origin: request.origin,
+          status: Web3ActivityStatus.rejected,
+        );
+        await _persistTransactions();
+        notifyListeners();
+        throw const WcBroadcastDisabledException(
+          'Live broadcast is disabled. Transaction was not broadcast.',
+        );
+      }
+      // Future audited path only — still refuse until dedicated adapter ships.
+      await walletConnect.respondLiveRequest(
+        topic: request.wcTopic!,
+        requestId: request.wcRequestId!,
+        errorCode: 5001,
+        errorMessage: 'Broadcast adapter not enabled',
+      );
+      throw const WcBroadcastDisabledException('Broadcast adapter not enabled');
+    }
+
     pendingTransactions = pendingTransactions.where((r) => r.id != requestId).toList();
     await touchSession(request.sessionId);
     await _addActivity(
@@ -642,6 +1125,16 @@ class ConnectionsController extends ChangeNotifier {
     final match = pendingTransactions.where((r) => r.id == requestId);
     if (match.isEmpty) return;
     final request = match.first;
+    if (request.wcTopic != null && request.wcRequestId != null) {
+      try {
+        await walletConnect.respondLiveRequest(
+          topic: request.wcTopic!,
+          requestId: request.wcRequestId!,
+          errorMessage: 'User rejected method',
+          errorCode: 5001,
+        );
+      } catch (_) {}
+    }
     pendingTransactions = pendingTransactions.where((r) => r.id != requestId).toList();
     await _addActivity(
       kind: Web3ActivityKind.dappTransaction,

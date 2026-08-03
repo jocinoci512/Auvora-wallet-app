@@ -20,7 +20,8 @@ import { SettingsSectionNav } from './SettingsSectionNav';
 const WHY: Record<string, string> = {
   pin: 'A PIN stops casual access if your device is unlocked nearby.',
   backup: 'A verified recovery phrase is the only way to restore self-custody wallets.',
-  biometric: 'Biometrics speed unlock without weakening your PIN or phrase.',
+  biometric:
+    'Mobile biometrics are device-local on Android. Web does not provide WebAuthn unlock — this factor stays informational.',
   devices: 'Unknown or untrusted devices are a common path to account takeover.',
   dapps:
     'Open dApp transaction grants can move funds after you approve each send — review regularly.',
@@ -76,16 +77,28 @@ export function SecurityCenterExperience(): ReactElement {
         ]);
         if (cancelled) return;
         if (Array.isArray(sessions)) {
-          setSessionCount(sessions.length);
+          setSessionCount(
+            sessions.filter(
+              (s) => s && typeof s === 'object' && !(s as { revokedAt?: string }).revokedAt,
+            ).length,
+          );
           setLive(true);
         }
         if (Array.isArray(devices)) {
-          setDeviceCount(devices.length);
+          setDeviceCount(
+            devices.filter(
+              (d) => d && typeof d === 'object' && !(d as { revokedAt?: string }).revokedAt,
+            ).length,
+          );
           setLive(true);
         }
         if (summary) {
           setDappCount(Number(summary.activeSessions ?? 0));
           setLive(true);
+        }
+        // When signed-in APIs respond, never keep demo alert counts pretending to be live.
+        if (Array.isArray(sessions) || Array.isArray(devices)) {
+          setAlerts([]);
         }
       } finally {
         if (!cancelled) setReady(true);
@@ -103,7 +116,7 @@ export function SecurityCenterExperience(): ReactElement {
         label: 'Password / PIN enabled',
         ok: pinEnabled,
         weight: 25,
-        href: '/security',
+        href: '/settings/security',
         action: pinEnabled ? 'Manage PIN' : 'Enable PIN',
       },
       {
@@ -116,11 +129,11 @@ export function SecurityCenterExperience(): ReactElement {
       },
       {
         id: 'biometric',
-        label: 'Biometrics ready',
-        ok: biometric,
+        label: 'Mobile biometrics (not on web)',
+        ok: false, // web has no WebAuthn unlock
         weight: 10,
-        href: '/security',
-        action: 'Open biometrics',
+        href: '/settings/security',
+        action: 'Learn limits',
       },
       {
         id: 'devices',
@@ -157,7 +170,7 @@ export function SecurityCenterExperience(): ReactElement {
         action: 'Backup settings',
       },
     ],
-    [pinEnabled, backupOk, biometric, deviceCount, dappCount, backupReminders, live, lastReviewAt],
+    [pinEnabled, backupOk, deviceCount, dappCount, backupReminders, live, lastReviewAt],
   );
 
   const score = computeSecurityScore(factors);
@@ -245,7 +258,8 @@ export function SecurityCenterExperience(): ReactElement {
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <p className="cx-meta">
-              Score reflects PIN, backup verification, biometrics, devices, and dApp hygiene.
+              Score reflects local PIN preference, backup checklist, account devices/sessions when
+              signed in, and dApp hygiene. Web biometrics are not claimed as live.
             </p>
             <p className="cx-meta" style={{ marginTop: '0.35rem' }}>
               Status: {statusLabel} ·{' '}

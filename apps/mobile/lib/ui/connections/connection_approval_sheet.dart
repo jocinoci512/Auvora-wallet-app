@@ -165,7 +165,13 @@ class _ConnectionApprovalBody extends StatelessWidget {
             _kv('Connection method', request.method.label),
             _kv('Network', request.networks.join(', ')),
             _kv('Wallet account', request.account),
+            if (request.requestedMethods.isNotEmpty)
+              _kv('Methods', request.requestedMethods.join(', ')),
+            if (request.requestedEvents.isNotEmpty)
+              _kv('Events', request.requestedEvents.join(', ')),
             _kv('Requested', _formatWhen(request.createdAt)),
+            if (request.wcProposalId != null)
+              _kv('Proposal', 'Reown #${request.wcProposalId}'),
             const SizedBox(height: 16),
             Text('Permissions', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -194,9 +200,11 @@ class _ConnectionApprovalBody extends StatelessWidget {
                 ),
             ],
             const SizedBox(height: 8),
-            const Text(
-              'Preview session — this is WalletConnect-shaped pairing, not a live relay connection.',
-              style: TextStyle(color: AetherColors.muted, height: 1.4, fontSize: 13),
+            Text(
+              request.wcProposalId != null
+                  ? 'Live Reown session proposal — approving shares your address and lets this dApp request signatures/transactions. Never auto-approved.'
+                  : 'Preview session — this is WalletConnect-shaped pairing, not a live relay connection.',
+              style: const TextStyle(color: AetherColors.muted, height: 1.4, fontSize: 13),
             ),
             const SizedBox(height: 20),
             FilledButton(

@@ -77,6 +77,52 @@ enum WalletConnectSessionStatus {
   terminated,
 }
 
+/// Live session proposal emitted by [ReownWalletConnectProvider].
+class LiveSessionProposalEvent {
+  const LiveSessionProposalEvent({
+    required this.proposalId,
+    required this.proposerName,
+    required this.proposerUrl,
+    required this.proposerIcon,
+    required this.requiredChains,
+    required this.optionalChains,
+    required this.methods,
+    required this.events,
+    required this.expiresAt,
+    this.verifyRisk,
+    this.generatedNamespacesReady = false,
+  });
+
+  final int proposalId;
+  final String proposerName;
+  final String proposerUrl;
+  final String? proposerIcon;
+  final List<String> requiredChains;
+  final List<String> optionalChains;
+  final List<String> methods;
+  final List<String> events;
+  final DateTime expiresAt;
+  final String? verifyRisk;
+  final bool generatedNamespacesReady;
+}
+
+/// Live session request (sign / tx) emitted by the Reown adapter.
+class LiveSessionRequestEvent {
+  const LiveSessionRequestEvent({
+    required this.requestId,
+    required this.topic,
+    required this.method,
+    required this.chainId,
+    required this.params,
+  });
+
+  final int requestId;
+  final String topic;
+  final String method;
+  final String chainId;
+  final dynamic params;
+}
+
 /// Protocol-upgrade seam for WalletConnect / Reown clients.
 abstract class WalletConnectProviderPort {
   String get code;
@@ -86,8 +132,15 @@ abstract class WalletConnectProviderPort {
   /// True when this provider talks to a live relay (never claim this for preview).
   bool get isLiveRelay;
 
+  /// True after successful Reown WalletKit init against a real project id.
+  bool get isInitialized;
+
   /// Reown / WalletConnect Cloud project id when compiled in (may be empty).
+  /// Never log the raw value.
   String get projectId;
+
+  /// Project id present and non-placeholder.
+  bool get hasConfiguredProjectId;
 
   Future<WalletConnectProposal> createProposal({
     required List<String> networks,
@@ -108,11 +161,49 @@ abstract class WalletConnectProviderPort {
 
   /// Validate an inbound deep link / wc: URI before creating a pairing request.
   DeepLinkValidation validateInboundUri(String raw);
+
+  /// Live pair against a `wc:` URI. Preview providers throw / no-op.
+  Future<void> pairUri(String wcUri);
+
+  /// Approve a live Reown session proposal by numeric id.
+  Future<WalletConnectSessionSnapshot> approveLiveProposal({
+    required int proposalId,
+    required List<String> accounts,
+  });
+
+  /// Reject a live Reown session proposal.
+  Future<void> rejectLiveProposal(int proposalId);
+
+  /// Respond to a live session request after local sign / user decision.
+  Future<void> respondLiveRequest({
+    required String topic,
+    required int requestId,
+    String? result,
+    String? errorMessage,
+    int errorCode = 5001,
+  });
+
+  /// Optional stream of live session proposals (empty for preview).
+  Stream<LiveSessionProposalEvent> get sessionProposals;
+
+  /// Optional stream of live session requests (empty for preview).
+  Stream<LiveSessionRequestEvent> get sessionRequests;
+
+  /// Optional stream when a remote dApp deletes a session.
+  Stream<String> get sessionDeletes;
+
+  /// Register EVM accounts for namespace building. No-op for preview.
+  Future<void> registerAccounts(Map<String, String> caipToAddress);
+
+  /// Dispose / detach listeners. No-op for preview.
+  Future<void> dispose();
 }
 
 enum DeepLinkKind {
   walletConnectUri,
   auvoraWc,
+  /// Web companion handshake (`auvora://pair`) — opens Connect UI; no WC URI yet.
+  companionPair,
   transactionRequest,
   authentication,
   unsupported,
@@ -158,7 +249,7 @@ class PreviewWalletConnectProvider implements WalletConnectProviderPort {
   @override
   String get name => _projectId.isEmpty
       ? 'WalletConnect (preview)'
-      : 'WalletConnect (project configured · relay pending SDK)';
+      : 'WalletConnect (project configured · preview fallback)';
 
   @override
   String get protocolVersion => '2';
@@ -167,7 +258,58 @@ class PreviewWalletConnectProvider implements WalletConnectProviderPort {
   bool get isLiveRelay => false;
 
   @override
+  bool get isInitialized => false;
+
+  @override
   String get projectId => _projectId;
+
+  @override
+  bool get hasConfiguredProjectId =>
+      _projectId.trim().isNotEmpty &&
+      _projectId.trim().toLowerCase() != 'your_project_id' &&
+      !_projectId.trim().toLowerCase().contains('placeholder');
+
+  @override
+  Stream<LiveSessionProposalEvent> get sessionProposals =>
+      const Stream<LiveSessionProposalEvent>.empty();
+
+  @override
+  Stream<LiveSessionRequestEvent> get sessionRequests =>
+      const Stream<LiveSessionRequestEvent>.empty();
+
+  @override
+  Stream<String> get sessionDeletes => const Stream<String>.empty();
+
+  @override
+  Future<void> pairUri(String wcUri) async {
+    throw UnsupportedError('Preview provider does not pair with a live relay.');
+  }
+
+  @override
+  Future<WalletConnectSessionSnapshot> approveLiveProposal({
+    required int proposalId,
+    required List<String> accounts,
+  }) async {
+    throw UnsupportedError('Preview provider has no live proposals.');
+  }
+
+  @override
+  Future<void> rejectLiveProposal(int proposalId) async {}
+
+  @override
+  Future<void> respondLiveRequest({
+    required String topic,
+    required int requestId,
+    String? result,
+    String? errorMessage,
+    int errorCode = 5001,
+  }) async {}
+
+  @override
+  Future<void> registerAccounts(Map<String, String> caipToAddress) async {}
+
+  @override
+  Future<void> dispose() async {}
 
   @override
   DeepLinkValidation validateInboundUri(String raw) {
@@ -248,6 +390,15 @@ class PreviewWalletConnectProvider implements WalletConnectProviderPort {
           valid: true,
           extractedUri: trimmed,
           message: 'Authentication deep link — confirm only after reviewing the app name and domain.',
+        );
+      }
+      if (uri.host == 'pair' || uri.pathSegments.contains('pair')) {
+        return const DeepLinkValidation(
+          kind: DeepLinkKind.companionPair,
+          valid: true,
+          extractedUri: null,
+          message:
+              'Web companion pair link received. Open Connect dApp and paste or scan a WalletConnect URI from the same Reown project — keys stay on device.',
         );
       }
       return DeepLinkValidation(

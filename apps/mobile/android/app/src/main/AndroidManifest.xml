@@ -36,6 +36,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="auvora" android:host="wc"/>
+                <data android:scheme="auvora" android:host="pair"/>
                 <data android:scheme="auvora" android:host="sign"/>
                 <data android:scheme="auvora" android:host="auth"/>
                 <data android:scheme="auvora" android:host="tx"/>

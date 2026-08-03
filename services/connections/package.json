@@ -17,6 +17,8 @@
     "@auvora/database": "workspace:*",
     "@auvora/security": "workspace:*",
     "@auvora/types": "workspace:*",
+    "@noble/hashes": "^1.8.0",
+    "@noble/secp256k1": "^1.7.1",
     "@nestjs/common": "^11.0.12",
     "@nestjs/core": "^11.0.12",
     "@nestjs/jwt": "^11.0.0",

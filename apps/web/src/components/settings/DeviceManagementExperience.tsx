@@ -40,18 +40,15 @@ export function DeviceManagementExperience(): ReactElement {
           settingsFetch<unknown>('/api/v1/me/devices').catch(() => null),
         ]);
         if (cancelled) return;
-        const mappedS = mapSessions(s);
-        const mappedD = mapDevices(d);
-        if (mappedS.length) {
-          setSessions(mappedS);
+        const sessionsOk = Array.isArray(s);
+        const devicesOk = Array.isArray(d);
+        if (sessionsOk || devicesOk) {
           setLive(true);
-        }
-        if (mappedD.length) {
-          setDevices(mappedD);
-          setLive(true);
+          setSessions(sessionsOk ? mapSessions(s) : []);
+          setDevices(devicesOk ? mapDevices(d) : []);
         }
       } catch {
-        /* demo */
+        /* keep labeled demo fallback */
       }
     })();
     return () => {
@@ -62,7 +59,7 @@ export function DeviceManagementExperience(): ReactElement {
   async function revokeSession(id: string): Promise<void> {
     if (!window.confirm('Sign this device out? You can sign in again later.')) return;
     if (!live) {
-      showToast('Preview only — connect sessions API to revoke for real');
+      showToast('Sign in required — sample devices cannot be revoked');
       return;
     }
     setBusyId(id);
@@ -72,6 +69,24 @@ export function DeviceManagementExperience(): ReactElement {
       showToast('Session revoked');
     } catch {
       showToast('Could not revoke session');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function revokeDevice(id: string): Promise<void> {
+    if (!window.confirm('Revoke this device and its sessions?')) return;
+    if (!live) {
+      showToast('Sign in required — sample devices cannot be revoked');
+      return;
+    }
+    setBusyId(id);
+    try {
+      await settingsFetch(`/api/v1/me/devices/${id}`, { method: 'DELETE' });
+      setDevices((prev) => prev.filter((d) => d.id !== id));
+      showToast('Device revoked');
+    } catch {
+      showToast('Could not revoke device');
     } finally {
       setBusyId(null);
     }
@@ -110,7 +125,7 @@ export function DeviceManagementExperience(): ReactElement {
   return (
     <PlatformShell
       title="Devices & sessions"
-      subtitle="See where you are signed in and remove sessions you do not recognize."
+      subtitle="Account sessions for the Auvora identity layer. This does not sync private keys or imply encrypted wallet-secret restore."
       reassure="Revoking a session signs that device out. This device stays signed in."
       backHref="/settings"
       backLabel="Settings"
@@ -137,10 +152,15 @@ export function DeviceManagementExperience(): ReactElement {
 
       {!live ? (
         <Alert tone="info" title="Preview devices">
-          Showing sample devices and sessions until the sessions API is available. Revoke and logout
-          actions do not change real sessions in this mode.
+          Showing sample devices until you sign in and /api/v1/me/sessions responds. This list is
+          account sessions — not proof of wallet key sync across devices.
         </Alert>
-      ) : null}
+      ) : (
+        <Alert tone="success" title="Live account devices">
+          Devices and sessions below come from your Auvora account. Revocation is real. Encrypted
+          wallet-secret sync is not implied.
+        </Alert>
+      )}
 
       <section className="cx-panel">
         <h2>Devices</h2>
@@ -159,10 +179,21 @@ export function DeviceManagementExperience(): ReactElement {
                   </p>
                   <p className="cx-meta">Last login {new Date(d.lastLogin).toLocaleString()}</p>
                 </div>
-                <StatusBadge
-                  status={d.trusted ? 'active' : 'pending'}
-                  label={d.trusted ? 'Trusted' : 'Untrusted'}
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <StatusBadge
+                    status={d.trusted ? 'active' : 'pending'}
+                    label={d.trusted ? 'Trusted' : 'Untrusted'}
+                  />
+                  {live && !d.current ? (
+                    <Button
+                      variant="secondary"
+                      disabled={busyId === d.id}
+                      onClick={() => void revokeDevice(d.id)}
+                    >
+                      Revoke
+                    </Button>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>

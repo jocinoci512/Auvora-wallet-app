@@ -1,6 +1,6 @@
-import type { ReactElement } from 'react';
-import { PortfolioExperience } from '../../../components/portfolio/PortfolioExperience';
+import { redirect } from 'next/navigation';
 
-export default function MarketPortfolioPage(): ReactElement {
-  return <PortfolioExperience />;
+/** Merged into /portfolio. */
+export default function MarketPortfolioRedirectPage(): never {
+  redirect('/portfolio');
 }
