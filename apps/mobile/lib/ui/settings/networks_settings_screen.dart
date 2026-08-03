@@ -18,7 +18,9 @@ class _NetworksSettingsScreenState extends State<NetworksSettingsScreen> {
     ('ETHEREUM', 'Ethereum', 'Healthy', 'Preview · 42ms'),
     ('BITCOIN', 'Bitcoin', 'Healthy', 'Preview · 58ms'),
     ('SOLANA', 'Solana', 'Degraded', 'Preview · 210ms'),
+    ('BSC', 'BNB Smart Chain', 'Healthy', 'Preview · 55ms'),
     ('POLYGON', 'Polygon', 'Healthy', 'Preview · 51ms'),
+    ('TRON', 'Tron', 'Healthy', 'Preview · 63ms'),
   ];
 
   @override

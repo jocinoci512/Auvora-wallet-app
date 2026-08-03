@@ -7,7 +7,7 @@ class DeepLinkRouter extends ChangeNotifier {
   DeepLinkRouter({WalletConnectProviderPort? provider})
       : _provider = provider ?? PreviewWalletConnectProvider();
 
-  final WalletConnectProviderPort _provider;
+  WalletConnectProviderPort _provider;
   String? _pendingUri;
   DeepLinkValidation? _lastValidation;
   final List<String> _recent = [];
@@ -17,6 +17,11 @@ class DeepLinkRouter extends ChangeNotifier {
   List<String> get recent => List.unmodifiable(_recent);
 
   WalletConnectProviderPort get provider => _provider;
+
+  /// Point at live Reown after deferred bootstrap (validation only).
+  void attachProvider(WalletConnectProviderPort provider) {
+    _provider = provider;
+  }
 
   /// Validate and queue a URI from OS deep link, paste, or QR.
   DeepLinkValidation ingest(String raw) {

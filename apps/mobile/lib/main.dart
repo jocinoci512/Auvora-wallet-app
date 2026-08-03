@@ -14,6 +14,7 @@ import 'portfolio/portfolio_repository.dart';
 import 'preferences/models.dart';
 import 'preferences/preferences_controller.dart';
 import 'release/integration_config.dart';
+import 'reliability/startup_timing.dart';
 import 'security/security_controller.dart';
 import 'state/wallet_controller.dart';
 import 'theme/aether_theme.dart';
@@ -33,6 +34,7 @@ import 'wallet_engine/wallet_engine.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  StartupTiming.markAppStart();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -47,16 +49,17 @@ Future<void> main() async {
     ),
   );
 
-  // Bootstrap WalletConnect / Reown (preview fallback if Project ID missing or init fails).
+  // Never block first frame on Reown WalletKit (can take many seconds on
+  // Android). Preview shell is instant; live upgrade runs after first paint.
   // Never log WC_PROJECT_ID value. Never inject Alchemy key here.
-  final wcBootstrap = await WalletConnectBootstrap.create(
+  final wcBootstrap = WalletConnectBootstrap.previewShell(
     projectId: IntegrationConfig.wcProjectId,
   );
-
+  StartupTiming.mark('runApp');
   runApp(AuvoraApp(wcBootstrap: wcBootstrap));
 }
 
-class AuvoraApp extends StatelessWidget {
+class AuvoraApp extends StatefulWidget {
   AuvoraApp({
     super.key,
     WalletConnectBootstrapResult? wcBootstrap,
@@ -69,6 +72,44 @@ class AuvoraApp extends StatelessWidget {
             );
 
   final WalletConnectBootstrapResult wcBootstrap;
+
+  @override
+  State<AuvoraApp> createState() => _AuvoraAppState();
+}
+
+class _AuvoraAppState extends State<AuvoraApp> {
+  late WalletConnectBootstrapResult _wcBootstrap;
+  bool _liveUpgradeStarted = false;
+  ThemeData? _cachedLight;
+  ThemeData? _cachedDark;
+  Object? _themeCacheKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _wcBootstrap = widget.wcBootstrap;
+    if (_wcBootstrap.liveInitDeferred) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // ignore: discarded_futures
+        _upgradeWalletConnect();
+      });
+    }
+  }
+
+  Future<void> _upgradeWalletConnect() async {
+    if (_liveUpgradeStarted || !mounted) return;
+    _liveUpgradeStarted = true;
+    StartupTiming.mark('wcLiveInitStart');
+    final result = await WalletConnectBootstrap.upgradeToLive(
+      projectId: IntegrationConfig.wcProjectId,
+    );
+    StartupTiming.mark('wcLiveInitDone');
+    if (!mounted) {
+      await result.provider.dispose();
+      return;
+    }
+    setState(() => _wcBootstrap = result);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,23 +226,23 @@ class AuvoraApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final c = ConnectionsController(walletConnect: wcBootstrap.provider);
-            c.liveRelayStatus = wcBootstrap.usingLiveRelay
+            final c = ConnectionsController(walletConnect: _wcBootstrap.provider);
+            c.liveRelayStatus = _wcBootstrap.usingLiveRelay
                 ? 'Live Reown WalletKit'
-                : (wcBootstrap.fallbackReason ?? 'Preview WalletConnect');
-            c.bootstrapFallbackReason = wcBootstrap.fallbackReason;
+                : (_wcBootstrap.fallbackReason ?? 'Preview WalletConnect');
+            c.bootstrapFallbackReason = _wcBootstrap.fallbackReason;
             // ignore: discarded_futures
             c.bootstrap();
             return c;
           },
         ),
         ChangeNotifierProvider(
-          create: (_) => DeepLinkRouter(provider: wcBootstrap.provider),
+          create: (_) => DeepLinkRouter(provider: _wcBootstrap.provider),
         ),
         ChangeNotifierProxyProvider2<WalletController, ConnectionsController, _WcAccountBinder>(
-          create: (_) => _WcAccountBinder(wcBootstrap),
+          create: (_) => _WcAccountBinder(_wcBootstrap),
           update: (_, wallet, connections, binder) =>
-              binder!..bind(wallet: wallet, connections: connections),
+              binder!..bind(wallet: wallet, connections: connections, bootstrap: _wcBootstrap),
         ),
         ChangeNotifierProvider(
           create: (_) {
@@ -218,30 +259,51 @@ class AuvoraApp extends StatelessWidget {
             ..attachConnections(connections),
         ),
         ChangeNotifierProvider(create: (_) => AddressBookStore()),
+        // Applies deferred live WC provider without rebuilding the whole tree.
+        ChangeNotifierProxyProvider2<ConnectionsController, DeepLinkRouter, _WcLiveUpgrader>(
+          create: (_) => _WcLiveUpgrader(),
+          update: (_, connections, deepLinks, upgrader) => upgrader!
+            ..apply(
+              connections: connections,
+              deepLinks: deepLinks,
+              bootstrap: _wcBootstrap,
+            ),
+        ),
       ],
       child: Consumer<PreferencesController>(
         builder: (context, prefs, _) {
           // Ensure WC account registration + mnemonic binding when wallet unlocks.
           context.watch<_WcAccountBinder>();
+          context.watch<_WcLiveUpgrader>();
           final a11y = prefs.accessibility;
           final scale = a11y.textScale.clamp(0.85, 1.35);
-          final light = buildAetherTheme(
-            brightness: Brightness.light,
-            highContrast: a11y.highContrast,
-            largeTouchTargets: a11y.largeTouchTargets,
-            accentColor: accentColorFor(prefs.accent),
+          // GoogleFonts + ThemeData copy is expensive — rebuild only when inputs change.
+          final themeKey = (
+            a11y.highContrast,
+            a11y.largeTouchTargets,
+            prefs.accent,
           );
-          final dark = buildAetherTheme(
-            brightness: Brightness.dark,
-            highContrast: a11y.highContrast,
-            largeTouchTargets: a11y.largeTouchTargets,
-            accentColor: accentColorFor(prefs.accent),
-          );
+          if (_themeCacheKey != themeKey || _cachedLight == null || _cachedDark == null) {
+            _themeCacheKey = themeKey;
+            final accent = accentColorFor(prefs.accent);
+            _cachedLight = buildAetherTheme(
+              brightness: Brightness.light,
+              highContrast: a11y.highContrast,
+              largeTouchTargets: a11y.largeTouchTargets,
+              accentColor: accent,
+            );
+            _cachedDark = buildAetherTheme(
+              brightness: Brightness.dark,
+              highContrast: a11y.highContrast,
+              largeTouchTargets: a11y.largeTouchTargets,
+              accentColor: accent,
+            );
+          }
           return MaterialApp(
             title: 'Auvora Wallet',
             debugShowCheckedModeBanner: false,
-            theme: light,
-            darkTheme: dark,
+            theme: _cachedLight!,
+            darkTheme: _cachedDark!,
             themeMode: prefs.materialThemeMode,
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
@@ -276,18 +338,59 @@ class AuvoraApp extends StatelessWidget {
   }
 }
 
+/// Swaps ConnectionsController onto the live provider once deferred Reown init
+/// completes. Scheduled post-frame — never starts async work during build.
+class _WcLiveUpgrader extends ChangeNotifier {
+  WalletConnectBootstrapResult? _applied;
+  bool _attachScheduled = false;
+
+  void apply({
+    required ConnectionsController connections,
+    required DeepLinkRouter deepLinks,
+    required WalletConnectBootstrapResult bootstrap,
+  }) {
+    if (identical(_applied?.provider, bootstrap.provider) &&
+        _applied?.liveInitSucceeded == bootstrap.liveInitSucceeded &&
+        _applied?.liveInitDeferred == bootstrap.liveInitDeferred) {
+      return;
+    }
+    if (bootstrap.liveInitDeferred) {
+      _applied = bootstrap;
+      return;
+    }
+    if (_attachScheduled) return;
+    _attachScheduled = true;
+    final target = bootstrap;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _attachScheduled = false;
+      if (identical(_applied?.provider, target.provider)) return;
+      _applied = target;
+      deepLinks.attachProvider(target.provider);
+      await connections.attachWalletConnectProvider(
+        target.provider,
+        fallbackReason: target.fallbackReason,
+      );
+      notifyListeners();
+    });
+  }
+}
+
 /// Registers EVM CAIP accounts with Reown and binds mnemonic for local WC signing.
 class _WcAccountBinder extends ChangeNotifier {
   _WcAccountBinder(this._bootstrap);
 
-  final WalletConnectBootstrapResult _bootstrap;
+  WalletConnectBootstrapResult _bootstrap;
   String? _lastAddress;
   bool _boundMnemonic = false;
+  bool _lastLive = false;
 
   void bind({
     required WalletController wallet,
     required ConnectionsController connections,
+    required WalletConnectBootstrapResult bootstrap,
   }) {
+    _bootstrap = bootstrap;
+
     if (!_boundMnemonic) {
       connections.attachMnemonicProvider(() async {
         try {
@@ -300,9 +403,12 @@ class _WcAccountBinder extends ChangeNotifier {
     }
 
     final address = wallet.address;
-    if (address == null || address.isEmpty || address == _lastAddress) return;
-    if (!_bootstrap.usingLiveRelay) return;
+    final live = _bootstrap.usingLiveRelay;
+    if (address == null || address.isEmpty) return;
+    if (!live) return;
+    if (address == _lastAddress && live == _lastLive) return;
     _lastAddress = address;
+    _lastLive = live;
 
     final accounts = <String, String>{
       for (final caip in WcChainCatalog.supportedEip155Chains) caip: address,

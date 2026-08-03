@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../reliability/startup_timing.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 
@@ -29,6 +30,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.85, curve: Curves.easeOutCubic)),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupTiming.mark('splashFirstFrame');
       final media = MediaQuery.maybeOf(context);
       final reduce = media?.disableAnimations == true;
       if (reduce) {

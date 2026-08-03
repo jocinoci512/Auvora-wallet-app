@@ -23,37 +23,33 @@
 
 ingress:
   # Multi-host public launch surfaces (override via --set / sealed values if DNS differs).
-  host: app.example.com
+  host: auvorawallet.com
   hosts:
-    - host: example.com
+    - host: auvorawallet.com
       backend: web
       port: 3000
       path: /
-    - host: www.example.com
+    - host: www.auvorawallet.com
       backend: web
       port: 3000
       path: /
-    - host: app.example.com
+    - host: app.auvorawallet.com
       backend: web
       port: 3000
       path: /
-    - host: api.example.com
+    - host: api.auvorawallet.com
       backend: gateway
       port: 4000
       path: /
-    - host: admin.example.com
+    - host: admin.auvorawallet.com
       backend: admin
       port: 3001
       path: /
-    - host: docs.example.com
+    - host: docs.auvorawallet.com
       backend: docs
       port: 3011
       path: /
-    - host: status.example.com
-      backend: web
-      port: 3000
-      path: /
-    - host: status.example.com
+    - host: auvorawallet.com
       backend: web
       port: 3000
       path: /status
@@ -74,17 +70,19 @@ config:
   NODE_ENV: production
   LOG_LEVEL: warn
   OTEL_ENABLED: 'true'
-  APP_PUBLIC_URL: 'https://app.example.com'
-  NEXT_PUBLIC_API_URL: 'https://api.example.com'
-  NEXT_PUBLIC_APP_URL: 'https://app.example.com'
-  NEXT_PUBLIC_ADMIN_URL: 'https://admin.example.com'
-  NEXT_PUBLIC_DOCS_URL: 'https://docs.example.com'
-  NEXT_PUBLIC_STATUS_URL: 'https://status.example.com'
-  NEXT_PUBLIC_MARKETING_URL: 'https://example.com'
-  CORS_ORIGINS: 'https://example.com,https://www.example.com,https://app.example.com,https://admin.example.com,https://docs.example.com,https://status.example.com'
+  APP_PUBLIC_URL: 'https://auvorawallet.com'
+  NEXT_PUBLIC_API_URL: 'https://api.auvorawallet.com'
+  NEXT_PUBLIC_APP_URL: 'https://auvorawallet.com'
+  NEXT_PUBLIC_ADMIN_URL: 'https://admin.auvorawallet.com'
+  NEXT_PUBLIC_DOCS_URL: 'https://docs.auvorawallet.com'
+  NEXT_PUBLIC_STATUS_URL: 'https://auvorawallet.com/status'
+  NEXT_PUBLIC_MARKETING_URL: 'https://auvorawallet.com'
+  # Include app/admin hosts that ingress serves (credentialed browser calls).
+  CORS_ORIGINS: 'https://auvorawallet.com,https://www.auvorawallet.com,https://app.auvorawallet.com,https://admin.auvorawallet.com'
   COOKIE_SECURE: 'true'
-  COOKIE_DOMAIN: '.example.com'
-  CDN_ASSET_BASE_URL: 'https://cdn.example.com'
+  # Host-only on API host unless cross-subdomain cookie sharing is required.
+  COOKIE_DOMAIN: ''
+  CDN_ASSET_BASE_URL: 'https://cdn.auvorawallet.com'
   OBJECT_STORAGE_BUCKET: 'auvora-wallet-prod-assets'
   OBJECT_STORAGE_REGION: 'us-east-1'
   AUTH_SERVICE_URL: 'http://auth:4001'
@@ -99,10 +97,30 @@ config:
   OBSERVABILITY_SERVICE_URL: 'http://observability:3010'
   MARKET_DATA_SERVICE_URL: 'http://market-data:3012'
   SWAP_SERVICE_URL: 'http://swap:3013'
+  # NFT product ABSENT — URL kept for schema compat; workers + deploy disabled.
   NFT_SERVICE_URL: 'http://nft:3014'
+  NFT_WORKERS_ENABLED: 'false'
   STAKING_SERVICE_URL: 'http://staking:3015'
   CONNECTIONS_SERVICE_URL: 'http://connections:3016'
   BRIDGE_SERVICE_URL: 'http://bridge:3017'
+  # Pin simulators OFF — several service schemas default true without prod throw.
+  SWAP_SIMULATOR_ENABLED: 'false'
+  STAKING_SIMULATOR_ENABLED: 'false'
+  BRIDGE_SIMULATOR_ENABLED: 'false'
+  CONNECTIONS_SIMULATOR_ENABLED: 'false'
+  MARKET_DATA_SIMULATOR_ENABLED: 'false'
+  NFT_SIMULATOR_ENABLED: 'false'
+  BLOCKCHAIN_SIMULATOR_ENABLED: 'false'
+  PAYMENTS_SIMULATOR_ENABLED: 'false'
+  AI_SIMULATOR_ENABLED: 'false'
+  NOTIFICATIONS_SIMULATOR_ENABLED: 'false'
+  CUSTODY_SIMULATOR_ENABLED: 'false'
+  COMPLIANCE_SIMULATOR_ENABLED: 'false'
+
+# NFT product ABSENT — do not schedule nft pods in production.
+services:
+  nft:
+    enabled: false
 
 postgres:
   enabled: false

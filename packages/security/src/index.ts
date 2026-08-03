@@ -1,5 +1,17 @@
 import { createHash, randomBytes } from 'node:crypto';
 
+export {
+  assertCredentialedCorsAllowlist,
+  createCredentialedCorsOriginDelegate,
+  isAllowedCorsOrigin,
+  isLocalDevOrigin,
+  normalizeCorsOriginEntry,
+  parseCorsOrigins,
+  resolveCredentialedCorsOrigins,
+  type AssertCorsAllowlistOptions,
+  type CorsOriginDelegate,
+} from './cors-origins';
+
 export const SECURITY_HEADERS = {
   contentTypeOptions: 'nosniff',
   frameOptions: 'DENY',

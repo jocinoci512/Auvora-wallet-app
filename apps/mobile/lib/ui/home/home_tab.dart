@@ -617,7 +617,7 @@ class _StatusStack extends StatelessWidget {
           onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
-    } else if (context.watch<PriceService>().showingStaleOrDemo) {
+    } else if (context.read<PriceService>().showingStaleOrDemo) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       final prices = context.read<PriceService>();
       children.add(
@@ -838,11 +838,12 @@ class _PrimaryActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fundingUnlocked = ReleaseConfig.allowFundingAddresses;
-    const primary = [
-      (Icons.arrow_upward_rounded, 'Send'),
-      (Icons.arrow_downward_rounded, 'Receive'),
-      (Icons.swap_horiz_rounded, 'Swap'),
-      (Icons.shopping_bag_outlined, 'Buy'),
+    final broadcastOn = ReleaseConfig.liveBroadcastEnabled;
+    final primary = [
+      (Icons.arrow_upward_rounded, broadcastOn ? 'Send' : 'Send (preview)'),
+      (Icons.arrow_downward_rounded, fundingUnlocked ? 'Receive' : 'Receive (locked)'),
+      (Icons.swap_horiz_rounded, broadcastOn ? 'Swap' : 'Swap (preview)'),
+      (Icons.shopping_bag_outlined, broadcastOn ? 'Buy' : 'Buy (preview)'),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

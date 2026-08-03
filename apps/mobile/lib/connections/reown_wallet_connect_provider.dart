@@ -37,11 +37,11 @@ class ReownWalletConnectProvider implements WalletConnectProviderPort {
   /// Create + init WalletKit. Throws on invalid/empty project id or init failure.
   static Future<ReownWalletConnectProvider> create({
     String? projectId,
-    String metadataUrl = 'https://wallet.auvora.app',
+    String metadataUrl = 'https://auvorawallet.com',
     String metadataName = 'Auvora Wallet',
     String metadataDescription = 'Self-custody multi-chain wallet',
     List<String> icons = const [
-      'https://wallet.auvora.app/icon.png',
+      'https://auvorawallet.com/icon.png',
     ],
   }) async {
     final id = (projectId ?? IntegrationConfig.wcProjectId).trim();
@@ -62,7 +62,7 @@ class ReownWalletConnectProvider implements WalletConnectProviderPort {
         icons: icons,
         redirect: const Redirect(
           native: 'auvora://wc',
-          universal: 'https://wallet.auvora.app/wc',
+          universal: 'https://auvorawallet.com/wc',
           linkMode: false,
         ),
       ),

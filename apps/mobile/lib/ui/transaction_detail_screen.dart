@@ -157,15 +157,23 @@ class TransactionDetailScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (explorer != null) ...[
             OutlinedButton.icon(
-              onPressed: () => _openExplorer(context, explorer),
+              onPressed: ReleaseConfig.liveBroadcastEnabled
+                  ? () => _openExplorer(context, explorer)
+                  : null,
               icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Open in explorer'),
+              label: ReleaseConfig.liveBroadcastEnabled
+                  ? const Text('Open in explorer')
+                  : const Text('Explorer (unavailable — preview)'),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: () => copyText(context, explorer, label: 'Explorer link copied'),
+              onPressed: ReleaseConfig.liveBroadcastEnabled
+                  ? () => copyText(context, explorer, label: 'Explorer link copied')
+                  : null,
               icon: const Icon(Icons.link_rounded),
-              label: const Text('Copy explorer link'),
+              label: ReleaseConfig.liveBroadcastEnabled
+                  ? const Text('Copy explorer link')
+                  : const Text('Explorer link (preview only)'),
             ),
             const SizedBox(height: 10),
           ],
@@ -212,7 +220,9 @@ class TransactionDetailScreen extends StatelessWidget {
       case TxStatus.pending:
         return 'Still confirming on ${tx.network.label}. This usually finishes in a few minutes — keep this screen or check Activity later.';
       case TxStatus.completed:
-        return 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.';
+        return ReleaseConfig.liveBroadcastEnabled
+            ? 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.'
+            : 'This ${tx.type.label.toLowerCase()} was recorded as a local preview on ${tx.network.label}. It was not broadcast on-chain.';
       case TxStatus.failed:
         return tx.note ??
             'This transfer did not complete. Amounts beyond any network fee already paid usually stay in your wallet. You can retry from Send.';

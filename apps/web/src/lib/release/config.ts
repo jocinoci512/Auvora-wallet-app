@@ -8,10 +8,10 @@ export const ReleaseConfig = {
   allowFundingAddresses: false,
   fundingBlockedMessage:
     'Addresses on this companion are demo placeholders. Funding stays locked in Version 1.0 Alpha — QR, copy, and share are disabled. Do not send real funds.',
-  websiteUrl: 'https://wallet.auvora.app',
-  privacyPolicyUrl: 'https://wallet.auvora.app/legal/privacy',
-  termsOfServiceUrl: 'https://wallet.auvora.app/legal/terms',
-  supportEmail: 'alpha@auvora.app',
+  websiteUrl: 'https://auvorawallet.com',
+  privacyPolicyUrl: 'https://auvorawallet.com/legal/privacy',
+  termsOfServiceUrl: 'https://auvorawallet.com/legal/terms',
+  supportEmail: 'support@auvorawallet.com',
   /** See docs/API_AND_INTEGRATIONS_GUIDE.md for mobile dart-define counterparts. */
   integrationsGuidePath: '/docs/API_AND_INTEGRATIONS_GUIDE.md',
 } as const;

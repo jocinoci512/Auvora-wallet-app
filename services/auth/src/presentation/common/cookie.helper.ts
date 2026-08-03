@@ -12,7 +12,10 @@ export interface CookieOptions {
 }
 
 function baseCookieOptions(env: ServiceEnv): CookieOptions {
-  // Empty / "localhost" domain breaks host-only cookies in many browsers — omit Domain.
+  // Prefer host-only cookies (omit Domain): auth cookies are set/read by the API host
+  // (gateway/auth). Cross-subdomain Domain cookies are only needed if web and API must
+  // share the cookie jar — not required for credentials:include to api.* from apex.
+  // Empty / "localhost" Domain breaks cookies in many browsers — omit Domain.
   const domain =
     env.COOKIE_DOMAIN &&
     env.COOKIE_DOMAIN.trim() !== '' &&

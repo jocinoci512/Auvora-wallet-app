@@ -1,6 +1,7 @@
 import '../engine/models.dart';
 import '../engine/quote_engine.dart';
 import '../portfolio/models.dart';
+import '../release/release_config.dart';
 import 'blockchain_adapter.dart';
 import 'models.dart';
 import 'wallet_engine.dart';
@@ -43,6 +44,7 @@ class TransactionEngine {
     );
     final signed = await adapter.signTransaction(draft: draft, mnemonic: mnemonic);
     final submission = await adapter.broadcast(draft: draft, signedPayload: signed);
+    _assertBroadcastGate(submission);
     final tx = PortfolioTx(
       id: submission.id,
       type: TxType.send,
@@ -105,6 +107,17 @@ class TransactionEngine {
       memo: quote.routeSummary,
     );
     final signed = await adapter.signTransaction(draft: draft, mnemonic: mnemonic);
-    return adapter.broadcast(draft: draft, signedPayload: signed);
+    final submission = await adapter.broadcast(draft: draft, signedPayload: signed);
+    _assertBroadcastGate(submission);
+    return submission;
+  }
+
+  /// Defense in depth: while the kill switch is off, adapters must return preview-only.
+  void _assertBroadcastGate(TransactionSubmissionResult submission) {
+    if (!ReleaseConfig.liveBroadcastEnabled && !submission.preview) {
+      throw QuoteException(
+        'Live broadcast is disabled (kill switch). Transfer was not submitted to the network.',
+      );
+    }
   }
 }

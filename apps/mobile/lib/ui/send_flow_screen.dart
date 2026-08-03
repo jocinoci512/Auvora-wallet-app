@@ -986,19 +986,19 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     IconData icon;
     switch (_progress) {
       case _TxProgressPhase.broadcasting:
-        title = 'Broadcasting';
-        body = 'Preparing your preview transfer for ${asset.network.label}.';
+        title = 'Preparing preview';
+        body = 'Building a local preview transfer for ${asset.network.label}. Nothing is sent on-chain.';
         icon = Icons.cloud_upload_outlined;
       case _TxProgressPhase.pending:
-        title = 'Pending';
-        body = 'Waiting for the local transaction engine to accept the request.';
+        title = 'Recording locally';
+        body = 'Waiting for the on-device transaction engine to accept the preview request.';
         icon = Icons.hourglass_top_rounded;
       case _TxProgressPhase.confirming:
-        title = 'Confirming';
-        body = 'Recording status on this device. Live network confirmation stays off until audited.';
+        title = 'Finalizing preview';
+        body = 'Saving status on this device. Live network confirmation stays off until audited.';
         icon = Icons.sync_rounded;
       case _TxProgressPhase.recorded:
-        title = 'Recorded';
+        title = 'Preview recorded';
         body = 'Preview recorded. Open the receipt for the reference and next steps.';
         icon = Icons.check_circle_outline_rounded;
     }
@@ -1043,9 +1043,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
               Expanded(
                 child: Text(
                   switch (phases[i]) {
-                    _TxProgressPhase.broadcasting => 'Broadcasting',
-                    _TxProgressPhase.pending => 'Pending',
-                    _TxProgressPhase.confirming => 'Confirming',
+                    _TxProgressPhase.broadcasting => 'Preparing preview',
+                    _TxProgressPhase.pending => 'Recording locally',
+                    _TxProgressPhase.confirming => 'Finalizing preview',
                     _TxProgressPhase.recorded => 'Confirmed (preview)',
                   },
                   style: TextStyle(
@@ -1119,8 +1119,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () => Share.share(
-            'Auvora transfer\n${tx.amount} ${asset.ticker}\nTo: ${tx.to}\nRef: ${tx.hash}',
-            subject: 'Auvora transfer',
+            'PREVIEW — not broadcast\nAuvora transfer preview\n${tx.amount} ${asset.ticker}\nTo: ${tx.to}\nRef: ${tx.hash}\nLive broadcast is OFF.',
+            subject: 'Auvora transfer preview',
           ),
           icon: const Icon(Icons.ios_share_rounded),
           label: const Text('Share receipt'),

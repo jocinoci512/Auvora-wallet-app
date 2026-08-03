@@ -126,11 +126,32 @@ class PriceService {
       activeProviderId = 'seeded-offline';
       await _persist();
     }
-    await refreshQuotes(_cache.keys);
+    // Skip live provider round-trip when a non-seed disk cache is still within TTL.
+    // Cold start previously always hit CoinGecko→… even with a fresh cache
+    // because _lastRefreshAttemptAt was null. Always attempt live after seed.
+    final seededOnly = activeProviderId == 'seeded-offline';
+    if (cacheNeedsRefresh || seededOnly) {
+      await refreshQuotes(_cache.keys);
+    } else if (lastSuccessfulRefreshAt == null && _cache.isNotEmpty) {
+      // Restore freshness anchor from persisted quote timestamps.
+      lastSuccessfulRefreshAt = _cache.values
+          .map((p) => p.updatedAt)
+          .reduce((a, b) => a.isAfter(b) ? a : b);
+      activeProviderId ??= _cache.values
+          .map((p) => p.providerId)
+          .whereType<String>()
+          .firstWhere((id) => id.isNotEmpty, orElse: () => 'cached');
+    }
   }
 
   Future<void> refreshQuotes(Iterable<String> symbols, {bool force = false}) async {
     final now = DateTime.now();
+    if (!force &&
+        !cacheNeedsRefresh &&
+        _cache.isNotEmpty &&
+        activeProviderId != 'seeded-offline') {
+      return;
+    }
     if (!force &&
         _lastRefreshAttemptAt != null &&
         now.difference(_lastRefreshAttemptAt!) < _minRefreshGap &&
@@ -179,6 +200,10 @@ class PriceService {
 
   Future<PricePoint> quote(String symbol, {bool allowStale = true}) async {
     if (_cache.isEmpty) await bootstrap();
+    return _quoteFromCache(symbol, allowStale: allowStale);
+  }
+
+  PricePoint _quoteFromCache(String symbol, {bool allowStale = true}) {
     final seed = _cache[symbol] ??
         PricePoint(
           symbol: symbol,
@@ -212,11 +237,10 @@ class PriceService {
     if (forceRefresh || cacheNeedsRefresh) {
       await refreshQuotes(symbols, force: forceRefresh);
     }
-    final out = <String, PricePoint>{};
-    for (final symbol in symbols) {
-      out[symbol] = await quote(symbol);
-    }
-    return out;
+    // Sync map after cache warm — avoid N sequential microtask awaits.
+    return {
+      for (final symbol in symbols) symbol: _quoteFromCache(symbol),
+    };
   }
 
   Future<List<double>> history(String symbol, ChartRange range) async {

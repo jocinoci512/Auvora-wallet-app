@@ -1,5 +1,9 @@
 /// Bootstrap WalletConnect provider: live Reown when Project ID is configured
 /// and init succeeds; otherwise explicit preview fallback (never silent live).
+///
+/// Live Reown init is intentionally **deferred past first frame** so Android
+/// cold start is not blocked by WalletKit / relay handshake (historically up
+/// to ~30s on slow networks).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -14,6 +18,7 @@ class WalletConnectBootstrapResult {
     required this.liveInitAttempted,
     required this.liveInitSucceeded,
     this.fallbackReason,
+    this.liveInitDeferred = false,
   });
 
   final WalletConnectProviderPort provider;
@@ -21,20 +26,60 @@ class WalletConnectBootstrapResult {
   final bool liveInitSucceeded;
   final String? fallbackReason;
 
+  /// True when Project ID is configured but live init was postponed.
+  final bool liveInitDeferred;
+
   bool get usingLiveRelay => provider.isLiveRelay && liveInitSucceeded;
 }
 
 abstract final class WalletConnectBootstrap {
+  /// Instant preview shell — never awaits Reown. Use for [runApp] then call
+  /// [upgradeToLive] after the first frame.
+  static WalletConnectBootstrapResult previewShell({String? projectId}) {
+    final id = (projectId ?? IntegrationConfig.wcProjectId).trim();
+    final configured = _isConfigured(id);
+    if (!configured) {
+      return WalletConnectBootstrapResult(
+        provider: PreviewWalletConnectProvider(projectId: id),
+        liveInitAttempted: false,
+        liveInitSucceeded: false,
+        fallbackReason: 'WC_PROJECT_ID not configured via --dart-define',
+        liveInitDeferred: false,
+      );
+    }
+    return WalletConnectBootstrapResult(
+      provider: PreviewWalletConnectProvider(projectId: id),
+      liveInitAttempted: false,
+      liveInitSucceeded: false,
+      fallbackReason: 'Live Reown init deferred until after first frame',
+      liveInitDeferred: true,
+    );
+  }
+
+  /// Blocking create (tests / explicit sync callers). Prefer [previewShell] +
+  /// [upgradeToLive] on the Android critical path.
   static Future<WalletConnectBootstrapResult> create({
     String? projectId,
     Map<String, String> caipAccounts = const {},
   }) async {
-    final id = (projectId ?? IntegrationConfig.wcProjectId).trim();
-    final configured = id.isNotEmpty &&
-        id.toLowerCase() != 'your_project_id' &&
-        !id.toLowerCase().contains('placeholder');
+    final shell = previewShell(projectId: projectId);
+    if (!shell.liveInitDeferred && !shell.usingLiveRelay) {
+      return shell;
+    }
+    return upgradeToLive(
+      projectId: projectId,
+      caipAccounts: caipAccounts,
+    );
+  }
 
-    if (!configured) {
+  /// Live Reown WalletKit init with hard timeout. Never logs Project ID value.
+  static Future<WalletConnectBootstrapResult> upgradeToLive({
+    String? projectId,
+    Map<String, String> caipAccounts = const {},
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final id = (projectId ?? IntegrationConfig.wcProjectId).trim();
+    if (!_isConfigured(id)) {
       return WalletConnectBootstrapResult(
         provider: PreviewWalletConnectProvider(projectId: id),
         liveInitAttempted: false,
@@ -45,7 +90,7 @@ abstract final class WalletConnectBootstrap {
 
     try {
       final live = await ReownWalletConnectProvider.create(projectId: id)
-          .timeout(const Duration(seconds: 30));
+          .timeout(timeout);
       if (caipAccounts.isNotEmpty) {
         await live.registerAccounts(caipAccounts);
       }
@@ -71,4 +116,9 @@ abstract final class WalletConnectBootstrap {
       );
     }
   }
+
+  static bool _isConfigured(String id) =>
+      id.isNotEmpty &&
+      id.toLowerCase() != 'your_project_id' &&
+      !id.toLowerCase().contains('placeholder');
 }

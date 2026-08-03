@@ -21,60 +21,57 @@ class RpcHealthProbe {
     }
     final urls = RpcEndpoints.urlsFor(chain);
     Object? lastError;
-    for (final url in urls) {
-      final sw = Stopwatch()..start();
-      try {
-        final ok = await _probeUrl(chain, url).timeout(const Duration(seconds: 4));
-        sw.stop();
-        if (ok) {
-          return (
-            endpoint: RpcEndpoints.displayLabel(url),
-            latencyMs: sw.elapsedMilliseconds,
-            ok: true,
-          );
+    final client = _client ?? (HttpClient()..connectionTimeout = const Duration(seconds: 3));
+    final owned = _client == null;
+    try {
+      for (final url in urls) {
+        final sw = Stopwatch()..start();
+        try {
+          final ok = await _probeUrl(chain, url, client).timeout(const Duration(seconds: 4));
+          sw.stop();
+          if (ok) {
+            return (
+              endpoint: RpcEndpoints.displayLabel(url),
+              latencyMs: sw.elapsedMilliseconds,
+              ok: true,
+            );
+          }
+        } catch (e) {
+          lastError = e;
         }
-      } catch (e) {
-        lastError = e;
       }
+    } finally {
+      if (owned) client.close(force: true);
     }
     assert(lastError != null || urls.isNotEmpty);
     final fallback = urls.isEmpty ? 'none' : RpcEndpoints.displayLabel(urls.first);
     return (endpoint: '$fallback (unreachable)', latencyMs: 0, ok: false);
   }
 
-  Future<bool> _probeUrl(ChainId chain, String url) async {
-    final client = _client ?? (HttpClient()..connectionTimeout = const Duration(seconds: 3));
-    final owned = _client == null;
-    try {
-      switch (chain) {
-        case ChainId.bitcoin:
-          // Alchemy Bitcoin is JSON-RPC; Mempool/Blockstream tip probes are REST.
-          if (url.contains('alchemy.com')) {
-            return _jsonRpc(client, url, 'getblockcount', const []);
-          }
-          return _getOk(client, url);
-        case ChainId.tron:
-          // TronGrid base → getnowblock; Alchemy / publicnode may speak JSON-RPC.
-          if (url.contains('trongrid')) {
-            return _getOk(client, '$url/wallet/getnowblock');
-          }
-          return _jsonRpc(client, url, 'eth_blockNumber', const []);
-        case ChainId.solana:
-          // Health alone is not enough — also require a recent blockhash.
-          final healthy = await _jsonRpc(client, url, 'getHealth', const []);
-          if (!healthy) return false;
-          return _jsonRpc(client, url, 'getLatestBlockhash', const [
-            {'commitment': 'processed'},
-          ]);
-        case ChainId.ethereum:
-        case ChainId.polygon:
-        case ChainId.bnbSmartChain:
-          // Tip height is sufficient for connectivity; gas/balance are optional
-          // read-only checks elsewhere and must never block wallet restore.
-          return _jsonRpc(client, url, 'eth_blockNumber', const []);
-      }
-    } finally {
-      if (owned) client.close(force: true);
+  Future<bool> _probeUrl(ChainId chain, String url, HttpClient client) async {
+    switch (chain) {
+      case ChainId.bitcoin:
+        // Alchemy Bitcoin is JSON-RPC; Mempool/Blockstream tip probes are REST.
+        if (url.contains('alchemy.com')) {
+          return _jsonRpc(client, url, 'getblockcount', const []);
+        }
+        return _getOk(client, url);
+      case ChainId.tron:
+        // TronGrid base → getnowblock; Alchemy / publicnode may speak JSON-RPC.
+        if (url.contains('trongrid')) {
+          return _getOk(client, '$url/wallet/getnowblock');
+        }
+        return _jsonRpc(client, url, 'eth_blockNumber', const []);
+      case ChainId.solana:
+        // getHealth is enough for tip connectivity; blockhash is checked at
+        // send-time, not on every cold-start probe.
+        return _jsonRpc(client, url, 'getHealth', const []);
+      case ChainId.ethereum:
+      case ChainId.polygon:
+      case ChainId.bnbSmartChain:
+        // Tip height is sufficient for connectivity; gas/balance are optional
+        // read-only checks elsewhere and must never block wallet restore.
+        return _jsonRpc(client, url, 'eth_blockNumber', const []);
     }
   }
 

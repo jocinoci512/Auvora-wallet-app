@@ -27,9 +27,16 @@ class WalletEngine {
   bool get sessionUnlocked => _sessionUnlocked;
 
   Future<void> bootstrap() async {
-    _vaults = await _keyStore.listVaults();
-    _wallet = await _keyStore.readWallet();
-    final mnemonic = await _keyStore.readMnemonic();
+    // One migration pass, then parallel vault/wallet/mnemonic reads (I/O bound).
+    await _keyStore.ensureReady();
+    final results = await Future.wait<Object?>([
+      _keyStore.listVaults(),
+      _keyStore.readWallet(),
+      _keyStore.readMnemonic(),
+    ]);
+    _vaults = results[0]! as List<VaultIndexEntry>;
+    _wallet = results[1] as WalletVaultRecord?;
+    final mnemonic = results[2] as String?;
     _keyState = mnemonic == null ? KeyMaterialState.missing : KeyMaterialState.locked;
     _sessionUnlocked = false;
   }

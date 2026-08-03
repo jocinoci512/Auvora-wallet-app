@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../portfolio/portfolio_controller.dart';
+import '../reliability/startup_timing.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../wallet_engine/sync_coordinator.dart';
@@ -34,6 +35,7 @@ class _HomeShellState extends State<HomeShell> {
     final sync = context.read<SyncCoordinator>();
     final syncEngine = sync.syncEngine;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      StartupTiming.mark('homeShellFirstFrame');
       final cold = wallet.coldStartMs;
       if (cold != null) {
         syncEngine.recordColdStart(Duration(milliseconds: cold));
@@ -47,6 +49,7 @@ class _HomeShellState extends State<HomeShell> {
         // PortfolioController already surfaces lastSyncError + cache; never
         // leave HomeShell waiting on external provider approval.
       }
+      StartupTiming.mark('homePortfolioBootstrapDone');
     });
   }
 

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../portfolio/models.dart';
 import '../reliability/cache_store.dart';
 import '../reliability/retry.dart';
+import '../reliability/startup_timing.dart';
 import 'asset_registry.dart';
 import 'blockchain_adapter.dart';
 import 'models.dart';
@@ -118,24 +119,36 @@ class SyncEngine {
       lastSyncReason: _lastSyncReason,
     );
 
-    // Network + market probes are best-effort. Never block wallet restore on
-    // Alchemy / public RPC / session Agent Wallet approval.
-    try {
-      await _networkManager.refresh().timeout(const Duration(seconds: 14));
-    } catch (_) {
-      // Keep prior health / offline flags; UI shows degraded banners.
-    }
-    try {
-      await withRetry(
-        () => _priceService.bootstrap(),
-        maxAttempts: 2,
-        onRetry: (_, __) {
-          _diagnostics = _bumpRetries(_diagnostics);
-        },
-      ).timeout(const Duration(seconds: 12));
-    } catch (_) {
-      await _priceService.markOfflineFallback();
-    }
+    // Connectivity + market bootstrap + prior portfolio cache in parallel.
+    // Tip RPC probes stay off this path (SyncCoordinator warms them later).
+    PortfolioSnapshot? prior;
+    await Future.wait([
+      () async {
+        try {
+          await _networkManager
+              .refresh(probeEndpoints: false)
+              .timeout(const Duration(seconds: 6));
+        } catch (_) {
+          // Keep prior health / offline flags; UI shows degraded banners.
+        }
+      }(),
+      () async {
+        try {
+          await withRetry(
+            () => _priceService.bootstrap(),
+            maxAttempts: 2,
+            onRetry: (_, __) {
+              _diagnostics = _bumpRetries(_diagnostics);
+            },
+          ).timeout(const Duration(seconds: 10));
+        } catch (_) {
+          await _priceService.markOfflineFallback();
+        }
+      }(),
+      () async {
+        prior = await cachedPortfolio();
+      }(),
+    ]);
 
     final wallet = _walletEngine.wallet;
     if (wallet == null || wallet.activeAccount == null || empty) {
@@ -159,9 +172,9 @@ class SyncEngine {
     }
 
     if (_networkManager.offline) {
-      final cached = await cachedPortfolio();
-      if (cached != null) {
-        final offlineSnap = cached.copyWith(
+      final priorSnap = prior;
+      if (priorSnap != null) {
+        final offlineSnap = priorSnap.copyWith(
           offline: true,
           syncDelayed: true,
           fromCache: true,
@@ -173,20 +186,17 @@ class SyncEngine {
     }
 
     final account = wallet.activeAccount!;
-    final prior = await cachedPortfolio();
-    final assets = <AssetHolding>[];
-    final txs = <PortfolioTx>[];
-    final failed = <String>[];
     var rpcRequests = 0;
     var rpcFailures = 0;
     var retries = 0;
 
     Map<String, PricePoint> quotes;
     try {
+      // bootstrap() already refreshed when needed — avoid a second market round-trip.
       quotes = await withRetry(
         () => _priceService.quotes(
           _assetRegistry.all.map((item) => item.symbol),
-          forceRefresh: true,
+          forceRefresh: false,
         ),
         maxAttempts: 2,
         onRetry: (_, __) => retries += 1,
@@ -196,64 +206,40 @@ class SyncEngine {
       quotes = await _priceService.quotes(_assetRegistry.all.map((item) => item.symbol));
     }
 
-    for (final address in account.addresses) {
-      final chain = address.chain;
-      try {
-        final defs = _assetRegistry.forChain(chain);
-        final adapter = _blockchainLayer.adapterFor(chain);
-        final chainAssets = <AssetHolding>[];
-        for (final asset in defs) {
-          final quote = quotes[asset.symbol]!;
-          final balance = await withRetry(
-            () => adapter.getBalance(address: address, assetSymbol: asset.symbol),
-            maxAttempts: 2,
-            onRetry: (_, __) => retries += 1,
-          );
-          rpcRequests += 1;
-          chainAssets.add(
-            AssetHolding(
-              id: _assetRegistry.holdingId(asset, chain),
-              name: asset.displayName,
-              ticker: asset.symbol,
-              network: chain.assetNetwork,
-              balance: balance,
-              priceUsd: quote.priceUsd,
-              change24hPct: quote.change24hPct,
-              color: _colorFor(chain),
-              sparkline: quote.sparkline7d,
-            ),
-          );
-        }
-        final history = await withRetry(
-          () => adapter.getHistory(address: address),
-          maxAttempts: 2,
-          onRetry: (_, __) => retries += 1,
-        );
-        rpcRequests += 1;
-        assets.addAll(chainAssets);
-        txs.addAll(history);
-        await _cache.write(
-          ns: CacheStore.nsTxHistory,
-          id: chain.key,
-          payload: history.map(_txToJson).toList(),
-          ttl: const Duration(hours: 6),
-        );
-      } catch (_) {
-        failed.add(chain.key);
-        rpcFailures += 1;
-        if (prior != null) {
-          assets.addAll(prior.assets.where((a) => a.network == chain.assetNetwork));
-          txs.addAll(prior.transactions.where((t) => t.network == chain.assetNetwork));
-        }
+    // Independent chains load concurrently (bounded by adapter count, typically 6).
+    final chainResults = await Future.wait([
+      for (final address in account.addresses)
+        _loadChainHoldings(
+          address: address,
+          quotes: quotes,
+          prior: prior,
+          onRetry: () => retries += 1,
+        ),
+    ]);
+
+    final assets = <AssetHolding>[];
+    final txs = <PortfolioTx>[];
+    final failed = <String>[];
+    for (final result in chainResults) {
+      rpcRequests += result.rpcRequests;
+      rpcFailures += result.rpcFailures;
+      if (result.failed) {
+        failed.add(result.chainKey);
+        assets.addAll(result.assets);
+        txs.addAll(result.txs);
+      } else {
+        assets.addAll(result.assets);
+        txs.addAll(result.txs);
       }
     }
 
     _failedChains = List.unmodifiable(failed);
     // Keep device-local activity (sends/swaps/buys) across successful syncs.
     // Adapter history alone would otherwise wipe preview txs created on-device.
-    if (prior != null) {
+    final priorSnap = prior;
+    if (priorSnap != null) {
       final seen = {for (final t in txs) t.id};
-      for (final t in prior.transactions) {
+      for (final t in priorSnap.transactions) {
         if (seen.add(t.id)) txs.add(t);
       }
     }
@@ -319,6 +305,100 @@ class SyncEngine {
     return snap;
   }
 
+  Future<({
+    String chainKey,
+    bool failed,
+    int rpcRequests,
+    int rpcFailures,
+    List<AssetHolding> assets,
+    List<PortfolioTx> txs,
+  })> _loadChainHoldings({
+    required WalletAddressRecord address,
+    required Map<String, PricePoint> quotes,
+    required PortfolioSnapshot? prior,
+    required void Function() onRetry,
+  }) async {
+    final chain = address.chain;
+    try {
+      final defs = _assetRegistry.forChain(chain);
+      final adapter = _blockchainLayer.adapterFor(chain);
+      // Balances + history are independent — overlap within the chain.
+      late final List<double> balances;
+      late final List<PortfolioTx> history;
+      await Future.wait([
+        () async {
+          balances = await Future.wait([
+            for (final asset in defs)
+              withRetry(
+                () => adapter.getBalance(address: address, assetSymbol: asset.symbol),
+                maxAttempts: 2,
+                onRetry: (_, __) => onRetry(),
+              ),
+          ]);
+        }(),
+        () async {
+          history = await withRetry(
+            () => adapter.getHistory(address: address),
+            maxAttempts: 2,
+            onRetry: (_, __) => onRetry(),
+          );
+        }(),
+      ]);
+      final chainAssets = <AssetHolding>[
+        for (var i = 0; i < defs.length; i++)
+          AssetHolding(
+            id: _assetRegistry.holdingId(defs[i], chain),
+            name: defs[i].displayName,
+            ticker: defs[i].symbol,
+            network: chain.assetNetwork,
+            balance: balances[i],
+            priceUsd: (quotes[defs[i].symbol] ??
+                    PricePoint(
+                      symbol: defs[i].symbol,
+                      priceUsd: 0,
+                      change24hPct: 0,
+                      sparkline7d: const [0, 0, 0, 0, 0, 0, 0],
+                      updatedAt: DateTime.now(),
+                      stale: true,
+                    ))
+                .priceUsd,
+            change24hPct: (quotes[defs[i].symbol]?.change24hPct) ?? 0,
+            color: _colorFor(chain),
+            sparkline: quotes[defs[i].symbol]?.sparkline7d ?? const [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+          ),
+      ];
+      await _cache.write(
+        ns: CacheStore.nsTxHistory,
+        id: chain.key,
+        payload: history.map(_txToJson).toList(),
+        ttl: const Duration(hours: 6),
+      );
+      return (
+        chainKey: chain.key,
+        failed: false,
+        rpcRequests: defs.length + 1,
+        rpcFailures: 0,
+        assets: chainAssets,
+        txs: history,
+      );
+    } catch (_) {
+      final fallbackAssets = prior == null
+          ? const <AssetHolding>[]
+          : prior.assets.where((a) => a.network == chain.assetNetwork).toList();
+      final fallbackTxs = prior == null
+          ? const <PortfolioTx>[]
+          : prior.transactions.where((t) => t.network == chain.assetNetwork).toList();
+      return (
+        chainKey: chain.key,
+        failed: true,
+        rpcRequests: 0,
+        rpcFailures: 1,
+        assets: fallbackAssets,
+        txs: fallbackTxs,
+      );
+    }
+  }
+
   Future<PortfolioSnapshot?> cachedPortfolio() async {
     _prefs ??= await SharedPreferences.getInstance();
     final namespaced = await _cache.read<Map<String, Object?>>(
@@ -374,6 +454,7 @@ class SyncEngine {
         'lastSyncReason': _syncStatus.lastSyncReason,
       },
       'network': _networkManager.diagnosticsJson(),
+      'startupTimingMs': StartupTiming.snapshot(),
       if (coordinator != null) 'coordinator': coordinator,
     };
   }

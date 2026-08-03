@@ -15,6 +15,10 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   // Production only — X-Frame-Options blocks Cursor/IDE embedded previews (cross-origin iframe).
   ...(isProd ? [{ key: 'X-Frame-Options', value: 'DENY' }] : []),
+  // HSTS also expected at TLS edge (Vercel); emit in prod builds as defense in depth.
+  ...(isProd
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]
+    : []),
   { key: 'Referrer-Policy', value: 'no-referrer' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'X-XSS-Protection', value: '0' },

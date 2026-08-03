@@ -78,6 +78,14 @@ class SyncCoordinator extends ChangeNotifier with WidgetsBindingObserver {
     });
     if (initialRefresh) {
       requestRefresh(address: address, reason: 'start');
+    } else {
+      // Tip probes are deferred off the portfolio critical path — warm them
+      // shortly after Home is interactive so diagnostics stay accurate.
+      Timer(const Duration(seconds: 2), () {
+        if (!_started || !_autoRefreshEnabled) return;
+        // ignore: discarded_futures
+        _networkManager.refresh();
+      });
     }
   }
 
@@ -169,18 +177,27 @@ class SyncCoordinator extends ChangeNotifier with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       resumeRefreshCount += 1;
-      // Refresh connectivity first so reconnect/offline banners stay accurate.
-      // Hard timeout — never leave resume stuck waiting on RPC/Alchemy.
+      // Connectivity-only first — tip RPC probes must not block resume portfolio.
+      // Hard timeout — never leave resume stuck waiting on DNS/HTTP.
       // ignore: discarded_futures
       () async {
         try {
-          await _networkManager.refresh().timeout(const Duration(seconds: 12));
+          await _networkManager
+              .refresh(probeEndpoints: false)
+              .timeout(const Duration(seconds: 6));
           requestRefresh(reason: 'resume', debounce: const Duration(milliseconds: 200));
         } catch (_) {
           requestRefresh(
             reason: 'resume-degraded',
             debounce: const Duration(milliseconds: 200),
           );
+        }
+        // Warm tip diagnostics after interactive resume path is kicked.
+        if (!_started || !_autoRefreshEnabled) return;
+        try {
+          await _networkManager.refresh().timeout(const Duration(seconds: 12));
+        } catch (_) {
+          // Diagnostics-only; banners already reflect connectivity.
         }
       }();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {

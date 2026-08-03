@@ -23,32 +23,61 @@ class SecureKeyStore {
   static const _indexKey = 'auvora_vault_index_v1';
   static const _activeKey = 'auvora_vault_active_v1';
 
+  /// Once migration has run successfully in this process, skip re-checking.
+  bool _migrationDone = false;
+  Future<void>? _migrationInFlight;
+
+  List<VaultIndexEntry>? _indexCache;
+  String? _activeIdCache;
+  bool _activeIdLoaded = false;
+
   String _mnemonicKey(String walletId) => 'auvora_mnemonic_v3_$walletId';
   String _walletKey(String walletId) => 'auvora_wallet_v3_$walletId';
 
+  /// Ensures legacy migration finished once — safe to call concurrently.
+  Future<void> ensureReady() => _migrateLegacyIfNeeded();
+
   Future<List<VaultIndexEntry>> listVaults() async {
     await _migrateLegacyIfNeeded();
+    if (_indexCache != null) return List.unmodifiable(_indexCache!);
     final raw = await _secure.read(key: _indexKey);
-    if (raw == null || raw.isEmpty) return const [];
+    if (raw == null || raw.isEmpty) {
+      _indexCache = const [];
+      return const [];
+    }
     final decoded = jsonDecode(raw);
-    if (decoded is! List) return const [];
-    return [
+    if (decoded is! List) {
+      _indexCache = const [];
+      return const [];
+    }
+    _indexCache = [
       for (final item in decoded)
         if (item is Map)
           VaultIndexEntry.fromJson(Map<String, Object?>.from(item)),
     ];
+    return List.unmodifiable(_indexCache!);
   }
 
   Future<String?> activeWalletId() async {
     await _migrateLegacyIfNeeded();
-    final id = await _secure.read(key: _activeKey);
-    if (id != null && id.isNotEmpty) return id;
+    if (_activeIdLoaded) {
+      if (_activeIdCache != null && _activeIdCache!.isNotEmpty) return _activeIdCache;
+    } else {
+      final id = await _secure.read(key: _activeKey);
+      _activeIdLoaded = true;
+      if (id != null && id.isNotEmpty) {
+        _activeIdCache = id;
+        return id;
+      }
+    }
     final vaults = await listVaults();
     return vaults.isEmpty ? null : vaults.first.walletId;
   }
 
   Future<void> setActiveWalletId(String walletId) async {
     await _secure.write(key: _activeKey, value: walletId);
+    _activeIdCache = walletId;
+    _activeIdLoaded = true;
   }
 
   Future<void> saveWallet({
@@ -125,9 +154,14 @@ class SecureKeyStore {
     await _secure.delete(key: _activeKey);
     await _secure.delete(key: _legacyMnemonicKey);
     await _secure.delete(key: _legacyWalletKey);
+    _indexCache = const [];
+    _activeIdCache = null;
+    _activeIdLoaded = true;
+    _migrationDone = true;
   }
 
   Future<void> _writeIndex(List<VaultIndexEntry> vaults) async {
+    _indexCache = List.of(vaults);
     await _secure.write(
       key: _indexKey,
       value: jsonEncode([for (final v in vaults) v.toJson()]),
@@ -135,12 +169,36 @@ class SecureKeyStore {
   }
 
   Future<void> _migrateLegacyIfNeeded() async {
+    if (_migrationDone) return;
+    final inFlight = _migrationInFlight;
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+    final run = _runLegacyMigration();
+    _migrationInFlight = run;
+    try {
+      await run;
+    } finally {
+      if (identical(_migrationInFlight, run)) {
+        _migrationInFlight = null;
+      }
+    }
+  }
+
+  Future<void> _runLegacyMigration() async {
     final existing = await _secure.read(key: _indexKey);
-    if (existing != null && existing.isNotEmpty) return;
+    if (existing != null && existing.isNotEmpty) {
+      _migrationDone = true;
+      return;
+    }
 
     final legacyMnemonic = await _secure.read(key: _legacyMnemonicKey);
     final legacyWalletRaw = await _secure.read(key: _legacyWalletKey);
-    if (legacyMnemonic == null || legacyWalletRaw == null) return;
+    if (legacyMnemonic == null || legacyWalletRaw == null) {
+      _migrationDone = true;
+      return;
+    }
 
     final wallet = WalletVaultRecord.decode(legacyWalletRaw);
     final named = wallet.name.trim().isEmpty ? wallet.copyWith(name: 'Primary wallet') : wallet;
@@ -157,6 +215,7 @@ class SecureKeyStore {
     await setActiveWalletId(named.walletId);
     await _secure.delete(key: _legacyMnemonicKey);
     await _secure.delete(key: _legacyWalletKey);
+    _migrationDone = true;
   }
 }
 

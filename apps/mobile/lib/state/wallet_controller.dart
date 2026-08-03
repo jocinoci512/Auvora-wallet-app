@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
+import '../reliability/startup_timing.dart';
 import '../wallet_engine/key_store.dart';
 import '../wallet_engine/models.dart';
 import '../wallet_engine/wallet_engine.dart';
@@ -121,11 +122,14 @@ class WalletController extends ChangeNotifier {
   Future<void> _bootstrapBody({required bool systemReduceMotion}) async {
     final started = DateTime.now();
     final engine = _engine;
-    final prefs = await SharedPreferences.getInstance();
+    // SharedPreferences and vault restore are independent — overlap them.
+    final prefsFuture = SharedPreferences.getInstance();
+    final engineBoot = engine?.bootstrap();
+    final prefs = await prefsFuture;
     onboardingComplete = prefs.getBool(_kOnboarded) ?? false;
-    if (engine != null) {
-      await engine.bootstrap();
-      wallet = engine.wallet;
+    if (engineBoot != null) {
+      await engineBoot;
+      wallet = engine!.wallet;
     }
     if (wallet == null) {
       final legacyMnemonic = await _secure.read(key: _kMnemonic);
@@ -134,9 +138,26 @@ class WalletController extends ChangeNotifier {
         await _secure.delete(key: _kMnemonic);
       }
     }
-    address = wallet?.primaryAddress() ?? await _secure.read(key: _kAddress);
-    hasPin = (await _secure.read(key: _kPinHash)) != null;
-    biometricsEnabled = (await _secure.read(key: _kBio)) == '1';
+    // PIN / bio / legacy address flags are independent secure reads — overlap them.
+    final primary = wallet?.primaryAddress();
+    if (primary != null && primary.isNotEmpty) {
+      address = primary;
+      final flags = await Future.wait([
+        _secure.read(key: _kPinHash),
+        _secure.read(key: _kBio),
+      ]);
+      hasPin = flags[0] != null;
+      biometricsEnabled = flags[1] == '1';
+    } else {
+      final flags = await Future.wait([
+        _secure.read(key: _kAddress),
+        _secure.read(key: _kPinHash),
+        _secure.read(key: _kBio),
+      ]);
+      address = flags[0];
+      hasPin = flags[1] != null;
+      biometricsEnabled = flags[2] == '1';
+    }
     reduceMotion = systemReduceMotion || (prefs.getBool('auvora_reduce_motion') ?? false);
 
     // Minimal paint settle only — no cosmetic half-second splash tax.
@@ -145,6 +166,7 @@ class WalletController extends ChangeNotifier {
     }
 
     coldStartMs = DateTime.now().difference(started).inMilliseconds;
+    StartupTiming.mark('walletRestoreDone');
 
     if (onboardingComplete && address != null && hasPin) {
       unlocked = false;

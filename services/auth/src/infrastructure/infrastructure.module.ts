@@ -107,11 +107,16 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
         consoleMail: ConsoleMailAdapter,
         notificationsMail: NotificationsMailAdapter,
       ) => {
-        if (env.NOTIFICATIONS_SERVICE_URL && env.INTERNAL_API_KEY) {
+        if (env.MAIL_DRIVER === 'notifications') {
           return notificationsMail;
         }
         if (env.MAIL_DRIVER === 'smtp') {
           return new SmtpMailAdapter(env);
+        }
+        if (env.NODE_ENV === 'production') {
+          throw new Error(
+            'MAIL_DRIVER=console is forbidden in production - set MAIL_DRIVER=smtp or notifications',
+          );
         }
         return consoleMail;
       },

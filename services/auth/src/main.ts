@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
+import { createCredentialedCorsOriginDelegate } from '@auvora/security';
 import { AppModule } from './app.module';
 import { loadEnv } from './config/env.schema';
 import { shutdownOpenTelemetry, startOpenTelemetry } from './infrastructure/observability/otel';
@@ -20,8 +21,9 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
   app.use(helmet());
   app.use(cookieParser(env.CSRF_SECRET));
+  // Explicit allowlist (APP_PUBLIC_URL + CORS_ORIGINS). Never `*` / never reflect arbitrary Origin.
   app.enableCors({
-    origin: env.APP_PUBLIC_URL,
+    origin: createCredentialedCorsOriginDelegate(env.corsOrigins),
     credentials: true,
   });
   app.useGlobalPipes(
@@ -32,14 +34,16 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Auvora Auth Service')
-    .setDescription('Authentication and identity API')
-    .setVersion(env.SERVICE_VERSION)
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  if (env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Auvora Auth Service')
+      .setDescription('Authentication and identity API')
+      .setVersion(env.SERVICE_VERSION)
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   app.enableShutdownHooks();
   await app.listen(env.PORT);

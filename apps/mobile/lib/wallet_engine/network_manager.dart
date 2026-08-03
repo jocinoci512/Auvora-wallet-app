@@ -54,7 +54,7 @@ class NetworkManager extends ChangeNotifier {
 
   bool get cameOnline => previouslyOffline && !offline;
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool probeEndpoints = true}) async {
     previouslyOffline = offline;
     offline = await _detectOffline();
     final now = DateTime.now();
@@ -80,6 +80,14 @@ class NetworkManager extends ChangeNotifier {
     }
 
     lastOnlineAt = now;
+    // Connectivity-only path for portfolio critical path — tip probes run via
+    // SyncCoordinator periodic / resume / deferred warm-up.
+    if (!probeEndpoints) {
+      lastRefreshAt = now;
+      notifyListeners();
+      return;
+    }
+
     // Probe chains in parallel with a hard ceiling so one slow RPC cannot hang
     // portfolio refresh / home restore indefinitely.
     final adapters = _blockchainLayer.adapters.toList(growable: false);
@@ -191,11 +199,31 @@ class NetworkManager extends ChangeNotifier {
       // Browser navigator.onLine is owned by the web shell; treat as online here.
       return false;
     }
-    // Prefer DNS, then HTTPS probe — some Android carriers/VPNs break lookup alone.
-    if (await _dnsReachable('one.one.one.one')) return false;
-    if (await _dnsReachable('dns.google')) return false;
+    // Race DNS — return as soon as either resolver proves reachability.
+    // Future.wait would wait for the slower lookup even after the first success.
+    if (await _anyDnsReachable()) return false;
     if (await _httpReachable()) return false;
     return true;
+  }
+
+  Future<bool> _anyDnsReachable() {
+    final done = Completer<bool>();
+    var remaining = 2;
+    void handle(bool ok) {
+      if (done.isCompleted) return;
+      if (ok) {
+        done.complete(true);
+        return;
+      }
+      remaining -= 1;
+      if (remaining == 0) done.complete(false);
+    }
+
+    // ignore: discarded_futures
+    _dnsReachable('one.one.one.one').then(handle);
+    // ignore: discarded_futures
+    _dnsReachable('dns.google').then(handle);
+    return done.future;
   }
 
   Future<bool> _dnsReachable(String host) async {

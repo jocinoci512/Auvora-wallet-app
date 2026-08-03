@@ -43,11 +43,12 @@ abstract final class ReleaseConfig {
   static bool get rpcHealthProbeEnabled => IntegrationConfig.rpcHealthProbeEnabled;
 
   /// Public URLs for store / About (hosted companion or marketing site).
-  static const String websiteUrl = 'https://wallet.auvora.app';
-  static const String privacyPolicyUrl = 'https://wallet.auvora.app/legal/privacy';
-  static const String termsOfServiceUrl = 'https://wallet.auvora.app/legal/terms';
-  static const String supportEmail = 'alpha@auvora.app';
-  static const String supportMailto = 'mailto:alpha@auvora.app?subject=Auvora%201.0%20Alpha%20feedback';
+  static const String websiteUrl = 'https://auvorawallet.com';
+  static const String privacyPolicyUrl = 'https://auvorawallet.com/legal/privacy';
+  static const String termsOfServiceUrl = 'https://auvorawallet.com/legal/terms';
+  static const String supportEmail = 'support@auvorawallet.com';
+  static const String supportMailto =
+      'mailto:support@auvorawallet.com?subject=Auvora%201.0%20Alpha%20feedback';
 
   static bool get isClosedBeta =>
       releaseChannel == 'closed-beta' || releaseChannel == 'alpha';

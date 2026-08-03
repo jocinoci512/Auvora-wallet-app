@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { UserStatus, type AuthTokens } from '@auvora/types';
 import { generateOpaqueToken, hashToken } from '@auvora/security';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
@@ -23,6 +23,15 @@ import {
   type LoginHistoryRepositoryPort,
 } from '../ports/login-history-repository.port';
 import { MAIL_PORT, type MailPort } from '../ports/mail.port';
+import {
+  buildEmailVerifiedNotice,
+  buildNewLoginNotice,
+  buildPasswordChangedNotice,
+  buildPasswordResetEmail,
+  buildSessionRevokedNotice,
+  buildVerifyEmail,
+  type AuthEmailContent,
+} from '../../infrastructure/mail/auth-email.templates';
 import { PASSWORD_HASHER, type PasswordHasherPort } from '../ports/password-hasher.port';
 import { RATE_LIMITER, type RateLimiterPort } from '../ports/rate-limiter.port';
 import {
@@ -109,22 +118,26 @@ export class AuthService {
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
   ) {}
 
+  private readonly logger = new Logger(AuthService.name);
+
   async register(
     input: RegisterInput,
     ctx: RequestContext,
   ): Promise<{ userId: string; message: string }> {
-    await this.enforceRateLimit(`register:${ctx.ipAddress ?? 'unknown'}`);
+    await this.enforceMailRateLimit(`register:${ctx.ipAddress ?? 'unknown'}`);
 
     assertPasswordPolicy(input.password);
 
     const email = input.email.trim().toLowerCase();
     const username = input.username.trim().toLowerCase();
 
-    if (await this.users.findByEmail(email)) {
-      throw new ConflictError('Email is already registered');
-    }
-    if (await this.users.findByUsername(username)) {
-      throw new ConflictError('Username is already taken');
+    // Anti-enumeration: identical conflict message for email or username collisions.
+    // Dummy hash keeps timing closer to the create path.
+    const emailTaken = Boolean(await this.users.findByEmail(email));
+    const usernameTaken = Boolean(await this.users.findByUsername(username));
+    if (emailTaken || usernameTaken) {
+      await this.passwordHasher.hash(input.password);
+      throw new ConflictError('Unable to complete registration with the provided details');
     }
 
     const passwordHash = await this.passwordHasher.hash(input.password);
@@ -142,11 +155,12 @@ export class AuthService {
     await this.users.createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
     const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
+    const content = buildVerifyEmail(verifyUrl);
     await this.mail.send({
       to: email,
-      subject: 'Verify your Auvora Wallet account',
-      text: `Welcome! Verify your email: ${verifyUrl}`,
-      html: `<p>Welcome! <a href="${verifyUrl}">Verify your email</a></p>`,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
     });
 
     await this.audit.create({
@@ -212,6 +226,9 @@ export class AuthService {
 
     await this.users.resetFailedLogin(user.id);
     await this.users.updateLastLogin(user.id, this.clock.now());
+
+    const existingDevice = await this.devices.findByFingerprint(user.id, input.deviceFingerprint);
+    const isNewDevice = !existingDevice || Boolean(existingDevice.revokedAt);
 
     const device = await this.devices.upsert({
       userId: user.id,
@@ -282,6 +299,17 @@ export class AuthService {
       metrics: { dau: 1 },
       payload: { sessionId: session.id, deviceId: device.id },
     });
+
+    if (isNewDevice) {
+      await this.sendSecurityMail(
+        user.email,
+        buildNewLoginNotice({
+          deviceName: input.deviceName,
+          platform: input.devicePlatform ?? 'web',
+          ipAddress: ctx.ipAddress,
+        }),
+      );
+    }
 
     return {
       accessToken,
@@ -409,11 +437,16 @@ export class AuthService {
       userAgent: ctx.userAgent,
     });
 
+    const verifiedUser = await this.users.findById(userId);
+    if (verifiedUser) {
+      await this.sendSecurityMail(verifiedUser.email, buildEmailVerifiedNotice());
+    }
+
     return { message: 'Email verified successfully' };
   }
 
   async resendVerification(email: string, _ctx: RequestContext): Promise<{ message: string }> {
-    await this.enforceRateLimit(`resend:${email}`);
+    await this.enforceMailRateLimit(`resend:${email.trim().toLowerCase()}`);
 
     const user = await this.users.findByEmail(email.trim().toLowerCase());
     if (!user || user.emailVerified) {
@@ -428,11 +461,12 @@ export class AuthService {
     await this.users.createEmailVerificationToken(user.id, tokenHash, expiresAt);
 
     const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
+    const content = buildVerifyEmail(verifyUrl);
     await this.mail.send({
       to: user.email,
-      subject: 'Verify your Auvora Wallet account',
-      text: `Verify your email: ${verifyUrl}`,
-      html: `<p><a href="${verifyUrl}">Verify your email</a></p>`,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
     });
 
     return {
@@ -441,7 +475,7 @@ export class AuthService {
   }
 
   async forgotPassword(email: string, ctx: RequestContext): Promise<{ message: string }> {
-    await this.enforceRateLimit(`forgot:${email}`);
+    await this.enforceMailRateLimit(`forgot:${email.trim().toLowerCase()}`);
 
     const user = await this.users.findByEmail(email.trim().toLowerCase());
     if (user && !user.deletedAt) {
@@ -451,11 +485,12 @@ export class AuthService {
       await this.users.createPasswordResetToken(user.id, tokenHash, expiresAt);
 
       const resetUrl = `${this.env.APP_PUBLIC_URL}/auth/reset-password?token=${rawToken}`;
+      const content = buildPasswordResetEmail(resetUrl);
       await this.mail.send({
         to: user.email,
-        subject: 'Reset your Auvora Wallet password',
-        text: `Reset your password: ${resetUrl}`,
-        html: `<p><a href="${resetUrl}">Reset your password</a></p>`,
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
       });
 
       await this.audit.create({
@@ -475,6 +510,7 @@ export class AuthService {
     newPassword: string,
     ctx: RequestContext,
   ): Promise<{ message: string }> {
+    await this.enforceMailRateLimit(`reset:${ctx.ipAddress ?? 'unknown'}`);
     assertPasswordPolicy(newPassword);
 
     const tokenHash = hashToken(token);
@@ -496,6 +532,11 @@ export class AuthService {
       userAgent: ctx.userAgent,
     });
 
+    const resetUser = await this.users.findById(userId);
+    if (resetUser) {
+      await this.sendSecurityMail(resetUser.email, buildPasswordChangedNotice());
+    }
+
     return { message: 'Password reset successfully' };
   }
 
@@ -515,6 +556,8 @@ export class AuthService {
 
     const passwordHash = await this.passwordHasher.hash(newPassword);
     await this.users.updatePassword(userId, passwordHash);
+    // Match resetPassword: revoke sessions + refresh so stolen access JWTs cannot linger.
+    await this.sessions.revokeAllForUser(userId);
     await this.refreshTokens.revokeAllForUser(userId);
 
     await this.audit.create({
@@ -524,6 +567,8 @@ export class AuthService {
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
     });
+
+    await this.sendSecurityMail(user.email, buildPasswordChangedNotice());
 
     return { message: 'Password changed successfully' };
   }
@@ -572,6 +617,11 @@ export class AuthService {
       userAgent: ctx.userAgent,
       metadata: { sessionId },
     });
+
+    const sessionUser = await this.users.findById(userId);
+    if (sessionUser) {
+      await this.sendSecurityMail(sessionUser.email, buildSessionRevokedNotice());
+    }
 
     return { message: 'Session revoked' };
   }
@@ -797,6 +847,17 @@ export class AuthService {
     };
   }
 
+  private async enforceMailRateLimit(key: string): Promise<void> {
+    const result = await this.rateLimiter.consume(
+      key,
+      this.env.MAIL_RATE_LIMIT_MAX,
+      this.env.MAIL_RATE_LIMIT_WINDOW_SECONDS,
+    );
+    if (!result.allowed) {
+      throw new RateLimitError('Too many requests');
+    }
+  }
+
   private async enforceRateLimit(key: string): Promise<void> {
     const result = await this.rateLimiter.consume(
       key,
@@ -805,6 +866,21 @@ export class AuthService {
     );
     if (!result.allowed) {
       throw new RateLimitError('Too many requests');
+    }
+  }
+
+  /** Best-effort security notices — never fail the primary auth action. */
+  private async sendSecurityMail(to: string, content: AuthEmailContent): Promise<void> {
+    try {
+      await this.mail.send({
+        to,
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`Security mail failed to=${to} subject="${content.subject}": ${message}`);
     }
   }
 

@@ -53,8 +53,10 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="wallet.auvora.app" android:pathPrefix="/wc"/>
-                <data android:scheme="https" android:host="wallet.auvora.app" android:pathPrefix="/connect"/>
+                <data android:scheme="https" android:host="auvorawallet.com" android:pathPrefix="/wc"/>
+                <data android:scheme="https" android:host="auvorawallet.com" android:pathPrefix="/connect"/>
+                <data android:scheme="https" android:host="www.auvorawallet.com" android:pathPrefix="/wc"/>
+                <data android:scheme="https" android:host="www.auvorawallet.com" android:pathPrefix="/connect"/>
             </intent-filter>
         </activity>
         <meta-data

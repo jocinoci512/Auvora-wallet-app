@@ -43,6 +43,7 @@ const appName = env.NEXT_PUBLIC_APP_NAME;
 const appUrl = env.NEXT_PUBLIC_APP_URL;
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl ?? 'https://auvorawallet.com'),
   title: {
     default: `${appName} â€” The quiet operating system for digital value`,
     template: `%s Â· ${appName}`,
