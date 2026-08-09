@@ -1,0 +1,48 @@
+# Keep Docker build context small and free of secrets / local artifacts.
+.git
+.github
+.cursor
+.turbo
+.tools
+.cache
+.tmp
+.temp
+.verify-logs
+.local-data
+docker-data
+node_modules
+**/node_modules
+.pnpm-store
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/.turbo
+
+# Env / secrets (never bake into image)
+.env
+.env.*
+!.env.example
+!.env.staging.example
+!.env.production.example
+**/*.pem
+**/secrets/*.yaml
+!**/*.yaml.example
+
+# Prisma local DBs + generated (regenerated in image)
+database/prisma/*.db
+database/prisma/*.db-journal
+database/generated
+packages/database/src/generated
+
+# Heavy / irrelevant for Nest service images
+apps/mobile
+docs
+**/*.md
+!README.md
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea
+*.log

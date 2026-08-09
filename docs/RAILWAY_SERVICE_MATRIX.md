@@ -85,3 +85,35 @@ infrastructure/docker/Dockerfile.service
 ```
 
 Node 22 · multi-stage · non-root `auvora` · HEALTHCHECK `/health` · no secrets in image.
+
+Repo also pins this via root `railway.toml` (`builder = DOCKERFILE`, `dockerfilePath = infrastructure/docker/Dockerfile.service`) and a root `Dockerfile` mirror for auto-detection.
+
+---
+
+## Railway UI settings (auth-v2 / Nest services)
+
+Use these for **auth** (and the same pattern for other Nest services). Config-as-code overrides the dashboard when both are set.
+
+| Setting              | Value                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| Source repo          | `jocinoci512/Auvora-wallet-app`                                                          |
+| Branch               | `main`                                                                                   |
+| Root Directory       | **blank** or `/` (never `services/auth` or `infrastructure/docker`)                      |
+| Builder              | **Dockerfile**                                                                           |
+| Dockerfile path      | `infrastructure/docker/Dockerfile.service` (no leading slash; or rely on `railway.toml`) |
+| Watch paths          | leave default (entire repo) unless you know you need filters                             |
+| Networking           | **Private** (Public networking OFF) for auth                                             |
+| Healthcheck path     | `/health`                                                                                |
+| Custom start command | **empty** (image `CMD` is `node dist/main.js`)                                           |
+
+**Variables** (required for Docker `ARG` + runtime; Railway injects matching `ARG`s at build):
+
+| Name                      | Auth value                                                  |
+| ------------------------- | ----------------------------------------------------------- |
+| `SERVICE`                 | `auth`                                                      |
+| `PORT`                    | `4001`                                                      |
+| `RAILWAY_DOCKERFILE_PATH` | optional backup: `infrastructure/docker/Dockerfile.service` |
+
+Also set runtime secrets (`DATABASE_URL`, `REDIS_URL`, JWT/CSRF, SMTP, etc.) per [`RAILWAY_ENVIRONMENT_MATRIX.md`](./RAILWAY_ENVIRONMENT_MATRIX.md).
+
+**Do not** use Railpack/Nixpacks for Nest services when the Docker path is configured — a missing/empty Dockerfile path is the usual cause of toast **"There was an error deploying from source"** with no build logs.

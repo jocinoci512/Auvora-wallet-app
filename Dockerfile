@@ -1,4 +1,10 @@
 # syntax=docker/dockerfile:1
+#
+# Root Dockerfile for Railway auto-detection ("Using detected Dockerfile!").
+# Canonical copy lives at infrastructure/docker/Dockerfile.service — keep in sync.
+# Prefer railway.toml [build].dockerfilePath for explicit monorepo deploys.
+#
+# Build: docker build --build-arg SERVICE=auth --build-arg PORT=4001 .
 
 # Production NestJS service image (multi-stage, non-root).
 # Build: docker build -f infrastructure/docker/Dockerfile.service --build-arg SERVICE=gateway -t auvora/gateway-service:latest .
