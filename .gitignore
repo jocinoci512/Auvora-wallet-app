@@ -63,6 +63,8 @@ coverage
 *.pem
 .cache
 tmp
+.tmp
+**/.tmp/
 temp
 .verify-logs
 .cursor

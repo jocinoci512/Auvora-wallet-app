@@ -2,10 +2,13 @@
 # Config-as-code overrides the Railway dashboard and pins the Dockerfile so
 # deploys do not fail silently when the UI Dockerfile path is empty/wrong.
 #
-# Per service, set Variables (build-time ARGs + runtime):
-#   SERVICE=<name>   e.g. auth
+# railway.toml does NOT support Docker buildArgs. Per service, set Variables:
+#   SERVICE=<name>   e.g. auth          (required — image build fails if unset)
 #   PORT=<port>      e.g. 4001
+# See infrastructure/docker/README.md and docs/RAILWAY_SERVICE_MATRIX.md.
+#
 # Root Directory must be repo root (blank or "/"), never a subdirectory.
+# Shared healthcheckPath /health is correct for all Nest services.
 # Next.js apps must use a different config-as-code file / Dockerfile.next.
 
 [build]

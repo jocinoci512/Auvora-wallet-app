@@ -80,14 +80,24 @@ Gateway may still define `*_SERVICE_URL` for these; missing processes yield cont
 
 ```text
 infrastructure/docker/Dockerfile.service
-  --build-arg SERVICE=<name>
+  --build-arg SERVICE=<name>   # required (no default)
   --build-arg PORT=<port>
 ```
 
-Node 22 · multi-stage · non-root `auvora` · HEALTHCHECK `/health` · no secrets in image.
+| SERVICE     | PORT | Turbo filter                  |
+| ----------- | ---- | ----------------------------- |
+| gateway     | 4000 | `@auvora/gateway-service`     |
+| auth        | 4001 | `@auvora/auth-service`        |
+| wallet      | 3002 | `@auvora/wallet-service`      |
+| blockchain  | 3003 | `@auvora/blockchain-service`  |
+| connections | 3016 | `@auvora/connections-service` |
+| market-data | 3012 | `@auvora/market-data-service` |
 
-Repo also pins this via root `railway.toml` (`builder = DOCKERFILE`, `dockerfilePath = infrastructure/docker/Dockerfile.service`) and a root `Dockerfile` mirror for auto-detection.
+Node 22 · pnpm 9.15 (Corepack) · `pnpm deploy --prod` runtime bundle · non-root `auvora` · HEALTHCHECK `/health` · no secrets in image.
 
+Repo pins this via root `railway.toml` (`builder = DOCKERFILE`, `dockerfilePath = infrastructure/docker/Dockerfile.service`) and a root `Dockerfile` mirror for auto-detection. **`railway.toml` cannot set buildArgs** — each Railway service must define Variables `SERVICE` + `PORT`. Details: [`infrastructure/docker/README.md`](../infrastructure/docker/README.md).
+
+Validate context stubs: `node infrastructure/docker/validate-service-context.mjs`
 ---
 
 ## Railway UI settings (auth-v2 / Nest services)
@@ -106,14 +116,16 @@ Use these for **auth** (and the same pattern for other Nest services). Config-as
 | Healthcheck path     | `/health`                                                                                |
 | Custom start command | **empty** (image `CMD` is `node dist/main.js`)                                           |
 
-**Variables** (required for Docker `ARG` + runtime; Railway injects matching `ARG`s at build):
+**Variables** (required for Docker `ARG` + runtime; Railway injects matching `ARG`s at build — config-as-code has **no** `buildArgs` field):
 
 | Name                      | Auth value                                                  |
 | ------------------------- | ----------------------------------------------------------- |
-| `SERVICE`                 | `auth`                                                      |
+| `SERVICE`                 | `auth` (required; build fails if missing/wrong)             |
 | `PORT`                    | `4001`                                                      |
 | `RAILWAY_DOCKERFILE_PATH` | optional backup: `infrastructure/docker/Dockerfile.service` |
 
 Also set runtime secrets (`DATABASE_URL`, `REDIS_URL`, JWT/CSRF, SMTP, etc.) per [`RAILWAY_ENVIRONMENT_MATRIX.md`](./RAILWAY_ENVIRONMENT_MATRIX.md).
 
 **Do not** use Railpack/Nixpacks for Nest services when the Docker path is configured — a missing/empty Dockerfile path is the usual cause of toast **"There was an error deploying from source"** with no build logs.
+
+**Do not** rely on Dockerfile `SERVICE` defaults — the image deliberately has **no** default so a misconfigured auth/wallet/etc. service cannot silently build gateway.
