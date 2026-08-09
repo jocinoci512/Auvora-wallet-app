@@ -1,0 +1,83 @@
+# syntax=docker/dockerfile:1
+#
+# TEMPORARY Railway one-shot service: Prisma migrate deploy + status only.
+# Does NOT run an HTTP server. Does NOT reset / push / seed.
+#
+# Build (from repo root):
+#   docker build -f infrastructure/docker/Dockerfile.migrate \
+#     -t auvora/db-migrate:latest .
+#
+# Railway (temporary `db-migrate` service):
+#   - Root Directory = blank / "/"
+#   - Dockerfile path = infrastructure/docker/Dockerfile.migrate
+#   - Variables: DATABASE_URL only (reference Postgres plugin)
+#   - Custom start command: empty (use image CMD)
+#   - No PORT / no public networking / tear down after success
+#
+# Runtime (exit 0 only if both succeed):
+#   pnpm --filter @auvora/database-schema exec prisma migrate deploy
+#   pnpm --filter @auvora/database-schema exec prisma migrate status
+
+FROM node:22-alpine AS base
+WORKDIR /app
+# Skip husky prepare; align with packageManager/engines (pnpm@9.15.9, node>=22).
+# Do NOT set NODE_ENV=production here — prisma is a database-schema devDependency.
+ENV CI=true
+RUN corepack enable \
+  && corepack prepare pnpm@9.15.9 --activate \
+  && apk add --no-cache libc6-compat openssl
+
+FROM base AS deps
+# argon2 (database-schema dependency) needs a native toolchain on Alpine.
+RUN apk add --no-cache python3 make g++
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+# Workspace package.json stubs required for pnpm --frozen-lockfile.
+COPY packages/cache/package.json ./packages/cache/
+COPY packages/config/package.json ./packages/config/
+COPY packages/database/package.json ./packages/database/
+COPY packages/nest-common/package.json ./packages/nest-common/
+COPY packages/resilience/package.json ./packages/resilience/
+COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/secrets/package.json ./packages/secrets/
+COPY packages/security/package.json ./packages/security/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+COPY database/package.json ./database/
+COPY scripts ./scripts
+COPY apps/admin/package.json ./apps/admin/
+COPY apps/docs/package.json ./apps/docs/
+COPY apps/web/package.json ./apps/web/
+COPY services/gateway/package.json ./services/gateway/
+COPY services/auth/package.json ./services/auth/
+COPY services/wallet/package.json ./services/wallet/
+COPY services/blockchain/package.json ./services/blockchain/
+COPY services/payments/package.json ./services/payments/
+COPY services/compliance/package.json ./services/compliance/
+COPY services/notifications/package.json ./services/notifications/
+COPY services/analytics/package.json ./services/analytics/
+COPY services/ai/package.json ./services/ai/
+COPY services/custody/package.json ./services/custody/
+COPY services/observability/package.json ./services/observability/
+COPY services/market-data/package.json ./services/market-data/
+COPY services/swap/package.json ./services/swap/
+COPY services/nft/package.json ./services/nft/
+COPY services/staking/package.json ./services/staking/
+COPY services/connections/package.json ./services/connections/
+COPY services/bridge/package.json ./services/bridge/
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS migrate
+# Full schema + migrations (generated client is .dockerignore'd — regenerate below).
+COPY database ./database
+RUN test -f database/prisma/schema.prisma \
+  && test -f database/prisma/migrations/migration_lock.toml \
+  && test -d database/prisma/migrations \
+  && pnpm --filter @auvora/database-schema exec prisma generate
+
+RUN addgroup -S auvora && adduser -S auvora -G auvora \
+  && chown -R auvora:auvora /app
+USER auvora
+
+# DATABASE_URL must be injected at runtime (Railway Postgres reference). No other secrets required.
+# Fail closed: deploy then status; non-zero from either fails the container.
+CMD ["sh", "-ec", "pnpm --filter @auvora/database-schema exec prisma migrate deploy && pnpm --filter @auvora/database-schema exec prisma migrate status"]

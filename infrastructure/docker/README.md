@@ -51,6 +51,25 @@ node infrastructure/docker/validate-service-context.mjs
 - Runtime: non-root `auvora`, `CMD ["node", "dist/main.js"]`, Docker `HEALTHCHECK` on `/health`
 - No secrets baked into the image
 
+## One-shot migrations — `Dockerfile.migrate`
+
+Temporary Railway service **`db-migrate`**: runs Prisma `migrate deploy` then `migrate status` and exits. No HTTP server, no `PORT`, no reset/push/seed.
+
+```bash
+docker build -f infrastructure/docker/Dockerfile.migrate -t auvora/db-migrate:latest .
+```
+
+| Setting              | Value                                               |
+| -------------------- | --------------------------------------------------- |
+| Root Directory       | blank / `/`                                         |
+| Dockerfile path      | `infrastructure/docker/Dockerfile.migrate`          |
+| Custom start command | **empty** (image CMD)                               |
+| Networking           | Private                                             |
+| Variables            | **`DATABASE_URL` only** (Postgres plugin reference) |
+| After success        | Tear down / remove the temporary service            |
+
+Do **not** point Nest services at this Dockerfile. Do **not** set Redis/JWT/Alchemy on this service.
+
 ## Next.js apps — `Dockerfile.next`
 
 Separate image for `apps/web` and `apps/admin`. Do not point Nest Railway services at this file.
