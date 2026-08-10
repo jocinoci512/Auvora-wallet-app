@@ -80,15 +80,16 @@ Gateway may still define `*_SERVICE_URL` for these; missing processes yield cont
 
 One-shot Prisma runner — **not** part of Closed Beta runtime. Create in Railway UI, run once, tear down.
 
-| Setting              | Value                                                      |
-| -------------------- | ---------------------------------------------------------- |
-| Service name         | `db-migrate` (temporary)                                   |
-| Root Directory       | blank / `/`                                                |
-| Dockerfile path      | `infrastructure/docker/Dockerfile.migrate`                 |
-| Custom start command | **empty**                                                  |
-| Networking           | Private (no public URL, no `PORT`)                         |
-| Variables            | **`DATABASE_URL` only** (same Postgres as Nest services)   |
-| CMD                  | `migrate deploy` then `migrate status` (both must succeed) |
+| Setting              | Value                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Service name         | `db-migrate` (temporary)                                                             |
+| Root Directory       | blank / `/`                                                                          |
+| Dockerfile path      | `infrastructure/docker/Dockerfile.migrate`                                           |
+| Custom start command | **empty**                                                                            |
+| Networking           | Private (no public URL, no `PORT`)                                                   |
+| Variables            | **`DATABASE_URL` only** (same Postgres as Nest services)                             |
+| CMD                  | `migrate deploy` then `migrate status` (both must succeed)                           |
+| Install scope        | `@auvora/database-schema` only (`--ignore-workspace`; no root `redis-memory-server`) |
 
 Do **not** use `Dockerfile.service` for this. Do **not** attach Redis/JWT/SMTP/Alchemy. See [`infrastructure/docker/README.md`](../infrastructure/docker/README.md).
 

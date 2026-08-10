@@ -55,6 +55,8 @@ node infrastructure/docker/validate-service-context.mjs
 
 Temporary Railway service **`db-migrate`**: runs Prisma `migrate deploy` then `migrate status` and exits. No HTTP server, no `PORT`, no reset/push/seed.
 
+Installs **only** `@auvora/database-schema` (Prisma + argon2) via `pnpm install --ignore-workspace --frozen-lockfile --lockfile-dir=..` — not the full monorepo. Root-only `redis-memory-server` / `embedded-postgres` are never installed (their postinstalls break Alpine).
+
 ```bash
 docker build -f infrastructure/docker/Dockerfile.migrate -t auvora/db-migrate:latest .
 ```
