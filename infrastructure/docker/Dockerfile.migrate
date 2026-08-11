@@ -28,6 +28,11 @@
 #   normal pnpm layout (exact prisma@6.5.0 / @prisma/client@6.5.0 / argon2 pins).
 #   No workspace root, no lockfile-dir escape, no redis-memory-server.
 #
+# pnpm pin:
+#   Root uses packageManager pnpm@9.15.9. Standalone /app/database must ALSO declare
+#   packageManager (see database/package.json) — otherwise Corepack defaults to
+#   latest pnpm (11.x) at install/runtime and drifts from the monorepo.
+#
 # Runtime (exit 0 only if both succeed):
 #   pnpm exec prisma migrate deploy
 #   pnpm exec prisma migrate status
@@ -37,15 +42,19 @@ FROM node:22-bookworm-slim AS base
 WORKDIR /app
 ENV CI=true
 # Do NOT set NODE_ENV=production — prisma is a database-schema devDependency.
+# Never let Corepack silently jump to "latest" pnpm when packageManager is missing.
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_AUTO_PIN=0
 RUN corepack enable \
   && corepack prepare pnpm@9.15.9 --activate \
+  && pnpm --version \
+  && test "$(pnpm --version)" = "9.15.9" \
   && apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
-# argon2 needs a native toolchain; keep it out of the final runtime layer tools if possible
-# (we run generate in this stage too, so toolchain stays for the single-stage migrate image).
+# argon2 needs a native toolchain for the migrate image.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
@@ -55,7 +64,11 @@ COPY database/prisma ./database/prisma/
 WORKDIR /app/database
 # Structurally correct pnpm install for this package (creates package-local lockfile).
 # Exact versions for prisma / @prisma/client / argon2 are pinned in package.json.
-RUN pnpm install \
+# Re-assert pnpm 9.15.9 here: Corepack resolves from database/package.json packageManager.
+RUN test "$(node -p "require('./package.json').packageManager")" = "pnpm@9.15.9" \
+  && test "$(pnpm --version)" = "9.15.9" \
+  && pnpm install \
+  && test "$(pnpm --version)" = "9.15.9" \
   && test ! -e ./node_modules/redis-memory-server \
   && test ! -e /app/node_modules/redis-memory-server \
   && test -f ./node_modules/prisma/package.json \
@@ -67,6 +80,7 @@ WORKDIR /app/database
 RUN test -f prisma/schema.prisma \
   && test -f prisma/migrations/migration_lock.toml \
   && test -d prisma/migrations \
+  && test "$(pnpm --version)" = "9.15.9" \
   && pnpm exec prisma generate \
   && test -f generated/client/index.js
 
@@ -76,4 +90,4 @@ RUN groupadd --system auvora \
 USER auvora
 
 # DATABASE_URL must be injected at runtime (Railway Postgres reference). No other secrets required.
-CMD ["sh", "-ec", "pnpm exec prisma migrate deploy && pnpm exec prisma migrate status"]
+CMD ["sh", "-ec", "test \"$(pnpm --version)\" = \"9.15.9\" && pnpm exec prisma migrate deploy && pnpm exec prisma migrate status"]

@@ -57,6 +57,8 @@ Temporary Railway service **`db-migrate`**: runs Prisma `migrate deploy` then `m
 
 Installs **only** `database/package.json` deps inside `/app/database` with a normal pnpm layout (exact `prisma@6.5.0`). Does **not** use monorepo `--ignore-workspace --lockfile-dir=..` (that broke `@prisma/engines` postinstall with ENOENT). Does **not** install root `redis-memory-server`.
 
+`database/package.json` declares `"packageManager": "pnpm@9.15.9"` (same as root). The migrate image also sets `COREPACK_DEFAULT_TO_LATEST=0` and asserts `pnpm --version == 9.15.9` so Corepack cannot drift to pnpm 11.x.
+
 Base image: `node:22-bookworm-slim` (Prisma engine–friendly; Nest services stay on Alpine `Dockerfile.service`).
 
 **Critical:** root `railway.toml` pins Nest → `Dockerfile.service`. Config-as-code overrides the dashboard, so db-migrate **must** use `/railway.migrate.toml`.
