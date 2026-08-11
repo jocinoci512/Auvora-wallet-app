@@ -91,7 +91,8 @@ One-shot Prisma runner — **not** part of Closed Beta runtime. Create in Railwa
 | Variables            | **`DATABASE_URL` only** (same Postgres as Nest services)                                 |
 | Restart              | Never                                                                                    |
 | CMD                  | `migrate deploy` then `migrate status` (both must succeed)                               |
-| Install scope        | `@auvora/database-schema` only (`--ignore-workspace`; no root `redis-memory-server`)     |
+| Install scope        | `database/` standalone pnpm install (prisma 6.5.0; no root `redis-memory-server`)        |
+| Base image           | `node:22-bookworm-slim`                                                                  |
 
 Do **not** leave db-migrate on default `/railway.toml` (that builds `Dockerfile.service` → full workspace / `redis-memory-server`). Do **not** attach Redis/JWT/SMTP/Alchemy. See [`infrastructure/docker/README.md`](../infrastructure/docker/README.md).
 

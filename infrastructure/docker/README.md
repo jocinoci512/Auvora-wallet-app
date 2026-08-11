@@ -55,9 +55,11 @@ node infrastructure/docker/validate-service-context.mjs
 
 Temporary Railway service **`db-migrate`**: runs Prisma `migrate deploy` then `migrate status` and exits. No HTTP server, no `PORT`, no reset/push/seed.
 
-Installs **only** `@auvora/database-schema` (Prisma + argon2) via `pnpm install --ignore-workspace --frozen-lockfile --lockfile-dir=..` — not the full monorepo. Root-only `redis-memory-server` / `embedded-postgres` are never installed (their postinstalls break Alpine).
+Installs **only** `database/package.json` deps inside `/app/database` with a normal pnpm layout (exact `prisma@6.5.0`). Does **not** use monorepo `--ignore-workspace --lockfile-dir=..` (that broke `@prisma/engines` postinstall with ENOENT). Does **not** install root `redis-memory-server`.
 
-**Critical:** root `railway.toml` pins Nest → `Dockerfile.service`. Config-as-code overrides the dashboard, so a dashboard-only Dockerfile path to `Dockerfile.migrate` is **ignored** unless db-migrate uses a dedicated config file.
+Base image: `node:22-bookworm-slim` (Prisma engine–friendly; Nest services stay on Alpine `Dockerfile.service`).
+
+**Critical:** root `railway.toml` pins Nest → `Dockerfile.service`. Config-as-code overrides the dashboard, so db-migrate **must** use `/railway.migrate.toml`.
 
 ```bash
 docker build -f infrastructure/docker/Dockerfile.migrate -t auvora/db-migrate:latest .

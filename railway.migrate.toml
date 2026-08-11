@@ -6,6 +6,10 @@
 # dashboard Dockerfile path — so db-migrate MUST NOT use root `railway.toml`,
 # or Railway silently builds the Nest image (redis-memory-server / 32 projects).
 #
+# Dockerfile.migrate installs ONLY database/ (standalone pnpm + Prisma 6.5.0 on
+# node:22-bookworm-slim). It does not use --ignore-workspace --lockfile-dir=..
+# (that caused @prisma/engines ENOENT).
+#
 # Railway service settings for `db-migrate`:
 #   Root Directory   = blank / "/"
 #   Config as Code   = /railway.migrate.toml   ← set this explicitly
