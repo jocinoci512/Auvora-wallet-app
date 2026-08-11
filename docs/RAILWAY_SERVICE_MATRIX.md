@@ -80,18 +80,20 @@ Gateway may still define `*_SERVICE_URL` for these; missing processes yield cont
 
 One-shot Prisma runner — **not** part of Closed Beta runtime. Create in Railway UI, run once, tear down.
 
-| Setting              | Value                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Service name         | `db-migrate` (temporary)                                                             |
-| Root Directory       | blank / `/`                                                                          |
-| Dockerfile path      | `infrastructure/docker/Dockerfile.migrate`                                           |
-| Custom start command | **empty**                                                                            |
-| Networking           | Private (no public URL, no `PORT`)                                                   |
-| Variables            | **`DATABASE_URL` only** (same Postgres as Nest services)                             |
-| CMD                  | `migrate deploy` then `migrate status` (both must succeed)                           |
-| Install scope        | `@auvora/database-schema` only (`--ignore-workspace`; no root `redis-memory-server`) |
+| Setting              | Value                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| Service name         | `db-migrate` (temporary)                                                                 |
+| Root Directory       | blank / `/`                                                                              |
+| **Config as Code**   | **`/railway.migrate.toml`** (required — root `railway.toml` would force Nest Dockerfile) |
+| Dockerfile path      | pinned by config → `infrastructure/docker/Dockerfile.migrate`                            |
+| Custom start command | **empty**                                                                                |
+| Networking           | Private (no public URL, no `PORT`)                                                       |
+| Variables            | **`DATABASE_URL` only** (same Postgres as Nest services)                                 |
+| Restart              | Never                                                                                    |
+| CMD                  | `migrate deploy` then `migrate status` (both must succeed)                               |
+| Install scope        | `@auvora/database-schema` only (`--ignore-workspace`; no root `redis-memory-server`)     |
 
-Do **not** use `Dockerfile.service` for this. Do **not** attach Redis/JWT/SMTP/Alchemy. See [`infrastructure/docker/README.md`](../infrastructure/docker/README.md).
+Do **not** leave db-migrate on default `/railway.toml` (that builds `Dockerfile.service` → full workspace / `redis-memory-server`). Do **not** attach Redis/JWT/SMTP/Alchemy. See [`infrastructure/docker/README.md`](../infrastructure/docker/README.md).
 
 ---
 

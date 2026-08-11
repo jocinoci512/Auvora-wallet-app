@@ -57,20 +57,28 @@ Temporary Railway service **`db-migrate`**: runs Prisma `migrate deploy` then `m
 
 Installs **only** `@auvora/database-schema` (Prisma + argon2) via `pnpm install --ignore-workspace --frozen-lockfile --lockfile-dir=..` — not the full monorepo. Root-only `redis-memory-server` / `embedded-postgres` are never installed (their postinstalls break Alpine).
 
+**Critical:** root `railway.toml` pins Nest → `Dockerfile.service`. Config-as-code overrides the dashboard, so a dashboard-only Dockerfile path to `Dockerfile.migrate` is **ignored** unless db-migrate uses a dedicated config file.
+
 ```bash
 docker build -f infrastructure/docker/Dockerfile.migrate -t auvora/db-migrate:latest .
 ```
 
-| Setting              | Value                                               |
-| -------------------- | --------------------------------------------------- |
-| Root Directory       | blank / `/`                                         |
-| Dockerfile path      | `infrastructure/docker/Dockerfile.migrate`          |
-| Custom start command | **empty** (image CMD)                               |
-| Networking           | Private                                             |
-| Variables            | **`DATABASE_URL` only** (Postgres plugin reference) |
-| After success        | Tear down / remove the temporary service            |
+| Setting              | Value                                                            |
+| -------------------- | ---------------------------------------------------------------- |
+| Root Directory       | blank / `/`                                                      |
+| **Config as Code**   | **`/railway.migrate.toml`** (required — not root `railway.toml`) |
+| Dockerfile path      | pinned by `railway.migrate.toml` → `Dockerfile.migrate`          |
+| Custom start command | **empty** (image CMD)                                            |
+| Networking           | Private                                                          |
+| Variables            | **`DATABASE_URL` only** (Postgres plugin reference)              |
+| Restart policy       | Never (in `railway.migrate.toml`)                                |
+| After success        | Tear down / remove the temporary service                         |
 
-Do **not** point Nest services at this Dockerfile. Do **not** set Redis/JWT/Alchemy on this service.
+Optional backup variable (only if not using `railway.migrate.toml`):  
+`RAILWAY_DOCKERFILE_PATH=infrastructure/docker/Dockerfile.migrate`  
+Prefer the dedicated config file — root `railway.toml` would still win over the variable when the service uses the default config path.
+
+Do **not** point Nest services at this Dockerfile or at `railway.migrate.toml`. Do **not** set Redis/JWT/Alchemy on this service.
 
 ## Next.js apps — `Dockerfile.next`
 

@@ -1,0 +1,24 @@
+# Auvora temporary one-shot Prisma migration service (`db-migrate`).
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` pins Nest services to `infrastructure/docker/Dockerfile.service`
+# (full-workspace `pnpm install`). Config-as-code ALWAYS overrides the Railway
+# dashboard Dockerfile path — so db-migrate MUST NOT use root `railway.toml`,
+# or Railway silently builds the Nest image (redis-memory-server / 32 projects).
+#
+# Railway service settings for `db-migrate`:
+#   Root Directory   = blank / "/"
+#   Config as Code   = /railway.migrate.toml   ← set this explicitly
+#   Variables        = DATABASE_URL only (existing Postgres reference)
+#   Public networking = OFF
+#   Tear down after migrate deploy + status succeed.
+#
+# Do NOT set this config file on gateway/auth/wallet/blockchain/market-data/connections.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.migrate"
+
+[deploy]
+# One-shot migrate container — no HTTP healthcheck, never restart on exit.
+restartPolicyType = "NEVER"
