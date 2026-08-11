@@ -35,6 +35,8 @@
 | Document                                     | Path                                                                                                               |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Architecture                                 | [`ARCHITECTURE.md`](./ARCHITECTURE.md)                                                                             |
+| Vercel backend compatibility (Closed Beta)   | [`AUVORA_VERCEL_FULL_BACKEND_COMPATIBILITY_AUDIT.md`](./AUVORA_VERCEL_FULL_BACKEND_COMPATIBILITY_AUDIT.md)         |
+| Supabase compatibility (Closed Beta)         | [`AUVORA_SUPABASE_COMPATIBILITY_AUDIT.md`](./AUVORA_SUPABASE_COMPATIBILITY_AUDIT.md)                               |
 | ADR index                                    | [`ARCHITECTURE_DECISIONS.md`](../ARCHITECTURE_DECISIONS.md)                                                        |
 | API documentation                            | [`API_DOCUMENTATION.md`](./API_DOCUMENTATION.md)                                                                   |
 | Blockchain provider guide (Phase 17)         | [`BLOCKCHAIN_PROVIDER_GUIDE.md`](./BLOCKCHAIN_PROVIDER_GUIDE.md)                                                   |
