@@ -1,0 +1,61 @@
+# Auvora gateway-prod — dedicated Railway config-as-code.
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` is shared by Nest mesh services. gateway-prod must NOT
+# inherit ambiguous/legacy dashboard settings from the broken `gateway` service.
+# Create a NEW Railway service named `gateway-prod` and set:
+#   Config as Code path = /railway.gateway.toml
+# Leave the old `gateway` service untouched.
+#
+# Railway service settings (dashboard — create new service, do not deploy from agent):
+#   Service name       = gateway-prod
+#   Repository         = jocinoci512/Auvora-wallet-app
+#   Branch             = main
+#   Root Directory     = blank / "/"
+#   Builder            = Dockerfile (pinned below)
+#   Dockerfile path    = infrastructure/docker/Dockerfile.service (pinned below)
+#   Config as Code     = /railway.gateway.toml
+#   Healthcheck path   = /health (pinned below)
+#   Public networking  = OFF initially
+#   Pre-Deploy Command = EMPTY (omit; do not set)
+#   Custom Start Cmd   = EMPTY (omit; image CMD is node dist/main.js)
+#
+# BUILD ARGS — Railway config-as-code does NOT support a `buildArgs` key
+# (see https://docs.railway.com/config-as-code/reference). Supported mechanism:
+#   1. Set service Variables SERVICE=gateway and PORT=4000 on gateway-prod.
+#   2. Dockerfile.service declares `ARG SERVICE` / `ARG PORT` before first FROM
+#      and redeclares them in the `build` / `runner` stages.
+#   3. Railway matches Variable names to ARG names and injects them as Docker
+#      --build-arg values during the image build.
+# Do NOT invent unsupported railway.toml keys for build args.
+#
+# REQUIRED gateway-prod Variables (set in Railway UI; secrets never in this file):
+#   SERVICE=gateway
+#   PORT=4000
+#   NODE_ENV=production
+#   LOG_LEVEL=warn
+#   AUTH_SERVICE_URL=http://${{auth-prods.RAILWAY_PRIVATE_DOMAIN}}:4001
+#   WALLET_SERVICE_URL=http://${{wallet.RAILWAY_PRIVATE_DOMAIN}}:3002
+#   BLOCKCHAIN_SERVICE_URL=http://${{blockchain.RAILWAY_PRIVATE_DOMAIN}}:3003
+#   MARKET_DATA_SERVICE_URL=http://${{market-data.RAILWAY_PRIVATE_DOMAIN}}:3012
+#   CONNECTIONS_SERVICE_URL=http://${{connections.RAILWAY_PRIVATE_DOMAIN}}:3016
+#   CORS_ORIGINS=https://auvorawallet.com,https://www.auvorawallet.com
+#   GATEWAY_RATE_LIMIT_MAX=400
+#   GATEWAY_RATE_LIMIT_WINDOW_SECONDS=60
+#   PROXY_TIMEOUT_MS=30000
+#   OTEL_ENABLED=false
+#   INTERNAL_API_KEY=<reuse existing shared mesh secret — do not regenerate>
+#
+# Gateway does NOT need: DATABASE_URL, REDIS_URL, JWT_*, CSRF_SECRET, SMTP_*,
+# ALCHEMY_*, WC_PROJECT_ID, Reown secrets, wallet private keys, seed phrases.
+# Live broadcast remains OFF. No server-side user signing.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.service"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

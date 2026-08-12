@@ -31,11 +31,12 @@ Turbo filter is `@auvora/${SERVICE}-service` (so `SERVICE=market-data` → `@auv
 
 ### Railway (multi-service monorepo)
 
-- One root `railway.toml` pins `builder = DOCKERFILE` and `dockerfilePath = infrastructure/docker/Dockerfile.service`.
-- Railway **config-as-code does not support `buildArgs`**. Set `SERVICE` and `PORT` as **per-service Variables**; Railway injects matching `ARG`s at build time.
+- Root `railway.toml` pins Nest mesh services (`auth`, `wallet`, …) to `Dockerfile.service`.
+- **`gateway-prod`** uses dedicated **`/railway.gateway.toml`** (same Dockerfile; clean Variables; leave broken `gateway` untouched).
+- Railway **config-as-code does not support `buildArgs`**. Set `SERVICE` and `PORT` as **per-service Variables**; Railway injects matching `ARG`s at build time (`ARG` before first `FROM` + redeclare per stage in `Dockerfile.service`).
 - Root Directory must be repo root (`/` / blank) for every Nest service.
 - Shared `[deploy].healthcheckPath = "/health"` is correct — all Nest services expose `GET /health`.
-- Root `Dockerfile` is a sync mirror for auto-detection only; prefer `railway.toml`.
+- Root `Dockerfile` is a sync mirror for auto-detection only; prefer config-as-code files.
 - `.railwayignore` is not used here (Docker builds honor `.dockerignore`).
 
 Validate COPY stubs before pushing Dockerfile changes:

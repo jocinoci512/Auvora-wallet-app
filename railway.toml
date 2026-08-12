@@ -1,8 +1,11 @@
-# Auvora NestJS services (auth, gateway, wallet, …) — shared Docker image.
+# Auvora NestJS services (auth, wallet, …) — shared Docker image.
 # Config-as-code ALWAYS overrides the Railway dashboard Dockerfile path.
 #
-# Nest services (gateway/auth/wallet/blockchain/market-data/connections):
+# Nest services (auth/wallet/blockchain/market-data/connections):
 #   use THIS file (default /railway.toml).
+#
+# Clean production Gateway (NEW service `gateway-prod` — do not reuse broken `gateway`):
+#   Config as Code path = /railway.gateway.toml
 #
 # Temporary db-migrate MUST NOT use this file — it would build Dockerfile.service.
 # Use instead:
