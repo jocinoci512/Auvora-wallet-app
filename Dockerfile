@@ -12,8 +12,13 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 # Skip husky prepare; align with packageManager/engines (pnpm@9.15.9, node>=22).
+# Never let Corepack drift to latest pnpm (11.x) in production images.
 ENV CI=true
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_AUTO_PIN=0
 RUN corepack enable \
+  && corepack prepare pnpm@9.15.9 --activate \
+  && test "$(pnpm --version)" = "9.15.9" \
   && apk add --no-cache libc6-compat openssl
 
 FROM base AS deps
@@ -46,7 +51,13 @@ COPY services/nft/package.json ./services/nft/
 COPY services/staking/package.json ./services/staking/
 COPY services/connections/package.json ./services/connections/
 COPY services/bridge/package.json ./services/bridge/
-RUN pnpm install --frozen-lockfile
+# Full workspace lockfile install (needed for turbo + prisma generate + pnpm deploy).
+# Root redis-memory-server / embedded-postgres are local-only; their postinstall
+# downloads Redis/Postgres and fails on Alpine. They are listed in
+# package.json#pnpm.neverBuiltDependencies so scripts never run in Docker/CI.
+RUN test "$(pnpm --version)" = "9.15.9" \
+  && pnpm install --frozen-lockfile \
+  && test "$(pnpm --version)" = "9.15.9"
 
 FROM deps AS build
 # No default for SERVICE — missing Railway Variable must fail the build loudly.

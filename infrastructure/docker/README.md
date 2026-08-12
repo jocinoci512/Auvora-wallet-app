@@ -48,6 +48,7 @@ node infrastructure/docker/validate-service-context.mjs
 
 - Node **22** Alpine · Corepack **pnpm@9.15.9** (from root `packageManager`)
 - `pnpm install --frozen-lockfile` then `prisma generate` then `turbo build` then `pnpm deploy --prod`
+- Root `redis-memory-server` / `embedded-postgres` stay in the lockfile for local scripts but are listed in `package.json#pnpm.neverBuiltDependencies` so their postinstall **never runs** in Docker/CI (Alpine has no Redis compiler toolchain).
 - Runtime: non-root `auvora`, `CMD ["node", "dist/main.js"]`, Docker `HEALTHCHECK` on `/health`
 - No secrets baked into the image
 

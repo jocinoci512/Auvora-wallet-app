@@ -4,8 +4,8 @@
 # Nest services (gateway/auth/wallet/blockchain/market-data/connections):
 #   use THIS file (default /railway.toml).
 #
-# Temporary db-migrate MUST NOT use this file — it would build Dockerfile.service
-# (full-workspace pnpm install / redis-memory-server). Use instead:
+# Temporary db-migrate MUST NOT use this file — it would build Dockerfile.service.
+# Use instead:
 #   Config as Code path = /railway.migrate.toml
 #
 # railway.toml does NOT support Docker buildArgs. Per Nest service, set Variables:
