@@ -1,0 +1,35 @@
+{
+  "name": "Auvora Wallet",
+  "install": "bash scripts/cloud/install.sh",
+  "terminals": [
+    {
+      "name": "data-plane",
+      "command": "node scripts/cloud/data-plane.mjs",
+      "description": "Embedded Postgres (:5432) + system Redis (:6379); applies migrations and idempotent seed on start."
+    },
+    {
+      "name": "auth",
+      "command": "node scripts/cloud/run-service.mjs @auvora/auth-service 4001 --wait=127.0.0.1:5432,127.0.0.1:6379",
+      "description": "Auth service on :4001 (sessions, JWT, CSRF, admin APIs)."
+    },
+    {
+      "name": "wallet",
+      "command": "node scripts/cloud/run-service.mjs @auvora/wallet-service 3002 --wait=127.0.0.1:5432,127.0.0.1:6379",
+      "description": "Wallet service on :3002 (wallet lifecycle, balances, ledger)."
+    },
+    {
+      "name": "gateway",
+      "command": "node scripts/cloud/run-service.mjs @auvora/gateway-service 4000 --wait=127.0.0.1:4001",
+      "description": "API gateway on :4000; reverse-proxies auth/wallet. Swagger at /api/docs."
+    },
+    {
+      "name": "web",
+      "command": "node scripts/cloud/run-service.mjs @auvora/web 3000 --wait=127.0.0.1:4000",
+      "description": "Next.js user web app on :3000 (calls the gateway)."
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 3000 },
+    { "name": "gateway", "port": 4000 }
+  ]
+}
