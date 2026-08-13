@@ -33,6 +33,7 @@ Turbo filter is `@auvora/${SERVICE}-service` (so `SERVICE=market-data` → `@auv
 
 - Root `railway.toml` pins Nest mesh services (`auth`, `wallet`, …) to `Dockerfile.service`.
 - **`gateway-prod`** uses dedicated **`/railway.gateway.toml`** (same Dockerfile; clean Variables; leave broken `gateway` untouched).
+- **`blockchain-prod`** uses dedicated **`/railway.blockchain.toml`** (`SERVICE=blockchain`, `PORT=3003`, private networking).
 - Railway **config-as-code does not support `buildArgs`**. Set `SERVICE` and `PORT` as **per-service Variables**; Railway injects matching `ARG`s at build time (`ARG` before first `FROM` + redeclare per stage in `Dockerfile.service`).
 - Root Directory must be repo root (`/` / blank) for every Nest service.
 - Shared `[deploy].healthcheckPath = "/health"` is correct — all Nest services expose `GET /health`.
