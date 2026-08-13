@@ -66,10 +66,12 @@ import {
 } from './custody/custody-signing-http.client';
 import { ENV, type ServiceEnv } from '../config/env.schema';
 import { Logger } from '@nestjs/common';
+import { OpenTelemetryLifecycle } from './observability/otel-lifecycle.service';
 
 @Module({
   imports: [ConfigModule, PrismaModule, LoggerInfrastructureModule],
   providers: [
+    OpenTelemetryLifecycle,
     RedisAdapter,
     SystemClockAdapter,
     UuidIdGeneratorAdapter,

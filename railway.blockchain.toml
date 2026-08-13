@@ -31,6 +31,7 @@
 #   NODE_ENV=production
 #   LOG_LEVEL=warn
 #   BLOCKCHAIN_SIMULATOR_ENABLED=false
+#   BLOCKCHAIN_LIVE_BROADCAST=false
 #   BLOCKCHAIN_PRIMARY_PROVIDER=alchemy
 #   ALCHEMY_REQUIRED=true
 #   OTEL_ENABLED=false
@@ -55,11 +56,13 @@
 #   Reown / WalletConnect client keys (WC_PROJECT_ID, Reown secrets)
 #   wallet private keys, mnemonics, seed phrases
 #   server-side user signing keys
-#   Live broadcast / websocket fan-out enable flags
+#   BLOCKCHAIN_LIVE_BROADCAST=true (production boot rejects this)
+#   Reown / WalletConnect client keys (WC_PROJECT_ID, Reown secrets)
+#   wallet private keys, mnemonics, seed phrases
+#   server-side user signing keys
 #
 # After blockchain-prod is healthy, wire gateway-prod:
 #   BLOCKCHAIN_SERVICE_URL=http://${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003
-# (or rename DNS to `blockchain` if that is the private service name you choose).
 
 [build]
 builder = "DOCKERFILE"

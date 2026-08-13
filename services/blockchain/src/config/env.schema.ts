@@ -23,6 +23,14 @@ export const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   /**
+   * Live chain broadcast kill switch (eth_sendRawTransaction / sendTransaction / etc.).
+   * Closed Beta / production must keep this false — no server-side user signing + no live broadcast.
+   */
+  BLOCKCHAIN_LIVE_BROADCAST: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
    * Primary blockchain infrastructure mode.
    * - `alchemy` (default): use Alchemy for ETH/POLYGON/BSC/SOL/TRON/BTC when credentials exist
    * - `simulator`: force local simulators even if Alchemy env is present
@@ -65,6 +73,14 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   }
   if (parsed.data.NODE_ENV === 'production' && parsed.data.BLOCKCHAIN_SIMULATOR_ENABLED) {
     throw new Error('BLOCKCHAIN_SIMULATOR_ENABLED must be false in production');
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.BLOCKCHAIN_LIVE_BROADCAST) {
+    throw new Error(
+      'BLOCKCHAIN_LIVE_BROADCAST must be false in production Closed Beta (no live tx broadcast)',
+    );
+  }
+  if (parsed.data.NODE_ENV === 'production' && !parsed.data.INTERNAL_API_KEY) {
+    throw new Error('INTERNAL_API_KEY is required in production (min 32 chars)');
   }
 
   const hasAlchemy =

@@ -1,6 +1,7 @@
-import { Test } from '@nestjs/testing';
 import { HealthStatus } from '@auvora/types';
 import { PrismaService } from '@auvora/database';
+import { Test } from '@nestjs/testing';
+import type { Response } from 'express';
 import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { ENV } from '../../config/env.schema';
 import { REDIS_PORT } from '../../infrastructure/redis/redis.port';
@@ -20,6 +21,10 @@ const providerHealthStub = {
   }),
 };
 
+function mockRes(): Response {
+  return { status: jest.fn().mockReturnThis() } as unknown as Response;
+}
+
 describe('HealthController', () => {
   it('returns ok liveness payload', () => {
     const controller = new HealthController(
@@ -37,7 +42,8 @@ describe('HealthController', () => {
     expect(typeof result.uptimeSeconds).toBe('number');
   });
 
-  it('returns readiness with dependency checks', async () => {
+  it('returns readiness with dependency checks and HTTP 200', async () => {
+    const res = mockRes();
     const controller = new HealthController(
       {
         SERVICE_NAME: 'blockchain',
@@ -47,13 +53,15 @@ describe('HealthController', () => {
       { isHealthy: async () => true } as PrismaService,
       providerHealthStub as never,
     );
-    const result = await controller.getReady();
+    const result = await controller.getReady(res);
     expect(result.status).toBe(HealthStatus.Ok);
     expect(result.checks?.database).toBe(HealthStatus.Ok);
     expect(result.checks?.redis).toBe(HealthStatus.Ok);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('reports unhealthy when a dependency check fails', async () => {
+  it('reports unhealthy with HTTP 503 when a dependency check fails', async () => {
+    const res = mockRes();
     const controller = new HealthController(
       {
         SERVICE_NAME: 'blockchain',
@@ -63,9 +71,10 @@ describe('HealthController', () => {
       { isHealthy: async () => true } as PrismaService,
       providerHealthStub as never,
     );
-    const result = await controller.getReady();
+    const result = await controller.getReady(res);
     expect(result.status).toBe(HealthStatus.Unhealthy);
     expect(result.checks?.redis).toBe(HealthStatus.Unhealthy);
+    expect(res.status).toHaveBeenCalledWith(503);
   });
 
   it('works via Nest testing module', async () => {

@@ -30,6 +30,8 @@ import {
   CUSTODY_SIGNING_CLIENT,
   type CustodySigningPort,
 } from '../../infrastructure/custody/custody-signing-http.client';
+import { ENV, type ServiceEnv } from '../../config/env.schema';
+import { assertLiveBroadcastAllowed } from './broadcast-policy';
 
 export interface RecordDepositInput {
   chain: ChainNetwork;
@@ -52,6 +54,7 @@ export interface BroadcastWithdrawalInput {
 @Injectable()
 export class TransactionEngine {
   constructor(
+    @Inject(ENV) private readonly env: ServiceEnv,
     @Inject(CHAIN_TRANSACTION_REPOSITORY)
     private readonly transactions: ChainTransactionRepositoryPort,
     @Inject(CHAIN_ADDRESS_REPOSITORY) private readonly addresses: ChainAddressRepositoryPort,
@@ -103,6 +106,7 @@ export class TransactionEngine {
   }
 
   async broadcastWithdrawal(input: BroadcastWithdrawalInput): Promise<ChainTransactionRecord> {
+    assertLiveBroadcastAllowed(this.env);
     const network = await this.requireNetwork(input.chain);
     const provider = this.providerFactory.getProvider(input.chain);
 
@@ -194,6 +198,7 @@ export class TransactionEngine {
   }
 
   async rebroadcast(id: string): Promise<ChainTransactionRecord> {
+    assertLiveBroadcastAllowed(this.env);
     const tx = await this.getTransaction(id);
     if (tx.status !== ChainTxStatus.FAILED && tx.status !== ChainTxStatus.MEMPOOL) {
       throw new ValidationError(`Cannot rebroadcast a transaction in status ${tx.status}`);

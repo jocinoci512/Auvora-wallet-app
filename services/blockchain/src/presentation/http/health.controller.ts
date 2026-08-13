@@ -1,7 +1,8 @@
-import { Controller, Get, Inject, Optional, Param } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Inject, Optional, Param, Res } from '@nestjs/common';
+import { ApiOkResponse, ApiServiceUnavailableResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '@auvora/database';
 import { HealthStatus, type HealthCheckResponse } from '@auvora/types';
+import type { Response } from 'express';
 import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import {
@@ -32,7 +33,7 @@ export class HealthController {
 
   @Public()
   @Get('health')
-  @ApiOkResponse({ description: 'Liveness probe' })
+  @ApiOkResponse({ description: 'Liveness probe — process up; no Postgres/Redis/Alchemy' })
   getHealth(): HealthCheckResponse {
     return {
       status: HealthStatus.Ok,
@@ -45,8 +46,9 @@ export class HealthController {
 
   @Public()
   @Get('ready')
-  @ApiOkResponse({ description: 'Readiness probe' })
-  async getReady(): Promise<HealthCheckResponse> {
+  @ApiOkResponse({ description: 'Readiness probe — Postgres + Redis' })
+  @ApiServiceUnavailableResponse({ description: 'Postgres or Redis unhealthy' })
+  async getReady(@Res({ passthrough: true }) res: Response): Promise<HealthCheckResponse> {
     const started = Date.now();
     const [dbHealthy, redisHealthy] = await Promise.all([
       this.prisma.isHealthy(),
@@ -67,6 +69,8 @@ export class HealthController {
       latencyMs: Date.now() - started,
       details: checks,
     });
+
+    res.status(allHealthy ? 200 : 503);
 
     return {
       status: allHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,
