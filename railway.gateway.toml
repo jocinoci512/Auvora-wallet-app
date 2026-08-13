@@ -18,7 +18,10 @@
 #   Healthcheck path   = /health (pinned below)
 #   Public networking  = OFF initially
 #   Pre-Deploy Command = EMPTY (omit; do not set)
-#   Custom Start Cmd   = EMPTY (omit; image CMD is node dist/main.js)
+#   Custom Start Cmd   = MUST be set in [deploy] below.
+#     Omitting startCommand does NOT clear the Railway dashboard value.
+#     Legacy dashboard start `node services/gateway/dist/main.js` breaks the
+#     pnpm-deploy image (runtime entry is /app/dist/main.js).
 #
 # BUILD ARGS — Railway config-as-code does NOT support a `buildArgs` key
 # (see https://docs.railway.com/config-as-code/reference). Supported mechanism:
@@ -55,6 +58,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "infrastructure/docker/Dockerfile.service"
 
 [deploy]
+# Explicit override: clears legacy dashboard start
+# `node services/gateway/dist/main.js`. Matches Dockerfile.service CMD.
+startCommand = "node dist/main.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
