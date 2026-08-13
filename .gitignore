@@ -69,7 +69,8 @@ tmp
 **/.tmp-auth-deploy/
 temp
 .verify-logs
-.cursor
+.cursor/*
+!.cursor/environment.json
 
 # Typedoc
 docs/api
