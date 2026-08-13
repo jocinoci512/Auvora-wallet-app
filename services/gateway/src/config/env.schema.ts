@@ -10,6 +10,19 @@ function emptyToUndefined(value: unknown): unknown {
 
 const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
 
+/** True when Railway left an empty private domain, e.g. `http://:3002`. */
+export function isEmptyHostnameServiceUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (/^https?:\/\/:/i.test(trimmed)) return true;
+  if (/:\/\/(undefined|null)(:|\/|$)/i.test(trimmed)) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return !parsed.hostname || parsed.hostname === 'undefined' || parsed.hostname === 'null';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Validate an upstream base URL with Railway-aware error messages.
  * Hyphenated Railway service names must be quoted in template refs, e.g.
@@ -27,8 +40,7 @@ export function assertServiceBaseUrl(varName: string, raw: string): string {
     );
   }
 
-  // Railway often yields http://:PORT when ${{service.RAILWAY_PRIVATE_DOMAIN}} is empty.
-  if (/^https?:\/\/:/i.test(value) || /:\/\/(undefined|null)(:|\/|$)/i.test(value)) {
+  if (isEmptyHostnameServiceUrl(value)) {
     throw new Error(
       `empty/invalid hostname in ${JSON.stringify(value)}. ` +
         `The Railway service reference did not resolve — create the target service ` +
@@ -51,28 +63,49 @@ export function assertServiceBaseUrl(varName: string, raw: string): string {
     throw new Error(`URL must be http(s), got ${JSON.stringify(value)}`);
   }
 
-  if (!parsed.hostname || parsed.hostname === 'undefined' || parsed.hostname === 'null') {
-    throw new Error(
-      `empty/invalid hostname in ${JSON.stringify(value)}. ` +
-        `The Railway service reference did not resolve — create the target service ` +
-        `(exact name match) or remove ${varName} until it exists.`,
-    );
-  }
-
   return value.replace(/\/$/, '');
 }
 
-const serviceUrl = (varName: string, fallback: string) =>
-  z.preprocess(emptyToUndefined, z.string().default(fallback)).superRefine((value, ctx) => {
-    try {
-      assertServiceBaseUrl(varName, value);
-    } catch (error) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: error instanceof Error ? error.message : `Invalid ${varName}`,
-      });
-    }
-  });
+/**
+ * AUTH is required for Closed Beta.
+ * Other mesh upstreams may not exist yet — fall back to local defaults so gateway can boot.
+ */
+type ServiceUrlMode = 'required' | 'optional';
+
+const unresolvedUpstreamWarnings: string[] = [];
+
+export function consumeUnresolvedUpstreamWarnings(): string[] {
+  const copy = [...unresolvedUpstreamWarnings];
+  unresolvedUpstreamWarnings.length = 0;
+  return copy;
+}
+
+const serviceUrl = (varName: string, fallback: string, mode: ServiceUrlMode = 'optional') =>
+  z
+    .preprocess((value) => {
+      const cleaned = emptyToUndefined(value);
+      if (cleaned == null || typeof cleaned !== 'string') return cleaned;
+
+      // Unresolved Railway private-domain refs become http://:PORT — treat optional
+      // upstreams as unset so incremental mesh deploys can boot (auth-only first).
+      if (mode === 'optional' && (isEmptyHostnameServiceUrl(cleaned) || /\$\{\{/.test(cleaned))) {
+        unresolvedUpstreamWarnings.push(
+          `${varName}=${JSON.stringify(cleaned)} did not resolve; using ${fallback} until the Railway service exists`,
+        );
+        return undefined;
+      }
+      return cleaned;
+    }, z.string().default(fallback))
+    .superRefine((value, ctx) => {
+      try {
+        assertServiceBaseUrl(varName, value);
+      } catch (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: error instanceof Error ? error.message : `Invalid ${varName}`,
+        });
+      }
+    });
 
 const DEV_CORS_DEFAULT = 'http://localhost:3000,http://localhost:3001';
 
@@ -82,7 +115,7 @@ export const envSchema = z
     /** Optional bind host. Leave unset on Railway so Nest binds dual-stack (IPv4+IPv6 private mesh). */
     HOST: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     PORT: z.coerce.number().int().positive().default(4000),
-    AUTH_SERVICE_URL: serviceUrl('AUTH_SERVICE_URL', 'http://127.0.0.1:4001'),
+    AUTH_SERVICE_URL: serviceUrl('AUTH_SERVICE_URL', 'http://127.0.0.1:4001', 'required'),
     WALLET_SERVICE_URL: serviceUrl('WALLET_SERVICE_URL', 'http://127.0.0.1:3002'),
     BLOCKCHAIN_SERVICE_URL: serviceUrl('BLOCKCHAIN_SERVICE_URL', 'http://127.0.0.1:3003'),
     PAYMENTS_SERVICE_URL: serviceUrl('PAYMENTS_SERVICE_URL', 'http://127.0.0.1:3004'),
@@ -171,6 +204,7 @@ export function sanitizeProcessEnv(source: NodeJS.ProcessEnv = process.env): Nod
 }
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
+  unresolvedUpstreamWarnings.length = 0;
   const parsed = envSchema.safeParse(sanitizeProcessEnv(source));
   if (!parsed.success) {
     const details = parsed.error.issues
@@ -178,6 +212,11 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
       .join('; ');
     throw new Error(`Invalid environment configuration: ${details}`);
   }
+
+  for (const warning of unresolvedUpstreamWarnings) {
+    console.warn(`[gateway] ${warning}`);
+  }
+
   // Shared monorepo shells may set SERVICE_NAME for another package.
   return { ...parsed.data, SERVICE_NAME: 'gateway' };
 }

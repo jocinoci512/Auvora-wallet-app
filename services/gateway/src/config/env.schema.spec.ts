@@ -72,22 +72,39 @@ describe('gateway env schema — CORS production config', () => {
     expect(env.CORS_ORIGINS).toEqual(['http://localhost:3000', 'http://localhost:3001']);
   });
 
-  it('explains unresolved Railway templates for hyphenated services', () => {
+  it('explains unresolved Railway templates for required AUTH upstream', () => {
     expect(() =>
       loadEnv({
         NODE_ENV: 'development',
-        MARKET_DATA_SERVICE_URL: 'http://${{market-data.RAILWAY_PRIVATE_DOMAIN}}:3012',
+        AUTH_SERVICE_URL: 'http://${{auth-prods.RAILWAY_PRIVATE_DOMAIN}}:4001',
       }),
     ).toThrow(/unresolved Railway template|quote it/i);
   });
 
-  it('explains empty hostname from unresolved Railway private domain', () => {
+  it('falls back optional upstreams when Railway private domain is empty', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const env = loadEnv({
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://auvorawallet.com,https://www.auvorawallet.com',
+      AUTH_SERVICE_URL: 'http://auth-prods.railway.internal:4001',
+      WALLET_SERVICE_URL: 'http://:3002',
+      MARKET_DATA_SERVICE_URL: 'http://:3012',
+    });
+    expect(env.WALLET_SERVICE_URL).toBe('http://127.0.0.1:3002');
+    expect(env.MARKET_DATA_SERVICE_URL).toBe('http://127.0.0.1:3012');
+    expect(env.AUTH_SERVICE_URL).toBe('http://auth-prods.railway.internal:4001');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('still fails hard when required AUTH has empty hostname', () => {
     expect(() =>
       loadEnv({
-        NODE_ENV: 'development',
-        WALLET_SERVICE_URL: 'http://:3002',
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'https://auvorawallet.com',
+        AUTH_SERVICE_URL: 'http://:4001',
       }),
-    ).toThrow(/empty\/invalid hostname|create the target service/i);
+    ).toThrow(/AUTH_SERVICE_URL: empty\/invalid hostname/i);
   });
 
   it('accepts quoted-style Railway private URLs once resolved', () => {

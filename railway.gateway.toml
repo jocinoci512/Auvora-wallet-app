@@ -54,13 +54,12 @@
 #   - Do NOT set DATABASE_URL / REDIS_URL / JWT_* on gateway-prod.
 #   - Hyphenated Railway service names MUST be quoted in template refs:
 #       http://${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}:3012
-#     Unquoted `market-data` breaks template parsing → Invalid url at boot.
-#   - If wallet / market-data / etc. are not created yet: DELETE those URL vars
-#     (do not leave broken refs). Gateway will use safe localhost defaults and
-#     still boot; proxy routes to missing services return 502 until wired.
-#   - WALLET_SERVICE_URL / MARKET_DATA_SERVICE_URL Invalid url almost always means:
-#       1) target service missing or misnamed, OR
-#       2) hyphenated name not quoted (market-data).
+#   - Only set *_SERVICE_URL for services that EXIST and have been deployed at
+#     least once (so RAILWAY_PRIVATE_DOMAIN is non-empty). Broken refs become
+#     http://:PORT — AUTH still fails hard; other upstreams fall back to
+#     localhost defaults so gateway can boot during incremental mesh rollout.
+#   - Preferred for auth-only first boot: keep AUTH_SERVICE_URL + CORS_ORIGINS
+#     + SERVICE/PORT; omit WALLET/MARKET_DATA/etc until those services exist.
 #   - Railway healthcheck MUST stay /health (not /ready — /ready needs auth up).
 #   - Public networking: leave OFF until GET /health returns 200, then enable
 #     for client traffic (gateway is the only public Nest edge).
