@@ -68,7 +68,7 @@ export class WalletWorkersService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     this.schedule('sync', this.env.WALLET_SYNC_INTERVAL_MS, () => this.runSyncWorker());
-    this.schedule('balance', this.env.WALLET_BALANCE_INTERVAL_MS, () => this.runBalanceWorker());
+    // Balance refresh is covered by sync — do not schedule a second syncBalancesBatch.
     this.schedule('transaction', this.env.WALLET_SYNC_INTERVAL_MS + 5_000, () =>
       this.runTransactionWorker(),
     );
@@ -80,11 +80,20 @@ export class WalletWorkersService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Wallet workers started');
   }
 
-  onModuleDestroy(): void {
+  async onModuleDestroy(): Promise<void> {
     for (const timer of this.timers) {
       clearInterval(timer);
     }
     this.timers = [];
+    const deadline = Date.now() + 10_000;
+    while (this.inFlight.size > 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (this.inFlight.size > 0) {
+      this.logger.warn(
+        `Shutdown with ${this.inFlight.size} worker(s) still in flight: ${[...this.inFlight].join(',')}`,
+      );
+    }
   }
 
   getWorkerHealth(): WorkerHealth[] {
@@ -102,9 +111,10 @@ export class WalletWorkersService implements OnModuleInit, OnModuleDestroy {
   }
 
   async runBalanceWorker(): Promise<void> {
+    // Retained for health reporting / manual triggers; scheduled sync owns balance refresh.
     await this.track('balance', async () => {
       await withWalletSpan('wallet.worker.balance', {}, async () => {
-        await this.sync.syncBalancesBatch(25);
+        this.logger.debug('Balance worker idle — sync worker owns chain balance refresh');
       });
     });
   }

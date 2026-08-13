@@ -32,8 +32,10 @@
 #   LOG_LEVEL=warn
 #   WALLET_WORKERS_ENABLED=true
 #   OTEL_ENABLED=false
+#
+# OPTIONAL non-secret:
 #   APP_PUBLIC_URL=https://auvorawallet.com
-#     → optional for CORS only (Public Networking OFF); set if you want it
+#     → CORS only; NOT required with Public Networking OFF
 #
 # REQUIRED secret / reference Variables (set in Railway UI; never commit values):
 #   DATABASE_URL=${{Postgres.DATABASE_URL}}

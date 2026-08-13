@@ -63,6 +63,7 @@ function createWalletService(deps: {
     (deps.ledger ?? {
       getBalance: jest.fn(),
       applyEntry: jest.fn(),
+      applyTransfer: jest.fn(),
       getEntries: jest.fn(),
       createSnapshot: jest.fn(),
       getSnapshots: jest.fn(),
@@ -215,6 +216,49 @@ describe('WalletService', () => {
         }),
       );
       expect(result.balance.available).toBe('50');
+    });
+
+    it('applies internal transfers atomically via applyTransfer', async () => {
+      const toWallet = { ...baseWallet, id: 'wallet-2', ownerUserId: otherUserId };
+      const wallets = {
+        findById: jest.fn().mockImplementation(async (id: string) => {
+          if (id === walletId) return baseWallet;
+          if (id === 'wallet-2') return toWallet;
+          return null;
+        }),
+      };
+      const transactions = {
+        create: jest.fn().mockResolvedValue({
+          id: 'tx-xfer',
+          reference: 'WTX-uuid-1',
+          type: 'INTERNAL_TRANSFER',
+        }),
+        complete: jest.fn().mockResolvedValue({
+          id: 'tx-xfer',
+          reference: 'WTX-uuid-1',
+          status: 'COMPLETED',
+        }),
+      };
+      const ledger = {
+        applyTransfer: jest.fn().mockResolvedValue({
+          debit: { entry: { id: 'd1' }, balance: { available: '50' } },
+          credit: { entry: { id: 'c1' }, balance: { available: '50' } },
+        }),
+      };
+      const service = createWalletService({ wallets, ledger, transactions });
+
+      await service.createInternalTransfer(
+        { fromWalletId: walletId, toWalletId: 'wallet-2', amount: '50' },
+        createRequester({ permissions: [PERMISSION_WALLETS_ADMIN] }),
+      );
+
+      expect(ledger.applyTransfer).toHaveBeenCalledTimes(1);
+      expect(ledger.applyTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debit: expect.objectContaining({ entryType: 'DEBIT', amount: '50' }),
+          credit: expect.objectContaining({ entryType: 'CREDIT', amount: '50' }),
+        }),
+      );
     });
   });
 });

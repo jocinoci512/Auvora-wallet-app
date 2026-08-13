@@ -79,7 +79,8 @@ export class BlockchainHttpClientAdapter implements BlockchainHttpClientPort {
       this.logger.warn(
         `Blockchain validateAddress failed: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return localFormatValidateAddress(chain, address);
+      // Fail closed when blockchain-prod is configured — do not accept via local regex alone.
+      return false;
     }
   }
 

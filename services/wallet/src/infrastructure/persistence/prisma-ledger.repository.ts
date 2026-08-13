@@ -101,93 +101,112 @@ export class PrismaLedgerRepository implements LedgerRepositoryPort {
   async applyEntry(
     input: ApplyLedgerEntryInput,
   ): Promise<{ entry: LedgerEntryRecord; balance: BalanceRecord }> {
+    return this.prisma.$transaction(async (tx) => this.applyEntryInTx(tx, input));
+  }
+
+  async applyTransfer(input: {
+    debit: ApplyLedgerEntryInput;
+    credit: ApplyLedgerEntryInput;
+  }): Promise<{
+    debit: { entry: LedgerEntryRecord; balance: BalanceRecord };
+    credit: { entry: LedgerEntryRecord; balance: BalanceRecord };
+  }> {
     return this.prisma.$transaction(async (tx) => {
-      const current = await tx.walletBalance.findFirst({
-        where: { walletId: input.walletId, assetId: input.assetId },
-      });
-
-      if (!current) {
-        throw new ValidationError('Wallet balance not found');
-      }
-
-      const amount = new Prisma.Decimal(input.amount);
-      let available = new Prisma.Decimal(current.available);
-      const pending = new Prisma.Decimal(current.pending);
-      const locked = new Prisma.Decimal(current.locked);
-      const reserved = new Prisma.Decimal(current.reserved);
-
-      if (input.entryType === LedgerEntryType.CREDIT) {
-        available = available.add(amount);
-      } else if (input.entryType === LedgerEntryType.DEBIT) {
-        if (available.lt(amount)) {
-          throw new ValidationError('Insufficient available balance');
-        }
-        available = available.sub(amount);
-      } else {
-        throw new ValidationError(`Unsupported ledger entry type: ${input.entryType}`);
-      }
-
-      const total = computeTotal(available, pending, locked, reserved);
-
-      const beforeSnapshot = {
-        available: decimalToString(new Prisma.Decimal(current.available)),
-        pending: decimalToString(pending),
-        locked: decimalToString(locked),
-        reserved: decimalToString(reserved),
-        total: decimalToString(new Prisma.Decimal(current.total)),
-      };
-
-      const updated = await tx.walletBalance.update({
-        where: { id: current.id, version: current.version },
-        data: {
-          available,
-          total,
-          version: { increment: 1 },
-        },
-      });
-
-      const afterSnapshot = {
-        available: decimalToString(available),
-        pending: decimalToString(pending),
-        locked: decimalToString(locked),
-        reserved: decimalToString(reserved),
-        total: decimalToString(total),
-      };
-
-      const entry = await tx.ledgerEntry.create({
-        data: {
-          walletId: input.walletId,
-          assetId: input.assetId,
-          transactionId: input.transactionId ?? null,
-          entryType: input.entryType,
-          amount,
-          balanceAfterAvailable: available,
-          balanceAfterPending: pending,
-          balanceAfterLocked: locked,
-          balanceAfterReserved: reserved,
-          balanceAfterTotal: total,
-          reference: input.reference,
-          description: input.description ?? null,
-          metadata: input.metadata,
-        },
-      });
-
-      await tx.balanceAudit.create({
-        data: {
-          walletId: input.walletId,
-          assetId: input.assetId,
-          action: input.entryType,
-          before: beforeSnapshot,
-          after: afterSnapshot,
-          actorId: input.actorId ?? null,
-        },
-      });
-
-      return {
-        entry: mapEntry(entry),
-        balance: mapBalance(updated),
-      };
+      const debit = await this.applyEntryInTx(tx, input.debit);
+      const credit = await this.applyEntryInTx(tx, input.credit);
+      return { debit, credit };
     });
+  }
+
+  private async applyEntryInTx(
+    tx: Prisma.TransactionClient,
+    input: ApplyLedgerEntryInput,
+  ): Promise<{ entry: LedgerEntryRecord; balance: BalanceRecord }> {
+    const current = await tx.walletBalance.findFirst({
+      where: { walletId: input.walletId, assetId: input.assetId },
+    });
+
+    if (!current) {
+      throw new ValidationError('Wallet balance not found');
+    }
+
+    const amount = new Prisma.Decimal(input.amount);
+    let available = new Prisma.Decimal(current.available);
+    const pending = new Prisma.Decimal(current.pending);
+    const locked = new Prisma.Decimal(current.locked);
+    const reserved = new Prisma.Decimal(current.reserved);
+
+    if (input.entryType === LedgerEntryType.CREDIT) {
+      available = available.add(amount);
+    } else if (input.entryType === LedgerEntryType.DEBIT) {
+      if (available.lt(amount)) {
+        throw new ValidationError('Insufficient available balance');
+      }
+      available = available.sub(amount);
+    } else {
+      throw new ValidationError(`Unsupported ledger entry type: ${input.entryType}`);
+    }
+
+    const total = computeTotal(available, pending, locked, reserved);
+
+    const beforeSnapshot = {
+      available: decimalToString(new Prisma.Decimal(current.available)),
+      pending: decimalToString(pending),
+      locked: decimalToString(locked),
+      reserved: decimalToString(reserved),
+      total: decimalToString(new Prisma.Decimal(current.total)),
+    };
+
+    const updated = await tx.walletBalance.update({
+      where: { id: current.id, version: current.version },
+      data: {
+        available,
+        total,
+        version: { increment: 1 },
+      },
+    });
+
+    const afterSnapshot = {
+      available: decimalToString(available),
+      pending: decimalToString(pending),
+      locked: decimalToString(locked),
+      reserved: decimalToString(reserved),
+      total: decimalToString(total),
+    };
+
+    const entry = await tx.ledgerEntry.create({
+      data: {
+        walletId: input.walletId,
+        assetId: input.assetId,
+        transactionId: input.transactionId ?? null,
+        entryType: input.entryType,
+        amount,
+        balanceAfterAvailable: available,
+        balanceAfterPending: pending,
+        balanceAfterLocked: locked,
+        balanceAfterReserved: reserved,
+        balanceAfterTotal: total,
+        reference: input.reference,
+        description: input.description ?? null,
+        metadata: input.metadata,
+      },
+    });
+
+    await tx.balanceAudit.create({
+      data: {
+        walletId: input.walletId,
+        assetId: input.assetId,
+        action: input.entryType,
+        before: beforeSnapshot,
+        after: afterSnapshot,
+        actorId: input.actorId ?? null,
+      },
+    });
+
+    return {
+      entry: mapEntry(entry),
+      balance: mapBalance(updated),
+    };
   }
 
   async getEntries(walletId: string, skip = 0, take = 50): Promise<LedgerEntryRecord[]> {

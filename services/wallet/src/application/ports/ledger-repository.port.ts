@@ -74,6 +74,14 @@ export interface LedgerRepositoryPort {
   applyEntry(
     input: ApplyLedgerEntryInput,
   ): Promise<{ entry: LedgerEntryRecord; balance: BalanceRecord }>;
+  /**
+   * Apply debit then credit in a single Prisma transaction so internal transfers
+   * cannot leave funds in a half-applied state.
+   */
+  applyTransfer(input: { debit: ApplyLedgerEntryInput; credit: ApplyLedgerEntryInput }): Promise<{
+    debit: { entry: LedgerEntryRecord; balance: BalanceRecord };
+    credit: { entry: LedgerEntryRecord; balance: BalanceRecord };
+  }>;
   getEntries(walletId: string, skip?: number, take?: number): Promise<LedgerEntryRecord[]>;
   createSnapshot(
     walletId: string,

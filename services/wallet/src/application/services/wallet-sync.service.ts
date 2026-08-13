@@ -63,7 +63,7 @@ export class WalletSyncService {
             metadata: patched as Prisma.InputJsonValue,
           });
 
-          // Historical snapshot of ledger (not chain) for portfolio history continuity.
+          // Snapshot at most once per successful sync path; swallow snapshot errors.
           await this.ledger
             .createSnapshot(wallet.id, 'chain_sync_refresh', 'wallet-sync-worker')
             .catch(() => undefined);

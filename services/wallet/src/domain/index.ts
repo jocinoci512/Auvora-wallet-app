@@ -4,6 +4,7 @@ export {
   ForbiddenError,
   ConflictError,
   ValidationError,
+  RateLimitError,
   InvalidStatusTransitionError,
 } from './errors';
 export { assertStatusTransition, canTransition } from './wallet-status-transitions';

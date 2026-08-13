@@ -371,7 +371,7 @@ export class WalletService {
       metadata: toJsonValue(input.metadata),
     });
 
-    const debitResult = await this.ledger.applyEntry({
+    const debitInput = {
       walletId: fromWallet.id,
       assetId: fromWallet.assetId,
       entryType: LedgerEntryType.DEBIT,
@@ -380,9 +380,8 @@ export class WalletService {
       description: input.description ?? `Transfer out ${reference}`,
       transactionId: transaction.id,
       actorId: requester.sub,
-    });
-
-    const creditResult = await this.ledger.applyEntry({
+    };
+    const creditInput = {
       walletId: toWallet.id,
       assetId: toWallet.assetId,
       entryType: LedgerEntryType.CREDIT,
@@ -391,6 +390,11 @@ export class WalletService {
       description: input.description ?? `Transfer in ${reference}`,
       transactionId: transaction.id,
       actorId: requester.sub,
+    };
+
+    const { debit: debitResult, credit: creditResult } = await this.ledger.applyTransfer({
+      debit: debitInput,
+      credit: creditInput,
     });
 
     const completed = await this.transactions.complete(transaction.id);

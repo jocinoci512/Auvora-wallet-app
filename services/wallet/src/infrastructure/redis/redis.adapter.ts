@@ -44,6 +44,9 @@ export class RedisAdapter implements RedisPort, RateLimiterPort, OnModuleDestroy
     limit: number,
     windowSeconds: number,
   ): Promise<{ allowed: boolean; remaining: number }> {
+    if (this.client.status !== 'ready') {
+      await this.client.connect();
+    }
     const redisKey = `ratelimit:${key}`;
     const count = await this.client.incr(redisKey);
     if (count === 1) {
