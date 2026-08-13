@@ -35,6 +35,7 @@ import { PrismaLedgerRepository } from './persistence/prisma-ledger.repository';
 import { PrismaTransactionRepository } from './persistence/prisma-transaction.repository';
 import { PrismaWalletRepository } from './persistence/prisma-wallet.repository';
 import { LoggerInfrastructureModule } from './logging/logger.module';
+import { OpenTelemetryLifecycle } from './observability/otel-lifecycle.service';
 import { REDIS_PORT } from './redis/redis.port';
 import { RedisAdapter } from './redis/redis.adapter';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
@@ -42,6 +43,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
 @Module({
   imports: [ConfigModule, PrismaModule, LoggerInfrastructureModule],
   providers: [
+    OpenTelemetryLifecycle,
     RedisAdapter,
     SystemClockAdapter,
     UuidIdGeneratorAdapter,

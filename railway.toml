@@ -10,6 +10,9 @@
 # Clean production Blockchain (NEW service `blockchain-prod`):
 #   Config as Code path = /railway.blockchain.toml
 #
+# Clean production Wallet (NEW service `wallet-prod`):
+#   Config as Code path = /railway.wallet.toml
+#
 # Temporary db-migrate MUST NOT use this file — it would build Dockerfile.service.
 # Use instead:
 #   Config as Code path = /railway.migrate.toml

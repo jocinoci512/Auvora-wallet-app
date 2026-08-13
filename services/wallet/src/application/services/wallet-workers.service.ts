@@ -33,6 +33,8 @@ export class WalletWorkersService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WalletWorkersService.name);
   private timers: NodeJS.Timeout[] = [];
   private readonly health = new Map<string, WorkerHealth>();
+  /** Prevent overlapping interval ticks for the same worker name. */
+  private readonly inFlight = new Set<string>();
 
   constructor(
     @Inject(ENV) private readonly env: ServiceEnv,
@@ -157,11 +159,20 @@ export class WalletWorkersService implements OnModuleInit, OnModuleDestroy {
 
   private schedule(name: string, intervalMs: number, fn: () => Promise<void>): void {
     const timer = setInterval(() => {
-      fn().catch((error: unknown) => {
-        this.logger.error(
-          `Worker ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
+      if (this.inFlight.has(name)) {
+        this.logger.debug(`Worker ${name} skipped — previous run still in flight`);
+        return;
+      }
+      this.inFlight.add(name);
+      fn()
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Worker ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        })
+        .finally(() => {
+          this.inFlight.delete(name);
+        });
     }, intervalMs);
     timer.unref();
     this.timers.push(timer);

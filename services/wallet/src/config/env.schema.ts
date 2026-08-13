@@ -1,5 +1,15 @@
 ﻿import { z } from 'zod';
 
+function isUnresolvedRailwayServiceUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname;
+    return host.length === 0;
+  } catch {
+    return true;
+  }
+}
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3002),
@@ -14,10 +24,8 @@ export const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   APP_PUBLIC_URL: z.string().url().optional(),
   /**
-   * Optional. When set, `BlockchainHttpClientAdapter` calls the blockchain
-   * service (Phase 4, system of record for chain addresses) for address
-   * validation instead of relying only on the local regex stubs in
-   * `infrastructure/blockchain/blockchain-providers.ts`.
+   * Blockchain service base URL (system of record for chain addresses / balances).
+   * Required in production when blockchain-prod is part of the mesh.
    */
   BLOCKCHAIN_SERVICE_URL: z.string().url().optional(),
   BLOCKCHAIN_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(12_000),
@@ -58,6 +66,23 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
       .join('; ');
     throw new Error(`Invalid environment configuration: ${details}`);
   }
+
+  if (
+    parsed.data.NODE_ENV === 'production' &&
+    isUnresolvedRailwayServiceUrl(parsed.data.BLOCKCHAIN_SERVICE_URL)
+  ) {
+    throw new Error(
+      'BLOCKCHAIN_SERVICE_URL resolves to an empty host (e.g. http://:3003). ' +
+        'Use http://${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003 after blockchain-prod is healthy.',
+    );
+  }
+
+  if (parsed.data.NODE_ENV === 'production' && !parsed.data.BLOCKCHAIN_SERVICE_URL) {
+    throw new Error(
+      'BLOCKCHAIN_SERVICE_URL is required in production (wallet mesh depends on blockchain-prod)',
+    );
+  }
+
   return parsed.data;
 }
 

@@ -1,0 +1,68 @@
+# Auvora wallet-prod — dedicated Railway config-as-code.
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` is shared by Nest mesh services. wallet-prod must use an
+# explicit startCommand + dedicated docs so it does not inherit legacy
+# Railpack-style `node services/wallet/dist/main.js` start paths.
+# Create a NEW Railway service named `wallet-prod` and set:
+#   Config as Code path = /railway.wallet.toml
+# Do NOT modify gateway-prod, auth-prods, or blockchain-prod from this file.
+#
+# Railway service settings (dashboard — create new service, do not deploy from agent):
+#   Service name       = wallet-prod
+#   Repository         = jocinoci512/Auvora-wallet-app
+#   Branch             = main
+#   Root Directory     = blank / "/"
+#   Builder            = Dockerfile (pinned below)
+#   Dockerfile path    = infrastructure/docker/Dockerfile.service (pinned below)
+#   Config as Code     = /railway.wallet.toml
+#   Healthcheck path   = /health (pinned below)
+#   Public networking  = OFF (private mesh only — gateway is the public edge)
+#   Pre-Deploy Command = EMPTY (omit; do not set)
+#   Custom Start Cmd   = MUST be set in [deploy] below.
+#
+# BUILD ARGS — Railway config-as-code does NOT support a `buildArgs` key.
+# Set service Variables SERVICE=wallet and PORT=3002 so Dockerfile.service
+# receives matching ARG values at build time.
+#
+# REQUIRED non-secret Variables:
+#   SERVICE=wallet
+#   PORT=3002
+#   NODE_ENV=production
+#   LOG_LEVEL=warn
+#   WALLET_WORKERS_ENABLED=true
+#   OTEL_ENABLED=false
+#   APP_PUBLIC_URL=https://auvorawallet.com
+#     → optional for CORS only (Public Networking OFF); set if you want it
+#
+# REQUIRED secret / reference Variables (set in Railway UI; never commit values):
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}
+#   REDIS_URL=${{Redis.REDIS_URL}}
+#   INTERNAL_API_KEY=<reuse existing shared mesh secret — do not regenerate>
+#   JWT_ACCESS_SECRET=<reuse existing shared JWT access secret>
+#   CSRF_SECRET=<reuse existing shared CSRF secret>
+#   BLOCKCHAIN_SERVICE_URL=http://${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003
+#
+# OPTIONAL (leave unset unless needed):
+#   MARKET_DATA_SERVICE_URL, NOTIFICATIONS_SERVICE_URL, AI_SERVICE_URL,
+#   ANALYTICS_SERVICE_URL, OBSERVABILITY_SERVICE_URL, WALLET_*_INTERVAL_MS
+#
+# FORBIDDEN on wallet-prod:
+#   JWT_REFRESH_SECRET, FIELD_ENCRYPTION_KEY, CORS_ORIGINS, SMTP_*, ALCHEMY_*,
+#   REOWN_*, WC_*, wallet private keys, mnemonics, seed phrases
+#
+# After wallet-prod is healthy, wire gateway-prod (do not do this until ready):
+#   WALLET_SERVICE_URL=http://${{wallet-prod.RAILWAY_PRIVATE_DOMAIN}}:3002
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.service"
+
+[deploy]
+# Explicit override: clears legacy dashboard / Railpack start
+# `node services/wallet/dist/main.js`. Matches Dockerfile.service CMD.
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

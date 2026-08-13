@@ -7,7 +7,7 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { loadEnv } from './config/env.schema';
-import { shutdownOpenTelemetry, startOpenTelemetry } from './infrastructure/observability/otel';
+import { startOpenTelemetry } from './infrastructure/observability/otel';
 
 async function bootstrap(): Promise<void> {
   const env = loadEnv();
@@ -34,34 +34,23 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Auvora Wallet Service')
-    .setDescription('Wallet core API')
-    .setVersion(env.SERVICE_VERSION)
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  if (env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Auvora Wallet Service')
+      .setDescription('Wallet core API')
+      .setVersion(env.SERVICE_VERSION)
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
+  // Nest + OpenTelemetryLifecycle handle SIGINT/SIGTERM — do not also process.on().
   app.enableShutdownHooks();
   await app.listen(env.PORT);
 
   const logger = app.get(Logger);
   logger.log(`${env.SERVICE_NAME} listening on port ${env.PORT}`, 'Bootstrap');
-
-  const shutdown = async (signal: string): Promise<void> => {
-    logger.log(`Received ${signal}, shutting down`, 'Bootstrap');
-    await app.close();
-    await shutdownOpenTelemetry();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', () => {
-    void shutdown('SIGINT');
-  });
-  process.on('SIGTERM', () => {
-    void shutdown('SIGTERM');
-  });
 }
 
 bootstrap().catch((error: unknown) => {
