@@ -8,6 +8,8 @@
 .cache
 .tmp
 **/.tmp
+.tmp-deploy*/
+**/.tmp-deploy*/
 .temp
 .verify-logs
 .local-data

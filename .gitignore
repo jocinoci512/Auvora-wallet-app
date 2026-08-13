@@ -76,3 +76,7 @@ docs/api
 
 # Docker
 docker-data
+
+# Local pnpm deploy validation outputs (never commit — tens of thousands of files)
+.tmp-deploy*/
+**/.tmp-deploy*/

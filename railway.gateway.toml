@@ -49,6 +49,14 @@
 #   OTEL_ENABLED=false
 #   INTERNAL_API_KEY=<reuse existing shared mesh secret — do not regenerate>
 #
+# CRITICAL ops rules:
+#   - Do NOT set empty string values (VAR="") for unused keys — leave them unset.
+#   - Do NOT set DATABASE_URL / REDIS_URL / JWT_* on gateway-prod.
+#   - Railway healthcheck MUST stay /health (not /ready — /ready needs auth up).
+#   - Public networking: leave OFF until GET /health returns 200, then enable
+#     for client traffic (gateway is the only public Nest edge).
+#   - Auth service reference must be auth-prods (healthy), not auth / auth-v2.
+#
 # Gateway does NOT need: DATABASE_URL, REDIS_URL, JWT_*, CSRF_SECRET, SMTP_*,
 # ALCHEMY_*, WC_PROJECT_ID, Reown secrets, wallet private keys, seed phrases.
 # Live broadcast remains OFF. No server-side user signing.

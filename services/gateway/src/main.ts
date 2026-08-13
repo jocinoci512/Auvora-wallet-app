@@ -175,9 +175,20 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  await app.listen(env.PORT);
+  // Leave host unset unless HOST is provided — Nest/Node dual-stack bind keeps
+  // Railway private IPv6 mesh working. Do not hardcode 0.0.0.0 (IPv4-only).
+  if (env.HOST) {
+    await app.listen(env.PORT, env.HOST);
+  } else {
+    await app.listen(env.PORT);
+  }
   const logger = app.get(Logger);
-  logger.log(`${env.SERVICE_NAME} listening on port ${env.PORT}`, 'Bootstrap');
+  const bind = env.HOST ? `${env.HOST}:${env.PORT}` : `*:${env.PORT}`;
+  logger.log(`${env.SERVICE_NAME} listening on ${bind}`, 'Bootstrap');
+  logger.log(
+    `Upstreams auth=${env.AUTH_SERVICE_URL} wallet=${env.WALLET_SERVICE_URL} blockchain=${env.BLOCKCHAIN_SERVICE_URL} market-data=${env.MARKET_DATA_SERVICE_URL} connections=${env.CONNECTIONS_SERVICE_URL}`,
+    'Bootstrap',
+  );
   const shutdown = async (signal: string): Promise<void> => {
     logger.log(`Received ${signal}, shutting down`, 'Bootstrap');
     await app.close();
