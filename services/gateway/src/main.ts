@@ -6,26 +6,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { createCredentialedCorsOriginDelegate } from '@auvora/security';
 import { AppModule } from './app.module';
 import { loadEnv } from './config/env.schema';
-import { createAuthProxyMiddleware } from './infrastructure/proxy/auth-proxy.middleware';
-import { createWalletProxyMiddleware } from './infrastructure/proxy/wallet-proxy.middleware';
-import { createBlockchainProxyMiddleware } from './infrastructure/proxy/blockchain-proxy.middleware';
-import { createPaymentsProxyMiddleware } from './infrastructure/proxy/payments-proxy.middleware';
-import { createComplianceProxyMiddleware } from './infrastructure/proxy/compliance-proxy.middleware';
-import { createCustodyProxyMiddleware } from './infrastructure/proxy/custody-proxy.middleware';
-import { createNotificationsProxyMiddleware } from './infrastructure/proxy/notifications-proxy.middleware';
-import { createAnalyticsProxyMiddleware } from './infrastructure/proxy/analytics-proxy.middleware';
-import { createAiProxyMiddleware } from './infrastructure/proxy/ai-proxy.middleware';
-import { createObservabilityProxyMiddleware } from './infrastructure/proxy/observability-proxy.middleware';
-import { createMarketDataProxyMiddleware } from './infrastructure/proxy/market-data-proxy.middleware';
-import { createSwapProxyMiddleware } from './infrastructure/proxy/swap-proxy.middleware';
-import { createStakingProxyMiddleware } from './infrastructure/proxy/staking-proxy.middleware';
-import { createConnectionsProxyMiddleware } from './infrastructure/proxy/connections-proxy.middleware';
-import { createBridgeProxyMiddleware } from './infrastructure/proxy/bridge-proxy.middleware';
+import { createUnifiedGatewayProxyMiddleware } from './infrastructure/proxy/unified-gateway-proxy.middleware';
 import { createNftGoneMiddleware } from './infrastructure/proxy/nft-gone.middleware';
 import { createSecurityHeadersMiddleware } from './infrastructure/security/security-headers.middleware';
 import { createInternalRouteDenyMiddleware } from './infrastructure/security/internal-route-deny.middleware';
 import { createGatewayRateLimitMiddleware } from './infrastructure/security/rate-limit.middleware';
-import { shutdownOpenTelemetry, startOpenTelemetry } from './infrastructure/observability/otel';
+import { startOpenTelemetry } from './infrastructure/observability/otel';
 import { applyDatabasePoolEnv } from '@auvora/database';
 import { buildAuthProxyOpenApiPaths } from './presentation/swagger/auth-proxy.openapi';
 import { buildWalletProxyOpenApiPaths } from './presentation/swagger/wallet-proxy.openapi';
@@ -46,6 +32,8 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
+  // Nest owns SIGINT/SIGTERM → app.close(). Do not also register process.on handlers
+  // (that double-closes and races with OpenTelemetryLifecycle).
   app.enableShutdownHooks();
   // Railway / managed reverse proxies terminate TLS and forward X-Forwarded-*.
   // Trust one hop so Express derives client IP / proto correctly without open proxy risk.
@@ -73,22 +61,10 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.use(cookieParser());
-  app.use(createAuthProxyMiddleware(env.AUTH_SERVICE_URL));
-  app.use(createWalletProxyMiddleware(env.WALLET_SERVICE_URL));
-  app.use(createBlockchainProxyMiddleware(env.BLOCKCHAIN_SERVICE_URL));
-  app.use(createPaymentsProxyMiddleware(env.PAYMENTS_SERVICE_URL));
-  app.use(createComplianceProxyMiddleware(env.COMPLIANCE_SERVICE_URL));
-  app.use(createCustodyProxyMiddleware(env.CUSTODY_SERVICE_URL));
-  app.use(createNotificationsProxyMiddleware(env.NOTIFICATIONS_SERVICE_URL));
-  app.use(createAnalyticsProxyMiddleware(env.ANALYTICS_SERVICE_URL));
-  app.use(createAiProxyMiddleware(env.AI_SERVICE_URL));
-  app.use(createObservabilityProxyMiddleware(env.OBSERVABILITY_SERVICE_URL));
-  app.use(createMarketDataProxyMiddleware(env.MARKET_DATA_SERVICE_URL));
-  app.use(createSwapProxyMiddleware(env.SWAP_SERVICE_URL));
+  // NFT gone (410) before the unified reverse proxy.
   app.use(createNftGoneMiddleware());
-  app.use(createStakingProxyMiddleware(env.STAKING_SERVICE_URL));
-  app.use(createConnectionsProxyMiddleware(env.CONNECTIONS_SERVICE_URL));
-  app.use(createBridgeProxyMiddleware(env.BRIDGE_SERVICE_URL));
+  // ONE http-proxy-middleware instance for all upstreams — avoids N server 'close' listeners.
+  app.use(createUnifiedGatewayProxyMiddleware(env));
 
   if (env.NODE_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
@@ -189,18 +165,6 @@ async function bootstrap(): Promise<void> {
     `Upstreams auth=${env.AUTH_SERVICE_URL} wallet=${env.WALLET_SERVICE_URL} blockchain=${env.BLOCKCHAIN_SERVICE_URL} market-data=${env.MARKET_DATA_SERVICE_URL} connections=${env.CONNECTIONS_SERVICE_URL}`,
     'Bootstrap',
   );
-  const shutdown = async (signal: string): Promise<void> => {
-    logger.log(`Received ${signal}, shutting down`, 'Bootstrap');
-    await app.close();
-    await shutdownOpenTelemetry();
-    process.exit(0);
-  };
-  process.on('SIGINT', () => {
-    void shutdown('SIGINT');
-  });
-  process.on('SIGTERM', () => {
-    void shutdown('SIGTERM');
-  });
 }
 bootstrap().catch((error: unknown) => {
   const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
