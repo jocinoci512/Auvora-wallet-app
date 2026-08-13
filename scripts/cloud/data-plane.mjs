@@ -86,10 +86,22 @@ let redis;
 
 async function startRedis() {
   return new Promise((resolve, reject) => {
-    // --save "" and --appendonly no keep it in-memory only (dev data plane).
+    // Bind to loopback only (never publicly reachable), and keep it in-memory
+    // only (--save "" / --appendonly no) for an ephemeral dev data plane.
     redis = spawn(
       'redis-server',
-      ['--port', '6379', '--save', '', '--appendonly', 'no', '--loglevel', 'warning'],
+      [
+        '--port',
+        '6379',
+        '--bind',
+        '127.0.0.1',
+        '--save',
+        '',
+        '--appendonly',
+        'no',
+        '--loglevel',
+        'warning',
+      ],
       { stdio: ['ignore', 'inherit', 'inherit'] },
     );
     redis.on('error', reject);

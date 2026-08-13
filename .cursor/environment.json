@@ -30,8 +30,6 @@
   ],
   "ports": [
     { "name": "web", "port": 3000 },
-    { "name": "gateway", "port": 4000 },
-    { "name": "auth", "port": 4001 },
-    { "name": "wallet", "port": 3002 }
+    { "name": "gateway", "port": 4000 }
   ]
 }

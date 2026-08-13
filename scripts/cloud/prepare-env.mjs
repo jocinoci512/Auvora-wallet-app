@@ -74,6 +74,13 @@ const out = lines.map((line) => {
 
 fs.writeFileSync(target, out.join('\n'));
 
+// Restrict the dev secrets file to the owner where the OS supports it.
+try {
+  fs.chmodSync(target, 0o600);
+} catch {
+  /* non-POSIX filesystem — best effort */
+}
+
 if (filled.length > 0) {
   console.log(`Filled ${filled.length} placeholder secret(s): ${filled.join(', ')}`);
 } else {
