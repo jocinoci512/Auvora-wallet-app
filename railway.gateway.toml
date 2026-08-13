@@ -40,7 +40,7 @@
 #   AUTH_SERVICE_URL=http://${{auth-prods.RAILWAY_PRIVATE_DOMAIN}}:4001
 #   WALLET_SERVICE_URL=http://${{wallet.RAILWAY_PRIVATE_DOMAIN}}:3002
 #   BLOCKCHAIN_SERVICE_URL=http://${{blockchain.RAILWAY_PRIVATE_DOMAIN}}:3003
-#   MARKET_DATA_SERVICE_URL=http://${{market-data.RAILWAY_PRIVATE_DOMAIN}}:3012
+#   MARKET_DATA_SERVICE_URL=http://${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}:3012
 #   CONNECTIONS_SERVICE_URL=http://${{connections.RAILWAY_PRIVATE_DOMAIN}}:3016
 #   CORS_ORIGINS=https://auvorawallet.com,https://www.auvorawallet.com
 #   GATEWAY_RATE_LIMIT_MAX=400
@@ -52,6 +52,15 @@
 # CRITICAL ops rules:
 #   - Do NOT set empty string values (VAR="") for unused keys — leave them unset.
 #   - Do NOT set DATABASE_URL / REDIS_URL / JWT_* on gateway-prod.
+#   - Hyphenated Railway service names MUST be quoted in template refs:
+#       http://${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}:3012
+#     Unquoted `market-data` breaks template parsing → Invalid url at boot.
+#   - If wallet / market-data / etc. are not created yet: DELETE those URL vars
+#     (do not leave broken refs). Gateway will use safe localhost defaults and
+#     still boot; proxy routes to missing services return 502 until wired.
+#   - WALLET_SERVICE_URL / MARKET_DATA_SERVICE_URL Invalid url almost always means:
+#       1) target service missing or misnamed, OR
+#       2) hyphenated name not quoted (market-data).
 #   - Railway healthcheck MUST stay /health (not /ready — /ready needs auth up).
 #   - Public networking: leave OFF until GET /health returns 200, then enable
 #     for client traffic (gateway is the only public Nest edge).

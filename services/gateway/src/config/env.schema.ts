@@ -10,8 +10,69 @@ function emptyToUndefined(value: unknown): unknown {
 
 const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
 
-const serviceUrl = (fallback: string) =>
-  z.preprocess(emptyToUndefined, z.string().url().default(fallback));
+/**
+ * Validate an upstream base URL with Railway-aware error messages.
+ * Hyphenated Railway service names must be quoted in template refs, e.g.
+ * `http://${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}:3012`
+ */
+export function assertServiceBaseUrl(varName: string, raw: string): string {
+  const value = raw.trim();
+
+  if (/\$\{\{/.test(value)) {
+    throw new Error(
+      `unresolved Railway template ${JSON.stringify(value)}. ` +
+        `If the service name has a hyphen, quote it: ` +
+        `\${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}. ` +
+        `Or delete ${varName} until that Railway service exists.`,
+    );
+  }
+
+  // Railway often yields http://:PORT when ${{service.RAILWAY_PRIVATE_DOMAIN}} is empty.
+  if (/^https?:\/\/:/i.test(value) || /:\/\/(undefined|null)(:|\/|$)/i.test(value)) {
+    throw new Error(
+      `empty/invalid hostname in ${JSON.stringify(value)}. ` +
+        `The Railway service reference did not resolve — create the target service ` +
+        `(exact name match) or remove ${varName} until it exists.`,
+    );
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(
+      `Invalid url ${JSON.stringify(value)}. ` +
+        `Expected http://\${{service.RAILWAY_PRIVATE_DOMAIN}}:<port> ` +
+        `(quote hyphenated names: \${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}).`,
+    );
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`URL must be http(s), got ${JSON.stringify(value)}`);
+  }
+
+  if (!parsed.hostname || parsed.hostname === 'undefined' || parsed.hostname === 'null') {
+    throw new Error(
+      `empty/invalid hostname in ${JSON.stringify(value)}. ` +
+        `The Railway service reference did not resolve — create the target service ` +
+        `(exact name match) or remove ${varName} until it exists.`,
+    );
+  }
+
+  return value.replace(/\/$/, '');
+}
+
+const serviceUrl = (varName: string, fallback: string) =>
+  z.preprocess(emptyToUndefined, z.string().default(fallback)).superRefine((value, ctx) => {
+    try {
+      assertServiceBaseUrl(varName, value);
+    } catch (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error instanceof Error ? error.message : `Invalid ${varName}`,
+      });
+    }
+  });
 
 const DEV_CORS_DEFAULT = 'http://localhost:3000,http://localhost:3001';
 
@@ -21,22 +82,22 @@ export const envSchema = z
     /** Optional bind host. Leave unset on Railway so Nest binds dual-stack (IPv4+IPv6 private mesh). */
     HOST: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     PORT: z.coerce.number().int().positive().default(4000),
-    AUTH_SERVICE_URL: serviceUrl('http://127.0.0.1:4001'),
-    WALLET_SERVICE_URL: serviceUrl('http://127.0.0.1:3002'),
-    BLOCKCHAIN_SERVICE_URL: serviceUrl('http://127.0.0.1:3003'),
-    PAYMENTS_SERVICE_URL: serviceUrl('http://127.0.0.1:3004'),
-    COMPLIANCE_SERVICE_URL: serviceUrl('http://127.0.0.1:3005'),
-    CUSTODY_SERVICE_URL: serviceUrl('http://127.0.0.1:3009'),
-    NOTIFICATIONS_SERVICE_URL: serviceUrl('http://127.0.0.1:3006'),
-    ANALYTICS_SERVICE_URL: serviceUrl('http://127.0.0.1:3007'),
-    OBSERVABILITY_SERVICE_URL: serviceUrl('http://127.0.0.1:3010'),
-    AI_SERVICE_URL: serviceUrl('http://127.0.0.1:3008'),
-    MARKET_DATA_SERVICE_URL: serviceUrl('http://127.0.0.1:3012'),
-    SWAP_SERVICE_URL: serviceUrl('http://127.0.0.1:3013'),
-    NFT_SERVICE_URL: serviceUrl('http://127.0.0.1:3014'),
-    STAKING_SERVICE_URL: serviceUrl('http://127.0.0.1:3015'),
-    CONNECTIONS_SERVICE_URL: serviceUrl('http://127.0.0.1:3016'),
-    BRIDGE_SERVICE_URL: serviceUrl('http://127.0.0.1:3017'),
+    AUTH_SERVICE_URL: serviceUrl('AUTH_SERVICE_URL', 'http://127.0.0.1:4001'),
+    WALLET_SERVICE_URL: serviceUrl('WALLET_SERVICE_URL', 'http://127.0.0.1:3002'),
+    BLOCKCHAIN_SERVICE_URL: serviceUrl('BLOCKCHAIN_SERVICE_URL', 'http://127.0.0.1:3003'),
+    PAYMENTS_SERVICE_URL: serviceUrl('PAYMENTS_SERVICE_URL', 'http://127.0.0.1:3004'),
+    COMPLIANCE_SERVICE_URL: serviceUrl('COMPLIANCE_SERVICE_URL', 'http://127.0.0.1:3005'),
+    CUSTODY_SERVICE_URL: serviceUrl('CUSTODY_SERVICE_URL', 'http://127.0.0.1:3009'),
+    NOTIFICATIONS_SERVICE_URL: serviceUrl('NOTIFICATIONS_SERVICE_URL', 'http://127.0.0.1:3006'),
+    ANALYTICS_SERVICE_URL: serviceUrl('ANALYTICS_SERVICE_URL', 'http://127.0.0.1:3007'),
+    OBSERVABILITY_SERVICE_URL: serviceUrl('OBSERVABILITY_SERVICE_URL', 'http://127.0.0.1:3010'),
+    AI_SERVICE_URL: serviceUrl('AI_SERVICE_URL', 'http://127.0.0.1:3008'),
+    MARKET_DATA_SERVICE_URL: serviceUrl('MARKET_DATA_SERVICE_URL', 'http://127.0.0.1:3012'),
+    SWAP_SERVICE_URL: serviceUrl('SWAP_SERVICE_URL', 'http://127.0.0.1:3013'),
+    NFT_SERVICE_URL: serviceUrl('NFT_SERVICE_URL', 'http://127.0.0.1:3014'),
+    STAKING_SERVICE_URL: serviceUrl('STAKING_SERVICE_URL', 'http://127.0.0.1:3015'),
+    CONNECTIONS_SERVICE_URL: serviceUrl('CONNECTIONS_SERVICE_URL', 'http://127.0.0.1:3016'),
+    BRIDGE_SERVICE_URL: serviceUrl('BRIDGE_SERVICE_URL', 'http://127.0.0.1:3017'),
     SERVICE_NAME: z.string().default('gateway'),
     SERVICE_VERSION: z.string().default('1.0.0-alpha.1'),
     LOG_LEVEL: z

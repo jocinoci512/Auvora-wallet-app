@@ -71,4 +71,32 @@ describe('gateway env schema — CORS production config', () => {
     });
     expect(env.CORS_ORIGINS).toEqual(['http://localhost:3000', 'http://localhost:3001']);
   });
+
+  it('explains unresolved Railway templates for hyphenated services', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'development',
+        MARKET_DATA_SERVICE_URL: 'http://${{market-data.RAILWAY_PRIVATE_DOMAIN}}:3012',
+      }),
+    ).toThrow(/unresolved Railway template|quote it/i);
+  });
+
+  it('explains empty hostname from unresolved Railway private domain', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'development',
+        WALLET_SERVICE_URL: 'http://:3002',
+      }),
+    ).toThrow(/empty\/invalid hostname|create the target service/i);
+  });
+
+  it('accepts quoted-style Railway private URLs once resolved', () => {
+    const env = loadEnv({
+      NODE_ENV: 'development',
+      MARKET_DATA_SERVICE_URL: 'http://market-data.railway.internal:3012',
+      WALLET_SERVICE_URL: 'http://wallet.railway.internal:3002',
+    });
+    expect(env.MARKET_DATA_SERVICE_URL).toBe('http://market-data.railway.internal:3012');
+    expect(env.WALLET_SERVICE_URL).toBe('http://wallet.railway.internal:3002');
+  });
 });
