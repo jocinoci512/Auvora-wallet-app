@@ -20,7 +20,20 @@ export class RedisAdapter implements RedisPort, RateLimiterPort, OnModuleDestroy
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.client.quit();
+    // Shutdown must never reject: main.ts runs `void shutdown()`, so a rejected
+    // quit() (e.g. ioredis flushing an in-flight command with "Connection is
+    // closed") would surface as an unhandled rejection and crash the process with
+    // a non-zero code during an otherwise graceful SIGTERM. Best-effort QUIT, then
+    // force-disconnect as a fallback.
+    try {
+      await this.client.quit();
+    } catch {
+      try {
+        this.client.disconnect();
+      } catch {
+        /* already closed */
+      }
+    }
   }
 
   getClient(): Redis {
