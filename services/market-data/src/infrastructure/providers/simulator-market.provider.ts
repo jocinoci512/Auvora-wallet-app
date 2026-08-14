@@ -125,6 +125,17 @@ export class SimulatorMarketProvider implements MarketDataProviderPort {
     return seed ? quoteFromSeed(seed) : null;
   }
 
+  async getNativePrices(
+    assets: Array<{ symbol: string; network: SupportedMarketNetwork }>,
+  ): Promise<MarketQuote[]> {
+    const out: MarketQuote[] = [];
+    for (const asset of assets) {
+      const quote = await this.getNativePrice(asset.symbol, asset.network);
+      if (quote) out.push(quote);
+    }
+    return out;
+  }
+
   async getTokenPrice(
     contractAddress: string,
     network: SupportedMarketNetwork,

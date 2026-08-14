@@ -1,7 +1,19 @@
 import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { JwtAccessClaims } from '@auvora/types';
-import { Allow, IsArray, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { HoldingDto, MAX_HOLDINGS } from '../dto/holding.dto';
 import { MarketDashboardService } from '../../application/services/market-dashboard.service';
 import { MarketDataEngineService } from '../../application/services/market-data-engine.service';
 import {
@@ -9,7 +21,6 @@ import {
   type ChartRange,
 } from '../../application/services/price-history.service';
 import { TokenMetadataService } from '../../application/services/token-metadata.service';
-import type { HoldingInput } from '../../application/services/portfolio-intelligence.service';
 import type { SupportedMarketNetwork } from '../../domain/market-provider.port';
 import { PERMISSION_MARKET_DATA_READ } from '../../domain/permission-codes';
 import { successResponse } from '@auvora/nest-common';
@@ -19,6 +30,8 @@ import { CurrentUser } from '../decorators/current-user.decorator';
 class QuoteQueryDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(32)
+  @Matches(/^[A-Za-z0-9._-]+$/, { message: 'symbol contains invalid characters' })
   symbol!: string;
 
   @IsString()
@@ -32,10 +45,24 @@ class ChartQueryDto extends QuoteQueryDto {
   range?: ChartRange;
 }
 
+class SymbolNetworkParamDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(32)
+  @Matches(/^[A-Za-z0-9._-]+$/, { message: 'symbol contains invalid characters' })
+  symbol!: string;
+
+  @IsString()
+  @IsIn(['ETHEREUM', 'BNB_SMART_CHAIN', 'SOLANA', 'TRON', 'BITCOIN'])
+  network!: SupportedMarketNetwork;
+}
+
 class HoldingsBodyDto {
   @IsArray()
-  @Allow()
-  holdings!: HoldingInput[];
+  @ArrayMaxSize(MAX_HOLDINGS)
+  @ValidateNested({ each: true })
+  @Type(() => HoldingDto)
+  holdings!: HoldingDto[];
 }
 
 @ApiTags('market-data')
@@ -131,7 +158,7 @@ export class MarketDataController {
 
   @Get('networks/:network/symbols/:symbol')
   @Permissions(PERMISSION_MARKET_DATA_READ)
-  async byPath(@Param('network') network: SupportedMarketNetwork, @Param('symbol') symbol: string) {
-    return successResponse(await this.engine.getQuote(symbol, network));
+  async byPath(@Param() params: SymbolNetworkParamDto) {
+    return successResponse(await this.engine.getQuote(params.symbol, params.network));
   }
 }

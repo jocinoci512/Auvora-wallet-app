@@ -20,7 +20,13 @@ const env = loadEnv();
               }
             : undefined,
         redact: {
-          paths: ['req.headers.authorization', 'req.headers.cookie'],
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.headers["x-internal-api-key"]',
+            'req.headers["x-csrf-token"]',
+            'res.headers["set-cookie"]',
+          ],
           remove: true,
         },
       },

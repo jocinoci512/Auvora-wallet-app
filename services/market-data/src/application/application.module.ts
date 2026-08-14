@@ -6,6 +6,7 @@ import { MarketWorkersService } from './services/market-workers.service';
 import { PortfolioIntelligenceService } from './services/portfolio-intelligence.service';
 import { PriceAlertService } from './services/price-alert.service';
 import { PriceHistoryService } from './services/price-history.service';
+import { RetentionService } from './services/retention.service';
 import { TokenMetadataService } from './services/token-metadata.service';
 import { WatchlistService } from './services/watchlist.service';
 
@@ -19,6 +20,7 @@ import { WatchlistService } from './services/watchlist.service';
     WatchlistService,
     PriceAlertService,
     MarketDashboardService,
+    RetentionService,
     MarketWorkersService,
   ],
   exports: [
@@ -29,6 +31,7 @@ import { WatchlistService } from './services/watchlist.service';
     WatchlistService,
     PriceAlertService,
     MarketDashboardService,
+    RetentionService,
     MarketWorkersService,
   ],
 })

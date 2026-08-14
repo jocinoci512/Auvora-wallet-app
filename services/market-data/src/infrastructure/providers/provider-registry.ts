@@ -79,6 +79,12 @@ export class MarketProviderRegistry implements MarketDataProviderPort {
     return this.withFallback((p) => p.getNativePrice(symbol, network));
   }
 
+  getNativePrices(
+    assets: Array<{ symbol: string; network: SupportedMarketNetwork }>,
+  ): Promise<MarketQuote[]> {
+    return this.withFallback((p) => p.getNativePrices(assets));
+  }
+
   getTokenPrice(
     contractAddress: string,
     network: SupportedMarketNetwork,

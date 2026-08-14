@@ -31,10 +31,16 @@
 #   PORT=3012
 #   NODE_ENV=production
 #   LOG_LEVEL=info                       # warn is also acceptable
-#   MARKET_DATA_SIMULATOR_ENABLED=false  # MUST be false — schema default is true;
-#                                        # false guarantees no simulated/fake pricing.
-#   MARKET_DATA_WORKERS_ENABLED=true     # safe on a single replica (in-process
-#                                        # de-dup). See scaling note below.
+#   MARKET_DATA_SIMULATOR_ENABLED=false  # MUST be false. Schema default is true,
+#                                        # but production boot now HARD-REJECTS
+#                                        # simulator=true when NODE_ENV=production.
+#   MARKET_DATA_WORKERS_ENABLED=false    # RECOMMENDED false for the FIRST boot.
+#                                        # On-demand price fetches still work
+#                                        # (cache-bounded). Flip to true only AFTER
+#                                        # COINGECKO_API_KEY is set (see below):
+#                                        # batched polling is ~360 req/hr, which
+#                                        # exceeds the CoinGecko free (no-key) tier.
+#                                        # Workers are single-replica + Redis-lock safe.
 #   OTEL_ENABLED=false
 #
 # REQUIRED secret / reference Variables (set in Railway UI; never commit values):
@@ -55,17 +61,23 @@
 #     → only needed for the portfolio-valuation worker; safe to add after wallet-prod is healthy.
 #   NOTIFICATIONS_SERVICE_URL, ANALYTICS_SERVICE_URL, OBSERVABILITY_SERVICE_URL
 #   MARKET_DATA_*_INTERVAL_MS, MARKET_DATA_*_CACHE_TTL_SECONDS,
-#   MARKET_DATA_RATE_LIMIT_WINDOW_SECONDS, MARKET_DATA_RATE_LIMIT_MAX   (all defaulted)
+#   MARKET_DATA_RATE_LIMIT_WINDOW_SECONDS=60, MARKET_DATA_RATE_LIMIT_MAX=120 (defaulted;
+#     now enforced by a Redis-backed service rate-limit guard, keyed by user/IP,
+#     skipping health + internal mesh routes),
+#   MARKET_DATA_RETENTION_INTERVAL_MS=3600000 (defaulted),
+#   MARKET_DATA_PRICE_RETENTION_DAYS=90 (defaulted),
+#   MARKET_DATA_PORTFOLIO_RETENTION_DAYS=180 (defaulted)
+#     → batched retention worker prunes append-only history safely.
 #
 # FORBIDDEN / NOT NEEDED on market-data-prod:
 #   JWT_REFRESH_SECRET (unused by this service), SMTP_*, CORS_ORIGINS,
 #   ALCHEMY_*, REOWN_*, WC_*, COINCAP_*, DATABASE migration commands,
 #   wallet private keys, mnemonics, seed phrases
 #
-# SCALING NOTE: workers use in-process de-dup only (no distributed Redis lock).
-# Keep market-data-prod at a SINGLE replica while workers are enabled; running
-# multiple replicas would multiply CoinGecko request volume. Add a distributed
-# lock before scaling out, or set MARKET_DATA_WORKERS_ENABLED=false on extra replicas.
+# SCALING NOTE: workers now use a Redis-backed distributed lock (SET NX PX + owner
+# token, self-expiring on crash) plus an in-process guard, so duplicate provider
+# polling is prevented across replicas. Multi-replica is safe; a single replica is
+# still recommended for the first boot until provider quota is verified.
 #
 # After market-data-prod is healthy, wire gateway-prod (do not do this now):
 #   MARKET_DATA_SERVICE_URL=http://${{market-data-prod.RAILWAY_PRIVATE_DOMAIN}}:3012

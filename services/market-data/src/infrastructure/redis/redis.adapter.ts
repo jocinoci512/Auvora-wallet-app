@@ -95,4 +95,34 @@ export class RedisAdapter implements RedisPort, RateLimiterPort, OnModuleDestroy
       // ignore
     }
   }
+
+  async acquireLock(key: string, token: string, ttlMs: number): Promise<boolean> {
+    try {
+      if (this.client.status !== 'ready') {
+        await this.client.connect();
+      }
+      // NX ensures only one owner; PX guarantees the lock self-expires on crash.
+      const result = await this.client.set(key, token, 'PX', ttlMs, 'NX');
+      return result === 'OK';
+    } catch (error) {
+      this.logger.warn(
+        `acquireLock failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
+    }
+  }
+
+  async releaseLock(key: string, token: string): Promise<void> {
+    // Compare-and-delete so we never release a lock owned by another holder.
+    const script =
+      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+    try {
+      if (this.client.status !== 'ready') {
+        await this.client.connect();
+      }
+      await this.client.eval(script, 1, key, token);
+    } catch {
+      // Lock will expire via TTL even if release fails.
+    }
+  }
 }

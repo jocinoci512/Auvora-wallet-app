@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { ProviderUnavailableError } from '../../domain/errors';
+import {
+  sanitizeNonNegativeString,
+  sanitizePercentString,
+  sanitizeQuote,
+} from '../../domain/market-data.validation';
 import type {
   MarketDataProviderPort,
   MarketQuote,
@@ -9,6 +14,13 @@ import type {
   TokenMetadataSnapshot,
   TrendingAsset,
 } from '../../domain/market-provider.port';
+
+type CoinGeckoPriceRow = {
+  usd?: number;
+  usd_24h_change?: number;
+  usd_market_cap?: number;
+  usd_24h_vol?: number;
+};
 
 const NETWORK_TO_PLATFORM: Partial<Record<SupportedMarketNetwork, string>> = {
   ETHEREUM: 'ethereum',
@@ -44,36 +56,63 @@ export class CoinGeckoMarketProvider implements MarketDataProviderPort {
     this.apiKey = env.COINGECKO_API_KEY;
   }
 
+  private mapPriceRow(
+    symbol: string,
+    network: SupportedMarketNetwork,
+    row: CoinGeckoPriceRow | undefined,
+  ): MarketQuote | null {
+    if (!row) return null;
+    // Validate the provider payload before it can enter cache / DB / API output.
+    return sanitizeQuote({
+      symbol: symbol.toUpperCase(),
+      network,
+      contractAddress: null,
+      priceUsd: row.usd,
+      change24hPct: row.usd_24h_change,
+      change7dPct: null,
+      marketCapUsd: row.usd_market_cap,
+      volume24hUsd: row.usd_24h_vol,
+      circulatingSupply: null,
+      fullyDilutedValuationUsd: null,
+      source: this.code,
+      asOf: new Date().toISOString(),
+    });
+  }
+
   async getNativePrice(
     symbol: string,
     network: SupportedMarketNetwork,
   ): Promise<MarketQuote | null> {
     const id = SYMBOL_TO_ID[symbol.toUpperCase()];
     if (!id) return null;
-    const data = await this.getJson<
-      Record<
-        string,
-        { usd?: number; usd_24h_change?: number; usd_market_cap?: number; usd_24h_vol?: number }
-      >
-    >(
+    const data = await this.getJson<Record<string, CoinGeckoPriceRow>>(
       `/simple/price?ids=${encodeURIComponent(id)}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true`,
     );
-    const row = data?.[id];
-    if (!row?.usd) return null;
-    return {
-      symbol: symbol.toUpperCase(),
-      network,
-      contractAddress: null,
-      priceUsd: String(row.usd),
-      change24hPct: row.usd_24h_change != null ? String(row.usd_24h_change) : null,
-      change7dPct: null,
-      marketCapUsd: row.usd_market_cap != null ? String(row.usd_market_cap) : null,
-      volume24hUsd: row.usd_24h_vol != null ? String(row.usd_24h_vol) : null,
-      circulatingSupply: null,
-      fullyDilutedValuationUsd: null,
-      source: this.code,
-      asOf: new Date().toISOString(),
-    };
+    return this.mapPriceRow(symbol, network, data?.[id]);
+  }
+
+  /**
+   * Batched native price fetch — a single CoinGecko `/simple/price` call for all
+   * requested assets (CoinGecko supports comma-separated ids). This replaces N
+   * per-asset requests with one, sharply reducing provider request volume.
+   */
+  async getNativePrices(
+    assets: Array<{ symbol: string; network: SupportedMarketNetwork }>,
+  ): Promise<MarketQuote[]> {
+    const known = assets
+      .map((a) => ({ ...a, id: SYMBOL_TO_ID[a.symbol.toUpperCase()] }))
+      .filter((a): a is typeof a & { id: string } => Boolean(a.id));
+    if (known.length === 0) return [];
+    const ids = [...new Set(known.map((a) => a.id))].join(',');
+    const data = await this.getJson<Record<string, CoinGeckoPriceRow>>(
+      `/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true`,
+    );
+    const out: MarketQuote[] = [];
+    for (const asset of known) {
+      const quote = this.mapPriceRow(asset.symbol, asset.network, data?.[asset.id]);
+      if (quote) out.push(quote);
+    }
+    return out;
   }
 
   async getTokenPrice(
@@ -87,12 +126,12 @@ export class CoinGeckoMarketProvider implements MarketDataProviderPort {
     );
     const row = data?.[contractAddress.toLowerCase()];
     if (!row?.usd) return null;
-    return {
+    return sanitizeQuote({
       symbol: contractAddress.slice(0, 6).toUpperCase(),
       network,
       contractAddress,
-      priceUsd: String(row.usd),
-      change24hPct: row.usd_24h_change != null ? String(row.usd_24h_change) : null,
+      priceUsd: row.usd,
+      change24hPct: row.usd_24h_change,
       change7dPct: null,
       marketCapUsd: null,
       volume24hUsd: null,
@@ -100,7 +139,7 @@ export class CoinGeckoMarketProvider implements MarketDataProviderPort {
       fullyDilutedValuationUsd: null,
       source: this.code,
       asOf: new Date().toISOString(),
-    };
+    });
   }
 
   async getHistoricalPrices(
@@ -168,8 +207,8 @@ export class CoinGeckoMarketProvider implements MarketDataProviderPort {
       out.push({
         symbol: item.symbol.toUpperCase(),
         network: 'ETHEREUM',
-        priceUsd: String(item.data?.price ?? 0),
-        change24hPct: String(item.data?.price_change_percentage_24h?.usd ?? 0),
+        priceUsd: sanitizeNonNegativeString(item.data?.price) ?? '0',
+        change24hPct: sanitizePercentString(item.data?.price_change_percentage_24h?.usd) ?? '0',
         volume24hUsd: null,
         rank: (item.score ?? index) + 1,
       });

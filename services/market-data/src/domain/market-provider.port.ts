@@ -54,6 +54,10 @@ export interface MarketDataProviderPort {
   readonly code: string;
   readonly name: string;
   getNativePrice(symbol: string, network: SupportedMarketNetwork): Promise<MarketQuote | null>;
+  /** Batched native price fetch (single upstream request where the provider supports it). */
+  getNativePrices(
+    assets: Array<{ symbol: string; network: SupportedMarketNetwork }>,
+  ): Promise<MarketQuote[]>;
   getTokenPrice(
     contractAddress: string,
     network: SupportedMarketNetwork,

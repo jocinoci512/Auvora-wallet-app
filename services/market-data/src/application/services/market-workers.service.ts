@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   Inject,
   Injectable,
@@ -11,6 +12,7 @@ import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
 } from '../../infrastructure/analytics/analytics-publisher.adapter';
+import { REDIS_PORT, type RedisPort } from '../../infrastructure/redis/redis.port';
 import {
   WALLET_HTTP_CLIENT,
   type WalletHttpClientPort,
@@ -19,9 +21,15 @@ import { MarketDataEngineService } from './market-data-engine.service';
 import { PortfolioIntelligenceService } from './portfolio-intelligence.service';
 import { PriceAlertService } from './price-alert.service';
 import { PriceHistoryService } from './price-history.service';
+import { RetentionService } from './retention.service';
 import { TokenMetadataService } from './token-metadata.service';
 
-type WorkerName = 'price' | 'metadata' | 'portfolio' | 'cache' | 'history' | 'alert';
+type WorkerName = 'price' | 'metadata' | 'portfolio' | 'cache' | 'history' | 'alert' | 'retention';
+
+// Lock TTL guards against a crashed replica: long enough for a normal run,
+// short enough that a dead owner's lock frees promptly. Locks are also released
+// explicitly after each run.
+const WORKER_LOCK_TTL_MS = 60_000;
 
 @Injectable()
 export class MarketWorkersService implements OnModuleInit, OnModuleDestroy {
@@ -39,6 +47,8 @@ export class MarketWorkersService implements OnModuleInit, OnModuleDestroy {
     @Inject(PriceAlertService) private readonly alerts: PriceAlertService,
     @Inject(WALLET_HTTP_CLIENT) private readonly wallet: WalletHttpClientPort,
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
+    @Inject(RetentionService) private readonly retention: RetentionService,
+    @Inject(REDIS_PORT) private readonly redis: RedisPort,
   ) {}
 
   onModuleInit(): void {
@@ -56,8 +66,11 @@ export class MarketWorkersService implements OnModuleInit, OnModuleDestroy {
     this.schedule('cache', this.env.MARKET_DATA_CACHE_INTERVAL_MS, () => this.runCache());
     this.schedule('history', this.env.MARKET_DATA_HISTORY_INTERVAL_MS, () => this.runHistory());
     this.schedule('alert', this.env.MARKET_DATA_ALERT_INTERVAL_MS, () => this.runAlerts());
+    this.schedule('retention', this.env.MARKET_DATA_RETENTION_INTERVAL_MS, () =>
+      this.runRetention(),
+    );
     this.logger.log(
-      'Market data workers initialized: price, metadata, portfolio, cache, history, alert',
+      'Market data workers initialized: price, metadata, portfolio, cache, history, alert, retention',
     );
   }
 
@@ -83,15 +96,23 @@ export class MarketWorkersService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async track(name: WorkerName, fn: () => Promise<void>): Promise<void> {
+    // Layer 1: in-process guard prevents overlapping runs in this replica.
     if (this.running.has(name)) return;
     this.running.add(name);
+    // Layer 2: Redis distributed lock prevents duplicate runs across replicas.
+    const lockKey = `md:lock:worker:${name}`;
+    const token = randomUUID();
+    let locked = false;
     try {
+      locked = await this.redis.acquireLock(lockKey, token, WORKER_LOCK_TTL_MS);
+      if (!locked) return;
       await fn();
     } catch (error) {
       this.logger.warn(
         `Worker ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
+      if (locked) await this.redis.releaseLock(lockKey, token);
       this.running.delete(name);
     }
   }
@@ -150,6 +171,14 @@ export class MarketWorkersService implements OnModuleInit, OnModuleDestroy {
   async runAlerts(): Promise<void> {
     await this.track('alert', async () => {
       await this.alerts.evaluateActive();
+    });
+  }
+
+  async runRetention(): Promise<void> {
+    await this.track('retention', async () => {
+      await withMarketSpan('market.worker.retention', {}, async () => {
+        await this.retention.prune();
+      });
     });
   }
 }
