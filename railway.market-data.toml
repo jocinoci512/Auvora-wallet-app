@@ -1,0 +1,84 @@
+# Auvora market-data-prod — dedicated Railway config-as-code.
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` is shared by Nest mesh services. market-data-prod must use
+# an explicit startCommand + dedicated docs so it does not inherit legacy
+# Railpack-style `node services/market-data/dist/main.js` start paths.
+# Create a NEW Railway service named `market-data-prod` and set:
+#   Config as Code path = /railway.market-data.toml
+# Do NOT modify gateway-prod, auth-prods, blockchain-prod, or wallet-prod.
+#
+# Railway service settings (dashboard — create new service, do not deploy from agent):
+#   Service name       = market-data-prod
+#   Repository         = jocinoci512/Auvora-wallet-app
+#   Branch             = main
+#   Root Directory     = blank / "/"
+#   Builder            = Dockerfile (pinned below)
+#   Dockerfile path    = infrastructure/docker/Dockerfile.service (pinned below)
+#   Config as Code     = /railway.market-data.toml
+#   Healthcheck path   = /health (pinned below)
+#   Public networking  = OFF (private mesh only — gateway is the public edge)
+#   Pre-Deploy Command = EMPTY (omit; do not set — no startup migration)
+#   Custom Start Cmd   = MUST be set in [deploy] below.
+#
+# BUILD ARGS — Railway config-as-code does NOT support a `buildArgs` key.
+# Set service Variables SERVICE=market-data and PORT=3012 so Dockerfile.service
+# receives matching ARG values at build time. Expected build log line:
+#   Building @auvora/market-data-service (PORT=3012)
+#
+# REQUIRED non-secret Variables:
+#   SERVICE=market-data
+#   PORT=3012
+#   NODE_ENV=production
+#   LOG_LEVEL=info                       # warn is also acceptable
+#   MARKET_DATA_SIMULATOR_ENABLED=false  # MUST be false — schema default is true;
+#                                        # false guarantees no simulated/fake pricing.
+#   MARKET_DATA_WORKERS_ENABLED=true     # safe on a single replica (in-process
+#                                        # de-dup). See scaling note below.
+#   OTEL_ENABLED=false
+#
+# REQUIRED secret / reference Variables (set in Railway UI; never commit values):
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}   # same Postgres plugin as auth-prods
+#   REDIS_URL=${{Redis.REDIS_URL}}            # same Redis plugin as auth-prods
+#   INTERNAL_API_KEY=<reuse existing shared mesh secret — do not regenerate>
+#   JWT_ACCESS_SECRET=<reuse existing shared JWT access secret>
+#   CSRF_SECRET=<reuse existing shared CSRF secret>
+#   MARKET_DATA_FIELD_ENCRYPTION_KEY=<UNIQUE per-service key; >=32 chars;
+#     generate with `openssl rand -hex 32`; do NOT reuse another service's key>
+#
+# OPTIONAL (leave unset unless needed):
+#   COINGECKO_API_KEY=<CoinGecko Pro/Demo key; sent as x_cg_pro_api_key query param>
+#     → strongly recommended before enabling workers to avoid free-tier 429s.
+#   COINGECKO_BASE_URL   (defaults to https://api.coingecko.com/api/v3)
+#   APP_PUBLIC_URL=https://auvorawallet.com   # CORS only; NOT needed with Public Networking OFF
+#   WALLET_SERVICE_URL=http://${{wallet-prod.RAILWAY_PRIVATE_DOMAIN}}:3002
+#     → only needed for the portfolio-valuation worker; safe to add after wallet-prod is healthy.
+#   NOTIFICATIONS_SERVICE_URL, ANALYTICS_SERVICE_URL, OBSERVABILITY_SERVICE_URL
+#   MARKET_DATA_*_INTERVAL_MS, MARKET_DATA_*_CACHE_TTL_SECONDS,
+#   MARKET_DATA_RATE_LIMIT_WINDOW_SECONDS, MARKET_DATA_RATE_LIMIT_MAX   (all defaulted)
+#
+# FORBIDDEN / NOT NEEDED on market-data-prod:
+#   JWT_REFRESH_SECRET (unused by this service), SMTP_*, CORS_ORIGINS,
+#   ALCHEMY_*, REOWN_*, WC_*, COINCAP_*, DATABASE migration commands,
+#   wallet private keys, mnemonics, seed phrases
+#
+# SCALING NOTE: workers use in-process de-dup only (no distributed Redis lock).
+# Keep market-data-prod at a SINGLE replica while workers are enabled; running
+# multiple replicas would multiply CoinGecko request volume. Add a distributed
+# lock before scaling out, or set MARKET_DATA_WORKERS_ENABLED=false on extra replicas.
+#
+# After market-data-prod is healthy, wire gateway-prod (do not do this now):
+#   MARKET_DATA_SERVICE_URL=http://${{market-data-prod.RAILWAY_PRIVATE_DOMAIN}}:3012
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.service"
+
+[deploy]
+# Explicit override: clears legacy dashboard / Railpack start
+# `node services/market-data/dist/main.js`. Matches Dockerfile.service CMD.
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

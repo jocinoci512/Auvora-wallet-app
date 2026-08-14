@@ -77,9 +77,13 @@ export class TokenMetadataService {
     return withMarketSpan('market.metadata.sync', { provider: this.provider.code }, async () => {
       let count = 0;
       for (const seed of this.simulator.listSeeds()) {
+        // In real mode (simulator disabled) never persist simulator-sourced
+        // metadata; only upsert what the real provider returns.
         const meta =
           (await this.provider.getTokenMetadata(seed.symbol, seed.network)) ??
-          (await this.simulator.getTokenMetadata(seed.symbol, seed.network));
+          (this.env.MARKET_DATA_SIMULATOR_ENABLED
+            ? await this.simulator.getTokenMetadata(seed.symbol, seed.network)
+            : null);
         if (meta) {
           await this.upsert(meta);
           count += 1;

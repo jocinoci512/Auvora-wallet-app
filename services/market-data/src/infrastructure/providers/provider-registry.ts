@@ -20,7 +20,8 @@ export class MarketProviderRegistry implements MarketDataProviderPort {
   readonly name: string;
   private readonly logger = new Logger(MarketProviderRegistry.name);
   private readonly primary: MarketDataProviderPort;
-  private readonly fallback: SimulatorMarketProvider;
+  private readonly simulator: SimulatorMarketProvider;
+  private readonly simulatorEnabled: boolean;
   readonly metrics: MarketMetrics = {
     priceRefreshLatencyMs: [],
     providerLatencyMs: [],
@@ -35,11 +36,14 @@ export class MarketProviderRegistry implements MarketDataProviderPort {
     @Inject(SimulatorMarketProvider) simulator: SimulatorMarketProvider,
     @Inject(CoinGeckoMarketProvider) coingecko: CoinGeckoMarketProvider,
   ) {
-    this.fallback = simulator;
-    this.primary = env.MARKET_DATA_SIMULATOR_ENABLED ? simulator : coingecko;
+    this.simulator = simulator;
+    this.simulatorEnabled = env.MARKET_DATA_SIMULATOR_ENABLED;
+    this.primary = this.simulatorEnabled ? simulator : coingecko;
     this.code = this.primary.code;
     this.name = this.primary.name;
-    this.logger.log(`Market data provider active: ${this.code}`);
+    this.logger.log(
+      `Market data provider active: ${this.code} (simulator=${this.simulatorEnabled})`,
+    );
   }
 
   private async withLatency<T>(fn: () => Promise<T>): Promise<T> {
@@ -55,13 +59,19 @@ export class MarketProviderRegistry implements MarketDataProviderPort {
     try {
       return await this.withLatency(() => fn(this.primary));
     } catch (error) {
-      if (this.primary.code === this.fallback.code) throw error;
+      // Never serve simulated/fake market data in production. When the simulator
+      // is disabled (real mode), surface the provider failure instead of masking
+      // it with fake prices. The simulator is only used as a fallback in dev,
+      // where it is already the primary provider anyway.
+      if (!this.simulatorEnabled || this.primary.code === this.simulator.code) {
+        throw error;
+      }
       this.logger.warn(
         `Primary provider failed, falling back to simulator: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      return this.withLatency(() => fn(this.fallback));
+      return this.withLatency(() => fn(this.simulator));
     }
   }
 
