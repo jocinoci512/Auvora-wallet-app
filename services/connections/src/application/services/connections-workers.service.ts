@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   Inject,
   Injectable,
@@ -12,10 +13,15 @@ import { REDIS_PORT, type RedisPort } from '../../infrastructure/redis/redis.por
 import { ID_GENERATOR, type IdGeneratorPort } from '../ports/clock.port';
 import { DappPlatformService } from './dapp-platform.service';
 
+// Lock TTL guards against a crashed replica: long enough for a normal run,
+// short enough that a dead owner's lock frees promptly. Also released explicitly.
+const WORKER_LOCK_TTL_MS = 60_000;
+
 @Injectable()
 export class ConnectionsWorkersService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ConnectionsWorkersService.name);
   private timers: NodeJS.Timeout[] = [];
+  private readonly running = new Set<string>();
 
   constructor(
     @Inject(ENV) private readonly env: ServiceEnv,
@@ -65,7 +71,34 @@ export class ConnectionsWorkersService implements OnModuleInit, OnModuleDestroy 
     };
   }
 
+  /**
+   * Run a worker body at most once concurrently across the whole fleet:
+   * in-process guard (layer 1) + Redis distributed lock (layer 2). Skips the run
+   * when another tick/replica already holds the lock.
+   */
+  private async withLock(name: string, fn: () => Promise<void>): Promise<void> {
+    if (this.running.has(name)) return;
+    this.running.add(name);
+    const lockKey = `connections:lock:worker:${name}`;
+    const token = randomUUID();
+    let locked = false;
+    try {
+      locked = await this.redis.acquireLock(lockKey, token, WORKER_LOCK_TTL_MS);
+      if (!locked) return;
+      await fn();
+    } finally {
+      if (locked) await this.redis.releaseLock(lockKey, token);
+      this.running.delete(name);
+    }
+  }
+
   private async recordJob(jobType: string, fn: () => Promise<void>) {
+    await this.withLock(jobType, async () => {
+      await this.recordJobInner(jobType, fn);
+    });
+  }
+
+  private async recordJobInner(jobType: string, fn: () => Promise<void>) {
     const started = Date.now();
     const id = this.ids.uuid();
     await this.prisma.connectionSyncJob.create({
@@ -163,6 +196,10 @@ export class ConnectionsWorkersService implements OnModuleInit, OnModuleDestroy 
   }
 
   private async healthTick() {
+    await this.withLock('PROVIDER_HEALTH', async () => this.healthTickInner());
+  }
+
+  private async healthTickInner() {
     try {
       await this.redis.set('connections:worker:health', new Date().toISOString(), 120);
       for (const p of this.registry.listProviders()) {

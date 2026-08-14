@@ -62,3 +62,9 @@ export class ConnectionsReplayError extends DomainError {
     super(message, 'CONNECTIONS_REPLAY', 409);
   }
 }
+
+export class ConnectionsRateLimitError extends DomainError {
+  constructor(message = 'Too many requests') {
+    super(message, 'CONNECTIONS_RATE_LIMIT', 429);
+  }
+}

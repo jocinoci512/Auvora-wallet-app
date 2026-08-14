@@ -11,6 +11,7 @@ import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './guards/jwt.strategy';
 import { PermissionsGuard } from './guards/permissions.guard';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { HealthController } from './http/health.controller';
 import { ObservabilityMetricsInterceptor } from './interceptors/observability-metrics.interceptor';
@@ -32,6 +33,7 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
     JwtStrategy,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

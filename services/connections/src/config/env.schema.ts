@@ -30,6 +30,8 @@ export const envSchema = z.object({
   CONNECTIONS_SYNC_INTERVAL_MS: z.coerce.number().int().positive().default(90_000),
   CONNECTIONS_RETRY_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
   CONNECTIONS_HEALTH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  CONNECTIONS_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  CONNECTIONS_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   WALLET_SERVICE_URL: z.string().url().optional(),
   BLOCKCHAIN_SERVICE_URL: z.string().url().optional(),
   NFT_SERVICE_URL: z.string().url().optional(),
@@ -47,10 +49,21 @@ export const envSchema = z.object({
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().default('http://localhost:4318'),
 });
 
+const envSchemaChecked = envSchema.superRefine((data, ctx) => {
+  // Never allow the simulator/fake connection provider in production.
+  if (data.NODE_ENV === 'production' && data.CONNECTIONS_SIMULATOR_ENABLED) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['CONNECTIONS_SIMULATOR_ENABLED'],
+      message: 'CONNECTIONS_SIMULATOR_ENABLED must be false when NODE_ENV=production',
+    });
+  }
+});
+
 export type ServiceEnv = z.infer<typeof envSchema>;
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
-  const parsed = envSchema.safeParse(source);
+  const parsed = envSchemaChecked.safeParse(source);
   if (!parsed.success) {
     const details = parsed.error.issues
       .map((issue) => `${issue.path.join('.')}: ${issue.message}`)

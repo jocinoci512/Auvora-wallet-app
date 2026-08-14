@@ -1,0 +1,82 @@
+# Auvora connections-prod — dedicated Railway config-as-code.
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` is shared by Nest mesh services. connections-prod must use
+# an explicit startCommand + dedicated docs so it does not inherit legacy
+# Railpack-style `node services/connections/dist/main.js` start paths.
+# Create a NEW Railway service named `connections-prod` and set:
+#   Config as Code path = /railway.connections.toml
+# Do NOT modify gateway-prod, auth-prods, blockchain-prod, wallet-prod, or market-data-prod.
+#
+# Railway service settings (dashboard — create new service, do not deploy from agent):
+#   Service name       = connections-prod
+#   Repository         = jocinoci512/Auvora-wallet-app
+#   Branch             = main
+#   Root Directory     = blank / "/"
+#   Builder            = Dockerfile (pinned below)
+#   Dockerfile path    = infrastructure/docker/Dockerfile.service (pinned below)
+#   Config as Code     = /railway.connections.toml
+#   Healthcheck path   = /health (pinned below)
+#   Public networking  = OFF (private mesh only — gateway is the public edge)
+#   Pre-Deploy Command = EMPTY (omit; no startup migration)
+#   Custom Start Cmd   = leave EMPTY so the Config-as-Code startCommand applies.
+#   Replicas           = 1 for first boot (workers are Redis-lock + in-process safe for >1).
+#
+# BUILD ARGS — Railway config-as-code does NOT support a `buildArgs` key.
+# Set service Variables SERVICE=connections and PORT=3016 so Dockerfile.service
+# receives matching ARG values at build time. Expected build log line:
+#   Building @auvora/connections-service (PORT=3016)
+#
+# REQUIRED non-secret Variables:
+#   SERVICE=connections
+#   PORT=3016
+#   NODE_ENV=production
+#   LOG_LEVEL=info
+#   CONNECTIONS_SIMULATOR_ENABLED=false   # MUST be false; production boot HARD-REJECTS
+#                                         # CONNECTIONS_SIMULATOR_ENABLED=true.
+#   CONNECTIONS_WORKERS_ENABLED=true      # safe on first boot: workers make no external
+#                                         # provider HTTP calls (Redis + Postgres only) and
+#                                         # use an in-process guard + Redis distributed lock.
+#   OTEL_ENABLED=false
+#
+# REQUIRED secret / reference Variables (set in Railway UI; never commit values):
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}   # same Postgres plugin as the rest of the mesh
+#   REDIS_URL=${{Redis.REDIS_URL}}            # same Redis plugin as the rest of the mesh
+#   INTERNAL_API_KEY=<reuse existing shared mesh secret — do not regenerate>
+#   JWT_ACCESS_SECRET=<reuse existing shared JWT access secret>
+#   CSRF_SECRET=<reuse existing shared CSRF secret>
+#   CONNECTIONS_FIELD_ENCRYPTION_KEY=<UNIQUE per-service key; >=32 chars;
+#     generate with `openssl rand -hex 32`; do NOT reuse another service's key>
+#
+# OPTIONAL (leave unset unless needed; all defaulted):
+#   APP_PUBLIC_URL (CORS only; not needed with Public Networking OFF)
+#   CONNECTIONS_PROVIDER_TIMEOUT_MS, CONNECTIONS_SESSION_TTL_SECONDS,
+#   CONNECTIONS_SIGN_TIMEOUT_SECONDS, CONNECTIONS_*_INTERVAL_MS,
+#   CONNECTIONS_RATE_LIMIT_WINDOW_SECONDS=60, CONNECTIONS_RATE_LIMIT_MAX=120
+#     (service-level Redis rate-limit guard; keyed by user/IP; health + internal exempt),
+#   WALLET_SERVICE_URL, BLOCKCHAIN_SERVICE_URL, NFT_SERVICE_URL, MARKET_DATA_SERVICE_URL,
+#   SWAP_SERVICE_URL, STAKING_SERVICE_URL, NOTIFICATIONS_SERVICE_URL, ANALYTICS_SERVICE_URL,
+#   AI_SERVICE_URL, OBSERVABILITY_SERVICE_URL   (optional cross-service integrations)
+#
+# FORBIDDEN / NOT NEEDED on connections-prod:
+#   JWT_REFRESH_SECRET (unused by this service), REOWN_* / WC_* / WALLETCONNECT_* server
+#   secrets (WalletConnect/Reown are client-side only — the server never needs a project id
+#   or relay secret), ALCHEMY_*, SMTP_*, CORS_ORIGINS,
+#   wallet private keys, mnemonics, seed phrases, server-side signing keys.
+#   (This service stores NO private keys and performs NO server-side user signing.)
+#
+# After connections-prod is healthy, wire gateway-prod (do not do this now):
+#   CONNECTIONS_SERVICE_URL=http://${{connections-prod.RAILWAY_PRIVATE_DOMAIN}}:3016
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.service"
+
+[deploy]
+# Explicit override: clears legacy dashboard / Railpack start
+# `node services/connections/dist/main.js`. Matches Dockerfile.service CMD.
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

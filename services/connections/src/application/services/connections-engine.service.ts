@@ -68,6 +68,15 @@ export class ConnectionsEngineService {
   async pairDevice(userId: string, deviceId: string) {
     const started = Date.now();
     const paired = await this.providers.pairDevice(deviceId);
+    // `deviceId` is globally unique; never let one user's pairing mutate another
+    // user's device record (cross-user IDOR).
+    const existing = await this.prisma.hardwareDevice.findUnique({
+      where: { deviceId: paired.deviceId },
+      select: { userId: true },
+    });
+    if (existing && existing.userId !== userId) {
+      throw new ConnectionsValidationError('Device is already paired to another account');
+    }
     const device = await this.prisma.hardwareDevice.upsert({
       where: { deviceId: paired.deviceId },
       create: {
