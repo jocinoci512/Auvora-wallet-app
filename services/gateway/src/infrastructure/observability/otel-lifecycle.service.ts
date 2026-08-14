@@ -1,4 +1,4 @@
-import { BeforeApplicationShutdown, Injectable } from '@nestjs/common';
+import { type BeforeApplicationShutdown, Injectable } from '@nestjs/common';
 import { shutdownOpenTelemetry } from '../observability/otel';
 
 /** Nest shutdown hook — closes OTEL without duplicate process.signal handlers in main.ts. */

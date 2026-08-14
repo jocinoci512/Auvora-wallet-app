@@ -15,7 +15,9 @@ export class RateLimitGuard implements CanActivate {
   constructor(
     @Inject(ENV) private readonly env: ServiceEnv,
     @Inject(RATE_LIMITER) private readonly rateLimiter: RateLimiterPort,
-    private readonly reflector: Reflector,
+    // Explicit token keeps `Reflector` a value import (required for DI metadata)
+    // and satisfies @typescript-eslint/consistent-type-imports.
+    @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

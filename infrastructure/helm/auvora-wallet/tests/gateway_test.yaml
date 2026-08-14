@@ -35,9 +35,24 @@ tests:
           enabled: false
         observability:
           enabled: false
+        market-data:
+          enabled: false
+        swap:
+          enabled: false
+        nft:
+          enabled: false
+        staking:
+          enabled: false
+        connections:
+          enabled: false
+        bridge:
+          enabled: false
     asserts:
+      # gateway-only, rolling strategy renders, in template order:
+      #   0 ServiceAccount, 1 Deployment, 2 Service, 3 HPA, 4 PDB, 5 NetworkPolicy.
+      # Disable every non-gateway service above (set merges with values.yaml).
       - hasDocuments:
-          count: 5
+          count: 6
       - equal:
           path: metadata.name
           value: gateway
@@ -65,8 +80,11 @@ tests:
           of: HorizontalPodAutoscaler
         documentIndex: 3
       - isKind:
-          of: NetworkPolicy
+          of: PodDisruptionBudget
         documentIndex: 4
+      - isKind:
+          of: NetworkPolicy
+        documentIndex: 5
 
   - it: should render blue-green slot deployment name
     set:
@@ -104,12 +122,26 @@ tests:
           enabled: false
         observability:
           enabled: false
+        market-data:
+          enabled: false
+        swap:
+          enabled: false
+        nft:
+          enabled: false
+        staking:
+          enabled: false
+        connections:
+          enabled: false
+        bridge:
+          enabled: false
     asserts:
+      # Deployment (doc 1) is named for the release slot; the stable Service
+      # (doc 2) routes traffic to the active slot via spec.selector.
       - equal:
           path: metadata.name
           value: gateway-green
         documentIndex: 1
       - equal:
-          path: spec.selector.matchLabels["auvora.io/slot"]
+          path: spec.selector["auvora.io/slot"]
           value: blue
         documentIndex: 2

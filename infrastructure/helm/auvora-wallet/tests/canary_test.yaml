@@ -37,9 +37,26 @@ tests:
           enabled: false
         observability:
           enabled: false
+        market-data:
+          enabled: false
+        swap:
+          enabled: false
+        nft:
+          enabled: false
+        staking:
+          enabled: false
+        connections:
+          enabled: false
+        bridge:
+          enabled: false
     asserts:
+      # gateway-only, canary strategy renders, in template order:
+      #   0 ServiceAccount, 1 Deployment (gateway/stable), 2 Deployment (gateway-canary),
+      #   3 Service (gateway-canary), 4 Service (gateway/stable), 5 HPA, 6 PDB, 7 NetworkPolicy.
+      # NOTE: every non-gateway service must be disabled above (set merges with values.yaml),
+      # otherwise additional services render and shift these indices.
       - hasDocuments:
-          count: 7
+          count: 8
       - equal:
           path: metadata.name
           value: gateway
