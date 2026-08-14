@@ -98,6 +98,13 @@ const PERMISSIONS: Array<{ code: string; description: string }> = [
   { code: 'bridge:read', description: 'Read bridge quotes, routes, and history' },
   { code: 'bridge:execute', description: 'Prepare and confirm cross-chain bridge transfers' },
   { code: 'bridge:admin', description: 'Administer bridge providers, routes, and workers' },
+  { code: 'market-data:read', description: 'Read market prices, charts, trending, and overviews' },
+  { code: 'market-data:write', description: 'Manage watchlists and market-data preferences' },
+  {
+    code: 'market-data:admin',
+    description: 'Administer market-data providers, cache, and workers',
+  },
+  { code: 'market-data:alerts', description: 'Create and manage market price alerts' },
 ];
 
 const USER_WALLET_PERMISSION_CODES = [
@@ -135,6 +142,9 @@ const USER_WALLET_PERMISSION_CODES = [
   'connections:write',
   'bridge:read',
   'bridge:execute',
+  'market-data:read',
+  'market-data:write',
+  'market-data:alerts',
 ] as const;
 
 const NETWORK_CONFIGS: Array<{
