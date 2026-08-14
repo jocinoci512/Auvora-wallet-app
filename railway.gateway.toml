@@ -38,10 +38,10 @@
 #   NODE_ENV=production
 #   LOG_LEVEL=warn
 #   AUTH_SERVICE_URL=http://${{auth-prods.RAILWAY_PRIVATE_DOMAIN}}:4001
-#   WALLET_SERVICE_URL=http://${{wallet.RAILWAY_PRIVATE_DOMAIN}}:3002
-#   BLOCKCHAIN_SERVICE_URL=http://${{blockchain.RAILWAY_PRIVATE_DOMAIN}}:3003
-#   MARKET_DATA_SERVICE_URL=http://${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}:3012
-#   CONNECTIONS_SERVICE_URL=http://${{connections.RAILWAY_PRIVATE_DOMAIN}}:3016
+#   WALLET_SERVICE_URL=http://${{wallet-prod.RAILWAY_PRIVATE_DOMAIN}}:3002
+#   BLOCKCHAIN_SERVICE_URL=http://${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003
+#   MARKET_DATA_SERVICE_URL=http://${{ "market-data-prod".RAILWAY_PRIVATE_DOMAIN }}:3012
+#   CONNECTIONS_SERVICE_URL=http://${{connections-prod.RAILWAY_PRIVATE_DOMAIN}}:3016
 #   CORS_ORIGINS=https://auvorawallet.com,https://www.auvorawallet.com
 #   GATEWAY_RATE_LIMIT_MAX=400
 #   GATEWAY_RATE_LIMIT_WINDOW_SECONDS=60
@@ -53,7 +53,7 @@
 #   - Do NOT set empty string values (VAR="") for unused keys — leave them unset.
 #   - Do NOT set DATABASE_URL / REDIS_URL / JWT_* on gateway-prod.
 #   - Hyphenated Railway service names MUST be quoted in template refs:
-#       http://${{ "market-data".RAILWAY_PRIVATE_DOMAIN }}:3012
+#       http://${{ "market-data-prod".RAILWAY_PRIVATE_DOMAIN }}:3012
 #   - Only set *_SERVICE_URL for services that EXIST and have been deployed at
 #     least once (so RAILWAY_PRIVATE_DOMAIN is non-empty). Broken refs become
 #     http://:PORT — AUTH still fails hard; other upstreams fall back to
@@ -64,6 +64,10 @@
 #   - Public networking: leave OFF until GET /health returns 200, then enable
 #     for client traffic (gateway is the only public Nest edge).
 #   - Auth service reference must be auth-prods (healthy), not auth / auth-v2.
+#   - All upstream refs MUST target the production services (auth-prods, wallet-prod,
+#     blockchain-prod, market-data-prod, connections-prod) — never the legacy
+#     unsuffixed names (wallet, blockchain, market-data, connections), which do not
+#     resolve and would silently fall back to localhost in production.
 #
 # Gateway does NOT need: DATABASE_URL, REDIS_URL, JWT_*, CSRF_SECRET, SMTP_*,
 # ALCHEMY_*, WC_PROJECT_ID, Reown secrets, wallet private keys, seed phrases.
