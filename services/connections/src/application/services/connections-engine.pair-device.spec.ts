@@ -45,7 +45,9 @@ function build(existingOwnerUserId: string | null) {
   const analytics = { publishEvent: jest.fn() };
   const notifications = { publishEvent: jest.fn() };
   const ai = { publishEvent: jest.fn() };
+  const env = { CONNECTIONS_SIGN_TIMEOUT_SECONDS: 120 } as never;
   const engine = new ConnectionsEngineService(
+    env,
     prisma as never,
     providers as never,
     clock as never,

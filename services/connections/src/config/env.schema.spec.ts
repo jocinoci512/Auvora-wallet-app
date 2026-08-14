@@ -37,4 +37,24 @@ describe('connections env schema', () => {
       /Invalid environment configuration/,
     );
   });
+
+  it('defaults CONNECTIONS_SIGN_TIMEOUT_SECONDS to 120 and accepts a configured value', () => {
+    expect(loadEnv({ ...base } as never).CONNECTIONS_SIGN_TIMEOUT_SECONDS).toBe(120);
+    expect(
+      loadEnv({ ...base, CONNECTIONS_SIGN_TIMEOUT_SECONDS: '300' } as never)
+        .CONNECTIONS_SIGN_TIMEOUT_SECONDS,
+    ).toBe(300);
+  });
+
+  it('rejects an invalid CONNECTIONS_SIGN_TIMEOUT_SECONDS (fails safely, no silent 0/negative)', () => {
+    expect(() => loadEnv({ ...base, CONNECTIONS_SIGN_TIMEOUT_SECONDS: '0' } as never)).toThrow(
+      /Invalid environment configuration/,
+    );
+    expect(() => loadEnv({ ...base, CONNECTIONS_SIGN_TIMEOUT_SECONDS: '-5' } as never)).toThrow(
+      /Invalid environment configuration/,
+    );
+    expect(() => loadEnv({ ...base, CONNECTIONS_SIGN_TIMEOUT_SECONDS: 'abc' } as never)).toThrow(
+      /Invalid environment configuration/,
+    );
+  });
 });

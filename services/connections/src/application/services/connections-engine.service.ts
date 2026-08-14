@@ -36,6 +36,7 @@ import {
   FIELD_ENCRYPTION,
   type FieldEncryptionPort,
 } from '../../infrastructure/crypto/field-encryption.adapter';
+import { ENV, type ServiceEnv } from '../../config/env.schema';
 
 function redactWalletConnectSecrets(value?: string | null): string | null | undefined {
   if (value == null) return value;
@@ -47,6 +48,7 @@ export class ConnectionsEngineService {
   private readonly logger = new Logger(ConnectionsEngineService.name);
 
   constructor(
+    @Inject(ENV) private readonly env: ServiceEnv,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(CONNECTION_PROVIDER) private readonly providers: ConnectionProviderPort,
     @Inject(CLOCK) private readonly clock: ClockPort,
@@ -530,6 +532,23 @@ export class ConnectionsEngineService {
     },
   ) {
     if (input.kind === 'READONLY') throw new ConnectionsSigningNotAllowedError();
+    // Ownership (defense-in-depth IDOR): the supplied connectionRef must resolve to
+    // an ACTIVE, signable connection owned by the authenticated user. The DB query
+    // is scoped by both userId and externalRef (never a global lookup checked late),
+    // so a manually-supplied connectionRef belonging to another user — or a
+    // revoked/disconnected connection — is rejected without leaking its existence.
+    const connection = await this.prisma.externalWalletConnection.findFirst({
+      where: {
+        userId,
+        externalRef: input.connectionRef,
+        kind: input.kind,
+        status: 'CONNECTED',
+      },
+      select: { id: true, canSign: true },
+    });
+    if (!connection || !connection.canSign) {
+      throw new ConnectionsNotFoundError('Active signable connection not found');
+    }
     const started = Date.now();
     const prepared = await this.providers.prepareSign(input);
     if (!prepared.simulationOk) {
@@ -565,8 +584,34 @@ export class ConnectionsEngineService {
       where: { id: requestId, userId },
     });
     if (!request) throw new ConnectionsNotFoundError('Sign request not found');
+    // Status gating enforces single-use: only a PENDING_CONFIRMATION request may be
+    // confirmed. Anything already COMPLETED/FAILED/REJECTED/EXPIRED/CANCELLED cannot
+    // be replayed.
     if (request.status !== 'PENDING_CONFIRMATION' || !request.providerRequestId) {
       throw new ConnectionsValidationError('Request is not awaiting confirmation');
+    }
+    // Expiry enforcement (CONNECTIONS_SIGN_TIMEOUT_SECONDS): computed from the DB
+    // creation timestamp so it is deterministic and not client-controllable. An
+    // expired request is moved to the terminal EXPIRED state and can NEVER reach the
+    // provider or transition to COMPLETED — this both enforces the timeout and blocks
+    // replay after expiry.
+    const expiresAt =
+      request.createdAt.getTime() + this.env.CONNECTIONS_SIGN_TIMEOUT_SECONDS * 1000;
+    if (this.clock.now().getTime() >= expiresAt) {
+      await this.prisma.externalSigningRequest.update({
+        where: { id: request.id },
+        data: {
+          status: 'EXPIRED',
+          errorMessage: 'Sign request expired before confirmation',
+          completedAt: this.clock.now(),
+        },
+      });
+      void this.analytics.publishEvent({
+        eventType: CONNECTIONS_EVENTS.SIGN_FAILED,
+        aggregateId: request.id,
+        payload: { userId, expired: true },
+      });
+      throw new ConnectionsValidationError('Sign request expired');
     }
     const started = Date.now();
     const result = await this.providers.completeSign(request.providerRequestId, confirmed);
