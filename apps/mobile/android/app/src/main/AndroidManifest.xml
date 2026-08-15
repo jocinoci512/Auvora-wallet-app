@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- No OS notifications are posted (no notification SDK; only local in-app
+         preference toggles). Strip POST_NOTIFICATIONS from the merged manifest so
+         the release requests only genuinely-used permissions. Re-add when/if push
+         or local notifications are implemented. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove"/>
     <application
         android:label="Auvora Wallet"
         android:name="${applicationName}"
