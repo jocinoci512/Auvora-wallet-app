@@ -16,6 +16,8 @@ import { RolesGuard } from './guards/roles.guard';
 import { HealthController } from './http/health.controller';
 import { ObservabilityMetricsInterceptor } from './interceptors/observability-metrics.interceptor';
 import { RequestContextMiddleware } from './middleware/request-context.middleware';
+import { RealtimeController } from './realtime/realtime.controller';
+import { RealtimeHubService } from './realtime/realtime-hub.service';
 
 @Module({
   imports: [
@@ -29,9 +31,11 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
     MeController,
     AdminUsersController,
     AdminAuditController,
+    RealtimeController,
   ],
   providers: [
     JwtStrategy,
+    RealtimeHubService,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },

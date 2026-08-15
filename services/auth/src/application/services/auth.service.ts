@@ -50,6 +50,11 @@ import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
 } from '../../infrastructure/analytics/analytics-publisher.adapter';
+import {
+  ADMIN_EVENT_PUBLISHER,
+  type AdminEventPublisherPort,
+} from '../ports/admin-event-publisher.port';
+import type { AdminEventInput } from '../../domain';
 
 export interface RequestContext {
   ipAddress?: string;
@@ -125,7 +130,13 @@ export class AuthService {
     @Inject(CLOCK) private readonly clock: ClockPort,
     @Inject(ID_GENERATOR) private readonly ids: IdGeneratorPort,
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
+    @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
   ) {}
+
+  /** Fire-and-forget safe admin realtime emit; never throws into a domain flow. */
+  private emitAdminEvent(input: AdminEventInput): void {
+    void this.adminEvents.publish(input).catch(() => undefined);
+  }
 
   private readonly logger = new Logger(AuthService.name);
 
@@ -178,6 +189,13 @@ export class AuthService {
       targetUserId: user.id,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
+    });
+
+    this.emitAdminEvent({
+      type: 'USER_CREATED',
+      service: 'auth',
+      userId: user.id,
+      metadata: { username },
     });
 
     return { userId: user.id, message: 'Registration successful. Please verify your email.' };
@@ -309,6 +327,31 @@ export class AuthService {
       payload: { sessionId: session.id, deviceId: device.id },
     });
 
+    const loginPlatform = (input.devicePlatform ?? 'web').trim().toLowerCase();
+    this.emitAdminEvent({
+      type: 'USER_LOGIN',
+      service: 'auth',
+      userId: user.id,
+      platform: loginPlatform,
+      metadata: { sessionId: session.id, deviceId: device.id, newDevice: isNewDevice },
+    });
+    this.emitAdminEvent({
+      type: 'SESSION_CREATED',
+      service: 'auth',
+      userId: user.id,
+      targetId: session.id,
+      platform: loginPlatform,
+    });
+    if (isNewDevice) {
+      this.emitAdminEvent({
+        type: 'DEVICE_REGISTERED',
+        service: 'auth',
+        userId: user.id,
+        targetId: device.id,
+        platform: loginPlatform,
+      });
+    }
+
     if (isNewDevice) {
       await this.sendSecurityMail(
         user.email,
@@ -423,6 +466,20 @@ export class AuthService {
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       metadata: { sessionId },
+    });
+
+    this.emitAdminEvent({
+      type: 'USER_LOGOUT',
+      service: 'auth',
+      userId,
+      targetId: sessionId,
+    });
+    this.emitAdminEvent({
+      type: 'SESSION_REVOKED',
+      service: 'auth',
+      userId,
+      targetId: sessionId,
+      metadata: { reason: 'logout' },
     });
 
     return { message: 'Logged out successfully' };
@@ -627,6 +684,15 @@ export class AuthService {
       metadata: { sessionId },
     });
 
+    this.emitAdminEvent({
+      type: 'SESSION_REVOKED',
+      service: 'auth',
+      userId,
+      targetId: sessionId,
+      severity: 'warning',
+      metadata: { reason: 'revoked' },
+    });
+
     const sessionUser = await this.users.findById(userId);
     if (sessionUser) {
       await this.sendSecurityMail(sessionUser.email, buildSessionRevokedNotice());
@@ -670,6 +736,14 @@ export class AuthService {
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       metadata: { deviceId },
+    });
+
+    this.emitAdminEvent({
+      type: 'DEVICE_REVOKED',
+      service: 'auth',
+      userId,
+      targetId: deviceId,
+      severity: 'warning',
     });
 
     return { message: 'Device revoked' };
@@ -750,6 +824,13 @@ export class AuthService {
       userAgent: ctx.userAgent,
       metadata: { status },
     });
+    this.emitAdminEvent({
+      type: 'ACCOUNT_STATUS_CHANGED',
+      service: 'auth',
+      userId,
+      severity: status === UserStatus.Active ? 'info' : 'warning',
+      metadata: { status: String(status) },
+    });
     return this.toProfile(user);
   }
 
@@ -802,6 +883,13 @@ export class AuthService {
       userAgent: ctx.userAgent,
       metadata: { roles: roleNames },
     });
+    this.emitAdminEvent({
+      type: 'SECURITY_EVENT',
+      service: 'auth',
+      userId,
+      severity: 'warning',
+      metadata: { action: 'roles_updated', roles: roleNames },
+    });
     return this.toProfile(user);
   }
 
@@ -818,6 +906,13 @@ export class AuthService {
       targetUserId: userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
+      metadata: { forced: true, revoked },
+    });
+    this.emitAdminEvent({
+      type: 'SESSION_REVOKED',
+      service: 'auth',
+      userId,
+      severity: 'warning',
       metadata: { forced: true, revoked },
     });
     return { revoked };
@@ -854,6 +949,13 @@ export class AuthService {
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       metadata: { enabled },
+    });
+    this.emitAdminEvent({
+      type: 'SECURITY_EVENT',
+      service: 'auth',
+      userId,
+      severity: 'warning',
+      metadata: { action: 'mfa_toggled', enabled },
     });
     return this.toProfile(user);
   }
@@ -950,5 +1052,12 @@ export class AuthService {
         metadata: { reason },
       });
     }
+    this.emitAdminEvent({
+      type: 'SECURITY_EVENT',
+      service: 'auth',
+      userId,
+      severity: 'warning',
+      metadata: { action: 'login_failure', reason },
+    });
   }
 }

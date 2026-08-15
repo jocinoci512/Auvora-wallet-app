@@ -73,6 +73,19 @@ export const envSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+    /** Admin realtime (SSE) hub tuning. Safe defaults; browser never touches Redis. */
+    ADMIN_REALTIME_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    /** Max concurrent SSE connections a single admin identity may hold. */
+    ADMIN_REALTIME_MAX_PER_ADMIN: z.coerce.number().int().positive().max(100).default(5),
+    /** Global cap on concurrent SSE connections for this process. */
+    ADMIN_REALTIME_MAX_GLOBAL: z.coerce.number().int().positive().max(100000).default(500),
+    /** Heartbeat/keep-alive interval (ms) written to every open SSE stream. */
+    ADMIN_REALTIME_HEARTBEAT_MS: z.coerce.number().int().positive().default(15000),
+    /** Per-client bounded outbound buffer (events) before slow clients are dropped. */
+    ADMIN_REALTIME_CLIENT_BUFFER: z.coerce.number().int().positive().max(10000).default(200),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production' && !data.COOKIE_SECURE) {

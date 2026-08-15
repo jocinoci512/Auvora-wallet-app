@@ -29,6 +29,7 @@ function createAuthService(deps: {
   clock?: Record<string, jest.Mock>;
   ids?: Record<string, jest.Mock>;
   analytics?: Record<string, jest.Mock>;
+  adminEvents?: Record<string, jest.Mock>;
 }): AuthService {
   const users = {
     findByEmail: jest.fn(),
@@ -86,6 +87,7 @@ function createAuthService(deps: {
     }) as never,
     (deps.ids ?? { uuid: jest.fn().mockReturnValue('family-uuid') }) as never,
     (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
+    (deps.adminEvents ?? { publish: jest.fn().mockResolvedValue(undefined) }) as never,
   );
 }
 
@@ -660,5 +662,104 @@ describe('AuthService Phase 1 — admin platform/counts + serialization', () => 
         'username',
       ].sort(),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 2: admin realtime event emission at lifecycle points.
+// ---------------------------------------------------------------------------
+describe('AuthService Phase 2 — admin realtime events', () => {
+  function published(adminEvents: { publish: jest.Mock }): Array<Record<string, unknown>> {
+    return adminEvents.publish.mock.calls.map((c) => c[0] as Record<string, unknown>);
+  }
+
+  it('emits USER_CREATED on registration (no secrets)', async () => {
+    const adminEvents = { publish: jest.fn().mockResolvedValue(undefined) };
+    const users = {
+      findByEmail: jest.fn().mockResolvedValue(null),
+      findByUsername: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ id: 'user-9', email: 'z@b.com' }),
+      createEmailVerificationToken: jest.fn(),
+    };
+    const service = createAuthService({ users, adminEvents });
+
+    await service.register(
+      { email: 'z@b.com', username: 'zoe', password: 'SecurePass1!' },
+      { ipAddress: '127.0.0.1' },
+    );
+
+    const events = published(adminEvents);
+    const created = events.find((e) => e.type === 'USER_CREATED');
+    expect(created).toMatchObject({ type: 'USER_CREATED', userId: 'user-9' });
+    expect(JSON.stringify(events)).not.toContain('SecurePass1!');
+  });
+
+  it('emits USER_LOGIN with platform=android and SESSION_CREATED on login', async () => {
+    const adminEvents = { publish: jest.fn().mockResolvedValue(undefined) };
+    const users = {
+      findByEmail: jest.fn().mockResolvedValue(fullUser()),
+      resetFailedLogin: jest.fn(),
+      updateLastLogin: jest.fn(),
+    };
+    const passwordHasher = { hash: jest.fn(), verify: jest.fn().mockResolvedValue(true) };
+    const devices = {
+      upsert: jest.fn().mockResolvedValue({ id: 'device-1' }),
+      findByFingerprint: jest.fn().mockResolvedValue(null),
+    };
+    const sessions = { create: jest.fn().mockResolvedValue({ id: 'session-1' }) };
+    const service = createAuthService({ users, passwordHasher, devices, sessions, adminEvents });
+
+    await service.login(
+      {
+        email: 'a@b.com',
+        password: 'SecurePass1!',
+        deviceFingerprint: 'fp-12345678',
+        devicePlatform: 'android',
+      },
+      { ipAddress: '10.0.0.1' },
+    );
+
+    const events = published(adminEvents);
+    const login = events.find((e) => e.type === 'USER_LOGIN');
+    expect(login).toMatchObject({ type: 'USER_LOGIN', userId: 'user-1', platform: 'android' });
+    expect(events.some((e) => e.type === 'SESSION_CREATED')).toBe(true);
+    // New device on first login → DEVICE_REGISTERED.
+    expect(events.some((e) => e.type === 'DEVICE_REGISTERED')).toBe(true);
+  });
+
+  it('emits ACCOUNT_STATUS_CHANGED on admin status update', async () => {
+    const adminEvents = { publish: jest.fn().mockResolvedValue(undefined) };
+    const users = {
+      updateStatus: jest.fn().mockResolvedValue(fullUser({ status: UserStatus.Suspended })),
+    };
+    const service = createAuthService({ users, adminEvents });
+
+    await service.adminUpdateStatus('admin-1', 'user-1', UserStatus.Suspended, {});
+
+    const changed = published(adminEvents).find((e) => e.type === 'ACCOUNT_STATUS_CHANGED');
+    expect(changed).toMatchObject({ type: 'ACCOUNT_STATUS_CHANGED', userId: 'user-1' });
+  });
+
+  it('does not throw into the login flow when the publisher rejects', async () => {
+    const adminEvents = { publish: jest.fn().mockRejectedValue(new Error('redis down')) };
+    const users = {
+      findByEmail: jest.fn().mockResolvedValue(fullUser()),
+      resetFailedLogin: jest.fn(),
+      updateLastLogin: jest.fn(),
+    };
+    const passwordHasher = { hash: jest.fn(), verify: jest.fn().mockResolvedValue(true) };
+    const devices = {
+      upsert: jest.fn().mockResolvedValue({ id: 'device-1' }),
+      findByFingerprint: jest.fn().mockResolvedValue(null),
+    };
+    const sessions = { create: jest.fn().mockResolvedValue({ id: 'session-1' }) };
+    const service = createAuthService({ users, passwordHasher, devices, sessions, adminEvents });
+
+    await expect(
+      service.login(
+        { email: 'a@b.com', password: 'SecurePass1!', deviceFingerprint: 'fp-12345678' },
+        {},
+      ),
+    ).resolves.toMatchObject({ accessToken: 'access-token' });
   });
 });
