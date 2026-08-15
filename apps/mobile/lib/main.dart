@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'account/account_controller.dart';
 import 'connections/connections_controller.dart';
 import 'connections/deep_link_router.dart';
 import 'connections/wallet_connect_bootstrap.dart';
@@ -259,6 +260,15 @@ class _AuvoraAppState extends State<AuvoraApp> {
             ..attachConnections(connections),
         ),
         ChangeNotifierProvider(create: (_) => AddressBookStore()),
+        // Auvora account (backend identity) — separate from the on-device wallet.
+        ChangeNotifierProvider(
+          create: (_) {
+            final c = AccountController();
+            // ignore: discarded_futures
+            c.bootstrap();
+            return c;
+          },
+        ),
         // Applies deferred live WC provider without rebuilding the whole tree.
         ChangeNotifierProxyProvider2<ConnectionsController, DeepLinkRouter, _WcLiveUpgrader>(
           create: (_) => _WcLiveUpgrader(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../account/ui/account_screen.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../release/release_config.dart';
 import '../../connections/connections_controller.dart';
@@ -84,29 +85,11 @@ class MoreTab extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.cloud_outlined, color: AetherColors.lagoon),
           title: const Text('Auvora account'),
-          subtitle: const Text('Identity sync — public addresses only; keys stay on device'),
+          subtitle: const Text('Create/sign in — one identity across web & Android; keys stay on device'),
           trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () {
-            showDialog<void>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('One Auvora account'),
-                content: const Text(
-                  'Your local vault (PIN/biometrics + seed) stays on this device.\n\n'
-                  'An Auvora account can sync identity, preferences, public addresses, '
-                  'labels, and sessions — never private keys or recovery phrases.\n\n'
-                  'Link ownership on the web companion via a signed challenge, or pair '
-                  'with Reown for mobile approval. Encrypted seed sync is not available yet.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Got it'),
-                  ),
-                ],
-              ),
-            );
-          },
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AccountScreen()),
+          ),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
