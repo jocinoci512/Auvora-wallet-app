@@ -64,6 +64,20 @@ export class AdminUsersController {
     return successResponse(data);
   }
 
+  @Get(':userId/devices')
+  @Permissions(PERMISSION_USERS_READ)
+  async getUserDevices(@Param() params: UserIdParamDto) {
+    const data = await this.authService.adminListDevices(params.userId);
+    return successResponse(data);
+  }
+
+  @Get(':userId/sessions')
+  @Permissions(PERMISSION_USERS_READ)
+  async getUserSessions(@Param() params: UserIdParamDto) {
+    const data = await this.authService.adminListSessions(params.userId);
+    return successResponse(data);
+  }
+
   @Patch(':userId/status')
   @Permissions(PERMISSION_USERS_WRITE)
   async updateStatus(

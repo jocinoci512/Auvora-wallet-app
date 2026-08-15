@@ -24,6 +24,12 @@ import {
   VerifyEmailDto,
 } from '../dto/auth.dto';
 
+/** Native (non-browser) clients cannot use httpOnly cookies and receive the refresh token in the body. */
+function isNativeClient(devicePlatform?: string): boolean {
+  const p = (devicePlatform ?? '').trim().toLowerCase();
+  return p === 'android' || p === 'ios';
+}
+
 // Keep DTO classes as runtime values for Nest ValidationPipe.
 const _authDtoRuntime = {
   ChangePasswordDto,
@@ -65,13 +71,16 @@ export class AuthController {
     const result = await this.authService.login(dto, extractRequestContext(req));
     setRefreshTokenCookie(res, this.env, result.refreshToken);
     setCsrfTokenCookie(res, this.env, result.csrfToken);
-    // Refresh token is httpOnly-cookie only — never return it in the JSON body (XSS surface).
+    // Browsers use the httpOnly refresh cookie (never in body — XSS surface). Native
+    // clients (android/ios) cannot use httpOnly cookies, so they receive the refresh
+    // token in the body; web (devicePlatform web/unset) keeps cookie-only behavior.
     return successResponse({
       accessToken: result.accessToken,
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
       csrfToken: result.csrfToken,
       sessionId: result.sessionId,
+      ...(isNativeClient(dto.devicePlatform) ? { refreshToken: result.refreshToken } : {}),
     });
   }
 
@@ -84,6 +93,8 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    // Native clients pass the refresh token in the body; browsers use the cookie.
+    const usedBodyToken = Boolean(dto.refreshToken);
     const refreshToken =
       dto.refreshToken ?? getRefreshTokenFromRequest(req.cookies as Record<string, string>);
     if (!refreshToken) {
@@ -98,6 +109,8 @@ export class AuthController {
       tokenType: result.tokenType,
       csrfToken: result.csrfToken,
       sessionId: result.sessionId,
+      // Rotate the refresh token back to native callers (body in → body out).
+      ...(usedBodyToken ? { refreshToken: result.refreshToken } : {}),
     });
   }
 

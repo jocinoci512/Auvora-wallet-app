@@ -95,8 +95,17 @@ export interface UserProfileDto {
   mfaEnabled: boolean;
   roles: string[];
   permissions: string[];
+  lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Admin user-detail view: profile plus safe operational attribution (no secrets). */
+export interface AdminUserAccountDto extends UserProfileDto {
+  /** Distinct coarse platforms this user has signed in from (web/android/ios). */
+  platforms: string[];
+  deviceCount: number;
+  activeSessionCount: number;
 }
 
 @Injectable()
@@ -686,12 +695,44 @@ export class AuthService {
     };
   }
 
-  async adminGetUser(userId: string): Promise<UserProfileDto> {
+  async adminGetUser(userId: string): Promise<AdminUserAccountDto> {
     const user = await this.users.findById(userId);
     if (!user) {
       throw new NotFoundError('User not found');
     }
-    return this.toProfile(user);
+    const [devices, sessions] = await Promise.all([
+      this.devices.listByUserId(userId),
+      this.sessions.listByUserId(userId),
+    ]);
+    const platforms = [
+      ...new Set(
+        devices.map((d) => (d.platform ?? '').trim().toLowerCase()).filter((p) => p.length > 0),
+      ),
+    ].sort();
+    const now = this.clock.now().getTime();
+    const activeSessionCount = sessions.filter(
+      (s) => !s.revokedAt && s.expiresAt.getTime() > now,
+    ).length;
+    return {
+      ...this.toProfile(user),
+      platforms,
+      deviceCount: devices.length,
+      activeSessionCount,
+    };
+  }
+
+  /** Admin read-only view of a user's sign-in devices (platform attribution). */
+  async adminListDevices(userId: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundError('User not found');
+    return this.listDevices(userId);
+  }
+
+  /** Admin read-only view of a user's sessions. */
+  async adminListSessions(userId: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundError('User not found');
+    return this.listSessions(userId);
   }
 
   async adminUpdateStatus(
@@ -842,6 +883,7 @@ export class AuthService {
       mfaEnabled: user.mfaEnabled,
       roles: user.roles,
       permissions: user.permissions,
+      lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };
