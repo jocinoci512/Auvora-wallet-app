@@ -3,10 +3,13 @@
 import { AuvoraClientError, type UserProfile } from '@auvora/sdk';
 import { AsyncStates, Button, PageHeader, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Subnav } from '../../components/Subnav';
 import { createApiClient, formatApiError } from '../../lib/api-client';
 import { IDENTITY_LINKS } from '../../lib/section-nav';
+import { RealtimeActivityFeed } from '../../components/RealtimeActivityFeed';
+import { useAdminRealtime } from '../../lib/realtime/useAdminRealtime';
+import { affectsUserDirectory } from '../../lib/realtime/admin-event';
 
 const STATUSES = [
   '',
@@ -53,6 +56,29 @@ export default function AdminUsersPage(): ReactElement {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Live directory updates: debounce refetches so a burst of events triggers a
+  // single reconciling refetch (backend remains the source of truth).
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    status: realtimeStatus,
+    events,
+    reconnect,
+  } = useAdminRealtime({
+    onEvent: (event) => {
+      if (!affectsUserDirectory(event.type)) return;
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+      refetchTimer.current = setTimeout(() => void loadRef.current(), 1200);
+    },
+  });
+  useEffect(
+    () => () => {
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    },
+    [],
+  );
 
   function runSearch(): void {
     setApplied({ query, status });
@@ -142,6 +168,10 @@ export default function AdminUsersPage(): ReactElement {
           </table>
         </div>
       </AsyncStates>
+
+      <section style={{ marginTop: 24 }}>
+        <RealtimeActivityFeed status={realtimeStatus} events={events} onReconnect={reconnect} />
+      </section>
     </main>
   );
 }
