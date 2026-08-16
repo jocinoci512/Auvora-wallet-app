@@ -17,7 +17,10 @@ export {
   Permissions,
   SKIP_CSRF_KEY,
   SkipCsrf,
+  REQUIRE_STEP_UP_KEY,
+  RequireStepUp,
 } from './auth.decorators';
+export { StepUpGuard } from './step-up.guard';
 export { CurrentUser, CorrelationId, extractRequestContext } from './current-user.decorator';
 export { CsrfGuard } from './csrf.guard';
 export { RolesGuard } from './roles.guard';

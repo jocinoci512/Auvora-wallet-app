@@ -24,8 +24,7 @@ import {
   PERMISSION_ANALYTICS_ADMIN,
   PERMISSION_ANALYTICS_DASHBOARDS,
   PERMISSION_ANALYTICS_KPIS,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
@@ -159,7 +158,7 @@ void _adminDtoRuntime;
 
 @ApiTags('admin-analytics')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Controller('api/v1/admin/analytics')
 export class AdminAnalyticsController {
   constructor(

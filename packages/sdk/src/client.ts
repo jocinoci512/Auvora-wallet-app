@@ -2909,7 +2909,7 @@ export class AuvoraClient {
     if (this.csrfToken) return this.csrfToken;
     const doc = (globalThis as { document?: { cookie?: string } }).document;
     if (!doc?.cookie) return null;
-    const match = doc.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+    const match = doc.cookie.match(/(?:^|;\s*)(?:admin_csrf_token|csrf_token)=([^;]+)/);
     if (!match?.[1]) return null;
     try {
       return decodeURIComponent(match[1]);

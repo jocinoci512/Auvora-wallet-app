@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
-import { AppShell } from '@auvora/ui';
-import { AccessTokenPanel } from '../components/AccessTokenPanel';
-import { Nav } from '../components/Nav';
+import { AdminChrome } from '../components/AdminChrome';
 import { Providers } from '../components/Providers';
 import { env } from '../env';
 // Self-hosted fonts (deterministic build — no Google Fonts fetch at build time).
@@ -35,10 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
           <a className="auvora-skip-link" href="#main-content">
             Skip to content
           </a>
-          <AppShell header={<Nav />}>
-            {process.env.NODE_ENV !== 'production' ? <AccessTokenPanel /> : null}
-            <main id="main-content">{children}</main>
-          </AppShell>
+          <AdminChrome>{children}</AdminChrome>
         </Providers>
       </body>
     </html>

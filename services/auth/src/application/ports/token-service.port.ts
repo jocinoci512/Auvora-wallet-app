@@ -12,6 +12,8 @@ export interface AccessTokenPayload {
   sessionId: string;
   roles: string[];
   permissions: string[];
+  surface?: 'consumer' | 'admin';
+  stepUpExp?: number;
 }
 
 export const TOKEN_SERVICE = Symbol('TOKEN_SERVICE');

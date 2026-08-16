@@ -6,9 +6,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { JwtAccessClaims } from '@auvora/types';
+import { ADMIN_PORTAL_ROLES, type JwtAccessClaims } from '@auvora/types';
 import type { Request } from 'express';
 import { ROLES_KEY } from './auth.decorators';
+
+const ADMIN_PORTAL_ROLE_SET = new Set<string>(ADMIN_PORTAL_ROLES);
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -32,6 +34,11 @@ export class RolesGuard implements CanActivate {
     const hasRole = requiredRoles.some((role) => user.roles.includes(role));
     if (!hasRole) {
       throw new ForbiddenException('Insufficient role');
+    }
+
+    const requiresAdminSurface = requiredRoles.some((role) => ADMIN_PORTAL_ROLE_SET.has(role));
+    if (requiresAdminSurface && user.surface !== 'admin') {
+      throw new ForbiddenException('Admin session required');
     }
     return true;
   }

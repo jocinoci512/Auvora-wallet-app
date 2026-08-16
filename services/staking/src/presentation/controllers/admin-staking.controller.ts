@@ -5,6 +5,7 @@ import { StakingWorkersService } from '../../application/services/staking-worker
 import { STAKING_PERMISSIONS } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { successResponse } from '@auvora/nest-common';
+import { ADMIN_PORTAL_ROLES } from '@auvora/types';
 
 @ApiTags('admin-staking')
 @ApiBearerAuth()
@@ -16,35 +17,35 @@ export class AdminStakingController {
   ) {}
 
   @Get('providers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(STAKING_PERMISSIONS.ADMIN)
   async providers() {
     return successResponse(await this.dashboard.providers());
   }
 
   @Get('validators')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(STAKING_PERMISSIONS.ADMIN)
   async validators() {
     return successResponse(await this.dashboard.validators());
   }
 
   @Get('rewards')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(STAKING_PERMISSIONS.ADMIN)
   async rewards() {
     return successResponse(await this.dashboard.rewards());
   }
 
   @Get('sync-status')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(STAKING_PERMISSIONS.ADMIN)
   async syncStatus() {
     return successResponse(await this.dashboard.syncStatus());
   }
 
   @Get('workers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(STAKING_PERMISSIONS.ADMIN)
   workersHealth() {
     return successResponse(this.workers.status());

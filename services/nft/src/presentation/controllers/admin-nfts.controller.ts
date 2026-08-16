@@ -5,6 +5,7 @@ import { NftWorkersService } from '../../application/services/nft-workers.servic
 import { NFT_PERMISSIONS } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { successResponse } from '@auvora/nest-common';
+import { ADMIN_PORTAL_ROLES } from '@auvora/types';
 
 @ApiTags('admin-nfts')
 @ApiBearerAuth()
@@ -16,35 +17,35 @@ export class AdminNftsController {
   ) {}
 
   @Get('providers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(NFT_PERMISSIONS.ADMIN)
   async providers() {
     return successResponse(await this.dashboard.providers());
   }
 
   @Get('collections')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(NFT_PERMISSIONS.ADMIN)
   async collections() {
     return successResponse(await this.dashboard.collections());
   }
 
   @Get('metadata')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(NFT_PERMISSIONS.ADMIN)
   async metadata() {
     return successResponse(await this.dashboard.metadataStatus());
   }
 
   @Get('workers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(NFT_PERMISSIONS.ADMIN)
   workersHealth() {
     return successResponse(this.workers.status());
   }
 
   @Get('sync-metrics')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(NFT_PERMISSIONS.ADMIN)
   async syncMetrics() {
     return successResponse(await this.dashboard.syncMetrics());

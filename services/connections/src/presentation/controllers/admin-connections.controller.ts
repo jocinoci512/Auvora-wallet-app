@@ -5,6 +5,7 @@ import { ConnectionsWorkersService } from '../../application/services/connection
 import { CONNECTIONS_PERMISSIONS } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { successResponse } from '@auvora/nest-common';
+import { ADMIN_PORTAL_ROLES } from '@auvora/types';
 
 @ApiTags('admin-connections')
 @ApiBearerAuth()
@@ -16,49 +17,49 @@ export class AdminConnectionsController {
   ) {}
 
   @Get('providers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   async providers() {
     return successResponse(await this.dashboard.providers());
   }
 
   @Get('connections')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   async connections() {
     return successResponse(await this.dashboard.connections());
   }
 
   @Get('sessions')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   async sessions() {
     return successResponse(await this.dashboard.sessions());
   }
 
   @Get('devices')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   async devices() {
     return successResponse(await this.dashboard.devices());
   }
 
   @Get('sync-status')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   async syncStatus() {
     return successResponse(await this.dashboard.syncStatus());
   }
 
   @Get('workers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   workersHealth() {
     return successResponse(this.workers.status());
   }
 
   @Get('dapps/analytics')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
   async dappAnalytics() {
     return successResponse(await this.dashboard.dappAnalytics());

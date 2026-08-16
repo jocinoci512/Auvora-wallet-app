@@ -297,6 +297,7 @@ export class AuthService {
       sessionId: session.id,
       roles: user.roles,
       permissions: user.permissions,
+      surface: 'consumer',
     });
 
     const csrfToken = generateOpaqueToken(32);
@@ -405,6 +406,9 @@ export class AuthService {
     if (!session || session.revokedAt) {
       throw new UnauthorizedError('Session is no longer valid');
     }
+    if (session.surface === 'admin') {
+      throw new UnauthorizedError('Invalid refresh token');
+    }
 
     const user = await this.users.findById(stored.userId);
     if (!user || user.deletedAt || user.status !== UserStatus.Active) {
@@ -430,6 +434,7 @@ export class AuthService {
       sessionId: session.id,
       roles: user.roles,
       permissions: user.permissions,
+      surface: 'consumer',
     });
 
     await this.audit.create({
@@ -816,6 +821,15 @@ export class AuthService {
     ctx: RequestContext,
   ): Promise<UserProfileDto> {
     const user = await this.users.updateStatus(userId, status);
+    if (
+      status === UserStatus.Suspended ||
+      status === UserStatus.Locked ||
+      status === UserStatus.Deactivated ||
+      status === UserStatus.Deleted
+    ) {
+      await this.sessions.revokeAllForUser(userId);
+      await this.refreshTokens.revokeAllForUser(userId);
+    }
     await this.audit.create({
       action: 'USER_STATUS_CHANGED',
       actorUserId: actorId,

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ACCESS_TOKEN_COOKIE } from '@auvora/security';
+import { extractAccessTokenFromCookies } from '@auvora/security';
 import type { JwtAccessClaims } from '@auvora/types';
 import type { Request } from 'express';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
@@ -13,8 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         (req: Request) => {
-          const cookies = req.cookies as Record<string, string | undefined>;
-          return cookies[ACCESS_TOKEN_COOKIE] ?? null;
+          return extractAccessTokenFromCookies(req.cookies as Record<string, unknown>);
         },
       ]),
       ignoreExpiration: false,

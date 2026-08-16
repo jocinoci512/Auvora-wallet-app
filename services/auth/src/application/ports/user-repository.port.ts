@@ -48,6 +48,7 @@ export interface UserSearchFilters {
   status?: UserStatus;
   skip?: number;
   take?: number;
+  adminPortalOnly?: boolean;
 }
 
 export interface UserSearchResult {

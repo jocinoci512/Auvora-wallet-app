@@ -43,6 +43,18 @@ enum AuditAction {
   MFA_TOGGLED
   TOKEN_REFRESH
   REFRESH_REUSE_DETECTED
+  ADMIN_LOGIN_SUCCESS
+  ADMIN_LOGIN_FAILED
+  ADMIN_LOGOUT
+  ADMIN_MFA_ENROLLED
+  ADMIN_MFA_FAILED
+  ADMIN_MFA_RECOVERY_USED
+  ADMIN_MFA_RESET
+  ADMIN_STEP_UP_SUCCESS
+  ADMIN_STEP_UP_FAILED
+  ADMIN_ROLE_CHANGED
+  ADMIN_STATUS_CHANGED
+  ADMIN_SESSION_REVOKED
 }
 
 /// Infrastructure metadata row used to validate migrations without product models.
@@ -85,6 +97,8 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   auditLogsAsActor        SecurityAuditLog[]       @relation("AuditActor")
   auditLogsAsTarget       SecurityAuditLog[]       @relation("AuditTarget")
+  mfaTotpCredential       MfaTotpCredential?
+  mfaRecoveryCodes        MfaRecoveryCode[]
 
   @@index([status])
   @@index([createdAt])
@@ -166,23 +180,57 @@ model Device {
 }
 
 model Session {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  deviceId  String?   @map("device_id") @db.Uuid
-  ipAddress String?   @map("ip_address")
-  userAgent String?   @map("user_agent")
-  expiresAt DateTime  @map("expires_at")
-  revokedAt DateTime? @map("revoked_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  deviceId        String?   @map("device_id") @db.Uuid
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  /// consumer | admin — admin sessions never share consumer cookie names.
+  surface         String    @default("consumer")
+  mfaSatisfiedAt  DateTime? @map("mfa_satisfied_at")
+  stepUpExpiresAt DateTime? @map("step_up_expires_at")
+  expiresAt       DateTime  @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   device        Device?        @relation(fields: [deviceId], references: [id], onDelete: SetNull)
   refreshTokens RefreshToken[]
 
   @@index([userId, createdAt])
+  @@index([userId, surface, revokedAt])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+/// Encrypted TOTP secret (AES-256-GCM). Secret is never returned after enrollment.
+model MfaTotpCredential {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @unique @map("user_id") @db.Uuid
+  secretEncrypted String    @map("secret_encrypted")
+  confirmedAt     DateTime? @map("confirmed_at")
+  lastUsedStep    BigInt?   @map("last_used_step")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mfa_totp_credentials")
+}
+
+/// Hashed one-time MFA recovery codes. Plaintext is shown once at issuance.
+model MfaRecoveryCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  codeHash   String    @map("code_hash")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mfa_recovery_codes")
 }
 
 model RefreshToken {

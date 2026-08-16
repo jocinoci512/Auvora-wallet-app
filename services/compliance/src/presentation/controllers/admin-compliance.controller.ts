@@ -12,8 +12,7 @@ import {
   PERMISSION_COMPLIANCE_CASES,
   PERMISSION_COMPLIANCE_REVIEW,
   PERMISSION_COMPLIANCE_RULES,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
@@ -140,7 +139,7 @@ void _adminDtoRuntime;
 
 @ApiTags('admin-compliance')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Controller('api/v1/admin/compliance')
 export class AdminComplianceController {
   constructor(

@@ -8,8 +8,7 @@ import { TransactionEngine } from '../../application/services/transaction-engine
 import {
   PERMISSION_BLOCKCHAIN_ADMIN,
   PERMISSION_BLOCKCHAIN_SYNC,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain/permission-codes';
 import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
@@ -36,7 +35,7 @@ void _adminBlockchainDtoRuntime;
 @ApiTags('admin-blockchain')
 @ApiBearerAuth()
 @Controller('api/v1/admin/blockchain')
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 export class AdminBlockchainController {
   constructor(
     @Inject(TransactionEngine) private readonly transactionEngine: TransactionEngine,

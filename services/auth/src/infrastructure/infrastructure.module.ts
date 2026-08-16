@@ -34,6 +34,15 @@ import { PrismaLoginHistoryRepository } from './persistence/prisma-login-history
 import { PrismaRefreshTokenRepository } from './persistence/prisma-refresh-token.repository';
 import { PrismaSessionRepository } from './persistence/prisma-session.repository';
 import { PrismaUserRepository } from './persistence/prisma-user.repository';
+import {
+  PrismaMfaRecoveryRepository,
+  PrismaMfaTotpRepository,
+} from './persistence/prisma-mfa.repository';
+import { AesFieldEncryptionAdapter, FIELD_ENCRYPTION } from './crypto/aes-field-encryption.adapter';
+import {
+  MFA_RECOVERY_REPOSITORY,
+  MFA_TOTP_REPOSITORY,
+} from '../application/ports/mfa.repository.port';
 import { REDIS_PORT } from './redis/redis.port';
 import { RedisAdapter } from './redis/redis.adapter';
 import { ADMIN_EVENT_PUBLISHER } from '../application/ports/admin-event-publisher.port';
@@ -54,6 +63,9 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     PrismaRefreshTokenRepository,
     PrismaLoginHistoryRepository,
     PrismaAuditRepository,
+    PrismaMfaTotpRepository,
+    PrismaMfaRecoveryRepository,
+    AesFieldEncryptionAdapter,
     {
       provide: REDIS_PORT,
       useExisting: RedisAdapter,
@@ -101,6 +113,18 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     {
       provide: AUDIT_REPOSITORY,
       useExisting: PrismaAuditRepository,
+    },
+    {
+      provide: MFA_TOTP_REPOSITORY,
+      useExisting: PrismaMfaTotpRepository,
+    },
+    {
+      provide: MFA_RECOVERY_REPOSITORY,
+      useExisting: PrismaMfaRecoveryRepository,
+    },
+    {
+      provide: FIELD_ENCRYPTION,
+      useExisting: AesFieldEncryptionAdapter,
     },
     {
       provide: MAIL_PORT,
@@ -155,6 +179,9 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     REFRESH_TOKEN_REPOSITORY,
     LOGIN_HISTORY_REPOSITORY,
     AUDIT_REPOSITORY,
+    MFA_TOTP_REPOSITORY,
+    MFA_RECOVERY_REPOSITORY,
+    FIELD_ENCRYPTION,
     MAIL_PORT,
     ANALYTICS_PUBLISHER,
     OBSERVABILITY_PUBLISHER,

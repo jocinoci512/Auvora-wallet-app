@@ -9,8 +9,7 @@ import {
   PERMISSION_INFRASTRUCTURE_BACKUP,
   PERMISSION_INFRASTRUCTURE_DEPLOY,
   PERMISSION_INFRASTRUCTURE_READ,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
@@ -59,7 +58,7 @@ void _infraDtoRuntime;
 
 @ApiTags('admin-infrastructure')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Controller('api/v1/admin/infrastructure')
 export class AdminInfrastructureController {
   constructor(

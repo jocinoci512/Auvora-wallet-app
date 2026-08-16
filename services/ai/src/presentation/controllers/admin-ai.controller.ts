@@ -25,8 +25,7 @@ import {
   PERMISSION_AI_ADMIN,
   PERMISSION_AI_KNOWLEDGE,
   PERMISSION_AI_PROMPTS,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
   type AiProviderTypeCode,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
@@ -232,7 +231,7 @@ void _adminDtoRuntime;
 
 @ApiTags('admin-ai')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Controller('api/v1/admin/ai')
 export class AdminAiController {
   constructor(

@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { ReactElement } from 'react';
-import { ThemeToggle } from '@auvora/ui';
+import { Button, ThemeToggle } from '@auvora/ui';
+import { adminLogout } from '../lib/admin-session';
 
 const links = [
   { href: '/', label: 'Overview' },
@@ -33,6 +34,7 @@ function isCurrent(pathname: string, href: string): boolean {
 
 export function Nav(): ReactElement {
   const pathname = usePathname() || '/';
+  const router = useRouter();
 
   return (
     <nav className="site-nav" aria-label="Primary">
@@ -50,6 +52,15 @@ export function Nav(): ReactElement {
         })}
       </ul>
       <div className="site-nav__actions">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            void adminLogout().finally(() => router.replace('/login'));
+          }}
+        >
+          Sign out
+        </Button>
         <ThemeToggle />
       </div>
     </nav>

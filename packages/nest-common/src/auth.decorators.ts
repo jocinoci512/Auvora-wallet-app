@@ -11,3 +11,6 @@ export const Permissions = (...permissions: string[]) => SetMetadata(PERMISSIONS
 
 export const SKIP_CSRF_KEY = 'skipCsrf';
 export const SkipCsrf = () => SetMetadata(SKIP_CSRF_KEY, true);
+
+export const REQUIRE_STEP_UP_KEY = 'requireStepUp';
+export const RequireStepUp = () => SetMetadata(REQUIRE_STEP_UP_KEY, true);

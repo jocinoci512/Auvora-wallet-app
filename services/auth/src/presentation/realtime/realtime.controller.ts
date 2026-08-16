@@ -3,7 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { successResponse } from '@auvora/nest-common';
 import type { JwtAccessClaims } from '@auvora/types';
-import { ROLE_ADMIN, ROLE_SUPER_ADMIN, PERMISSION_USERS_READ } from '../../domain/permission-codes';
+import { ADMIN_PORTAL_ROLES, PERMISSION_REALTIME_READ } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { RealtimeHubService, type RealtimeSink } from './realtime-hub.service';
 
@@ -16,12 +16,12 @@ import { RealtimeHubService, type RealtimeSink } from './realtime-hub.service';
  */
 @ApiTags('admin-realtime')
 @Controller('api/v1/admin/realtime')
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 export class RealtimeController {
   constructor(@Inject(RealtimeHubService) private readonly hub: RealtimeHubService) {}
 
   @Get('events')
-  @Permissions(PERMISSION_USERS_READ)
+  @Permissions(PERMISSION_REALTIME_READ)
   streamEvents(@Req() req: Request & { user: JwtAccessClaims }, @Res() res: Response): void {
     const adminUserId = req.user?.sub;
     if (!adminUserId) {
@@ -66,7 +66,7 @@ export class RealtimeController {
   }
 
   @Get('status')
-  @Permissions(PERMISSION_USERS_READ)
+  @Permissions(PERMISSION_REALTIME_READ)
   status() {
     return successResponse(this.hub.getStats());
   }

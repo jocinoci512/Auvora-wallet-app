@@ -81,10 +81,18 @@ export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
 export const ROLE_USER = 'user';
 export const ROLE_ADMIN = 'admin';
 export const ROLE_SUPER_ADMIN = 'super_admin';
-// Phase 3 increment 2: production admin roles.
 export const ROLE_SUPPORT = 'support';
 export const ROLE_SECURITY_ANALYST = 'security_analyst';
 export const ROLE_READ_ONLY = 'read_only';
+
+export { ADMIN_PORTAL_ROLES, isAdminPortalRole, type AdminPortalRole } from '@auvora/types';
+
+/**
+ * MFA policy (deliberate):
+ * - SUPER_ADMIN, ADMIN, SECURITY_ANALYST: TOTP MFA is mandatory. No production bypass.
+ * - SUPPORT and READ_ONLY: MFA is optional. If a TOTP factor is enrolled (or
+ *   mfaEnabled is true), a challenge is still required.
+ */
 
 /**
  * Read-only permission codes safe for the READ_ONLY role and as the read floor

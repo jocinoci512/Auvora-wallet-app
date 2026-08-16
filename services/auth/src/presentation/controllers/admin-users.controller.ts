@@ -14,18 +14,16 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService } from '../../application/services/auth.service';
 import {
+  ADMIN_PORTAL_ROLES,
   PERMISSION_ROLES_MANAGE,
   PERMISSION_SESSIONS_REVOKE,
   PERMISSION_USERS_DELETE,
   PERMISSION_USERS_READ,
   PERMISSION_USERS_WRITE,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
 } from '../../domain/permission-codes';
-import { Permissions } from '../decorators/auth.decorators';
+import { Permissions, RequireStepUp, Roles } from '../decorators/auth.decorators';
 import { CurrentUser, extractRequestContext } from '../decorators/current-user.decorator';
 import type { JwtAccessClaims } from '@auvora/types';
-import { Roles } from '../decorators/auth.decorators';
 import { successResponse } from '@auvora/nest-common';
 import {
   AdminAssignRolesDto,
@@ -46,7 +44,7 @@ void _adminUsersDtoRuntime;
 
 @ApiTags('admin-users')
 @Controller('api/v1/admin/users')
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 export class AdminUsersController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
@@ -127,6 +125,7 @@ export class AdminUsersController {
 
   @Patch(':userId/roles')
   @Permissions(PERMISSION_ROLES_MANAGE)
+  @RequireStepUp()
   async assignRoles(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,
@@ -144,6 +143,7 @@ export class AdminUsersController {
 
   @Post(':userId/force-logout')
   @Permissions(PERMISSION_SESSIONS_REVOKE)
+  @RequireStepUp()
   async forceLogout(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,

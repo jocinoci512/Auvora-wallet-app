@@ -40,8 +40,7 @@ import {
   PERMISSION_CUSTODY_APPROVE,
   PERMISSION_CUSTODY_POLICIES,
   PERMISSION_CUSTODY_RECOVERY,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
   type PolicyContext,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
@@ -301,7 +300,7 @@ void _adminDtoRuntime;
 
 @ApiTags('admin-custody')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Controller('api/v1/admin/custody')
 export class AdminCustodyController {
   constructor(
