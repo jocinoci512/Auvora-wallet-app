@@ -331,6 +331,22 @@
   min-width: 0;
 }
 
+.wd-asset-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.wd-asset-link:hover strong,
+.wd-asset-link:focus-visible strong {
+  color: var(--wd-lagoon);
+}
+
 .wd-netmark {
   width: 32px;
   height: 32px;

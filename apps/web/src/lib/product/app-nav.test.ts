@@ -36,7 +36,7 @@ describe('app-nav', () => {
   });
 
   it('resolves page titles for shell header', () => {
-    expect(pageTitleForPath('/dashboard')).toBe('Overview');
+    expect(pageTitleForPath('/assets/h-eth')).toBe('Asset');
     expect(pageTitleForPath('/settings/security')).toBe('Security');
   });
 });

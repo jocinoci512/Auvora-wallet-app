@@ -369,13 +369,15 @@ export function DashboardExperience(): ReactElement {
                       {holdings.map((h) => (
                         <tr key={h.id}>
                           <td>
-                            <div className="wd-asset-id">
-                              <NetworkMark network={h.network} />
-                              <span>
-                                <strong>{h.name}</strong>
-                                <small>{h.symbol}</small>
-                              </span>
-                            </div>
+                            <Link href={`/assets/${h.id}`} className="wd-asset-link">
+                              <div className="wd-asset-id">
+                                <NetworkMark network={h.network} />
+                                <span>
+                                  <strong>{h.name}</strong>
+                                  <small>{h.symbol}</small>
+                                </span>
+                              </div>
+                            </Link>
                           </td>
                           <td>
                             <span className="wd-netchip">{networkLabel(h.network)}</span>
@@ -398,21 +400,23 @@ export function DashboardExperience(): ReactElement {
                 <ul className="wd-list">
                   {holdings.map((h) => (
                     <li key={`m-${h.id}`}>
-                      <div className="wd-asset-id">
-                        <NetworkMark network={h.network} />
-                        <span>
-                          <strong>{h.name}</strong>
-                          <small>
-                            {networkLabel(h.network)} · {units(h.balance, h.symbol)}
-                          </small>
+                      <Link href={`/assets/${h.id}`} className="wd-asset-link">
+                        <div className="wd-asset-id">
+                          <NetworkMark network={h.network} />
+                          <span>
+                            <strong>{h.name}</strong>
+                            <small>
+                              {networkLabel(h.network)} · {units(h.balance, h.symbol)}
+                            </small>
+                          </span>
+                        </div>
+                        <span className="wd-tx__amt">
+                          {h.valueUsd ? money(h.valueUsd) : '—'}
+                          <span className={h.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
+                            {hideBalances ? '••••' : formatPct(h.change24hPct)}
+                          </span>
                         </span>
-                      </div>
-                      <span className="wd-tx__amt">
-                        {h.valueUsd ? money(h.valueUsd) : '—'}
-                        <span className={h.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-                          {hideBalances ? '••••' : formatPct(h.change24hPct)}
-                        </span>
-                      </span>
+                      </Link>
                     </li>
                   ))}
                 </ul>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState, type ReactElement } from 'react';
 import {
   NETWORKS,
@@ -9,18 +10,13 @@ import {
   type WalletNetwork,
 } from '../../lib/wallet-experience/types';
 import { ReleaseConfig } from '../../lib/release/config';
+import { DEMO_RECEIVE_ADDRESSES } from '../../lib/wallet-experience/demo-addresses';
 import { QrPanel } from './QrPanel';
+import { PublicAddress } from './PublicAddress';
 import { TransactionShell } from '../transaction/TransactionShell';
+import { networkLabel, resolveNetwork } from '../../lib/product/networks';
 import '../../app/core-experience.css';
-
-const DEMO_ADDRESSES: Record<WalletNetwork, string> = {
-  bitcoin: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-  ethereum: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-  solana: '7EqQdEULxWcraVx1VfyQW9XbnAHKKfwdERJXNqTUHxN',
-  polygon: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-  bnb: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-  tron: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
-};
+import '../../app/wallet-flow.css';
 
 const ETA: Record<WalletNetwork, string> = {
   bitcoin: '~10–60 min',
@@ -31,26 +27,47 @@ const ETA: Record<WalletNetwork, string> = {
   tron: '~3–60 sec',
 };
 
+const ADDRESS_FORMAT: Record<WalletNetwork, string> = {
+  bitcoin: 'Bitcoin bech32 or legacy (bc1… / 1… / 3…)',
+  ethereum: 'EVM 0x address (42 characters)',
+  solana: 'Solana base58 address',
+  polygon: 'EVM 0x address (same format as Ethereum, Polygon network)',
+  bnb: 'EVM 0x address (same format as Ethereum, BNB Smart Chain)',
+  tron: 'Tron address starting with T',
+};
+
 export function ReceiveExperience(): ReactElement {
-  const [network, setNetwork] = useState<WalletNetwork>('ethereum');
-  const [asset, setAsset] = useState<WalletAsset>('ETH');
-  const address = DEMO_ADDRESSES[network];
+  const searchParams = useSearchParams();
+  const initial = searchParams.get('asset')?.toUpperCase();
+  const initialToken = TOKENS.find((t) => t.id === initial);
+  const [network, setNetwork] = useState<WalletNetwork>(initialToken?.networks[0] ?? 'ethereum');
+  const [asset, setAsset] = useState<WalletAsset>(initialToken?.id ?? 'ETH');
+  const address = DEMO_RECEIVE_ADDRESSES[network];
   const tokens = useMemo(() => TOKENS.filter((t) => t.networks.includes(network)), [network]);
   const fundingUnlocked = ReleaseConfig.allowFundingAddresses;
+  const net = resolveNetwork(network);
+  const networkName = net?.label ?? networkLabel(network);
 
   return (
     <TransactionShell
-      title={fundingUnlocked ? 'Receive' : 'Receive (locked)'}
-      subtitle={
-        fundingUnlocked
-          ? 'Share one clear address. Always match the network.'
-          : 'Funding is locked for Version 1.0 Alpha. Demo addresses stay off QR, copy, and share.'
-      }
+      className="wf"
+      title="Receive"
+      subtitle="Share this address only for the selected asset and network."
       reassure="Assets sent on the wrong network may be unrecoverable."
       backHref="/dashboard"
     >
       <section className="cx-panel">
-        <h2>Network & token</h2>
+        <p className="wf-kicker">Selected network</p>
+        <div className="wf-idrow" style={{ marginBottom: '1rem' }}>
+          <span className="wf-netmark" aria-hidden>
+            {net?.mark ?? networkName.slice(0, 1)}
+          </span>
+          <span>
+            <strong>{networkName}</strong>
+            <small>{ADDRESS_FORMAT[network]}</small>
+          </span>
+        </div>
+        <h2>Asset and network</h2>
         <div className="cx-choice-grid" role="radiogroup" aria-label="Network">
           {NETWORKS.map((n) => (
             <button
@@ -82,42 +99,54 @@ export function ReceiveExperience(): ReactElement {
       </section>
 
       <section className="cx-panel cx-qr-stage" aria-label="Receive address">
-        {!fundingUnlocked ? (
-          <div className="cx-alert cx-alert--warn" role="status">
-            {ReleaseConfig.fundingBlockedMessage}
-          </div>
-        ) : (
-          <div className="cx-alert cx-alert--info" role="status">
-            Companion receive preview — addresses here are demo placeholders until funding rails are
-            unlocked on the signed mobile wallet.
-          </div>
-        )}
         <div className="cx-warn">
           <strong>
-            Only send {asset} on {NETWORKS.find((n) => n.id === network)?.label ?? network}
+            Only send {asset} on {networkName} to this address.
           </strong>
           <p>
-            Estimated confirmation time: {ETA[network]}. Verify the network and address before
-            sharing. Wrong-network deposits can be unrecoverable.
+            Estimated confirmation time: {ETA[network]}. Verify the network name, icon, and address
+            format before sharing. Wrong-network deposits can be unrecoverable.
+            {network === 'ethereum' || network === 'polygon' || network === 'bnb'
+              ? ' EVM addresses can look the same across Ethereum, Polygon, and BNB Smart Chain — the selected network still matters.'
+              : null}
           </p>
         </div>
-        {fundingUnlocked ? (
+        {!fundingUnlocked ? (
           <>
-            <QrPanel value={address} label={`Receive ${asset} on ${network}`} />
-            <p className="cx-meta">Demo address for {network} · practice sharing only</p>
+            <div className="cx-alert cx-alert--warn" role="status">
+              {ReleaseConfig.fundingBlockedMessage}
+            </div>
+            <div className="wf-qr-lock" aria-label="Receive QR locked">
+              <strong>QR sharing locked</strong>
+              <p>
+                This preview will encode the public {asset} address on {networkName} when funding is
+                unlocked. No secrets are included.
+              </p>
+            </div>
+            <PublicAddress
+              value={address}
+              copyEnabled={false}
+              label={`Public ${networkName} address`}
+            />
           </>
         ) : (
-          <div className="cx-alert cx-alert--warn" role="status" aria-label="Funding QR disabled">
-            <strong>Funding QR disabled</strong>
-            <p className="cx-meta">
-              Derivation preview ({network}): {address.slice(0, 10)}…{address.slice(-6)} — copy and
-              share stay off in {ReleaseConfig.buildLabel}.
-            </p>
-          </div>
+          <>
+            <div className="cx-alert cx-alert--info" role="status">
+              Companion receive preview — addresses here are demo placeholders until funding rails
+              are unlocked on the signed mobile wallet.
+            </div>
+            <QrPanel
+              value={address}
+              label={`QR code for ${asset} on ${networkName}`}
+              copyEnabled
+              shareEnabled
+            />
+            <PublicAddress value={address} copyEnabled label={`Public ${networkName} address`} />
+          </>
         )}
         <div className="cx-success__cta">
-          <Link href="/address-book" className="cx-btn cx-btn--ghost">
-            Address book
+          <Link href="/dashboard" className="cx-btn cx-btn--primary">
+            Back to wallet
           </Link>
           <Link href="/send" className="cx-btn cx-btn--ghost">
             Send instead
