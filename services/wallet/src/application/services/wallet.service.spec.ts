@@ -47,6 +47,7 @@ function createWalletService(deps: {
   notifications?: Record<string, jest.Mock>;
   ai?: Record<string, jest.Mock>;
   analytics?: Record<string, jest.Mock>;
+  adminEvents?: Record<string, jest.Mock>;
 }): WalletService {
   return new WalletService(
     (deps.wallets ?? {
@@ -79,6 +80,7 @@ function createWalletService(deps: {
     (deps.notifications ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
     (deps.ai ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
     (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
+    (deps.adminEvents ?? { publish: jest.fn().mockResolvedValue(undefined) }) as never,
   );
 }
 
@@ -109,6 +111,43 @@ describe('WalletService', () => {
       userId,
       'Auto-activated on creation',
     );
+  });
+
+  it('emits a WALLET_ADDED admin event on creation (safe metadata only)', async () => {
+    const wallets = {
+      findAssetByCode: jest
+        .fn()
+        .mockResolvedValue({ id: assetId, code: 'BTC', symbol: 'BTC', decimals: 8 }),
+      findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
+      createWithZeroBalance: jest
+        .fn()
+        .mockResolvedValue({ ...baseWallet, status: WalletStatus.PENDING }),
+      transitionStatus: jest.fn().mockResolvedValue(baseWallet),
+    };
+    const adminEvents = { publish: jest.fn().mockResolvedValue(undefined) };
+    const service = createWalletService({ wallets, adminEvents });
+
+    await service.createWallet({ ownerUserId: userId, assetCode: 'BTC' });
+
+    const event = adminEvents.publish.mock.calls[0]?.[0];
+    expect(event).toMatchObject({ type: 'WALLET_ADDED', userId, targetId: walletId });
+    expect(JSON.stringify(event)).not.toContain('passwordHash');
+  });
+
+  it('emits a WALLET_REMOVED admin event on archive', async () => {
+    const wallets = {
+      findById: jest.fn().mockResolvedValue(baseWallet),
+      transitionStatus: jest
+        .fn()
+        .mockResolvedValue({ ...baseWallet, status: WalletStatus.ARCHIVED }),
+    };
+    const adminEvents = { publish: jest.fn().mockResolvedValue(undefined) };
+    const service = createWalletService({ wallets, adminEvents });
+
+    await service.archive(walletId, createRequester({ sub: userId }), 'user requested');
+
+    const event = adminEvents.publish.mock.calls[0]?.[0];
+    expect(event).toMatchObject({ type: 'WALLET_REMOVED', userId, targetId: walletId });
   });
 
   it('forbids access when requester is not owner and lacks admin permission', async () => {
