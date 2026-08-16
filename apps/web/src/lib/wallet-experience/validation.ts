@@ -1,4 +1,4 @@
-import type { FeeSpeed, WalletNetwork } from './types';
+import type { FeeSpeed, WalletAsset, WalletNetwork } from './types';
 
 const EVM = /^0x[a-fA-F0-9]{40}$/;
 const BTC_BECH32 = /^(bc1|tb1)[a-z0-9]{25,90}$/i;
@@ -182,4 +182,143 @@ export function parseAmount(value: string): number | null {
   const n = Number(value.replace(/,/g, ''));
   if (!Number.isFinite(n) || n <= 0) return null;
   return n;
+}
+
+/** On-chain decimal places. UI still rejects extra fractional digits. */
+export const ASSET_DECIMALS: Record<WalletAsset, number> = {
+  BTC: 8,
+  ETH: 18,
+  SOL: 9,
+  MATIC: 18,
+  BNB: 18,
+  TRX: 6,
+  USDC: 6,
+  USDT: 6,
+};
+
+export function nativeGasAsset(network: WalletNetwork): WalletAsset {
+  switch (network) {
+    case 'bitcoin':
+      return 'BTC';
+    case 'ethereum':
+      return 'ETH';
+    case 'solana':
+      return 'SOL';
+    case 'polygon':
+      return 'MATIC';
+    case 'bnb':
+      return 'BNB';
+    case 'tron':
+      return 'TRX';
+  }
+}
+
+export function parseLeadingNumber(value: string): number | null {
+  const m = value.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function decimalPlaces(value: string): number {
+  const cleaned = value.replace(/,/g, '').trim();
+  const dot = cleaned.indexOf('.');
+  if (dot < 0) return 0;
+  return cleaned.slice(dot + 1).replace(/[^0-9]/g, '').length;
+}
+
+export function canAppendAmountDigit(current: string, key: string, maxDecimals: number): boolean {
+  if (key === '⌫') return true;
+  if (key === '.') return !current.includes('.');
+  if (!/^\d$/.test(key)) return false;
+  if (!current.includes('.')) return true;
+  return decimalPlaces(current) < maxDecimals;
+}
+
+export type RecipientIssueKind = 'empty' | 'invalid_format' | 'unsupported_network' | 'ok';
+
+/**
+ * Guess which family an address belongs to. EVM chains share 0x format —
+ * never auto-switch the selected network.
+ */
+export function guessAddressFamily(address: string): WalletNetwork | null {
+  const a = address.trim();
+  if (!a) return null;
+  if (EVM.test(a)) return 'ethereum';
+  if (BTC_BECH32.test(a) || BTC_LEGACY.test(a)) return 'bitcoin';
+  if (TRON.test(a)) return 'tron';
+  if (SOL.test(a)) return 'solana';
+  return null;
+}
+
+const FAMILY_LABEL: Record<WalletNetwork, string> = {
+  bitcoin: 'Bitcoin',
+  ethereum: 'Ethereum (EVM)',
+  solana: 'Solana',
+  polygon: 'Ethereum (EVM)',
+  bnb: 'Ethereum (EVM)',
+  tron: 'Tron',
+};
+
+export function recipientIssue(
+  address: string,
+  network: WalletNetwork,
+): { kind: RecipientIssueKind; message: string | null } {
+  const a = address.trim();
+  if (!a) {
+    return { kind: 'empty', message: 'Enter a destination address' };
+  }
+  if (isNameLikeRecipient(a)) {
+    const v = validateAddressFormat(a, network);
+    return v.ok
+      ? { kind: 'ok', message: null }
+      : {
+          kind: 'unsupported_network',
+          message: v.message ?? 'That name is not supported on this network',
+        };
+  }
+  const family = guessAddressFamily(a);
+  const evm = network === 'ethereum' || network === 'polygon' || network === 'bnb';
+  if (family && family !== network) {
+    const familyIsEvm = family === 'ethereum' || family === 'polygon' || family === 'bnb';
+    if (!(evm && familyIsEvm)) {
+      return {
+        kind: 'unsupported_network',
+        message: `This looks like a ${FAMILY_LABEL[family]} address, not ${FAMILY_LABEL[network]}. Do not send — switch network or paste a matching address.`,
+      };
+    }
+  }
+  const v = validateAddressFormat(a, network);
+  if (!v.ok) {
+    return {
+      kind: 'invalid_format',
+      message: v.message ?? 'That address is not valid for this network',
+    };
+  }
+  return { kind: 'ok', message: null };
+}
+
+export function validateSendAmount(
+  value: string,
+  balance: number,
+  asset: WalletAsset,
+): { ok: boolean; message?: string } {
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: false, message: 'Enter an amount greater than zero.' };
+  if (trimmed.startsWith('-')) return { ok: false, message: 'Amount cannot be negative.' };
+  if (decimalPlaces(trimmed) > ASSET_DECIMALS[asset]) {
+    return {
+      ok: false,
+      message: `${asset} supports up to ${ASSET_DECIMALS[asset]} decimal places.`,
+    };
+  }
+  const n = parseAmount(trimmed);
+  if (n == null) return { ok: false, message: 'Enter an amount greater than zero.' };
+  if (n > balance) return { ok: false, message: 'There is not enough balance for this amount.' };
+  return { ok: true };
+}
+
+export function truncateMiddle(value: string, head = 8, tail = 6): string {
+  if (value.length <= head + tail + 1) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }

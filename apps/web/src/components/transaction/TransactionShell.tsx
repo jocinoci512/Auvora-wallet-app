@@ -17,6 +17,7 @@ export function TransactionShell({
   backHref = '/dashboard',
   backLabel = 'Wallet',
   reassure,
+  className,
 }: {
   title: string;
   subtitle?: string;
@@ -26,6 +27,7 @@ export function TransactionShell({
   backHref?: string;
   backLabel?: string;
   reassure?: string;
+  className?: string;
 }): ReactElement {
   const list = steps ?? [];
   const found = list.findIndex((s) => s.id === currentStepId);
@@ -33,7 +35,7 @@ export function TransactionShell({
   const progress = list.length ? ((currentIndex + 1) / list.length) * 100 : 0;
 
   return (
-    <div className="cx">
+    <div className={['cx', className].filter(Boolean).join(' ')}>
       <div className="cx-atmosphere" aria-hidden />
       <header className="cx__header">
         <p className="cx__eyebrow">

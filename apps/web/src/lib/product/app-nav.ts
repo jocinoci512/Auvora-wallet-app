@@ -74,6 +74,7 @@ const PAGE_TITLES: Array<{ prefix: string; title: string }> = [
   { prefix: '/settings', title: 'Settings' },
   { prefix: '/send', title: 'Send' },
   { prefix: '/receive', title: 'Receive' },
+  { prefix: '/assets', title: 'Asset' },
   { prefix: '/wallets', title: 'Wallets' },
   { prefix: '/web3', title: 'Connections' },
 ];

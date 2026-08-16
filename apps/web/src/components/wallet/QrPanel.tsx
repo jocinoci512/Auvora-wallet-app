@@ -7,9 +7,17 @@ export interface QrPanelProps {
   value: string;
   label?: string;
   size?: number;
+  copyEnabled?: boolean;
+  shareEnabled?: boolean;
 }
 
-export function QrPanel({ value, label = 'QR code', size = 200 }: QrPanelProps): ReactElement {
+export function QrPanel({
+  value,
+  label = 'QR code for receive address',
+  size = 200,
+  copyEnabled = true,
+  shareEnabled = true,
+}: QrPanelProps): ReactElement {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +32,7 @@ export function QrPanel({ value, label = 'QR code', size = 200 }: QrPanelProps):
         const QR = await import('qrcode');
         const url = await QR.toDataURL(value, {
           width: size * 2,
-          margin: 1,
+          margin: 2,
           color: { dark: '#0b1220', light: '#ffffff' },
           errorCorrectionLevel: 'M',
         });
@@ -52,23 +60,26 @@ export function QrPanel({ value, label = 'QR code', size = 200 }: QrPanelProps):
   );
 
   async function copy(): Promise<void> {
+    if (!copyEnabled) return;
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
       if (copyTimer.current != null) window.clearTimeout(copyTimer.current);
-      copyTimer.current = window.setTimeout(() => setCopied(false), 1600);
+      copyTimer.current = window.setTimeout(() => setCopied(false), 1800);
     } catch {
       setError('Clipboard unavailable — select the address and copy manually.');
     }
   }
 
   async function share(): Promise<void> {
+    if (!shareEnabled) return;
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Auvora receive address', text: value });
         return;
       } catch {
-        /* fall through */
+        /* cancelled or unavailable */
+        return;
       }
     }
     await copy();
@@ -94,20 +105,29 @@ export function QrPanel({ value, label = 'QR code', size = 200 }: QrPanelProps):
         <code>{value}</code>
       </p>
       <div className="cx-qr__actions">
-        <button type="button" className="cx-btn cx-btn--ghost" onClick={() => void copy()}>
-          <Copy size={16} aria-hidden /> {copied ? 'Copied' : 'Copy'}
-        </button>
-        <button
-          type="button"
-          className="cx-btn cx-btn--ghost"
-          onClick={() => void share()}
-          aria-label="Share address"
-        >
-          <Share2 size={16} aria-hidden /> Share
-        </button>
+        {copyEnabled ? (
+          <button
+            type="button"
+            className="cx-btn cx-btn--ghost"
+            onClick={() => void copy()}
+            aria-label="Copy address"
+          >
+            <Copy size={16} aria-hidden /> {copied ? 'Copied' : 'Copy address'}
+          </button>
+        ) : null}
+        {shareEnabled ? (
+          <button
+            type="button"
+            className="cx-btn cx-btn--ghost"
+            onClick={() => void share()}
+            aria-label="Share address"
+          >
+            <Share2 size={16} aria-hidden /> Share
+          </button>
+        ) : null}
         {copied ? (
-          <span className="cx-inline-ok" role="status">
-            <Check size={14} aria-hidden /> Copied to clipboard
+          <span className="cx-inline-ok" role="status" aria-live="polite">
+            <Check size={14} aria-hidden /> Address copied
           </span>
         ) : null}
       </div>
