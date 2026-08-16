@@ -10,8 +10,8 @@ export function AboutSettingsExperience(): ReactElement {
   return (
     <PlatformShell
       title="About"
-      subtitle="Version, legal, and acknowledgements."
-      reassure="Alpha builds are labeled honestly — funding and live broadcast stay locked."
+      subtitle="Product identity and legal links — nothing extra."
+      reassure="Alpha is labeled as Alpha. Funding addresses stay locked on this companion."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/about" />}
@@ -26,64 +26,41 @@ export function AboutSettingsExperience(): ReactElement {
         <div className="cx-alert cx-alert--warn" role="status">
           {ReleaseConfig.fundingBlockedMessage}
         </div>
-        <p className="cx-meta">
-          Support:{' '}
-          <a className="cx-link" href={`mailto:${ReleaseConfig.supportEmail}`}>
-            {ReleaseConfig.supportEmail}
-          </a>
-          {' · '}
-          <a className="cx-link" href={ReleaseConfig.websiteUrl} rel="noreferrer" target="_blank">
-            Website
-          </a>
-          {' · '}
-          <a
-            className="cx-link"
-            href={ReleaseConfig.privacyPolicyUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Privacy
-          </a>
-          {' · '}
-          <a
-            className="cx-link"
-            href={ReleaseConfig.termsOfServiceUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Terms
-          </a>
-        </p>
         <ul className="cx-list">
           <li>
-            <strong>Release notes</strong>
-            <p className="cx-meta">
-              Version 1.0 Alpha packaging for trusted testing. Receive funding stays locked; live
-              broadcast kill switch is off. Reliability and store-ready Android config from Prompts
-              8–10.
-            </p>
+            <a
+              className="cx-link"
+              href={ReleaseConfig.privacyPolicyUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Privacy
+            </a>
           </li>
           <li>
-            <Link href="/settings/feedback" className="cx-link">
-              Send Alpha feedback
-            </Link>
-            <p className="cx-meta">Bugs, UX, performance, security, accessibility</p>
+            <a
+              className="cx-link"
+              href={ReleaseConfig.termsOfServiceUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Terms
+            </a>
           </li>
           <li>
             <Link href="/legal" className="cx-link">
-              Privacy policy &amp; terms
+              Legal
             </Link>
           </li>
           <li>
-            <Link href="/trust" className="cx-link">
-              Trust &amp; transparency
-            </Link>
+            <a className="cx-link" href={`mailto:${ReleaseConfig.supportEmail}`}>
+              {ReleaseConfig.supportEmail}
+            </a>
           </li>
           <li>
-            <p className="cx-meta">
-              Open-source acknowledgements ship with the store build. Web preview uses Next.js,
-              React, and Auvora design packages.
-            </p>
+            <a className="cx-link" href={ReleaseConfig.websiteUrl} rel="noreferrer" target="_blank">
+              Website
+            </a>
           </li>
         </ul>
       </section>

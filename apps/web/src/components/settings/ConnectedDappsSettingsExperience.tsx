@@ -113,15 +113,15 @@ export function ConnectedDappsSettingsExperience(): ReactElement {
 
   return (
     <PlatformShell
-      title="Connected dApps"
-      subtitle="Search, filter, sort, disconnect, and manage permissions — same model as Web3 Permission center."
-      reassure="Disconnecting here updates the shared session view. Use Permission center to revoke individual grants."
+      title="Connected apps"
+      subtitle="The same connection list as Wallet → Connections. Manage sessions there to avoid two designs."
+      reassure="Disconnecting a session does not send wallet keys. Tokens are never shown here."
       backHref="/settings"
       backLabel="Settings"
-      nav={<SettingsSectionNav current="/settings/dapps" />}
+      nav={<SettingsSectionNav current="/connections" />}
       actions={
-        <Link href="/web3/permissions" className="cx-btn cx-btn--primary">
-          Permission center
+        <Link href="/connections" className="cx-btn cx-btn--primary">
+          Open Connections
         </Link>
       }
     >

@@ -3,13 +3,14 @@
 import { Alert, Button, Checkbox, SuccessState } from '@auvora/ui';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, useEffect, type ReactElement } from 'react';
 import {
   generateDemoPhrase,
   pickChallengeIndexes,
 } from '../../lib/wallet-experience/recovery-demo';
 import { WizardActions, WizardShell } from './WizardShell';
 import '../../app/wallet-experience.css';
+import '../../app/consumer.css';
 
 const STEPS = [
   { id: 'warn', label: 'Warnings' },
@@ -31,6 +32,11 @@ export function RecoveryPhraseExperience(): ReactElement {
   const [error, setError] = useState<string | null>(null);
 
   const masked = useMemo(() => phrase.map(() => '••••'), [phrase]);
+
+  useEffect(() => {
+    if (step !== 'display') setRevealed(false);
+    return () => setRevealed(false);
+  }, [step]);
 
   function beginVerify(): void {
     const idxs = pickChallengeIndexes(phrase.length, 3);
@@ -58,9 +64,9 @@ export function RecoveryPhraseExperience(): ReactElement {
     >
       {step === 'warn' ? (
         <section className="wx-panel">
-          <Alert tone="warn" title="Never expose this unnecessarily">
-            Production APIs do not return mnemonics to the browser. This rehearsal uses a disposable
-            demo phrase kept only in memory for this session.
+          <Alert tone="warn" title="Stay somewhere private">
+            This rehearsal uses a disposable demo phrase kept only in memory. Auvora never asks for
+            your recovery phrase in email, chat, or support.
           </Alert>
           <ul className="wx-checklist">
             <li>
@@ -121,7 +127,10 @@ export function RecoveryPhraseExperience(): ReactElement {
               )}
             </Button>
           </div>
-          <ol className="wx-phrase-grid" aria-label="Recovery words">
+          <ol
+            className={`wx-phrase-grid as-sensitive${revealed ? ' is-revealed' : ''}`}
+            aria-label="Recovery words"
+          >
             {(revealed ? phrase : masked).map((w, i) => (
               <li key={i}>
                 <span className="wx-phrase-num">{i + 1}</span>
@@ -186,7 +195,7 @@ export function RecoveryPhraseExperience(): ReactElement {
           description="Demo phrase discarded from UI state on navigation. Enable PIN under Security."
           action={
             <div className="wx__actions">
-              <Link href="/security">
+              <Link href="/settings/security">
                 <Button>Security settings</Button>
               </Link>
               <Link href="/wallets">

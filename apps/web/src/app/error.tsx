@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, type ReactElement } from 'react';
-import './core-experience.css';
+import type { ReactElement } from 'react';
+import './consumer.css';
 
 export default function GlobalError({
   error,
@@ -11,47 +11,28 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }): ReactElement {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
   return (
-    <div className="cx cx--wide">
-      <div className="cx-atmosphere" aria-hidden />
-      <header className="cx__header">
-        <p className="cx__eyebrow">
-          <Link href="/dashboard">Wallet</Link>
+    <div className="as">
+      <p className="as-kicker">
+        <Link href="/">Auvora</Link>
+      </p>
+      <div className="as-issue as-issue--error">
+        <h1 className="as__title">Something went wrong</h1>
+        <p className="as__lede">
+          Try again, or return to your wallet. Your funds are not moved by this screen.
         </p>
-        <h1 className="cx__title">Something went wrong</h1>
-        <p className="cx__sub">
-          The page hit an unexpected error. Your funds are not moved by this screen.
-        </p>
-        <p className="cx__reassure">
-          Try again, or return to your wallet. Check Status if the issue persists.
-        </p>
-      </header>
-      <div className="cx__body">
-        <section className="cx-panel">
-          <div className="cx-platform__actions">
-            <button type="button" className="cx-btn cx-btn--primary" onClick={reset}>
-              Try again
-            </button>
-            <Link href="/dashboard" className="cx-btn cx-btn--ghost">
-              Back to wallet
-            </Link>
-            <Link href="/status" className="cx-btn cx-btn--ghost">
-              Status
-            </Link>
-            <Link href="/settings/help" className="cx-btn cx-btn--ghost">
-              Help
-            </Link>
-          </div>
-          {error.digest ? (
-            <p className="cx-meta" style={{ marginTop: '1rem' }}>
-              Reference: {error.digest}
-            </p>
-          ) : null}
-        </section>
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <button type="button" className="as-btn as-btn--primary" onClick={reset}>
+            Try again
+          </button>
+          <Link className="as-btn as-btn--ghost" href="/dashboard">
+            Back to wallet
+          </Link>
+          <Link className="as-btn as-btn--ghost" href="/settings/help">
+            Help
+          </Link>
+        </div>
+        {error.digest ? <p className="as-hint">Reference: {error.digest}</p> : null}
       </div>
     </div>
   );

@@ -6,8 +6,10 @@ import { applyLocaleDocumentPrefs } from '../../lib/i18n/locale-document';
 import { getAccountPrefs, setAccountPrefs, type AccountPrefs } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { getUserPrefs, setUserPrefs, type ThemePref } from '../../lib/wallet-experience/user-prefs';
+import { SUPPORTED_NETWORKS } from '../../lib/product/networks';
 import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
+import { FeedbackToast } from '../status/FeedbackToast';
 
 function applyTheme(theme: ThemePref): void {
   if (typeof document === 'undefined') return;
@@ -31,7 +33,7 @@ export function PreferencesExperience(): ReactElement {
   const [theme, setTheme] = useState<ThemePref>('system');
   const [privacyMode, setPrivacyMode] = useState(false);
   const [compact, setCompact] = useState(false);
-  const { toast, showToast } = useTimedToast(1600);
+  const { toast, tone, showToast } = useTimedToast(1600);
 
   useEffect(() => {
     setPrefs(getAccountPrefs());
@@ -47,7 +49,7 @@ export function PreferencesExperience(): ReactElement {
     if (next.currency) setUserPrefs({ currency: next.currency as 'USD' | 'EUR' | 'GBP' | 'JPY' });
     if (next.language) setUserPrefs({ language: next.language });
     if (next.defaultNetwork) setUserPrefs({ defaultNetwork: next.defaultNetwork.toLowerCase() });
-    showToast('Preferences saved');
+    showToast('Preferences saved', { tone: 'success' });
     applyLocaleDocumentPrefs();
   }
 
@@ -55,23 +57,19 @@ export function PreferencesExperience(): ReactElement {
     setTheme(next);
     setUserPrefs({ theme: next });
     applyTheme(next);
-    showToast('Theme updated');
+    showToast('Theme updated', { tone: 'success' });
   }
 
   return (
     <PlatformShell
-      title="Appearance & personalization"
-      subtitle="Theme, currency, network, balance display, and accessibility."
-      reassure="Changes apply on this device and stay in sync with onboarding preferences."
+      title="Preferences"
+      subtitle="Theme, currency, and display options that already work on this device."
+      reassure="These controls change local presentation. They do not move funds."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/preferences" />}
     >
-      {toast ? (
-        <div className="cx-alert cx-alert--info" role="status">
-          {toast}
-        </div>
-      ) : null}
+      {toast ? <FeedbackToast message={toast} tone={tone} /> : null}
 
       <section className="cx-panel" id="appearance">
         <h2>Theme</h2>
@@ -128,10 +126,11 @@ export function PreferencesExperience(): ReactElement {
             onChange={(e) => patch({ defaultNetwork: e.target.value })}
             aria-label="Default network"
           >
-            <option value="ETHEREUM">Ethereum</option>
-            <option value="POLYGON">Polygon</option>
-            <option value="SOLANA">Solana</option>
-            <option value="BITCOIN">Bitcoin</option>
+            {SUPPORTED_NETWORKS.map((n) => (
+              <option key={n.id} value={n.id.toUpperCase()}>
+                {n.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="cx-field">
@@ -181,7 +180,7 @@ export function PreferencesExperience(): ReactElement {
               const next = !privacyMode;
               setPrivacyMode(next);
               setUserPrefs({ privacyMode: next });
-              showToast('Display preference saved');
+              showToast('Display preference saved', { tone: 'success' });
             }}
             aria-pressed={privacyMode}
           >
@@ -200,7 +199,7 @@ export function PreferencesExperience(): ReactElement {
               const next = !compact;
               setCompact(next);
               setUserPrefs({ portfolioCompact: next });
-              showToast('Layout preference saved');
+              showToast('Layout preference saved', { tone: 'success' });
             }}
             aria-pressed={compact}
           >

@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, type ReactElement } from 'react';
-import { formatApiError } from '../../lib/api-client';
+import { humanizeAuthError } from '../../lib/auth/error-copy';
 import { verifyEmail } from '../../lib/auth/session';
+import { AuthShell } from './AuthShell';
 
 function VerifyBody(): ReactElement {
   const params = useSearchParams();
@@ -15,17 +16,18 @@ function VerifyBody(): ReactElement {
 
   useEffect(() => {
     if (!token) {
-      setError('Missing verification token. Open the link from your email.');
+      setError('This verification link is missing or incomplete. Open the latest email we sent.');
       setBusy(false);
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const message = await verifyEmail(token);
-        if (!cancelled) setInfo(message || 'Email verified. You can sign in.');
+        await verifyEmail(token);
+        if (!cancelled) setInfo('Email verified. You can sign in.');
       } catch (err) {
-        if (!cancelled) setError(formatApiError(err));
+        if (!cancelled)
+          setError(humanizeAuthError(err, 'This verification link could not be used.'));
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -36,31 +38,41 @@ function VerifyBody(): ReactElement {
   }, [token]);
 
   return (
-    <section className="auv-auth" aria-labelledby="auv-verify-title">
-      <p className="auv-auth__eyebrow">One Auvora account</p>
-      <h1 id="auv-verify-title">Verify email</h1>
-      <p className="auv-auth__lede">Confirm your email to activate sign-in for this account.</p>
-      {busy ? <p className="auv-auth__info">Verifying…</p> : null}
+    <AuthShell
+      title="Verify email"
+      lede="Confirm your email to activate sign-in for this Auvora account."
+    >
+      {busy ? (
+        <p className="as-info" role="status">
+          Verifying…
+        </p>
+      ) : null}
       {error ? (
-        <p className="auv-auth__error" role="alert">
+        <p className="as-error" role="alert">
           {error}
         </p>
       ) : null}
       {info ? (
-        <p className="auv-auth__info" role="status">
+        <p className="as-info" role="status">
           {info}
         </p>
       ) : null}
-      <p className="auv-auth__switch">
+      <p className="as-switch">
         <Link href="/auth/login">Continue to sign in</Link>
       </p>
-    </section>
+    </AuthShell>
   );
 }
 
 export function VerifyEmailExperience(): ReactElement {
   return (
-    <Suspense fallback={<section className="auv-auth">Verifying…</section>}>
+    <Suspense
+      fallback={
+        <AuthShell title="Verify email" lede="Verifying…">
+          <p className="as-hint">Please wait…</p>
+        </AuthShell>
+      }
+    >
       <VerifyBody />
     </Suspense>
   );

@@ -919,6 +919,36 @@
   justify-content: center;
 }
 
+.ob-back {
+  background: none;
+  border: none;
+  color: var(--ob-lagoon);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  min-height: 44px;
+}
+
+.as-sensitive,
+.ob-phrase {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.as-sensitive.is-revealed,
+.ob-phrase.is-revealed {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+@media print {
+  .as-sensitive,
+  .ob-phrase {
+    visibility: hidden;
+  }
+}
+
 body:has(.ob) .token-panel {
   max-width: 720px;
 }

@@ -2,7 +2,7 @@
 
 import { Alert, Button, Checkbox, SuccessState, Textarea } from '@auvora/ui';
 import Link from 'next/link';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, useEffect, type ReactElement } from 'react';
 import {
   generateDemoPhrase,
   normalizePhrase,
@@ -32,6 +32,12 @@ export function RestoreWalletExperience(): ReactElement {
   const [error, setError] = useState<string | null>(null);
 
   const words = useMemo(() => normalizePhrase(phraseText), [phraseText]);
+
+  useEffect(() => {
+    return () => {
+      setPhraseText('');
+    };
+  }, []);
 
   function startChallenge(): void {
     const target = useReference ? reference : words;
@@ -66,9 +72,8 @@ export function RestoreWalletExperience(): ReactElement {
       {step === 'educate' ? (
         <section className="wx-panel">
           <Alert tone="info" title="How restore works">
-            Restoring re-derives accounts from your phrase. Ledger <code>restoreWallet</code> APIs
-            only flip account status — they never accept mnemonics. This flow is the consumer UX
-            layer around a secure custody restore.
+            Restoring re-derives accounts from your recovery phrase on this device. Auvora account
+            APIs never accept a mnemonic. Stay somewhere private.
           </Alert>
           <label className="wx-inline-check">
             <Checkbox
@@ -78,8 +83,9 @@ export function RestoreWalletExperience(): ReactElement {
             />
           </label>
           {useReference ? (
-            <Alert tone="warn" title="Demo phrase (not funded)">
-              <code className="wx-phrase-inline">{reference.join(' ')}</code>
+            <Alert tone="warn" title="Practice mode">
+              A disposable demo phrase stays in memory for this session. It is not shown unless you
+              reach the entry step.
             </Alert>
           ) : null}
           <WizardActions onNext={() => setStep('enter')} />
@@ -96,7 +102,10 @@ export function RestoreWalletExperience(): ReactElement {
               rows={4}
               readOnly={useReference}
               autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
               spellCheck={false}
+              name="auvora-recovery-phrase"
             />
           </label>
           {error ? (

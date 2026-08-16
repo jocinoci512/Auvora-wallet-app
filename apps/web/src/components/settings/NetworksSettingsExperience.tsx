@@ -1,48 +1,41 @@
 'use client';
 
-import { Alert, Button } from '@auvora/ui';
+import { Alert } from '@auvora/ui';
 import { useEffect, useState, type ReactElement } from 'react';
+import { SUPPORTED_NETWORKS } from '../../lib/product/networks';
 import { getAccountPrefs, setAccountPrefs } from '../../lib/settings/prefs';
 import { useTimedToast } from '../../lib/settings/use-timed-toast';
 import { PlatformShell } from '../platform/PlatformShell';
 import { SettingsSectionNav } from './SettingsSectionNav';
-
-const NETWORKS = [
-  { id: 'ETHEREUM', status: 'Healthy', detail: 'rpc-preview · 42ms' },
-  { id: 'BITCOIN', status: 'Healthy', detail: 'rpc-preview · 58ms' },
-  { id: 'SOLANA', status: 'Degraded', detail: 'rpc-preview · 210ms' },
-  { id: 'POLYGON', status: 'Healthy', detail: 'rpc-preview · 51ms' },
-] as const;
+import { FeedbackToast } from '../status/FeedbackToast';
 
 export function NetworksSettingsExperience(): ReactElement {
-  const [network, setNetwork] = useState('ETHEREUM');
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [cacheResetAt, setCacheResetAt] = useState<string | null>(null);
-  const { toast, showToast } = useTimedToast(1600);
+  const [network, setNetwork] = useState('ethereum');
+  const { toast, tone, showToast } = useTimedToast(1600);
 
   useEffect(() => {
-    setNetwork(getAccountPrefs().defaultNetwork);
+    const stored = getAccountPrefs().defaultNetwork.toLowerCase();
+    const match = SUPPORTED_NETWORKS.find(
+      (n) => n.id === stored || n.symbol.toLowerCase() === stored,
+    );
+    setNetwork(match?.id ?? 'ethereum');
   }, []);
 
   return (
     <PlatformShell
       title="Networks"
-      subtitle="Choose a default network for new actions. Status is preview health — not a live SLA."
-      reassure="Advanced RPC options stay collapsed until you need them."
+      subtitle="Auvora currently supports these six networks. Custom RPC endpoints are not available."
+      reassure="Choosing a default only affects new actions on this device."
       backHref="/settings"
       backLabel="Settings"
       nav={<SettingsSectionNav current="/settings/networks" />}
     >
-      {toast ? (
-        <Alert tone="success" title="Saved">
-          {toast}
-        </Alert>
-      ) : null}
+      {toast ? <FeedbackToast message={toast} tone={tone} /> : null}
 
       <section className="cx-panel">
-        <h2>Default network</h2>
+        <h2>Supported networks</h2>
         <ul className="cx-list">
-          {NETWORKS.map((n) => (
+          {SUPPORTED_NETWORKS.map((n) => (
             <li key={n.id}>
               <label style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                 <input
@@ -51,55 +44,24 @@ export function NetworksSettingsExperience(): ReactElement {
                   checked={network === n.id}
                   onChange={() => {
                     setNetwork(n.id);
-                    setAccountPrefs({ defaultNetwork: n.id });
-                    showToast(`Default network · ${n.id}`);
+                    setAccountPrefs({ defaultNetwork: n.id.toUpperCase() });
+                    showToast(`Default network · ${n.label}`, { tone: 'success' });
                   }}
-                  aria-label={`Use ${n.id}`}
+                  aria-label={`Use ${n.label}`}
                 />
                 <span>
-                  <strong>{n.id}</strong>
-                  <p className="cx-meta">
-                    {n.status} · {n.detail}
-                  </p>
+                  <strong>
+                    {n.label} ({n.symbol})
+                  </strong>
+                  <p className="cx-meta">Supported</p>
                 </span>
               </label>
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="cx-panel">
-        <button
-          type="button"
-          className="cx-chip"
-          aria-expanded={advancedOpen}
-          onClick={() => setAdvancedOpen((v) => !v)}
-        >
-          {advancedOpen ? 'Hide advanced' : 'Show advanced'}
-        </button>
-        {advancedOpen ? (
-          <div style={{ marginTop: '0.75rem' }}>
-            <p className="cx-meta">
-              Custom RPC endpoints are not available in this preview. Reset clears local preview
-              cache only.
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                const at = new Date().toISOString();
-                setCacheResetAt(at);
-                showToast('Network cache reset (preview)');
-              }}
-            >
-              Reset network cache
-            </Button>
-            {cacheResetAt ? (
-              <p className="cx-meta">Last reset · {new Date(cacheResetAt).toLocaleString()}</p>
-            ) : null}
-          </div>
-        ) : null}
+        <Alert tone="info" title="No custom networks">
+          Additional chains and custom RPC URLs are not enabled in this release.
+        </Alert>
       </section>
     </PlatformShell>
   );

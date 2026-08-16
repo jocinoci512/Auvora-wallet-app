@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useState, type FormEvent, type ReactElement } from 'react';
-import { formatApiError } from '../../lib/api-client';
+import { humanizeAuthError } from '../../lib/auth/error-copy';
 import { forgotPassword } from '../../lib/auth/session';
+import { AuthShell } from './AuthShell';
 
 export function ForgotPasswordExperience(): ReactElement {
   const [email, setEmail] = useState('');
@@ -17,24 +18,24 @@ export function ForgotPasswordExperience(): ReactElement {
     setError(null);
     setInfo(null);
     try {
-      const message = await forgotPassword(email.trim());
-      setInfo(message || 'If an account exists, a reset link was sent.');
+      await forgotPassword(email.trim());
+      setInfo(
+        'If an account exists for this email, a reset link is on its way. This never asks for a recovery phrase.',
+      );
     } catch (err) {
-      setError(formatApiError(err));
+      setError(humanizeAuthError(err, 'Could not send a reset link.'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="auv-auth" aria-labelledby="auv-forgot-title">
-      <p className="auv-auth__eyebrow">One Auvora account</p>
-      <h1 id="auv-forgot-title">Forgot password</h1>
-      <p className="auv-auth__lede">
-        We email a time-limited reset link. This never asks for your seed phrase or private keys.
-      </p>
-      <form className="auv-auth__form" onSubmit={(e) => void onSubmit(e)}>
-        <label className="auv-auth__field">
+    <AuthShell
+      title="Forgot password"
+      lede="We email a time-limited reset link for your Auvora account. Wallet keys are not involved."
+    >
+      <form onSubmit={(e) => void onSubmit(e)}>
+        <label className="as-field">
           <span>Email</span>
           <input
             type="email"
@@ -42,25 +43,26 @@ export function ForgotPasswordExperience(): ReactElement {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+            inputMode="email"
           />
         </label>
         {error ? (
-          <p className="auv-auth__error" role="alert">
+          <p className="as-error" role="alert">
             {error}
           </p>
         ) : null}
         {info ? (
-          <p className="auv-auth__info" role="status">
+          <p className="as-info" role="status">
             {info}
           </p>
         ) : null}
-        <button type="submit" className="mh-btn mh-btn--primary" disabled={busy}>
+        <button type="submit" className="as-btn as-btn--primary" disabled={busy}>
           {busy ? 'Sending…' : 'Send reset link'}
         </button>
       </form>
-      <p className="auv-auth__switch">
+      <p className="as-switch">
         <Link href="/auth/login">Back to sign in</Link>
       </p>
-    </section>
+    </AuthShell>
   );
 }

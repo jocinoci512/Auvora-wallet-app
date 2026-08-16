@@ -9,87 +9,42 @@ const CATEGORIES = [
   {
     href: '/settings/account',
     title: 'Account',
-    detail: 'Wallet name, nickname, and preview wallet list',
-  },
-  {
-    href: '/settings/preferences',
-    title: 'Wallet',
-    detail: 'Currency, sorting, balances, and refresh behavior',
+    detail: 'Email, display name, and verification',
   },
   {
     href: '/settings/security',
     title: 'Security',
-    detail: 'Score, recovery, devices, sessions, and protection',
+    detail: 'Password, backup, devices, and sessions',
   },
   {
-    href: '/settings/notifications',
-    title: 'Notifications',
-    detail: 'Choose which alerts matter — silence the rest',
-  },
-  {
-    href: '/settings/alerts',
-    title: 'Price alerts',
-    detail: 'Create, pause, and delete custom targets',
-  },
-  {
-    href: '/settings/preferences#appearance',
-    title: 'Appearance',
-    detail: 'Theme, accent readiness, language formats, and display feel',
-  },
-  {
-    href: '/settings/privacy',
-    title: 'Privacy',
-    detail: 'Balances, analytics, clipboard, and Assistant',
+    href: '/wallets',
+    title: 'Wallets',
+    detail: 'Create, import, or manage wallets on this device',
   },
   {
     href: '/settings/networks',
     title: 'Networks',
-    detail: 'Default network and preview RPC health',
+    detail: 'Bitcoin, Ethereum, Solana, BNB Smart Chain, Polygon, Tron',
   },
   {
-    href: '/settings/preferences#accessibility',
-    title: 'Accessibility',
-    detail: 'Text size, motion, contrast, and touch targets',
+    href: '/connections',
+    title: 'Connections',
+    detail: 'Connected apps and WalletConnect sessions',
   },
   {
-    href: '/settings/devices',
-    title: 'Devices & sessions',
-    detail: 'Trusted devices and active logins',
-  },
-  {
-    href: '/settings/dapps',
-    title: 'Connected apps',
-    detail: 'dApp inventory from settings',
-  },
-  {
-    href: '/web3/permissions',
-    title: 'Web3 permissions',
-    detail: 'Revoke grants and sessions',
-  },
-  {
-    href: '/settings/backup',
-    title: 'Backup & recovery',
-    detail: 'Phrase status and reminders',
-  },
-  {
-    href: '/settings/advanced',
-    title: 'Advanced',
-    detail: 'Developer options — gated until needed',
+    href: '/settings/preferences',
+    title: 'Preferences',
+    detail: 'Theme, currency, and display',
   },
   {
     href: '/settings/help',
     title: 'Support',
-    detail: 'FAQ, guides, and contact',
+    detail: 'Help, security guidance, and contact',
   },
   {
     href: '/settings/about',
     title: 'About',
-    detail: 'Version, legal, and acknowledgements',
-  },
-  {
-    href: '/notifications',
-    title: 'Notification center',
-    detail: 'In-app inbox for this device',
+    detail: 'Version, privacy, and terms',
   },
 ] as const;
 
@@ -105,21 +60,21 @@ export function SettingsHomeExperience(): ReactElement {
   return (
     <PlatformShell
       title="Settings"
-      subtitle="Find what you need in under ten seconds — clear categories, short descriptions."
-      reassure="Changes on this device stay under your control. Advanced options stay out of the way."
+      subtitle="Account, security, wallets, and preferences — only what this product actually supports."
+      reassure="Auvora Account is identity and preferences. Wallet keys never leave this device through account login."
       backHref="/dashboard"
       backLabel="Wallet"
       nav={<SettingsSectionNav current="/settings" />}
     >
       <section className="cx-panel">
         <h2>Browse</h2>
-        <p>Start with Security if you are setting up protection. Search to jump elsewhere.</p>
+        <p>Start with Account or Security. Search to jump elsewhere.</p>
         <label className="cx-field">
           <span>Search settings</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Theme, alerts, networks…"
+            placeholder="Theme, recovery, networks…"
             aria-label="Search settings"
           />
         </label>
