@@ -169,11 +169,11 @@ export function DashboardExperience(): ReactElement {
   }
 
   function money(n: number): string {
-    return hideBalances ? 'â€¢â€¢â€¢â€¢â€¢â€¢' : formatUsd(n);
+    return hideBalances ? '••••••' : formatUsd(n);
   }
 
   function units(balance: number, symbol: string): string {
-    return hideBalances ? `â€¢â€¢â€¢â€¢ ${symbol}` : `${balance} ${symbol}`;
+    return hideBalances ? `•••• ${symbol}` : `${balance} ${symbol}`;
   }
 
   useEffect(() => {
@@ -234,7 +234,7 @@ export function DashboardExperience(): ReactElement {
             })),
           );
           setLiveHint(
-            overview.provider ? `Market data Â· ${overview.provider}` : 'Market overview live',
+            overview.provider ? `Market data · ${overview.provider}` : 'Market overview live',
           );
         }
 
@@ -391,7 +391,7 @@ export function DashboardExperience(): ReactElement {
 
       <p className="wd-hint" aria-live="polite">
         {liveHint}
-        {currencyHint ? ` Â· ${currencyHint}` : ''}
+        {currencyHint ? ` · ${currencyHint}` : ''}
       </p>
 
       <section className="wd-hero" aria-labelledby="wd-portfolio-label">
@@ -399,25 +399,21 @@ export function DashboardExperience(): ReactElement {
           Total portfolio
         </p>
         <p className="wd-hero__balance" aria-live="polite">
-          {hideBalances ? (
-            'â€¢â€¢â€¢â€¢â€¢â€¢'
-          ) : (
-            <CountUp value={totals.total} format={(n) => formatUsd(n)} />
-          )}
+          {hideBalances ? '••••••' : <CountUp value={totals.total} format={(n) => formatUsd(n)} />}
         </p>
         <div className="wd-hero__delta">
           <span className={totals.dayPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? 'â€¢â€¢â€¢â€¢' : money(totals.day)} Â·{' '}
-            {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(totals.dayPct)} <span>24h</span>
+            {hideBalances ? '••••' : money(totals.day)} ·{' '}
+            {hideBalances ? '••••' : formatPct(totals.dayPct)} <span>24h</span>
           </span>
           <span className={totals.weekPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(totals.weekPct)} <span>1W</span>
+            {hideBalances ? '••••' : formatPct(totals.weekPct)} <span>1W</span>
           </span>
           <span className={totals.monthPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(totals.monthPct)} <span>1M</span>
+            {hideBalances ? '••••' : formatPct(totals.monthPct)} <span>1M</span>
           </span>
           <span className={totals.unrealized >= 0 ? 'wd-pos' : 'wd-neg'}>
-            {hideBalances ? 'â€¢â€¢â€¢â€¢' : money(totals.unrealized)} <span>P&amp;L</span>
+            {hideBalances ? '••••' : money(totals.unrealized)} <span>P&amp;L</span>
           </span>
         </div>
         <div className="wd-ranges" role="tablist" aria-label="Chart range">
@@ -455,7 +451,7 @@ export function DashboardExperience(): ReactElement {
             {slices.slice(0, 4).map((s) => (
               <li key={s.label}>
                 <span className="wd-dot" style={{ background: s.color }} aria-hidden />
-                {s.label} Â· {((s.value / (totals.total || 1)) * 100).toFixed(0)}%
+                {s.label} · {((s.value / (totals.total || 1)) * 100).toFixed(0)}%
               </li>
             ))}
           </ul>
@@ -554,7 +550,7 @@ export function DashboardExperience(): ReactElement {
                     aria-pressed={favorites.has(h.id)}
                     onClick={() => toggleFav(h.id)}
                   >
-                    â˜…
+                    ★
                   </button>
                   <button
                     type="button"
@@ -587,7 +583,7 @@ export function DashboardExperience(): ReactElement {
                         </span>
                       </strong>
                       <small>
-                        {units(h.balance, h.symbol)} Â· {h.network}
+                        {units(h.balance, h.symbol)} · {h.network}
                       </small>
                     </span>
                   </button>
@@ -615,7 +611,7 @@ export function DashboardExperience(): ReactElement {
                   >
                     <strong>{money(h.valueUsd)}</strong>
                     <small className={h.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
-                      {hideBalances ? 'â€¢â€¢â€¢â€¢' : formatPct(h.change24hPct)}
+                      {hideBalances ? '••••' : formatPct(h.change24hPct)}
                     </small>
                   </button>
                 </div>
@@ -628,7 +624,7 @@ export function DashboardExperience(): ReactElement {
                       ariaLabel={`${h.symbol} recent performance`}
                     />
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--wd-muted)' }}>
-                      Allocation {h.allocationPct.toFixed(1)}% Â· {h.walletLabel} Â· Price{' '}
+                      Allocation {h.allocationPct.toFixed(1)}% · {h.walletLabel} · Price{' '}
                       {money(h.priceUsd)}
                     </p>
                     <div className="wd-asset__detail-actions">
@@ -676,14 +672,14 @@ export function DashboardExperience(): ReactElement {
               {g.items.map((tx) => (
                 <Link key={tx.id} href={`/activity/${tx.id}`} className="wd-tx">
                   <span className="wd-tx__icon" aria-hidden>
-                    {tx.type === 'receive' ? 'â†“' : tx.type === 'send' ? 'â†‘' : 'â‡„'}
+                    {tx.type === 'receive' ? '↓' : tx.type === 'send' ? '↑' : '⇄'}
                   </span>
                   <span className="wd-tx__body">
                     <strong>
                       {tx.type} {tx.asset}
                     </strong>
                     <small>
-                      {tx.network} Â· {tx.at}
+                      {tx.network} · {tx.at}
                     </small>
                   </span>
                   <span className="wd-tx__amt">
@@ -730,7 +726,7 @@ export function DashboardExperience(): ReactElement {
             <div className="wd-stat-row">
               <span>Fear &amp; Greed</span>
               <strong>
-                {DEMO_MARKET_SNAPSHOT.fearGreed} Â· {DEMO_MARKET_SNAPSHOT.fearGreedLabel}
+                {DEMO_MARKET_SNAPSHOT.fearGreed} · {DEMO_MARKET_SNAPSHOT.fearGreedLabel}
               </strong>
             </div>
             <div className="wd-stat-row">
@@ -762,7 +758,7 @@ export function DashboardExperience(): ReactElement {
           {watchlist.map((m) => (
             <div key={m.symbol} className="wd-mover">
               <span>
-                <strong>{m.symbol}</strong> Â· {formatUsd(m.priceUsd)}
+                <strong>{m.symbol}</strong> · {formatUsd(m.priceUsd)}
               </span>
               <strong className={m.change24hPct >= 0 ? 'wd-pos' : 'wd-neg'}>
                 {formatPct(m.change24hPct)}
@@ -820,18 +816,18 @@ export function DashboardExperience(): ReactElement {
               <li>Review connected dApps monthly</li>
               <li>Enable biometrics on this device</li>
               <li>
-                Pair hardware when ready â€” <Link href="/wallets/hardware">Hardware</Link>
+                Pair hardware when ready — <Link href="/wallets/hardware">Hardware</Link>
               </li>
             </ul>
             <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem' }}>
               <Link className="wd-section__link" href="/web3/permissions">
                 Connected dApps
               </Link>
-              {' Â· '}
+              {' · '}
               <Link className="wd-section__link" href="/settings/devices">
                 Devices
               </Link>
-              {' Â· '}
+              {' · '}
               <Link className="wd-section__link" href="/address-book">
                 Address book
               </Link>

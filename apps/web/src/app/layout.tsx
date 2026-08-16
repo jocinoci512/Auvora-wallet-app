@@ -1,43 +1,16 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Mono, Manrope, Source_Serif_4, Syne } from 'next/font/google';
 import type { ReactElement, ReactNode } from 'react';
 import { AppChrome } from '../components/Nav';
 import { Providers } from '../components/Providers';
 import { env } from '../env';
+// Self-hosted fonts (deterministic build — no Google Fonts fetch at build time).
+import '@fontsource-variable/syne';
+import '@fontsource-variable/manrope';
+import '@fontsource-variable/source-serif-4';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import '@auvora/ui/styles.css';
 import './globals.css';
-
-const display = Syne({
-  subsets: ['latin'],
-  weight: ['700'],
-  variable: '--font-auvora-display',
-  display: 'swap',
-  preload: true,
-});
-
-const body = Manrope({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-auvora-body',
-  display: 'swap',
-  preload: true,
-});
-
-const serif = Source_Serif_4({
-  subsets: ['latin'],
-  weight: ['600'],
-  variable: '--font-auvora-serif',
-  display: 'swap',
-  preload: true,
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-auvora-mono',
-  display: 'swap',
-  preload: true,
-});
 
 const appName = env.NEXT_PUBLIC_APP_NAME;
 const appUrl = env.NEXT_PUBLIC_APP_URL;
@@ -45,11 +18,11 @@ const appUrl = env.NEXT_PUBLIC_APP_URL;
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl ?? 'https://auvorawallet.com'),
   title: {
-    default: `${appName} â€” The quiet operating system for digital value`,
-    template: `%s Â· ${appName}`,
+    default: `${appName} — Secure, non-custodial multi-chain wallet`,
+    template: `%s · ${appName}`,
   },
   description:
-    'Auvora web companion for Internal Alpha â€” preview flows and settings. Mobile holds on-device signing.',
+    'Auvora is a secure, non-custodial wallet for managing digital assets across Ethereum, Solana, Bitcoin, and more. Your keys stay on your device.',
   applicationName: appName,
   keywords: [
     'Auvora',
@@ -66,16 +39,16 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: appName,
-    title: `${appName} â€” Internal Alpha companion`,
+    title: `${appName} — Secure, non-custodial multi-chain wallet`,
     description:
-      'Web companion for Auvora Internal Alpha. Preview balances and flows â€” not a live custodian.',
+      'Manage digital assets across Ethereum, Solana, Bitcoin, and more. Non-custodial by design — your keys never leave your device.',
     ...(appUrl ? { url: appUrl } : {}),
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${appName} â€” Internal Alpha companion`,
+    title: `${appName} — Secure, non-custodial multi-chain wallet`,
     description:
-      'Web companion for Auvora Internal Alpha. Preview balances and flows â€” not a live custodian.',
+      'Manage digital assets across Ethereum, Solana, Bitcoin, and more. Non-custodial by design — your keys never leave your device.',
   },
   robots: {
     index: false,
@@ -95,11 +68,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
   return (
-    <html
-      lang="en"
-      className={`${display.variable} ${body.variable} ${serif.variable} ${mono.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
