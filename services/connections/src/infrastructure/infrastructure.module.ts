@@ -25,6 +25,10 @@ import { WalletConnectStyleProvider } from './providers/walletconnect-style.prov
 import { RedisAdapter } from './redis/redis.adapter';
 import { REDIS_PORT } from './redis/redis.port';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
+import {
+  ADMIN_EVENT_PUBLISHER,
+  RedisAdminEventPublisher,
+} from './realtime/admin-event-publisher.adapter';
 
 @Module({
   imports: [ConfigModule, PrismaModule, LoggerInfrastructureModule],
@@ -51,9 +55,12 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: CONNECTION_PROVIDER, useExisting: ConnectionProviderRegistry },
+    RedisAdminEventPublisher,
+    { provide: ADMIN_EVENT_PUBLISHER, useExisting: RedisAdminEventPublisher },
   ],
   exports: [
     REDIS_PORT,
+    ADMIN_EVENT_PUBLISHER,
     RATE_LIMITER,
     CLOCK,
     ID_GENERATOR,

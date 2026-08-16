@@ -38,6 +38,10 @@ import { LoggerInfrastructureModule } from './logging/logger.module';
 import { OpenTelemetryLifecycle } from './observability/otel-lifecycle.service';
 import { REDIS_PORT } from './redis/redis.port';
 import { RedisAdapter } from './redis/redis.adapter';
+import {
+  ADMIN_EVENT_PUBLISHER,
+  RedisAdminEventPublisher,
+} from './realtime/admin-event-publisher.adapter';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
 
 @Module({
@@ -120,9 +124,15 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
       provide: OBSERVABILITY_PUBLISHER,
       useExisting: ObservabilityPublisherAdapter,
     },
+    RedisAdminEventPublisher,
+    {
+      provide: ADMIN_EVENT_PUBLISHER,
+      useExisting: RedisAdminEventPublisher,
+    },
   ],
   exports: [
     REDIS_PORT,
+    ADMIN_EVENT_PUBLISHER,
     RATE_LIMITER,
     CLOCK,
     ID_GENERATOR,

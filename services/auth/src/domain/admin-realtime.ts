@@ -108,6 +108,21 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'csrf',
 ] as const;
 
+/**
+ * Ambiguous short keys that must be blocked EXACTLY (not as substrings), so they
+ * strip secret-bearing fields (WC pairing URIs embed symKeys, raw sign payloads,
+ * previews, vault blobs) without also dropping safe longer keys such as
+ * `payloadType`, `securityState`, or `peerUrl`.
+ */
+const EXACT_SENSITIVE_KEYS: ReadonlySet<string> = new Set([
+  'uri',
+  'payload',
+  'preview',
+  'vault',
+  'qrpayload',
+  'deeplink',
+]);
+
 /** Explicit non-secret keys that would otherwise trip a fragment above. */
 const SENSITIVE_KEY_ALLOWLIST: ReadonlySet<string> = new Set([
   'sessionid', // an opaque identifier, not the session secret
@@ -124,6 +139,7 @@ export function isSensitiveKey(key: string): boolean {
     // Explicitly permitted identifiers. `tokentype` is a label; still handled below.
     if (normalised === 'sessionid') return false;
   }
+  if (EXACT_SENSITIVE_KEYS.has(normalised)) return true;
   return SENSITIVE_KEY_FRAGMENTS.some((fragment) =>
     normalised.includes(fragment.replace(/[\s_-]/g, '')),
   );

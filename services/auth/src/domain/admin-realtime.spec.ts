@@ -123,6 +123,37 @@ describe('admin-realtime contract', () => {
       expect(serialized).toContain('admin');
     });
 
+    it('blocks ambiguous short keys exactly but keeps safe longer keys', () => {
+      // Exact-blocked (WC pairing/raw material)
+      expect(isSensitiveKey('uri')).toBe(true);
+      expect(isSensitiveKey('payload')).toBe(true);
+      expect(isSensitiveKey('preview')).toBe(true);
+      expect(isSensitiveKey('vault')).toBe(true);
+      expect(isSensitiveKey('qrPayload')).toBe(true);
+      expect(isSensitiveKey('deepLink')).toBe(true);
+      // Safe longer keys must NOT be dropped by substring false-positives
+      expect(isSensitiveKey('payloadType')).toBe(false);
+      expect(isSensitiveKey('securityState')).toBe(false);
+      expect(isSensitiveKey('peerUrl')).toBe(false);
+    });
+
+    it('strips WC uri and raw payload from delivered metadata (defence in depth)', () => {
+      const event = sanitizeAdminEvent({
+        type: 'SIGN_REQUEST_CREATED',
+        metadata: {
+          uri: 'wc:LEAKURI@2?symKey=xyz',
+          payload: 'RAW_SIGN_BYTES',
+          payloadType: 'MESSAGE',
+          network: 'ETHEREUM',
+        },
+      });
+      const serialized = serializeAdminEvent(event!);
+      expect(serialized).not.toContain('LEAKURI');
+      expect(serialized).not.toContain('RAW_SIGN_BYTES');
+      expect(event?.metadata?.payloadType).toBe('MESSAGE');
+      expect(event?.metadata?.network).toBe('ETHEREUM');
+    });
+
     it('recognises secret keys case- and separator-insensitively', () => {
       expect(isSensitiveKey('Refresh_Token')).toBe(true);
       expect(isSensitiveKey('ACCESS-TOKEN')).toBe(true);

@@ -10,6 +10,11 @@ import {
   type AnalyticsPublisherPort,
 } from '../../infrastructure/analytics/analytics-publisher.adapter';
 import {
+  ADMIN_EVENT_PUBLISHER,
+  type AdminEventInput,
+  type AdminEventPublisherPort,
+} from '../../infrastructure/realtime/admin-event-publisher.adapter';
+import {
   NOTIFICATIONS_PUBLISHER,
   type NotificationsPublisherPort,
 } from '../../infrastructure/notifications/notifications-publisher.adapter';
@@ -90,7 +95,13 @@ export class WalletService {
     @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
     @Inject(AI_PUBLISHER) private readonly ai: AiPublisherPort,
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
+    @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
   ) {}
+
+  /** Fire-and-forget safe admin realtime emit; never throws into a domain flow. */
+  private emitAdminEvent(input: AdminEventInput): void {
+    void this.adminEvents.publish(input).catch(() => undefined);
+  }
 
   async createWallet(input: CreateWalletInput): Promise<WalletRecord> {
     const asset = await this.wallets.findAssetByCode(input.assetCode);
@@ -117,12 +128,19 @@ export class WalletService {
     };
 
     const wallet = await this.wallets.createWithZeroBalance(data);
-    return this.wallets.transitionStatus(
+    const activated = await this.wallets.transitionStatus(
       wallet.id,
       WalletStatus.ACTIVE,
       input.ownerUserId,
       'Auto-activated on creation',
     );
+    this.emitAdminEvent({
+      type: 'WALLET_ADDED',
+      userId: activated.ownerUserId,
+      targetId: activated.id,
+      metadata: { assetCode: activated.assetCode, status: String(activated.status) },
+    });
+    return activated;
   }
 
   async getWallet(id: string, requester: JwtAccessClaims): Promise<WalletRecord> {
@@ -189,7 +207,20 @@ export class WalletService {
     const wallet = await this.requireWallet(id);
     this.assertOwnershipOrAdmin(wallet, requester);
     assertStatusTransition(wallet.status, WalletStatus.ARCHIVED);
-    return this.wallets.transitionStatus(id, WalletStatus.ARCHIVED, requester.sub, reason);
+    const archived = await this.wallets.transitionStatus(
+      id,
+      WalletStatus.ARCHIVED,
+      requester.sub,
+      reason,
+    );
+    this.emitAdminEvent({
+      type: 'WALLET_REMOVED',
+      userId: archived.ownerUserId,
+      targetId: archived.id,
+      severity: 'warning',
+      metadata: { assetCode: archived.assetCode, status: String(archived.status) },
+    });
+    return archived;
   }
 
   async restore(id: string, requester: JwtAccessClaims, reason?: string): Promise<WalletRecord> {
