@@ -1,0 +1,513 @@
+/*
+ * Auvora web wallet shell.
+ *
+ * Tokens match the locked marketing system in marketing-home.css
+ * (Mist / Lagoon). Do not introduce a second visual language.
+ */
+
+.ws {
+  --ws-canvas: #eef1f4;
+  --ws-canvas-subtle: #e4e8ed;
+  --ws-surface: #f7f9fb;
+  --ws-solid: #ffffff;
+  --ws-ink: #0b1220;
+  --ws-muted: #5c6570;
+  --ws-faint: #8b939e;
+  --ws-line: #d5dbe3;
+  --ws-lagoon: #0e4f5c;
+  --ws-lagoon-hover: #0a3f49;
+  --ws-lumen: #5eead4;
+  --ws-reserve: #9a7b4f;
+  --ws-success: #0f6a4b;
+  --ws-danger: #b42318;
+  --ws-radius-sm: 10px;
+  --ws-radius: 14px;
+  --ws-radius-lg: 20px;
+  --ws-space-1: 4px;
+  --ws-space-2: 8px;
+  --ws-space-3: 12px;
+  --ws-space-4: 16px;
+  --ws-space-5: 20px;
+  --ws-space-6: 24px;
+  --ws-space-8: 32px;
+  --ws-space-10: 40px;
+  --ws-shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
+  --ws-shadow-md: 0 8px 24px rgba(11, 18, 32, 0.1);
+  --ws-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ws-font-display: var(--font-auvora-display), system-ui, sans-serif;
+  --ws-font-body: var(--font-auvora-body), 'Segoe UI', sans-serif;
+  --ws-font-mono: var(--font-auvora-mono), ui-monospace, monospace;
+  --ws-sidebar: 248px;
+  --ws-topbar: 72px;
+  --ws-tabbar: 64px;
+
+  display: grid;
+  grid-template-columns: var(--ws-sidebar) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--ws-canvas);
+  color: var(--ws-ink);
+  font-family: var(--ws-font-body);
+  overflow-x: clip;
+}
+
+[data-theme='dark'] .ws {
+  --ws-canvas: #0a0c10;
+  --ws-canvas-subtle: #12151c;
+  --ws-surface: #151922;
+  --ws-solid: #1b202b;
+  --ws-ink: #e8eaed;
+  --ws-muted: #9aa3ad;
+  --ws-faint: #6b7380;
+  --ws-line: #2a3140;
+  --ws-lagoon: #3d9aaa;
+  --ws-lagoon-hover: #54aab8;
+  --ws-reserve: #c4a574;
+  --ws-success: #3dbf8f;
+  --ws-danger: #f97066;
+  --ws-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ws-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.ws p {
+  max-width: none;
+}
+
+.ws *:focus-visible {
+  outline: 2px solid var(--ws-lumen);
+  outline-offset: 2px;
+}
+
+/* —— Sidebar —— */
+.ws-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: var(--ws-space-6) var(--ws-space-4) var(--ws-space-5);
+  background: color-mix(in srgb, var(--ws-surface) 88%, transparent);
+  border-right: 1px solid var(--ws-line);
+  overflow: auto;
+}
+
+.ws-sidebar__brand {
+  margin: 0 0 var(--ws-space-8);
+  padding: 0 var(--ws-space-2);
+}
+
+.ws-sidebar__brand a {
+  font-family: var(--ws-font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: var(--ws-lagoon);
+  text-decoration: none;
+}
+
+.ws-sidebar__mark {
+  display: none;
+}
+
+.ws-sidebar__nav {
+  display: grid;
+  gap: var(--ws-space-6);
+  flex: 1;
+}
+
+.ws-sidebar__label {
+  margin: 0 0 var(--ws-space-2) var(--ws-space-2);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ws-faint);
+}
+
+.ws-sidebar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.ws-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-3);
+  min-height: 40px;
+  padding: 0 var(--ws-space-3);
+  border-radius: var(--ws-radius-sm);
+  color: var(--ws-ink);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  transition:
+    background 0.18s var(--ws-ease),
+    color 0.18s var(--ws-ease);
+}
+
+.ws-sidebar__link svg {
+  flex-shrink: 0;
+  color: var(--ws-muted);
+}
+
+.ws-sidebar__link:hover {
+  background: color-mix(in srgb, var(--ws-lagoon) 8%, transparent);
+}
+
+.ws-sidebar__link.is-current {
+  background: color-mix(in srgb, var(--ws-lagoon) 12%, transparent);
+  color: var(--ws-lagoon);
+}
+
+.ws-sidebar__link.is-current svg {
+  color: var(--ws-lagoon);
+}
+
+.ws-sidebar__foot {
+  margin-top: var(--ws-space-6);
+  padding-top: var(--ws-space-4);
+  border-top: 1px solid var(--ws-line);
+  display: grid;
+  gap: var(--ws-space-2);
+}
+
+.ws-sidebar__cue {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--ws-muted);
+}
+
+.ws-sidebar__user {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-sidebar__signout,
+.ws-sidebar__signin {
+  justify-self: start;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--ws-lagoon);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ws-sidebar__signout:hover,
+.ws-sidebar__signin:hover {
+  color: var(--ws-lagoon-hover);
+}
+
+/* —— Stage / topbar / main —— */
+.ws-stage {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 70% 40% at 80% -10%, rgba(14, 79, 92, 0.07), transparent 55%),
+    var(--ws-canvas);
+}
+
+[data-theme='dark'] .ws-stage {
+  background:
+    radial-gradient(ellipse 70% 42% at 80% -8%, rgba(61, 154, 170, 0.12), transparent 55%),
+    var(--ws-canvas);
+}
+
+.ws-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ws-space-4);
+  min-height: var(--ws-topbar);
+  padding: var(--ws-space-3) clamp(1rem, 3vw, 2rem);
+  background: color-mix(in srgb, var(--ws-canvas) 82%, transparent);
+  border-bottom: 1px solid var(--ws-line);
+  backdrop-filter: blur(12px);
+}
+
+.ws-topbar__identity {
+  min-width: 0;
+}
+
+.ws-topbar__kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ws-lagoon);
+}
+
+h1.ws-topbar__title {
+  margin: 0.1rem 0 0;
+  font-family: var(--ws-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.ws-topbar__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ws-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-solid);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ws-muted);
+}
+
+.ws-status__pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ws-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-success) 18%, transparent);
+}
+
+.ws-status.is-warn .ws-status__pip {
+  background: var(--ws-reserve);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-reserve) 18%, transparent);
+}
+
+.ws-status.is-off .ws-status__pip {
+  background: var(--ws-danger);
+  box-shadow: none;
+}
+
+.ws-account {
+  display: grid;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--ws-radius-sm);
+  border: 1px solid var(--ws-line);
+  background: var(--ws-solid);
+  max-width: 220px;
+}
+
+.ws-account__kind {
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ws-muted);
+}
+
+.ws-account__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-topbar .auvora-icon-btn {
+  border: 1px solid var(--ws-line);
+  background: var(--ws-solid);
+  border-radius: var(--ws-radius-sm);
+  color: var(--ws-ink);
+}
+
+main.ws-main {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1.15rem clamp(1rem, 3vw, 2rem) 2.5rem;
+  padding-bottom: max(2.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+.ws-sidebar .token-panel {
+  margin-top: var(--ws-space-2);
+  font-size: 0.75rem;
+}
+
+.ws-sidebar .token-panel summary {
+  cursor: pointer;
+  color: var(--ws-muted);
+}
+
+/* —— Mobile tab bar —— */
+.ws-tabbar {
+  display: none;
+}
+
+.ws-more {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .ws {
+    --ws-sidebar: 76px;
+  }
+
+  .ws-sidebar__label,
+  .ws-sidebar__wordmark,
+  .ws-sidebar__link span,
+  .ws-sidebar__cue,
+  .ws-sidebar__user,
+  .ws-sidebar__signout,
+  .ws-sidebar__signin {
+    display: none;
+  }
+
+  .ws-sidebar__mark {
+    display: inline;
+  }
+
+  .ws-sidebar {
+    padding: var(--ws-space-5) var(--ws-space-2);
+    align-items: center;
+  }
+
+  .ws-sidebar__brand {
+    margin-bottom: var(--ws-space-6);
+  }
+
+  .ws-sidebar__link {
+    justify-content: center;
+    padding: 0;
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .ws-account {
+    max-width: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ws {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-sidebar {
+    display: none;
+  }
+
+  .ws-topbar {
+    padding-inline: 1rem;
+  }
+
+  .ws-account__kind {
+    display: none;
+  }
+
+  main.ws-main {
+    padding-bottom: calc(var(--ws-tabbar) + 2.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ws-tabbar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    min-height: var(--ws-tabbar);
+    padding: 0.25rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--ws-solid) 92%, transparent);
+    border-top: 1px solid var(--ws-line);
+    backdrop-filter: blur(14px);
+  }
+
+  .ws-tabbar a,
+  .ws-tabbar button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 48px;
+    border: 0;
+    background: none;
+    color: var(--ws-muted);
+    text-decoration: none;
+    font: inherit;
+    font-size: 0.625rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+
+  .ws-tabbar a.is-current,
+  .ws-tabbar button.is-current {
+    color: var(--ws-lagoon);
+  }
+
+  .ws-more {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgba(11, 18, 32, 0.35);
+  }
+
+  .ws-more__panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: var(--ws-space-5) var(--ws-space-4)
+      calc(var(--ws-tabbar) + var(--ws-space-4) + env(safe-area-inset-bottom, 0px));
+    background: var(--ws-solid);
+    border-top-left-radius: var(--ws-radius-lg);
+    border-top-right-radius: var(--ws-radius-lg);
+    box-shadow: var(--ws-shadow-md);
+    display: grid;
+    gap: var(--ws-space-2);
+  }
+
+  .ws-more__panel a {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--ws-space-3);
+    border-radius: var(--ws-radius-sm);
+    text-decoration: none;
+    color: var(--ws-ink);
+    font-weight: 600;
+  }
+
+  .ws-more__panel a.is-current {
+    background: color-mix(in srgb, var(--ws-lagoon) 10%, transparent);
+    color: var(--ws-lagoon);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-sidebar__link,
+  .ws-tabbar a,
+  .ws-account {
+    transition: none !important;
+  }
+}
