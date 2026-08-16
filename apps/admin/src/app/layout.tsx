@@ -1,27 +1,19 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import type { ReactElement, ReactNode } from 'react';
 import { AppShell } from '@auvora/ui';
 import { AccessTokenPanel } from '../components/AccessTokenPanel';
 import { Nav } from '../components/Nav';
 import { Providers } from '../components/Providers';
 import { env } from '../env';
+// Self-hosted fonts (deterministic build — no Google Fonts fetch at build time).
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-sans/700.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import '@auvora/ui/styles.css';
 import './globals.css';
-
-const sans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-auvora-sans',
-  display: 'swap',
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-auvora-mono',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: env.NEXT_PUBLIC_APP_NAME,
@@ -30,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

@@ -1,5 +1,17 @@
 /* App-specific overrides — shared chrome lives in @auvora/ui/styles.css */
 
+/*
+ * Typography tokens. Fonts are self-hosted via @fontsource (imported in
+ * layout.tsx) so production builds are deterministic and never fetch Google
+ * Fonts at build time.
+ */
+:root {
+  --font-auvora-display: 'Syne Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-auvora-body: 'Manrope Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-auvora-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+  --font-auvora-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+}
+
 html,
 body {
   margin: 0;

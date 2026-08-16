@@ -1,6 +1,16 @@
 /* App-specific overrides — shared chrome lives in @auvora/ui/styles.css */
 /* Phase 8: Admin Aether chrome (Mist / Lagoon) without forking @auvora/ui for web */
 
+/*
+ * Typography tokens. Fonts are self-hosted via @fontsource (imported in
+ * layout.tsx) so production builds are deterministic and never fetch Google
+ * Fonts at build time.
+ */
+:root {
+  --font-auvora-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-auvora-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+}
+
 :root,
 [data-theme='light'],
 .auvora-theme-light {
