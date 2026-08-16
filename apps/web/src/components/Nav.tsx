@@ -16,19 +16,27 @@ function MarketingNav(): ReactElement {
       <Link href="/" className="mh-nav__brand">
         Auvora
       </Link>
-      <div className="mh-nav__actions">
+      <nav className="mh-nav__links" aria-label="Primary">
+        <Link href="/#security" className="mh-nav__link">
+          Security
+        </Link>
+        <Link href="/#networks" className="mh-nav__link">
+          Networks
+        </Link>
+        <Link href="/#features" className="mh-nav__link">
+          Features
+        </Link>
         <Link href="/trust" className="mh-nav__link">
           Trust
         </Link>
-        <Link href="/settings/security" className="mh-nav__link">
-          Security
-        </Link>
-        <Link href="/auth/login" className="mh-nav__link">
+      </nav>
+      <div className="mh-nav__actions">
+        <Link href="/auth/login" className="mh-nav__link mh-nav__link--signin">
           Sign in
         </Link>
         <ThemeToggle />
-        <Link href="/dashboard" className="mh-btn mh-btn--primary mh-btn--sm">
-          Open app
+        <Link href="/wallets/onboarding" className="mh-btn mh-btn--primary mh-btn--sm">
+          Open Wallet
         </Link>
       </div>
     </header>

@@ -1,6 +1,13 @@
-/* Aether marketing homepage — Phase 2 */
-
+/*
+ * Auvora marketing design system (locked).
+ *
+ * The homepage draws ONLY from the tokens below — colours, surfaces, borders,
+ * text, spacing, radius, shadows, typography, and motion. Do not introduce
+ * ad-hoc values; extend the scales here instead. Colour tokens mirror the
+ * Mist/Lagoon palette shared with @auvora/ui.
+ */
 .mh {
+  /* --- Colour / surface / border / text --- */
   --mh-canvas: #eef1f4;
   --mh-canvas-subtle: #e4e8ed;
   --mh-surface: #f7f9fb;
@@ -15,12 +22,38 @@
   --mh-reserve: #9a7b4f;
   --mh-success: #0f6a4b;
   --mh-danger: #b42318;
-  --mh-radius: 14px;
+
+  /* --- Radius scale --- */
   --mh-radius-sm: 10px;
+  --mh-radius: 14px;
+  --mh-radius-lg: 20px;
+
+  /* --- Spacing scale (4-based) --- */
+  --mh-space-1: 4px;
+  --mh-space-2: 8px;
+  --mh-space-3: 12px;
+  --mh-space-4: 16px;
+  --mh-space-5: 20px;
+  --mh-space-6: 24px;
+  --mh-space-8: 32px;
+  --mh-space-10: 40px;
+  --mh-space-12: 48px;
+  --mh-space-16: 64px;
+  --mh-space-20: 80px;
+  --mh-space-24: 96px;
+
+  /* --- Shadow scale --- */
+  --mh-shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
+  --mh-shadow-md: 0 8px 24px rgba(11, 18, 32, 0.1);
+  --mh-shadow-lg: 0 24px 48px rgba(11, 18, 32, 0.12);
+
+  /* --- Typography --- */
   --mh-font-display: var(--font-auvora-display), system-ui, sans-serif;
   --mh-font-body: var(--font-auvora-body), 'Segoe UI', sans-serif;
   --mh-font-serif: var(--font-auvora-serif), Georgia, serif;
   --mh-font-mono: var(--font-auvora-mono), ui-monospace, monospace;
+
+  /* --- Motion & layout --- */
   --mh-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --mh-max: 1120px;
 
@@ -1229,6 +1262,28 @@
 
 [data-theme='dark'] .mh-nav {
   background: color-mix(in srgb, #0a0c10 86%, transparent);
+}
+
+.mh-nav__links {
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (min-width: 860px) {
+  .mh-nav__links {
+    display: flex;
+  }
+}
+
+.mh-nav__link--signin {
+  display: none;
+}
+
+@media (min-width: 560px) {
+  .mh-nav__link--signin {
+    display: inline-flex;
+  }
 }
 
 .mh-nav__brand {
