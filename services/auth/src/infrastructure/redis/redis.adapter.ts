@@ -34,6 +34,12 @@ export class RedisAdapter implements RedisPort, RateLimiterPort, OnModuleDestroy
     return this.client;
   }
 
+  createSubscriber(): Redis {
+    // Duplicate inherits the same connection options (incl. bounded retryStrategy)
+    // but is an independent connection required for Redis subscribe mode.
+    return this.client.duplicate();
+  }
+
   async ping(): Promise<boolean> {
     try {
       if (this.client.status !== 'ready') {

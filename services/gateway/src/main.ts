@@ -7,6 +7,7 @@ import { createCredentialedCorsOriginDelegate } from '@auvora/security';
 import { AppModule } from './app.module';
 import { loadEnv } from './config/env.schema';
 import { createUnifiedGatewayProxyMiddleware } from './infrastructure/proxy/unified-gateway-proxy.middleware';
+import { createRealtimeProxyMiddleware } from './infrastructure/proxy/realtime-proxy.middleware';
 import { createNftGoneMiddleware } from './infrastructure/proxy/nft-gone.middleware';
 import { createSecurityHeadersMiddleware } from './infrastructure/security/security-headers.middleware';
 import { createInternalRouteDenyMiddleware } from './infrastructure/security/internal-route-deny.middleware';
@@ -63,6 +64,9 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser());
   // NFT gone (410) before the unified reverse proxy.
   app.use(createNftGoneMiddleware());
+  // Admin realtime SSE proxy BEFORE the unified proxy: it needs an untimed,
+  // unbuffered long-lived stream that the timed unified proxy cannot provide.
+  app.use(createRealtimeProxyMiddleware(env.AUTH_SERVICE_URL));
   // ONE http-proxy-middleware instance for all upstreams — avoids N server 'close' listeners.
   app.use(createUnifiedGatewayProxyMiddleware(env));
 

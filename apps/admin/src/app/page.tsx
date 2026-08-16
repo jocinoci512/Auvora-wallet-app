@@ -16,8 +16,10 @@ import {
   StatusBadge,
 } from '@auvora/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../lib/api-client';
+import { RealtimeActivityFeed } from '../components/RealtimeActivityFeed';
+import { useAdminRealtime } from '../lib/realtime/useAdminRealtime';
 
 type OverviewState = {
   ops: OpsDashboardOverview | null;
@@ -80,6 +82,27 @@ export default function HomePage(): ReactElement {
     void load();
   }, [load]);
 
+  // Realtime overview: debounced reconciling refresh + a live activity panel.
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    status: realtimeStatus,
+    events: realtimeEvents,
+    reconnect,
+  } = useAdminRealtime({
+    onEvent: () => {
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+      refetchTimer.current = setTimeout(() => void loadRef.current(), 2000);
+    },
+  });
+  useEffect(
+    () => () => {
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    },
+    [],
+  );
+
   const activeMaintenance = state.maintenance.filter((m) => m.isActive !== false);
   const unhealthy = state.ops?.unhealthyServiceCount ?? 0;
   const openIncidents = state.ops?.openIncidentCount ?? 0;
@@ -102,6 +125,15 @@ export default function HomePage(): ReactElement {
           </Link>
         </div>
       </PageHeader>
+
+      <section style={{ margin: '16px 0' }}>
+        <RealtimeActivityFeed
+          status={realtimeStatus}
+          events={realtimeEvents}
+          onReconnect={reconnect}
+          limit={10}
+        />
+      </section>
 
       {activeMaintenance.length > 0 ? (
         <Alert tone="warn" title="Maintenance notices">

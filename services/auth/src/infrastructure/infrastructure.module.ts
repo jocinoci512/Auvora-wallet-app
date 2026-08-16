@@ -36,6 +36,8 @@ import { PrismaSessionRepository } from './persistence/prisma-session.repository
 import { PrismaUserRepository } from './persistence/prisma-user.repository';
 import { REDIS_PORT } from './redis/redis.port';
 import { RedisAdapter } from './redis/redis.adapter';
+import { ADMIN_EVENT_PUBLISHER } from '../application/ports/admin-event-publisher.port';
+import { RedisAdminEventPublisher } from './realtime/redis-admin-event-publisher.adapter';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
 
 @Module({
@@ -134,6 +136,11 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
       provide: OBSERVABILITY_PUBLISHER,
       useExisting: ObservabilityPublisherAdapter,
     },
+    RedisAdminEventPublisher,
+    {
+      provide: ADMIN_EVENT_PUBLISHER,
+      useExisting: RedisAdminEventPublisher,
+    },
   ],
   exports: [
     REDIS_PORT,
@@ -151,6 +158,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     MAIL_PORT,
     ANALYTICS_PUBLISHER,
     OBSERVABILITY_PUBLISHER,
+    ADMIN_EVENT_PUBLISHER,
     LoggerInfrastructureModule,
     PrismaModule,
   ],
