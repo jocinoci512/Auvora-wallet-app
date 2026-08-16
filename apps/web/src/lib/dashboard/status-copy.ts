@@ -1,23 +1,51 @@
-/** Professional dashboard copy — never dump raw API bodies. */
+/** Professional app-wide copy — never dump raw API bodies. */
 
-export type DashboardIssue = 'offline' | 'session' | 'rate_limited' | 'rpc' | 'market' | 'backend';
+export type DashboardIssue =
+  | 'offline'
+  | 'session'
+  | 'revoked'
+  | 'locked'
+  | 'suspended'
+  | 'rate_limited'
+  | 'rpc'
+  | 'market'
+  | 'backend'
+  | 'permission'
+  | 'unknown';
+
+export type AppIssue = DashboardIssue;
 
 export function issueCopy(kind: DashboardIssue): { title: string; body: string } {
   switch (kind) {
     case 'offline':
       return {
         title: 'You are offline',
-        body: 'Balances and activity will refresh when this device reconnects.',
+        body: 'Check your connection, then try again. Balances will refresh when this device reconnects.',
       };
     case 'session':
       return {
         title: 'Session expired',
         body: 'Sign in again to load your Auvora account. Your wallet keys stay on this device.',
       };
+    case 'revoked':
+      return {
+        title: 'Signed out',
+        body: 'This session was ended from another device or by a security reset. Sign in again to continue.',
+      };
+    case 'locked':
+      return {
+        title: 'Account locked',
+        body: 'Too many sign-in attempts. Wait a few minutes, or reset your password. Your wallet on this device is unchanged.',
+      };
+    case 'suspended':
+      return {
+        title: 'Account suspended',
+        body: 'This Auvora account cannot sign in right now. Contact support@auvorawallet.com. Your non-custodial wallet keys stay on this device.',
+      };
     case 'rate_limited':
       return {
         title: 'Temporarily limited',
-        body: 'Market or network providers asked us to slow down. Try again in a moment.',
+        body: 'Please wait a minute, then try again. Nothing was sent or signed.',
       };
     case 'rpc':
       return {
@@ -34,11 +62,23 @@ export function issueCopy(kind: DashboardIssue): { title: string; body: string }
         title: 'Account services unavailable',
         body: 'We could not reach Auvora account services. You can still use this wallet on-device.',
       };
+    case 'permission':
+      return {
+        title: 'Not allowed',
+        body: 'You do not have access to this action. If this looks wrong, sign in again or contact support.',
+      };
+    case 'unknown':
+      return {
+        title: 'Something went wrong',
+        body: 'Try again. If it continues, check Status or contact support. Your funds are not moved by this screen.',
+      };
   }
 }
 
 export function classifyHttpStatus(status: number | undefined): DashboardIssue | null {
-  if (status === 401 || status === 403) return 'session';
+  if (status === 401) return 'session';
+  if (status === 403) return 'permission';
+  if (status === 423) return 'locked';
   if (status === 429) return 'rate_limited';
   if (status && status >= 500) return 'backend';
   return null;

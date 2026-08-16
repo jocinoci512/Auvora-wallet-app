@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { ReleaseConfig } from '../../lib/release/config';
 import { searchAssist } from '../../lib/intelligence/guidance';
 import { OFFLINE_CACHE_NS, writeOfflineCache } from '../../lib/offline/cache';
 import { useOnlineStatus } from '../../lib/offline/online-status';
@@ -11,83 +12,70 @@ import { SettingsSectionNav } from './SettingsSectionNav';
 
 const FAQ = [
   {
+    q: 'What is an Auvora Account versus a wallet?',
+    a: 'An Auvora Account is identity, sessions, and preferences. A wallet is the non-custodial key material on your device. Signing in never sends your private keys or recovery phrase to Auvora.',
+  },
+  {
     q: 'How do I recover my wallet?',
-    a: 'Use your recovery phrase on Restore or Recovery. Your recovery phrase is the master key to your wallet. Never share it — Auvora support will never ask for it.',
+    a: 'Use your recovery phrase on Import or Recovery. Anyone with the phrase can move funds. Auvora support will never ask for it.',
   },
   {
     q: 'Where do I change theme or currency?',
-    a: 'Settings → Appearance (or Wallet & appearance). Theme updates instantly. Currency and date formats live there too.',
+    a: 'Settings → Preferences. Theme and currency apply on this device.',
   },
   {
-    q: 'Why don’t I get push notifications?',
-    a: 'This release uses an in-app Notification Center and local preferences. You can still prepare OS permission on mobile. Every alert category can be toggled independently.',
-  },
-  {
-    q: 'Are price alerts live?',
-    a: 'Alerts are stored on this device and evaluate against preview prices when you tap Check now — not live markets.',
-  },
-  {
-    q: 'How do I revoke a dApp?',
-    a: 'Open Web3 → Permissions, or Settings → Connected apps, then revoke the grant. You can disconnect this application at any time.',
+    q: 'How do I revoke a connected app?',
+    a: 'Open Connections, then disconnect the app. You can do this anytime.',
   },
   {
     q: 'How do I spot a scam?',
-    a: 'Auvora never DMs first asking for seed phrases. Bookmark official URLs. Review every connection and signature.',
+    a: 'Auvora never asks for a recovery phrase in email, chat, or a dApp popup. Bookmark official URLs. Review every signature.',
   },
   {
-    q: 'What is Auvora Intelligence?',
-    a: 'Plain-language guidance on fees, security prompts, and portfolio notes. It educates quietly — it never recommends trades or moves funds. Adjust how much you see in Privacy → Guidance.',
-  },
-  {
-    q: 'What are gas fees?',
-    a: 'Network fees pay validators to include your transfer. They vary by congestion and are separate from any Auvora product fee. Review the fee before you confirm. This transaction cannot be reversed after confirmation.',
+    q: 'What are network fees?',
+    a: 'Network fees pay validators to include your transfer. They vary by congestion. Review the fee before you confirm. Confirmed transfers cannot be reversed.',
   },
   {
     q: 'How do I report an issue?',
-    a: 'Use Alpha feedback in Settings → Support. Never include your recovery phrase in any report.',
+    a: `Email ${ReleaseConfig.supportEmail}. Never include your recovery phrase or private keys.`,
   },
 ] as const;
 
 const LINKS = [
   {
     href: '/learn',
-    title: 'Learning Center',
-    detail: 'Short lessons on wallets, fees, and networks',
+    title: 'Security guidance',
+    detail: 'Short lessons on wallets, fees, and self-custody',
+  },
+  {
+    href: '/legal',
+    title: 'Privacy & terms',
+    detail: 'Legal documents for this product',
+  },
+  {
+    href: '/trust',
+    title: 'Trust',
+    detail: 'How we communicate risk',
   },
   {
     href: '/status',
     title: 'Service status',
-    detail: 'Is Auvora up? Check before you worry',
-  },
-  {
-    href: '/legal',
-    title: 'Legal & privacy drafts',
-    detail: 'Privacy, terms, and company transparency',
-  },
-  {
-    href: '/trust',
-    title: 'Trust & transparency',
-    detail: 'How we communicate risk and incidents',
-  },
-  {
-    href: '/settings/feedback',
-    title: 'Alpha feedback',
-    detail: 'Bug, UX, performance, security, accessibility — local until you share',
-  },
-  {
-    href: '/settings/feedback',
-    title: 'Report a security concern',
-    detail: 'Use the Security category. Never share your recovery phrase in any channel.',
+    detail: 'Check whether account services are up',
   },
   {
     href: '/settings/security',
-    title: 'Security tips',
-    detail: 'Score, checklist, and recommendations',
+    title: 'Security settings',
+    detail: 'Backup, devices, and sessions',
   },
   {
     href: '/wallets/recovery',
-    title: 'Recovery assistance',
-    detail: 'Guided recovery phrase help',
+    title: 'Recovery rehearsal',
+    detail: 'Practice backup without sending the phrase anywhere',
+  },
+  {
+    href: `mailto:${ReleaseConfig.supportEmail}`,
+    title: 'Contact',
+    detail: ReleaseConfig.supportEmail,
   },
 ] as const;
 
@@ -112,8 +100,8 @@ export function HelpSupportExperience(): ReactElement {
 
   return (
     <PlatformShell
-      title="Help & support"
-      subtitle="Clear answers, recovery help, and scam awareness — in human language."
+      title="Support"
+      subtitle="Help, security guidance, and contact — with honest availability."
       reassure="We will never ask for your recovery phrase or private keys."
       backHref="/settings"
       backLabel="Settings"
@@ -121,18 +109,17 @@ export function HelpSupportExperience(): ReactElement {
     >
       {!online ? (
         <p className="cx-muted" role="status">
-          You are offline. FAQ on this page stays available from the bundled copy; cached help
-          titles refresh when you reconnect.
+          You are offline. This FAQ stays available on the page.
         </p>
       ) : null}
       <section className="cx-panel">
         <h2>Find something</h2>
         <label className="cx-field">
-          <span>Search help, settings, or lessons</span>
+          <span>Search help</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Fees, recovery, permissions…"
+            placeholder="Recovery, connections, fees…"
             aria-label="Search help"
           />
         </label>
@@ -169,7 +156,11 @@ export function HelpSupportExperience(): ReactElement {
       </section>
 
       <section className="cx-panel">
-        <h2>Support & education</h2>
+        <h2>Help & contact</h2>
+        <p className="cx-meta">
+          Email support is available at {ReleaseConfig.supportEmail}. This Alpha does not offer 24/7
+          live chat.
+        </p>
         <div className="cx-card-grid">
           {LINKS.map((l) => (
             <PlatformCardLink
@@ -180,25 +171,6 @@ export function HelpSupportExperience(): ReactElement {
               external={l.href.startsWith('mailto:')}
             />
           ))}
-        </div>
-      </section>
-
-      <section className="cx-panel">
-        <h2>Legal</h2>
-        <p className="cx-meta">
-          Terms and privacy policy ship with your distribution. Contact support if you need the
-          latest copies for your region.
-        </p>
-        <div className="cx-platform__actions">
-          <Link href="/settings/security" className="cx-btn cx-btn--ghost">
-            Security Center
-          </Link>
-          <Link href="/web3" className="cx-btn cx-btn--ghost">
-            Web3 Hub
-          </Link>
-          <Link href="/notifications" className="cx-btn cx-btn--ghost">
-            Notification center
-          </Link>
         </div>
       </section>
     </PlatformShell>

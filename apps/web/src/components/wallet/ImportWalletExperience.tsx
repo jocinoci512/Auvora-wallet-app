@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, useEffect, type ReactElement } from 'react';
 import { normalizePhrase, pickChallengeIndexes } from '../../lib/wallet-experience/recovery-demo';
 import { setSecurityPrefs } from '../../lib/wallet-experience/security-prefs';
 import { NETWORKS } from '../../lib/wallet-experience/types';
@@ -34,16 +34,21 @@ export function ImportWalletExperience(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [bio, setBio] = useState(true);
   const [autoLock, setAutoLock] = useState(true);
-  const [email, setEmail] = useState('');
 
   const words = useMemo(() => normalizePhrase(phraseText), [phraseText]);
   const phraseOk = words.length === 12 || words.length === 24;
   const keyOk = /^0x?[a-fA-F0-9]{64}$/.test(privateKey.trim()) || privateKey.trim().length >= 32;
 
+  useEffect(() => {
+    return () => {
+      setPhraseText('');
+      setPrivateKey('');
+    };
+  }, []);
+
   function goInput(): void {
     setOnboardingAuth({
-      method: email ? 'email' : 'skip',
-      email: email || undefined,
+      method: 'skip',
       completedAt: new Date().toISOString(),
     });
     setStep('input');
@@ -97,8 +102,8 @@ export function ImportWalletExperience(): ReactElement {
   return (
     <OnboardingShell
       title="Import wallet"
-      subtitle="Bring an existing wallet into Auvora — carefully, and at your pace."
-      reassure="Your phrase and keys stay in this session only. We never ask for them in chat."
+      subtitle="Bring an existing wallet into Auvora. Secrets stay in this session only."
+      reassure="Never enter a phrase where someone can see your screen. Auvora support will never ask for it."
       steps={[...STEPS]}
       currentStepId={step}
     >
@@ -144,27 +149,23 @@ export function ImportWalletExperience(): ReactElement {
 
       {step === 'auth' ? (
         <section className="ob-panel">
-          <h2>Optional account link</h2>
-          <p>Linking helps with recovery preferences — it is not required to import.</p>
-          <label className="ob-field">
-            <span>Email (optional)</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              autoComplete="email"
-            />
-          </label>
+          <h2>Optional Auvora Account</h2>
+          <p>
+            Sign in if you want preferences across devices. Import still happens on this device.
+            Login never collects a recovery phrase.
+          </p>
+          <div className="ob-welcome__cta">
+            <Link href="/auth/login" className="ob-btn ob-btn--ghost">
+              Sign in
+            </Link>
+            <Link href="/auth/register" className="ob-btn ob-btn--ghost">
+              Create account
+            </Link>
+          </div>
           <ObActions
             onBack={() => setStep('method')}
             onNext={goInput}
-            nextLabel="Continue"
-            secondary={
-              <button type="button" onClick={goInput}>
-                Skip
-              </button>
-            }
+            nextLabel="Continue to import"
           />
         </section>
       ) : null}
@@ -183,7 +184,13 @@ export function ImportWalletExperience(): ReactElement {
                   rows={4}
                   placeholder="twelve or twenty four words…"
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
                   spellCheck={false}
+                  name="auvora-recovery-phrase"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="other"
                 />
               </label>
               <p className="ob-meta">{words.length} words detected</p>
@@ -200,7 +207,13 @@ export function ImportWalletExperience(): ReactElement {
                   value={privateKey}
                   onChange={(e) => setPrivateKey(e.target.value)}
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
                   spellCheck={false}
+                  name="auvora-private-key"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="other"
                 />
               </label>
             </>
@@ -332,7 +345,7 @@ export function ImportWalletExperience(): ReactElement {
             <Link href="/dashboard" className="ob-btn ob-btn--primary ob-btn--lg">
               Enter wallet
             </Link>
-            <Link href="/security" className="ob-btn ob-btn--ghost ob-btn--lg">
+            <Link href="/settings/security" className="ob-btn ob-btn--ghost ob-btn--lg">
               Open Security
             </Link>
           </div>

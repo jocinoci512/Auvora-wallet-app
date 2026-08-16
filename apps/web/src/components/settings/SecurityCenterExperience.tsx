@@ -150,8 +150,8 @@ export function SecurityCenterExperience(): ReactElement {
         label: 'dApp permissions reviewed',
         ok: live ? dappCount <= 1 : demoConnectedRows().every((dapp) => dapp.permissions <= 2),
         weight: 15,
-        href: '/web3/permissions',
-        action: dappCount <= 1 ? 'Open Web3' : 'Review permissions',
+        href: '/connections',
+        action: dappCount <= 1 ? 'Open connections' : 'Review connections',
       },
       {
         id: 'review',
@@ -354,9 +354,9 @@ export function SecurityCenterExperience(): ReactElement {
           detail="Revoke · timeouts · logout all"
         />
         <PlatformCardLink
-          href="/web3/permissions"
-          title="Connected dApps"
-          detail="Permissions · revoke · review risk"
+          href="/connections"
+          title="Connections"
+          detail="Connected apps · WalletConnect"
         />
         <PlatformCardLink
           href="/settings/privacy"
@@ -373,21 +373,7 @@ export function SecurityCenterExperience(): ReactElement {
           title="Recovery options"
           detail={backupOk ? 'Phrase verified' : 'Needs verification'}
         />
-        <PlatformCardLink
-          href="/wallets/hardware"
-          title="Hardware wallets"
-          detail="Ledger / future connectors"
-        />
-        <PlatformCardLink
-          href="/address-book"
-          title="Trusted contacts"
-          detail="Future-ready address book"
-        />
-        <PlatformCardLink
-          href="/activity"
-          title="Approval history"
-          detail="Sends, swaps, and signs"
-        />
+        <PlatformCardLink href="/activity" title="Activity" detail="Sends, receives, and signs" />
       </div>
 
       <section className="cx-panel">

@@ -3,7 +3,7 @@
 import { AuvoraClientError } from '@auvora/sdk';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, useEffect, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
 import {
   generateDemoPhrase,
@@ -14,7 +14,6 @@ import { NETWORKS } from '../../lib/wallet-experience/types';
 import {
   setOnboardingAuth,
   setUserPrefs,
-  type AuthMethod,
   type CurrencyPref,
   type ThemePref,
 } from '../../lib/wallet-experience/user-prefs';
@@ -22,7 +21,7 @@ import { ObActions, OnboardingShell } from '../onboarding/OnboardingShell';
 import '../../app/onboarding.css';
 
 const STEPS = [
-  { id: 'auth', label: 'Sign in' },
+  { id: 'auth', label: 'Account' },
   { id: 'setup', label: 'Setup' },
   { id: 'creating', label: 'Create' },
   { id: 'backup', label: 'Backup' },
@@ -35,22 +34,9 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]['id'];
 
-const AUTH_OPTIONS: { id: AuthMethod; label: string; hint: string }[] = [
-  { id: 'email', label: 'Email', hint: 'Magic link ready' },
-  { id: 'google', label: 'Google', hint: 'Continue' },
-  { id: 'apple', label: 'Apple', hint: 'Continue' },
-  { id: 'passkey', label: 'Passkey', hint: 'Recommended' },
-  { id: 'biometric', label: 'Face ID / Touch ID', hint: 'Device' },
-  { id: 'pin', label: 'PIN', hint: 'Local' },
-  { id: 'password', label: 'Password', hint: 'Classic' },
-  { id: 'magic', label: 'Magic link', hint: 'No password' },
-];
-
 export function CreateWalletExperience(): ReactElement {
   const router = useRouter();
   const [step, setStep] = useState<StepId>('auth');
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('passkey');
-  const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
   const [name, setName] = useState('');
   const [networkId, setNetworkId] = useState<(typeof NETWORKS)[number]['id']>('ethereum');
@@ -64,7 +50,6 @@ export function CreateWalletExperience(): ReactElement {
   const [challenges, setChallenges] = useState<{ index: number; value: string }[]>([]);
   const [bio, setBio] = useState(true);
   const [autoLock, setAutoLock] = useState(true);
-  const [cloudBackup, setCloudBackup] = useState(false);
   const [currency, setCurrency] = useState<CurrencyPref>('USD');
   const [theme, setTheme] = useState<ThemePref>('system');
   const [notifications, setNotifications] = useState(true);
@@ -72,18 +57,19 @@ export function CreateWalletExperience(): ReactElement {
 
   const network = useMemo(() => NETWORKS.find((n) => n.id === networkId)!, [networkId]);
   const nameOk = name.trim().length >= 2;
-  const emailOk =
-    authMethod !== 'email' && authMethod !== 'magic' ? true : /\S+@\S+\.\S+/.test(email);
-  const pinOk = authMethod !== 'pin' && authMethod !== 'password' ? true : pin.length >= 4;
+
+  useEffect(() => {
+    if (step !== 'phrase') setRevealed(false);
+  }, [step]);
 
   const securityScore = useMemo(() => {
     let s = 35;
     if (acks.written && acks.private && acks.neverShare) s += 25;
     if (bio) s += 15;
     if (autoLock) s += 15;
-    if (pin.length >= 4 || authMethod === 'passkey' || authMethod === 'biometric') s += 10;
+    if (pin.length >= 4) s += 10;
     return Math.min(100, s);
-  }, [acks, autoLock, authMethod, bio, pin.length]);
+  }, [acks, autoLock, bio, pin.length]);
 
   async function createWallet(): Promise<void> {
     setStep('creating');
@@ -106,7 +92,9 @@ export function CreateWalletExperience(): ReactElement {
       setStep('backup');
     } catch (err) {
       if (err instanceof AuvoraClientError && err.status === 401) {
-        setError('Sign-in required — save a JWT access token from the gateway, then retry.');
+        setError(
+          'Sign in to your Auvora account to create this wallet on the server. You can also continue on this device. Keys stay here.',
+        );
         setStep('setup');
       } else {
         setError(formatApiError(err));
@@ -170,10 +158,8 @@ export function CreateWalletExperience(): ReactElement {
   }
 
   function completeAuth(): void {
-    if (!emailOk || !pinOk) return;
     setOnboardingAuth({
-      method: authMethod,
-      email: email.trim() || undefined,
+      method: 'skip',
       completedAt: new Date().toISOString(),
     });
     setStep('setup');
@@ -182,71 +168,32 @@ export function CreateWalletExperience(): ReactElement {
   return (
     <OnboardingShell
       title="Create wallet"
-      subtitle="A calm path from sign-in to your first balance."
-      reassure="Nothing irreversible happens until you confirm — and we will explain every step."
+      subtitle="Generate a non-custodial wallet on this device, then back it up."
+      reassure="Auvora does not receive your private keys or recovery phrase through account login."
       steps={[...STEPS]}
       currentStepId={step}
     >
       {step === 'auth' ? (
         <section className="ob-panel" aria-labelledby="ob-auth">
-          <h2 id="ob-auth">Choose how you sign in</h2>
-          <p>One unified experience. Pick what feels natural — you can add more later.</p>
-          <div className="ob-auth-grid" role="radiogroup" aria-label="Sign-in method">
-            {AUTH_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                className={authMethod === opt.id ? 'is-active' : undefined}
-                aria-pressed={authMethod === opt.id}
-                onClick={() => setAuthMethod(opt.id)}
-              >
-                {opt.label}
-                <small>{opt.hint}</small>
-              </button>
-            ))}
+          <h2 id="ob-auth">Auvora Account is optional</h2>
+          <p>
+            An account stores identity and preferences. A wallet stores keys on this device. Login
+            never sends a recovery phrase to Auvora.
+          </p>
+          <div className="ob-paths">
+            <Link href="/auth/login" className="ob-path">
+              <strong>Sign in</strong>
+              <span>Use an existing Auvora Account, then return here to create the wallet.</span>
+            </Link>
+            <Link href="/auth/register" className="ob-path">
+              <strong>Create account</strong>
+              <span>Email and password only. No seed phrase is collected.</span>
+            </Link>
           </div>
-          {(authMethod === 'email' || authMethod === 'magic') && (
-            <label className="ob-field">
-              <span>Email</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                autoComplete="email"
-              />
-            </label>
-          )}
-          {(authMethod === 'pin' || authMethod === 'password') && (
-            <label className="ob-field">
-              <span>{authMethod === 'pin' ? 'Create a PIN' : 'Password'}</span>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder={authMethod === 'pin' ? 'At least 4 digits' : 'At least 4 characters'}
-                autoComplete="new-password"
-              />
-            </label>
-          )}
-          <div className="ob-divider">or</div>
           <ObActions
             onBack={() => router.push('/wallets/onboarding')}
             onNext={completeAuth}
-            nextDisabled={!emailOk || !pinOk}
-            nextLabel="Continue"
-            secondary={
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMethod('skip');
-                  setOnboardingAuth({ method: 'skip', completedAt: new Date().toISOString() });
-                  setStep('setup');
-                }}
-              >
-                Continue without account linking
-              </button>
-            }
+            nextLabel="Continue without account"
           />
         </section>
       ) : null}
@@ -355,7 +302,7 @@ export function CreateWalletExperience(): ReactElement {
               Reveal recovery phrase
             </button>
           ) : (
-            <ol className="ob-phrase">
+            <ol className={`ob-phrase as-sensitive${revealed ? ' is-revealed' : ''}`}>
               {phrase.map((w, i) => (
                 <li key={`${w}-${i}`}>
                   <span>{i + 1}.</span> {w}
@@ -473,30 +420,16 @@ export function CreateWalletExperience(): ReactElement {
               aria-label="Auto-lock"
             />
           </div>
-          <div className="ob-toggle-row">
-            <div>
-              <strong>Encrypted cloud backup</strong>
-              <span>Optional encrypted backup (never stores plain phrase)</span>
-            </div>
+          <label className="ob-field" style={{ marginTop: '1rem' }}>
+            <span>Optional device PIN</span>
             <input
-              type="checkbox"
-              checked={cloudBackup}
-              onChange={(e) => setCloudBackup(e.target.checked)}
-              aria-label="Cloud backup"
+              type="password"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="4+ digits"
+              autoComplete="new-password"
             />
-          </div>
-          {authMethod !== 'pin' && authMethod !== 'password' ? (
-            <label className="ob-field" style={{ marginTop: '1rem' }}>
-              <span>Optional device PIN</span>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="4+ digits"
-                autoComplete="new-password"
-              />
-            </label>
-          ) : null}
+          </label>
           <ObActions
             onBack={() => setStep('verify')}
             onNext={() => void finishSecurity()}

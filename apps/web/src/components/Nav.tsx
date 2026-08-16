@@ -23,6 +23,7 @@ import {
 import { getCachedUser, isSignedIn, loadMe, signOut, type AuthUser } from '../lib/auth/session';
 import { AccessTokenPanel } from './AccessTokenPanel';
 import '../app/wallet-shell.css';
+import '../app/consumer.css';
 
 const NAV_ICONS = {
   '/dashboard': LayoutGrid,
@@ -277,6 +278,20 @@ export function AppChrome({ children }: { children: ReactNode }): ReactElement {
       window.removeEventListener('offline', sync);
     };
   }, []);
+
+  if (pathname.startsWith('/auth')) {
+    return (
+      <div className="as-chrome">
+        <header className="as-chrome__bar">
+          <Link href="/" className="as-chrome__brand">
+            Auvora
+          </Link>
+          <ThemeToggle />
+        </header>
+        <main id="main-content">{children}</main>
+      </div>
+    );
+  }
 
   if (isMarketingPath(pathname)) {
     return (
