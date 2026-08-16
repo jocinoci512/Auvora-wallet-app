@@ -157,19 +157,39 @@ export const DEMO_WATCHLIST: Mover[] = [
   { symbol: 'ATOM', priceUsd: 8.9, change24hPct: 0.4 },
 ];
 
+export function applyQuotes(
+  holdings: Holding[],
+  quotes: Array<{ symbol: string; usd: number; change24hPct?: number }>,
+): Holding[] {
+  const bySym = new Map(quotes.map((q) => [q.symbol.toUpperCase(), q]));
+  const priced = holdings.map((h) => {
+    const q = bySym.get(h.symbol.toUpperCase());
+    if (!q) return h;
+    return {
+      ...h,
+      priceUsd: q.usd,
+      change24hPct: q.change24hPct ?? h.change24hPct,
+      valueUsd: h.balance * q.usd,
+    };
+  });
+  const total = priced.reduce((s, h) => s + h.valueUsd, 0);
+  return priced.map((h) => ({
+    ...h,
+    allocationPct: total > 0 ? (h.valueUsd / total) * 100 : 0,
+  }));
+}
+
 export function portfolioTotals(holdings: Holding[]) {
   const total = holdings.reduce((s, h) => s + h.valueUsd, 0);
   const day = holdings.reduce((s, h) => s + (h.valueUsd * h.change24hPct) / 100, 0);
-  const cost = holdings.reduce((s, h) => s + (h.costBasisUsd ?? h.valueUsd), 0);
-  const unrealized = total - cost;
+  const cost = holdings.reduce((s, h) => s + (h.costBasisUsd ?? 0), 0);
+  const unrealized = cost > 0 ? total - cost : 0;
   const wallets = new Set(holdings.map((h) => h.walletId)).size;
   const networks = new Set(holdings.map((h) => h.network)).size;
   return {
     total,
     day,
     dayPct: total ? (day / total) * 100 : 0,
-    weekPct: 4.2,
-    monthPct: 9.8,
     unrealized,
     unrealizedPct: cost ? (unrealized / cost) * 100 : 0,
     wallets,
