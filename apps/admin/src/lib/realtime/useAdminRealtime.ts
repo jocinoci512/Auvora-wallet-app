@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { env } from '../../env';
-import { getStoredAccessToken } from '../api-client';
+import { ACCESS_TOKEN_CHANGED_EVENT, getStoredAccessToken } from '../api-client';
 import {
   SseParser,
   nextBackoffMs,
@@ -142,11 +142,28 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
     if (!enabled) return;
     stoppedRef.current = false;
     void connect();
+
+    // Reconnect immediately when the admin token changes (same-tab custom event
+    // and cross-tab storage event) instead of waiting out the backoff.
+    const onTokenChange = (): void => {
+      attemptRef.current = 0;
+      abortRef.current?.abort();
+      clearTimer();
+      void connect();
+    };
+    const onStorage = (e: StorageEvent): void => {
+      if (e.key === null || e.key === 'auvora_access_token') onTokenChange();
+    };
+    window.addEventListener(ACCESS_TOKEN_CHANGED_EVENT, onTokenChange);
+    window.addEventListener('storage', onStorage);
+
     return () => {
       stoppedRef.current = true;
       runIdRef.current += 1;
       clearTimer();
       abortRef.current?.abort();
+      window.removeEventListener(ACCESS_TOKEN_CHANGED_EVENT, onTokenChange);
+      window.removeEventListener('storage', onStorage);
       setStatus('offline');
     };
   }, [enabled, connect]);
