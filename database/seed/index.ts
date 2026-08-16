@@ -7,9 +7,25 @@ const PERMISSIONS: Array<{ code: string; description: string }> = [
   { code: 'users:read', description: 'Read users' },
   { code: 'users:write', description: 'Create and update users' },
   { code: 'users:delete', description: 'Soft-delete and restore users' },
+  { code: 'users:suspend', description: 'Suspend user accounts' },
+  { code: 'users:reactivate', description: 'Reactivate suspended user accounts' },
+  { code: 'roles:read', description: 'Read roles and permission assignments' },
   { code: 'roles:manage', description: 'Assign roles and permissions' },
   { code: 'audit:read', description: 'Read security audit logs' },
+  { code: 'sessions:read', description: 'Read user sessions' },
   { code: 'sessions:revoke', description: 'Force-revoke user sessions' },
+  { code: 'devices:read', description: 'Read user devices' },
+  { code: 'devices:revoke', description: 'Revoke user devices' },
+  { code: 'connections:read', description: 'Read wallet connections' },
+  { code: 'connections:revoke', description: 'Disconnect wallet connections' },
+  { code: 'security:read', description: 'Read security events and posture' },
+  { code: 'security:manage', description: 'Act on security events (approved revocations)' },
+  { code: 'support:read', description: 'Read support notes and account assistance data' },
+  { code: 'support:write', description: 'Create and manage support notes' },
+  { code: 'admins:read', description: 'Read admin users and their safe metadata' },
+  { code: 'admins:manage', description: 'Manage admin users, roles, and status' },
+  { code: 'health:read', description: 'Read aggregated system health' },
+  { code: 'realtime:read', description: 'Connect to the admin realtime event stream' },
   { code: 'wallets:read', description: 'Read wallets' },
   { code: 'wallets:write', description: 'Create and update wallets' },
   { code: 'wallets:admin', description: 'Administer all wallets' },
@@ -282,6 +298,66 @@ async function main(): Promise<void> {
       });
     }
   }
+
+  // Phase 3 increment 2: production admin roles (support / security_analyst / read_only)
+  // with granular, additive capability grants. Existing admin/super_admin retain full
+  // grants above. No role is ever granted wallet custody/signing permissions.
+  const READ_ONLY_CODES = [
+    'users:read',
+    'sessions:read',
+    'devices:read',
+    'connections:read',
+    'wallets:read',
+    'security:read',
+    'audit:read',
+    'support:read',
+    'admins:read',
+    'roles:read',
+    'health:read',
+    'realtime:read',
+  ];
+  const SUPPORT_CODES = [...READ_ONLY_CODES, 'users:write', 'support:write'];
+  const SECURITY_ANALYST_CODES = [
+    ...READ_ONLY_CODES,
+    'security:manage',
+    'sessions:revoke',
+    'devices:revoke',
+    'connections:revoke',
+  ];
+
+  const supportRole = await prisma.role.upsert({
+    where: { name: 'support' },
+    create: { name: 'support', description: 'Support operations (read + limited assistance)' },
+    update: { description: 'Support operations (read + limited assistance)' },
+  });
+  const securityAnalystRole = await prisma.role.upsert({
+    where: { name: 'security_analyst' },
+    create: {
+      name: 'security_analyst',
+      description: 'Security analysis and approved revocations',
+    },
+    update: { description: 'Security analysis and approved revocations' },
+  });
+  const readOnlyRole = await prisma.role.upsert({
+    where: { name: 'read_only' },
+    create: { name: 'read_only', description: 'Read-only operational access' },
+    update: { description: 'Read-only operational access' },
+  });
+
+  const grantByCode = async (roleId: string, codes: string[]): Promise<void> => {
+    for (const code of codes) {
+      const permission = permissionRecords.find((p) => p.code === code);
+      if (!permission) continue;
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId, permissionId: permission.id } },
+        create: { roleId, permissionId: permission.id },
+        update: {},
+      });
+    }
+  };
+  await grantByCode(readOnlyRole.id, READ_ONLY_CODES);
+  await grantByCode(supportRole.id, SUPPORT_CODES);
+  await grantByCode(securityAnalystRole.id, SECURITY_ANALYST_CODES);
 
   // Standard users can manage their own wallets (read/write only).
   for (const code of USER_WALLET_PERMISSION_CODES) {

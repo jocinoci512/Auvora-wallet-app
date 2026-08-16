@@ -106,7 +106,24 @@ export type PermissionCode =
   | 'infrastructure:read'
   | 'infrastructure:admin'
   | 'infrastructure:deploy'
-  | 'infrastructure:backup';
+  | 'infrastructure:backup'
+  // Admin control-plane RBAC (Phase 3 increment 2) — granular operational permissions.
+  | 'users:suspend'
+  | 'users:reactivate'
+  | 'sessions:read'
+  | 'devices:read'
+  | 'devices:revoke'
+  | 'connections:read'
+  | 'connections:revoke'
+  | 'security:read'
+  | 'security:manage'
+  | 'support:read'
+  | 'support:write'
+  | 'admins:read'
+  | 'admins:manage'
+  | 'roles:read'
+  | 'health:read'
+  | 'realtime:read';
 
 export interface JwtAccessClaims {
   sub: string;
