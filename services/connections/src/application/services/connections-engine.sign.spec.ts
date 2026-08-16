@@ -69,6 +69,7 @@ function build(opts: BuildOpts = {}) {
     analytics as never,
     notifications as never,
     ai as never,
+    { publish: jest.fn().mockResolvedValue(undefined) } as never,
   );
   return { engine, prisma, providers, externalWalletConnection, externalSigningRequest };
 }

@@ -20,6 +20,11 @@ import {
 } from '../../domain/supported-networks';
 import { AI_PUBLISHER, type AiPublisherPort } from '../../infrastructure/ai/ai-publisher.adapter';
 import {
+  ADMIN_EVENT_PUBLISHER,
+  type AdminEventInput,
+  type AdminEventPublisherPort,
+} from '../../infrastructure/realtime/admin-event-publisher.adapter';
+import {
   ANALYTICS_PUBLISHER,
   type AnalyticsPublisherPort,
 } from '../../infrastructure/analytics/analytics-publisher.adapter';
@@ -57,7 +62,13 @@ export class ConnectionsEngineService {
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
     @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
     @Inject(AI_PUBLISHER) private readonly ai: AiPublisherPort,
+    @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
   ) {}
+
+  /** Fire-and-forget safe admin realtime emit; never throws into a domain flow. */
+  private emitAdminEvent(input: AdminEventInput): void {
+    void this.adminEvents.publish(input).catch(() => undefined);
+  }
 
   listCapabilities() {
     return this.providers.listCapabilities?.() ?? [this.providers.getCapabilities()];
@@ -127,6 +138,12 @@ export class ConnectionsEngineService {
       aggregateId: device.id,
       payload: { userId, title: 'Hardware wallet paired', body: paired.model },
     });
+    this.emitAdminEvent({
+      type: 'CONNECTION_CREATED',
+      userId,
+      targetId: paired.deviceId,
+      metadata: { kind: 'HARDWARE', status: 'CONNECTED', provider: this.providers.code },
+    });
     return { device, paired };
   }
 
@@ -146,6 +163,13 @@ export class ConnectionsEngineService {
       eventType: CONNECTIONS_EVENTS.DEVICE_DISCONNECTED,
       aggregateId: device.id,
       payload: { userId, deviceId },
+    });
+    this.emitAdminEvent({
+      type: 'CONNECTION_DISCONNECTED',
+      userId,
+      targetId: deviceId,
+      severity: 'warning',
+      metadata: { kind: 'HARDWARE', status: 'DISCONNECTED' },
     });
     return { deviceId, status: 'DISCONNECTED' };
   }
@@ -228,6 +252,12 @@ export class ConnectionsEngineService {
       aggregateId: updated.id,
       payload: { userId, sessionId },
     });
+    this.emitAdminEvent({
+      type: 'CONNECTION_CREATED',
+      userId,
+      targetId: approved.sessionId,
+      metadata: { kind: 'WALLETCONNECT', status: 'CONNECTED', provider: 'walletconnect' },
+    });
     return updated;
   }
 
@@ -278,6 +308,13 @@ export class ConnectionsEngineService {
       eventType: CONNECTIONS_EVENTS.SESSION_TERMINATED,
       aggregateId: row.id,
       payload: { userId, sessionId },
+    });
+    this.emitAdminEvent({
+      type: 'CONNECTION_DISCONNECTED',
+      userId,
+      targetId: sessionId,
+      severity: 'warning',
+      metadata: { kind: 'WALLETCONNECT', status: 'TERMINATED' },
     });
     return { sessionId, status: 'TERMINATED' };
   }
@@ -576,6 +613,17 @@ export class ConnectionsEngineService {
       aggregateId: request.id,
       payload: { userId, latencyMs: Date.now() - started, kind: input.kind },
     });
+    this.emitAdminEvent({
+      type: 'SIGN_REQUEST_CREATED',
+      userId,
+      targetId: request.id,
+      metadata: {
+        network: String(input.network),
+        payloadType: input.payloadType,
+        kind: String(input.kind),
+        status: 'PENDING_CONFIRMATION',
+      },
+    });
     return { requestId: request.id, prepared, requiresConfirmation: true };
   }
 
@@ -611,6 +659,13 @@ export class ConnectionsEngineService {
         aggregateId: request.id,
         payload: { userId, expired: true },
       });
+      this.emitAdminEvent({
+        type: 'SIGN_REQUEST_FAILED',
+        userId,
+        targetId: request.id,
+        severity: 'warning',
+        metadata: { reason: 'expired', network: String(request.network) },
+      });
       throw new ConnectionsValidationError('Sign request expired');
     }
     const started = Date.now();
@@ -629,6 +684,13 @@ export class ConnectionsEngineService {
         eventType: CONNECTIONS_EVENTS.SIGN_FAILED,
         aggregateId: request.id,
         payload: { userId, latencyMs: Date.now() - started, rejected: true },
+      });
+      this.emitAdminEvent({
+        type: 'SIGN_REQUEST_FAILED',
+        userId,
+        targetId: request.id,
+        severity: 'warning',
+        metadata: { reason: 'rejected', network: String(request.network) },
       });
       return {
         requestId,
@@ -663,6 +725,13 @@ export class ConnectionsEngineService {
         aggregateId: request.id,
         payload: { userId, latencyMs: Date.now() - started },
       });
+      this.emitAdminEvent({
+        type: 'SIGN_REQUEST_FAILED',
+        userId,
+        targetId: request.id,
+        severity: 'warning',
+        metadata: { reason: 'sign_failed', network: String(request.network) },
+      });
       return { requestId, status: 'FAILED', errorMessage: result.errorMessage };
     }
     void this.notifications.publishEvent({
@@ -675,6 +744,17 @@ export class ConnectionsEngineService {
       eventType: CONNECTIONS_EVENTS.SIGN_COMPLETED,
       aggregateId: request.id,
       payload: { userId, latencyMs: Date.now() - started, verified },
+    });
+    this.emitAdminEvent({
+      type: 'SIGN_REQUEST_COMPLETED',
+      userId,
+      targetId: request.id,
+      metadata: {
+        network: String(request.network),
+        // txHash is public chain data — never signature/private material.
+        txHash: result.txHash ?? null,
+        verified,
+      },
     });
     return {
       requestId,
