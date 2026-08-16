@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Vercel / CI often inject empty strings for unset UI fields â€” treat as omitted. */
+/** Vercel / CI often inject empty strings for unset UI fields — treat as omitted. */
 function emptyToUndefined(value: string | undefined): string | undefined {
   return value === '' ? undefined : value;
 }
