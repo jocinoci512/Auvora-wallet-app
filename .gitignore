@@ -42,8 +42,9 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Turbo
-.turbo
+# Vercel local link metadata (never commit)
+.vercel
+**/.vercel/
 
 # Prisma
 database/prisma/*.db
