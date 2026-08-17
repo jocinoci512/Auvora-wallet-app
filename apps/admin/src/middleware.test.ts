@@ -31,4 +31,10 @@ describe('Admin frontend route protection', () => {
     }
     expect(client).not.toContain("'/users'");
   });
+
+  it('AuthGate requires SUPER_ADMIN after a valid session', () => {
+    const source = readFileSync(join(__dirname, './components/AuthGate.tsx'), 'utf8');
+    expect(source).toContain('canEnterAdminControlPlane');
+    expect(source).toContain("router.replace('/forbidden')");
+  });
 });

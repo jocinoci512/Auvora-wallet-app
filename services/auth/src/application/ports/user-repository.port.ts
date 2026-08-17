@@ -48,7 +48,8 @@ export interface UserSearchFilters {
   status?: UserStatus;
   skip?: number;
   take?: number;
-  adminPortalOnly?: boolean;
+  /** Directory of staff roles (including future non-portal roles). Portal login is SUPER_ADMIN only. */
+  adminStaffOnly?: boolean;
 }
 
 export interface UserSearchResult {

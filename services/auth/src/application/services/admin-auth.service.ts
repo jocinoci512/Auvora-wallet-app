@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { UserStatus, isAdminPortalRole, type AuthSurface } from '@auvora/types';
+import { UserStatus, isAdminPortalRole, isAdminStaffRole, type AuthSurface } from '@auvora/types';
 import { generateOpaqueToken, hashToken } from '@auvora/security';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import {
@@ -9,7 +9,6 @@ import {
   RateLimitError,
   UnauthorizedError,
   ValidationError,
-  ADMIN_PORTAL_ROLES,
   MFA_REQUIRED_ROLES,
   ROLE_SUPER_ADMIN,
   adminSessionPermissions,
@@ -486,7 +485,7 @@ export class AdminAuthService {
       query: query.query,
       skip: query.skip ?? 0,
       take: query.take ?? 25,
-      adminPortalOnly: true,
+      adminStaffOnly: true,
     });
     const operators = await Promise.all(result.users.map((user) => this.toOperatorDto(user)));
     return { total: result.total, operators };
@@ -494,7 +493,7 @@ export class AdminAuthService {
 
   async getOperator(userId: string): Promise<AdminOperatorDto> {
     const user = await this.users.findById(userId);
-    if (!user || !user.roles.some((role) => isAdminPortalRole(role))) {
+    if (!user || !user.roles.some((role) => isAdminStaffRole(role))) {
       throw new NotFoundError('Administrator not found');
     }
     return this.toOperatorDto(user);
@@ -760,11 +759,7 @@ export class AdminAuthService {
       throw new ValidationError('At least one role is required');
     }
     for (const role of roles) {
-      if (
-        role !== 'user' &&
-        !isAdminPortalRole(role) &&
-        !(ADMIN_PORTAL_ROLES as readonly string[]).includes(role)
-      ) {
+      if (role !== 'user' && !isAdminStaffRole(role)) {
         throw new ForbiddenError('Role is not assignable on the Admin control plane');
       }
     }

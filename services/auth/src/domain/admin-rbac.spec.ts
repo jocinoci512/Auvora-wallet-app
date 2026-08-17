@@ -10,6 +10,7 @@ import {
   ROLE_SUPPORT,
   adminSessionPermissions,
 } from './permission-codes';
+import { ADMIN_PORTAL_ROLES, isAdminPortalRole } from '@auvora/types';
 
 const caps = (role: string): readonly string[] => ADMIN_ROLE_CAPABILITIES[role] ?? [];
 const has = (role: string, perm: string): boolean => caps(role).includes(perm as never);
@@ -36,6 +37,15 @@ describe('admin RBAC capability matrix', () => {
     expect(Object.keys(ADMIN_ROLE_CAPABILITIES).sort()).toEqual(
       [ROLE_READ_ONLY, ROLE_SUPPORT, ROLE_SECURITY_ANALYST, ROLE_ADMIN, ROLE_SUPER_ADMIN].sort(),
     );
+  });
+
+  it('production Admin portal access is SUPER_ADMIN only', () => {
+    expect([...ADMIN_PORTAL_ROLES]).toEqual([ROLE_SUPER_ADMIN]);
+    expect(isAdminPortalRole(ROLE_SUPER_ADMIN)).toBe(true);
+    expect(isAdminPortalRole(ROLE_ADMIN)).toBe(false);
+    expect(isAdminPortalRole(ROLE_SUPPORT)).toBe(false);
+    expect(isAdminPortalRole(ROLE_SECURITY_ANALYST)).toBe(false);
+    expect(isAdminPortalRole(ROLE_READ_ONLY)).toBe(false);
   });
 
   it('READ_ONLY holds only read permissions (no mutations, ever)', () => {

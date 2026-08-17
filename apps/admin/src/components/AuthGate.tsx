@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { Loader } from '@auvora/ui';
 import { AdminIdentityProvider } from '../lib/admin-identity';
 import { isAdminPublicPath } from '../lib/api-client';
+import { canEnterAdminControlPlane } from '../lib/admin-rbac';
 import { adminRefresh, adminSession, type AdminOperator } from '../lib/admin-session';
 
 export function AuthGate({ children }: { children: ReactNode }): ReactElement {
@@ -27,6 +28,10 @@ export function AuthGate({ children }: { children: ReactNode }): ReactElement {
       try {
         const session = await adminSession();
         if (!cancelled) {
+          if (!canEnterAdminControlPlane(session.operator)) {
+            router.replace('/forbidden');
+            return;
+          }
           setIdentity(session);
           setReady(true);
         }
@@ -36,6 +41,10 @@ export function AuthGate({ children }: { children: ReactNode }): ReactElement {
           await adminRefresh();
           const session = await adminSession();
           if (!cancelled) {
+            if (!canEnterAdminControlPlane(session.operator)) {
+              router.replace('/forbidden');
+              return;
+            }
             setIdentity(session);
             setReady(true);
           }

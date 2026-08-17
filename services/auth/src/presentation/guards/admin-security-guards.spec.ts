@@ -27,16 +27,27 @@ describe('Admin security guards', () => {
     ).toThrow(ForbiddenException);
   });
 
-  it('allows an Admin-surface token with a matching portal role', () => {
+  it('denies non-SUPER_ADMIN roles on owner-only portal endpoints', () => {
     const reflector = {
-      getAllAndOverride: jest.fn().mockReturnValue(['read_only']),
+      getAllAndOverride: jest.fn().mockReturnValue(['super_admin']),
     };
     const guard = new RolesGuard(reflector as unknown as Reflector);
+    for (const role of ['admin', 'support', 'security_analyst', 'read_only', 'user']) {
+      expect(() =>
+        guard.canActivate(
+          context({
+            sub: 'staff-1',
+            roles: [role],
+            surface: 'admin',
+          }),
+        ),
+      ).toThrow(ForbiddenException);
+    }
     expect(
       guard.canActivate(
         context({
-          sub: 'ro-1',
-          roles: ['read_only'],
+          sub: 'owner-1',
+          roles: ['super_admin'],
           surface: 'admin',
         }),
       ),

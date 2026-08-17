@@ -179,23 +179,12 @@ const loginInput = {
 };
 
 describe('AdminAuthService', () => {
-  it('1. valid Admin login without MFA (support) issues an admin session', async () => {
-    const user = adminUser({ roles: ['support'], mfaEnabled: false, permissions: ['users:read'] });
-    const { service, users, tokenService } = createService();
-    users.findByEmail.mockResolvedValue(user);
-    users.findById.mockResolvedValue(user);
-    const result = await service.login(loginInput, { ipAddress: '1.1.1.1' });
-    expect(result.status).toBe('authenticated');
-    if (result.status === 'authenticated') {
-      expect(result.tokens.sessionId).toBe('sess-1');
-      expect(JSON.stringify(result.tokens)).not.toContain('passwordHash');
+  it('1. only SUPER_ADMIN may enter the Admin control plane', async () => {
+    const { service, users } = createService();
+    for (const role of ['admin', 'support', 'security_analyst', 'read_only', 'user']) {
+      users.findByEmail.mockResolvedValue(adminUser({ roles: [role], mfaEnabled: false }));
+      await expect(service.login(loginInput, {})).rejects.toBeInstanceOf(ForbiddenError);
     }
-    expect(tokenService.issueAccessToken).toHaveBeenCalledWith(
-      expect.objectContaining({
-        surface: 'admin',
-        permissions: expect.not.arrayContaining(['custody:sign', 'wallets:admin']),
-      }),
-    );
   });
 
   it('2. normal user is denied', async () => {
@@ -401,20 +390,35 @@ describe('AdminAuthService', () => {
   });
 
   it('38. login, MFA, step-up, role, status, and revoke emit audit events without secrets', async () => {
-    const user = adminUser({ roles: ['support'], mfaEnabled: false, permissions: ['users:read'] });
-    const { service, users, audit } = createService();
-    users.findByEmail.mockResolvedValue(user);
-    users.findById.mockResolvedValue(user);
-    users.assignRoles.mockResolvedValue(user);
-    users.updateStatus.mockResolvedValue({ ...user, status: 'SUSPENDED' });
-    await service.login(loginInput, {});
+    const owner = adminUser({ roles: ['super_admin'] });
+    const staff = adminUser({
+      id: 'staff-1',
+      roles: ['support'],
+      mfaEnabled: false,
+      permissions: ['users:read'],
+    });
+    const secret = generateTotpSecret();
+    const { service, users, totp, audit, fieldEncryption } = createService();
+    users.findByEmail.mockResolvedValue(owner);
+    users.findById.mockResolvedValue(owner);
+    users.assignRoles.mockResolvedValue(staff);
+    users.updateStatus.mockResolvedValue({ ...staff, status: 'SUSPENDED' });
+    totp.findByUserId.mockResolvedValue({
+      secretEncrypted: fieldEncryption.encrypt(secret),
+      confirmedAt: now,
+      lastUsedStep: null,
+    });
+    const login = await service.login(loginInput, {});
+    if (login.status !== 'mfa_required') throw new Error('expected mfa');
+    const step = Math.floor(now.getTime() / 1000 / 30);
+    await service.verifyMfa(login.mfaToken, generateTotpCode(secret, step), {});
     expect(audit.create).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'ADMIN_LOGIN_SUCCESS' }),
     );
 
     users.findById.mockImplementation(async (id: string) => {
       if (id === 'actor') return adminUser({ id: 'actor', roles: ['super_admin'] });
-      return user;
+      return staff;
     });
     await service.assignOperatorRoles('actor', 'admin-1', ['support'], 'adjust support scope', {});
     await service.updateOperatorStatus(

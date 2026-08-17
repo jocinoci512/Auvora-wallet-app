@@ -132,8 +132,8 @@ export const ROLE_SUPPORT = 'support';
 export const ROLE_SECURITY_ANALYST = 'security_analyst';
 export const ROLE_READ_ONLY = 'read_only';
 
-/** Roles that may enter the Admin control plane. Normal `user` is never included. */
-export const ADMIN_PORTAL_ROLES = [
+/** Staff roles that may exist in the database for future use. */
+export const ADMIN_STAFF_ROLES = [
   ROLE_SUPER_ADMIN,
   ROLE_ADMIN,
   ROLE_SUPPORT,
@@ -141,10 +141,18 @@ export const ADMIN_PORTAL_ROLES = [
   ROLE_READ_ONLY,
 ] as const;
 
+/** Production Admin control plane is owner-only. Other staff roles cannot enter the live Admin application. */
+export const ADMIN_PORTAL_ROLES = [ROLE_SUPER_ADMIN] as const;
+
 export type AdminPortalRole = (typeof ADMIN_PORTAL_ROLES)[number];
+export type AdminStaffRole = (typeof ADMIN_STAFF_ROLES)[number];
 
 export function isAdminPortalRole(role: string): boolean {
   return (ADMIN_PORTAL_ROLES as readonly string[]).includes(role);
+}
+
+export function isAdminStaffRole(role: string): boolean {
+  return (ADMIN_STAFF_ROLES as readonly string[]).includes(role);
 }
 
 export type AuthSurface = 'consumer' | 'admin';

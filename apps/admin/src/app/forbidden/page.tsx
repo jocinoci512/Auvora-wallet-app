@@ -5,7 +5,7 @@ export default function ForbiddenPage(): ReactElement {
   return (
     <AuthScreen
       title="Access denied"
-      description="This identity is not an administrator, or it does not have permission for that action."
+      description="This control plane is restricted to the owner Super Admin. Other administrator roles cannot enter."
     />
   );
 }

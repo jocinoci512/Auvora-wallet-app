@@ -1,5 +1,5 @@
 import { formatAdminError, isStepUpRequired } from './api-client';
-import { hasPermission, primaryRole, roleLabel } from './admin-rbac';
+import { canEnterAdminControlPlane, hasPermission, primaryRole, roleLabel } from './admin-rbac';
 import { toSafeConnection } from './admin-control-plane';
 import { safeServiceName } from './admin-format';
 
@@ -44,6 +44,14 @@ describe('admin rbac convenience', () => {
     expect(hasPermission(operator, 'admins:manage')).toBe(false);
     expect(primaryRole(operator)).toBe('read_only');
     expect(roleLabel('super_admin')).toBe('Super Admin');
+  });
+
+  it('allows only SUPER_ADMIN into the production control plane', () => {
+    expect(canEnterAdminControlPlane(operator)).toBe(false);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['admin'] })).toBe(false);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['support'] })).toBe(false);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['security_analyst'] })).toBe(false);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['super_admin'] })).toBe(true);
   });
 });
 

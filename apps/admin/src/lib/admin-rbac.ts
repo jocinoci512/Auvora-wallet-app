@@ -136,6 +136,10 @@ export function hasPermission(
   return operatorPermissions(operator).has(permission);
 }
 
+export function canEnterAdminControlPlane(operator: AdminOperator | null | undefined): boolean {
+  return Boolean(operator?.roles.includes('super_admin'));
+}
+
 export function canMutate(operator: AdminOperator | null | undefined): boolean {
-  return primaryRole(operator) !== 'read_only';
+  return canEnterAdminControlPlane(operator);
 }

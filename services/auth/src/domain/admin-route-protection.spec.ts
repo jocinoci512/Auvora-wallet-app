@@ -25,6 +25,9 @@ describe('Admin route protection contract', () => {
     );
     expect(realtime).toContain('@Roles(...ADMIN_PORTAL_ROLES)');
     expect(realtime).not.toMatch(/@Public\(\)/);
+    const types = readFileSync(join(repoRoot, 'packages/types/src/index.ts'), 'utf8');
+    expect(types).toMatch(/export const ADMIN_PORTAL_ROLES = \[ROLE_SUPER_ADMIN\] as const/);
+    expect(types).not.toMatch(/ADMIN_PORTAL_ROLES = \[\s*ROLE_SUPER_ADMIN,\s*ROLE_ADMIN/);
   });
 
   it('high-risk operator mutations require step-up', () => {

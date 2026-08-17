@@ -85,7 +85,12 @@ export const ROLE_SUPPORT = 'support';
 export const ROLE_SECURITY_ANALYST = 'security_analyst';
 export const ROLE_READ_ONLY = 'read_only';
 
-export { ADMIN_PORTAL_ROLES, isAdminPortalRole, type AdminPortalRole } from '@auvora/types';
+export {
+  ADMIN_PORTAL_ROLES,
+  ADMIN_STAFF_ROLES,
+  isAdminPortalRole,
+  isAdminStaffRole,
+} from '@auvora/types';
 
 /**
  * MFA policy (deliberate):
