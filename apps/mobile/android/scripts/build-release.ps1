@@ -40,6 +40,16 @@ function Info([string]$m) { Write-Host "[*] $m" -ForegroundColor Cyan }
 function Ok([string]$m)   { Write-Host "[OK] $m" -ForegroundColor Green }
 function Warn([string]$m) { Write-Host "[!] $m" -ForegroundColor Yellow }
 function Die([string]$m)  { Write-Host "[FAIL] $m" -ForegroundColor Red; exit 1 }
+function Invoke-NativeOutput([scriptblock]$Command) {
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $raw = & $Command 2>&1
+    return (($raw | ForEach-Object { "$_" }) -join "`n")
+  } finally {
+    $ErrorActionPreference = $prev
+  }
+}
 
 $PACKAGE = 'com.auvora.auvora_wallet'
 $ALIAS   = 'upload'
@@ -229,7 +239,10 @@ Ok 'key.properties written and confirmed gitignored.'
 # 7. VERIFY KEY (fingerprints; never print private material)
 # ============================================================================
 Info 'Inspecting keystore certificate...'
-$certText = (& $keytool -list -v -keystore $keystorePath -alias $ALIAS -storepass $storePass 2>&1) -join "`n"
+$certText = Invoke-NativeOutput { & $keytool -list -v -keystore $keystorePath -alias $ALIAS -storepass $storePass }
+if ($LASTEXITCODE -ne 0) {
+  Die 'keytool could not read the upload keystore. The existing-key password was rejected, or keytool failed.'
+}
 if ($certText -match 'Android Debug' ) { Die 'Keystore appears to be an Android debug certificate — aborting.' }
 $sha1   = if ($certText -match 'SHA1:\s*([0-9A-F:]+)')   { $Matches[1] } else { '(unavailable)' }
 $sha256 = if ($certText -match 'SHA256:\s*([0-9A-F:]+)') { $Matches[1] } else { '(unavailable)' }
@@ -374,7 +387,7 @@ $storeSha256Norm = Norm($sha256)
 
 if ($apksigner) {
   Info 'apksigner verify (APK)...'
-  $apkVerify = (& $apksigner verify --print-certs $apk 2>&1) -join "`n"
+  $apkVerify = Invoke-NativeOutput { & $apksigner verify --print-certs $apk }
   $apkSigned = ($apkVerify -match 'Verified using v\d' ) -or ($apkVerify -match 'certificate DN')
   $apkDebug  = ($apkVerify -match 'CN=Android Debug')
   $apkSha = if ($apkVerify -match 'certificate SHA-256 digest:\s*([0-9a-fA-F]+)') { $Matches[1] } else { '' }
@@ -382,7 +395,7 @@ if ($apksigner) {
 }
 
 Info 'Verifying AAB signature...'
-$aabCert = (& $keytool -printcert -jarfile $aab 2>&1) -join "`n"
+$aabCert = Invoke-NativeOutput { & $keytool -printcert -jarfile $aab }
 $aabSigned = ($aabCert -match 'SHA256:')
 $aabSha = if ($aabCert -match 'SHA256:\s*([0-9A-F:]+)') { $Matches[1] } else { '' }
 if ($storeSha256Norm -and (Norm($aabSha)) -eq $storeSha256Norm) { $certMatch = $true } elseif (-not $apksigner) { }
