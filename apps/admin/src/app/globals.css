@@ -120,6 +120,15 @@ main,
 
 .table-scroll {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.table-scroll__hint {
+  display: none;
+  margin: 0 0 0.45rem;
+  font-size: 0.75rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
 }
 
 h1 {
@@ -437,13 +446,49 @@ code {
 .admin-shell {
   background:
     linear-gradient(180deg, var(--auvora-color-background) 0%, var(--auvora-color-background-subtle) 100%);
+  overflow-x: clip;
 }
 
 .admin-shell .admin-main,
 .admin-main {
   max-width: min(1440px, 100%);
   margin: 0;
+  min-width: 0;
   padding: 1.15rem 1.35rem 2.75rem;
+}
+
+.admin-main .auvora-page-header__title {
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+}
+
+.admin-main .auvora-tabs__list {
+  flex-wrap: wrap;
+  row-gap: 0.15rem;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+}
+
+.data-table--wide {
+  min-width: 56rem;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--auvora-color-border);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.data-table td:first-child,
+.data-table th:first-child {
+  white-space: normal;
 }
 
 .admin-header {
@@ -457,6 +502,18 @@ code {
 }
 
 .admin-header__identity {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.admin-header__menu {
+  display: none;
+}
+
+.admin-header__who {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -718,8 +775,16 @@ code {
 }
 
 @media (max-width: 1024px) {
+  .table-scroll__hint {
+    display: block;
+  }
+
   .admin-header {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-header__menu {
+    display: inline-flex;
   }
 
   .admin-header__meta {
@@ -727,33 +792,75 @@ code {
     order: 3;
   }
 
+  .admin-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    border: 0;
+    background: rgba(11, 18, 32, 0.42);
+  }
+
+  .admin-shell .auvora-sidebar,
   .admin-sidebar {
-    flex-basis: 13.5rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(18rem, 86vw);
+    flex: 0 0 auto;
+    min-height: 100vh;
+    transform: translateX(-105%);
+    transition: transform 0.18s ease;
+    box-shadow: none;
+    overflow-y: auto;
+  }
+
+  .admin-shell .auvora-sidebar.admin-sidebar--open,
+  .admin-sidebar--open {
+    transform: translateX(0);
+    box-shadow: 0 16px 40px rgba(11, 18, 32, 0.28);
+  }
+
+  .admin-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  }
+
+  .admin-main {
+    padding: 1rem 1rem 2.5rem;
   }
 }
 
 @media (max-width: 768px) {
   .admin-header {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .admin-header__actions {
-    justify-content: flex-start;
-  }
-
-  .admin-shell .auvora-app-shell__body--with-sidebar {
-    flex-direction: column;
-  }
-
-  .admin-sidebar {
-    min-height: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--auvora-color-border);
+    justify-content: flex-end;
   }
 
   .admin-dl {
     grid-template-columns: 1fr;
     gap: 0.15rem;
+  }
+
+  .col-secondary {
+    display: none;
+  }
+
+  .data-table {
+    min-width: 36rem;
+    font-size: 0.85rem;
+  }
+
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-confirm-form .auvora-dialog-actions,
+  .auvora-dialog-actions {
+    flex-wrap: wrap;
   }
 }
 

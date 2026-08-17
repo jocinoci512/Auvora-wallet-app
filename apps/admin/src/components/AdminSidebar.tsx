@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactElement } from 'react';
 import { Sidebar } from '@auvora/ui';
 import { useAdminIdentity } from '../lib/admin-identity';
+import { useAdminNav } from '../lib/admin-nav';
 import { hasPermission } from '../lib/admin-rbac';
 import { isProductionBuild } from '../lib/api-client';
 
@@ -42,7 +43,10 @@ function isCurrent(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
   if (href === '/security') return pathname === '/security';
   if (href === '/observability') {
-    return pathname === '/observability' || pathname.startsWith('/observability/');
+    return (
+      pathname === '/observability' ||
+      (pathname.startsWith('/observability/') && !pathname.startsWith('/observability/health'))
+    );
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -50,43 +54,31 @@ function isCurrent(pathname: string, href: string): boolean {
 export function AdminSidebar(): ReactElement {
   const pathname = usePathname() || '/';
   const identity = useAdminIdentity();
+  const { open, setOpen } = useAdminNav();
   const [moreOpen, setMoreOpen] = useState(MORE.some((item) => isCurrent(pathname, item.href)));
-  const extra = isProductionBuild()
-    ? []
-    : [
-        { href: '/support', label: 'Support (demo)' },
-        { href: '/design-system', label: 'Design system' },
-      ];
+  const extra = isProductionBuild() ? [] : [{ href: '/design-system', label: 'Design system' }];
 
   return (
-    <Sidebar className="admin-sidebar" aria-label="Admin navigation">
-      <p className="admin-sidebar__brand">Auvora Control Plane</p>
-      <ul className="admin-sidebar__nav">
-        {PRIMARY.map((item) => {
-          if (item.permission && !hasPermission(identity?.operator, item.permission)) {
-            return null;
-          }
-          const current = isCurrent(pathname, item.href);
-          return (
-            <li key={item.href}>
-              <Link href={item.href} aria-current={current ? 'page' : undefined}>
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      <button
-        type="button"
-        className="admin-sidebar__more"
-        aria-expanded={moreOpen}
-        onClick={() => setMoreOpen((open) => !open)}
+    <>
+      {open ? (
+        <button
+          type="button"
+          className="admin-nav-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setOpen(false)}
+        />
+      ) : null}
+      <Sidebar
+        id="admin-navigation"
+        className={`admin-sidebar${open ? ' admin-sidebar--open' : ''}`}
+        aria-label="Admin navigation"
       >
-        More operations
-      </button>
-      {moreOpen ? (
-        <ul className="admin-sidebar__nav admin-sidebar__nav--secondary">
-          {[...MORE, ...extra].map((item) => {
+        <p className="admin-sidebar__brand">Auvora Control Plane</p>
+        <ul className="admin-sidebar__nav">
+          {PRIMARY.map((item) => {
+            if (item.permission && !hasPermission(identity?.operator, item.permission)) {
+              return null;
+            }
             const current = isCurrent(pathname, item.href);
             return (
               <li key={item.href}>
@@ -97,7 +89,29 @@ export function AdminSidebar(): ReactElement {
             );
           })}
         </ul>
-      ) : null}
-    </Sidebar>
+        <button
+          type="button"
+          className="admin-sidebar__more"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((current) => !current)}
+        >
+          More operations
+        </button>
+        {moreOpen ? (
+          <ul className="admin-sidebar__nav admin-sidebar__nav--secondary">
+            {[...MORE, ...extra].map((item) => {
+              const current = isCurrent(pathname, item.href);
+              return (
+                <li key={item.href}>
+                  <Link href={item.href} aria-current={current ? 'page' : undefined}>
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </Sidebar>
+    </>
   );
 }

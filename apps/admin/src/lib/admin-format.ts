@@ -46,3 +46,14 @@ export function healthTone(status: string): 'healthy' | 'degraded' | 'unavailabl
 export function healthLabel(status: string): string {
   return healthTone(status);
 }
+
+export function safeServiceName(name: string): string {
+  if (
+    /https?:\/\/|:\d{2,5}|localhost|127\.0\.0\.1|\.internal|\.railway|\.local|@[a-z0-9.-]+/i.test(
+      name,
+    )
+  ) {
+    return 'Internal service';
+  }
+  return name;
+}

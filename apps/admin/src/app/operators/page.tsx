@@ -144,7 +144,8 @@ export default function AdminOperatorsPage(): ReactElement {
         emptyDescription="Try another email or username."
       >
         <div className="table-scroll">
-          <table className="data-table">
+          <p className="table-scroll__hint">Scroll sideways to see every column.</p>
+          <table className="data-table data-table--wide">
             <caption className="auvora-sr-only">Administrator accounts</caption>
             <thead>
               <tr>

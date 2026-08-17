@@ -143,6 +143,7 @@ export default function AdminUsersPage(): ReactElement {
         emptyDescription="Try clearing filters or searching by email."
       >
         <div className="table-scroll">
+          <p className="table-scroll__hint">Scroll sideways to see every column.</p>
           <table className="data-table">
             <caption className="auvora-sr-only">User directory</caption>
             <thead>
@@ -167,7 +168,9 @@ export default function AdminUsersPage(): ReactElement {
                   </button>
                 </th>
                 <th scope="col">Roles</th>
-                <th scope="col">Created</th>
+                <th className="col-secondary" scope="col">
+                  Created
+                </th>
                 <th scope="col">
                   <button
                     type="button"
@@ -194,7 +197,7 @@ export default function AdminUsersPage(): ReactElement {
                     <StatusBadge status={user.status} />
                   </td>
                   <td>{user.roles.join(', ') || '—'}</td>
-                  <td>{formatWhen(user.createdAt)}</td>
+                  <td className="col-secondary">{formatWhen(user.createdAt)}</td>
                   <td>{formatWhen(user.lastLoginAt)}</td>
                   <td>
                     <Link href={`/users/${user.id}`}>Open</Link>

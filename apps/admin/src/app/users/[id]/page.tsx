@@ -169,7 +169,6 @@ export default function AdminUserDetailPage(): ReactElement {
               <TabsTrigger value="connections">Connections</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="support">Support</TabsTrigger>
               <TabsTrigger value="audit">Admin Audit</TabsTrigger>
             </TabsList>
 
@@ -350,13 +349,6 @@ export default function AdminUserDetailPage(): ReactElement {
 
             <TabsContent value="activity">
               <AuditTable logs={audit} empty="No activity recorded for this user." />
-            </TabsContent>
-
-            <TabsContent value="support">
-              <EmptyState
-                title="Support notes not available"
-                description="A production support-notes API is not wired. Demo tickets are hidden from this control plane."
-              />
             </TabsContent>
 
             <TabsContent value="audit">

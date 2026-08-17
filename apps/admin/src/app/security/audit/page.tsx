@@ -1,7 +1,7 @@
 'use client';
 
 import type { SecurityAuditLog } from '@auvora/sdk';
-import { AsyncStates, Button, PageHeader, Pagination, StatusBadge } from '@auvora/ui';
+import { Alert, AsyncStates, Button, PageHeader, Pagination, StatusBadge } from '@auvora/ui';
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Subnav } from '../../../components/Subnav';
 import { formatWhen, shortId } from '../../../lib/admin-format';
@@ -130,7 +130,7 @@ export default function SecurityAuditPage(): ReactElement {
             />
           </label>
           <label className="field">
-            <span className="field-label">From</span>
+            <span className="field-label">From (this page)</span>
             <input
               className="field-input"
               type="date"
@@ -139,7 +139,7 @@ export default function SecurityAuditPage(): ReactElement {
             />
           </label>
           <label className="field">
-            <span className="field-label">To</span>
+            <span className="field-label">To (this page)</span>
             <input
               className="field-input"
               type="date"
@@ -148,20 +148,20 @@ export default function SecurityAuditPage(): ReactElement {
             />
           </label>
           <label className="field">
-            <span className="field-label">Request ID</span>
+            <span className="field-label">Request ID (this page)</span>
             <input
               className="field-input"
               value={requestId}
               onChange={(event) => setRequestId(event.target.value)}
-              placeholder="Filter current page"
+              placeholder="Loaded page only"
             />
           </label>
           <Button type="submit">Search</Button>
         </form>
-        <p className="page-subtitle">
-          Actor, target, and action are server-side. Date range and request ID filter the current
-          page.
-        </p>
+        <Alert tone="info" title="Date and request ID are page-local">
+          Actor, target, and action are applied by the server. Date range and request ID only filter
+          the currently loaded page of results — they do not search the full audit history.
+        </Alert>
       </section>
 
       <AsyncStates
@@ -175,7 +175,8 @@ export default function SecurityAuditPage(): ReactElement {
         emptyDescription="Widen filters or clear the date range."
       >
         <div className="table-scroll">
-          <table className="data-table">
+          <p className="table-scroll__hint">Scroll sideways to see every column.</p>
+          <table className="data-table data-table--wide">
             <caption className="auvora-sr-only">Immutable audit log</caption>
             <thead>
               <tr>

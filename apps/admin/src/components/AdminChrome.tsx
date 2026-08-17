@@ -9,6 +9,7 @@ import { AdminHeader } from './AdminHeader';
 import { AdminSidebar } from './AdminSidebar';
 import { AuthGate } from './AuthGate';
 import { isAdminPublicPath, isProductionBuild } from '../lib/api-client';
+import { AdminNavProvider } from '../lib/admin-nav';
 import { AdminRealtimeProvider } from '../lib/admin-realtime-context';
 
 export function AdminChrome({ children }: { children: ReactNode }): ReactElement {
@@ -20,12 +21,14 @@ export function AdminChrome({ children }: { children: ReactNode }): ReactElement
   return (
     <AuthGate>
       <AdminRealtimeProvider>
-        <AppShell className="admin-shell" header={<AdminHeader />} sidebar={<AdminSidebar />}>
-          {!isProductionBuild() ? <AccessTokenPanel /> : null}
-          <main id="main-content" className="admin-main">
-            {children}
-          </main>
-        </AppShell>
+        <AdminNavProvider>
+          <AppShell className="admin-shell" header={<AdminHeader />} sidebar={<AdminSidebar />}>
+            {!isProductionBuild() ? <AccessTokenPanel /> : null}
+            <main id="main-content" className="admin-main">
+              {children}
+            </main>
+          </AppShell>
+        </AdminNavProvider>
       </AdminRealtimeProvider>
     </AuthGate>
   );

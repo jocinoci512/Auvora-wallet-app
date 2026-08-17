@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../components/Subnav';
 import { RealtimeActivityFeed } from '../../components/RealtimeActivityFeed';
-import { formatWhen } from '../../lib/admin-format';
+import { formatWhen, shortId } from '../../lib/admin-format';
 import { useAdminRealtimeContext, useRealtimeRefetch } from '../../lib/admin-realtime-context';
 import { createApiClient, formatAdminError } from '../../lib/api-client';
 import { IDENTITY_LINKS } from '../../lib/section-nav';
@@ -111,6 +111,7 @@ export default function SecurityCenterPage(): ReactElement {
         <section className="admin-section">
           <h2>Security event log</h2>
           <div className="table-scroll">
+            <p className="table-scroll__hint">Scroll sideways to see every column.</p>
             <table className="data-table">
               <caption className="auvora-sr-only">Security events</caption>
               <thead>
@@ -128,8 +129,8 @@ export default function SecurityCenterPage(): ReactElement {
                     <td>
                       <StatusBadge status={event.action} />
                     </td>
-                    <td className="mono">{event.actorUserId ?? '—'}</td>
-                    <td className="mono">{event.targetUserId ?? '—'}</td>
+                    <td className="mono">{shortId(event.actorUserId, 10)}</td>
+                    <td className="mono">{shortId(event.targetUserId, 10)}</td>
                   </tr>
                 ))}
               </tbody>

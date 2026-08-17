@@ -87,11 +87,15 @@ export function formatAdminError(error: unknown): string {
     return 'You do not have permission for this action.';
   }
   if (status === 429) return 'Too many requests. Wait a moment and try again.';
-  if (status === 502 || status === 503) {
+  if (status === 502 || status === 503 || status === 504) {
     return 'A dependent service is unavailable. Try again shortly.';
   }
   if (status === 500) return 'The control plane could not complete this request.';
-  return formatApiError(error);
+  const message = formatApiError(error);
+  if (/request failed with status/i.test(message)) {
+    return 'A dependent service is unavailable. Try again shortly.';
+  }
+  return message;
 }
 
 export function isStepUpRequired(error: unknown): boolean {

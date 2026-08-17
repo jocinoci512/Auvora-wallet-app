@@ -1,10 +1,10 @@
 'use client';
 
 import type { OpsHealthOverview } from '@auvora/sdk';
-import { AsyncStates, PageHeader, StatusBadge } from '@auvora/ui';
+import { AsyncStates, PageHeader } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../../components/Subnav';
-import { healthLabel, healthTone } from '../../../lib/admin-format';
+import { healthLabel, healthTone, formatWhen, safeServiceName } from '../../../lib/admin-format';
 import { createApiClient, formatAdminError } from '../../../lib/api-client';
 import { OPS_LINKS } from '../../../lib/section-nav';
 
@@ -18,6 +18,28 @@ const EXPECTED = [
   { key: 'postgres', label: 'Postgres' },
   { key: 'redis', label: 'Redis' },
 ];
+
+function sampleTiming(recent: unknown[]): { lastChecked: string; latency: string } {
+  const first = recent.find((item) => item && typeof item === 'object') as
+    Record<string, unknown> | undefined;
+  if (!first) return { lastChecked: 'Not reported', latency: 'Not reported' };
+  const when =
+    (typeof first.occurredAt === 'string' && first.occurredAt) ||
+    (typeof first.checkedAt === 'string' && first.checkedAt) ||
+    (typeof first.generatedAt === 'string' && first.generatedAt) ||
+    (typeof first.updatedAt === 'string' && first.updatedAt) ||
+    null;
+  const latencyValue =
+    typeof first.latencyMs === 'number'
+      ? first.latencyMs
+      : typeof first.durationMs === 'number'
+        ? first.durationMs
+        : null;
+  return {
+    lastChecked: when ? formatWhen(when) : 'Not reported',
+    latency: latencyValue == null ? 'Not reported' : `${Math.round(latencyValue)} ms`,
+  };
+}
 
 export default function AdminHealthPage(): ReactElement {
   const [data, setData] = useState<OpsHealthOverview | null>(null);
@@ -42,6 +64,7 @@ export default function AdminHealthPage(): ReactElement {
   }, [load]);
 
   const services = data?.services ?? [];
+  const timing = sampleTiming(Array.isArray(data?.recent) ? data.recent : []);
   const rows = EXPECTED.map((expected) => {
     const found = services.find((service) =>
       service.serviceName.toLowerCase().includes(expected.key),
@@ -49,7 +72,9 @@ export default function AdminHealthPage(): ReactElement {
     return {
       label: expected.label,
       status: found?.status ?? 'UNAVAILABLE',
-      reported: found?.serviceName ?? 'Not reported',
+      reported: found ? safeServiceName(found.serviceName) : 'Not reported',
+      lastChecked: found ? timing.lastChecked : 'Not reported',
+      latency: found ? timing.latency : 'Not reported',
     };
   });
   const extras = services.filter(
@@ -81,30 +106,30 @@ export default function AdminHealthPage(): ReactElement {
               <tr>
                 <th scope="col">Service</th>
                 <th scope="col">State</th>
-                <th scope="col">Reported as</th>
+                <th scope="col">Last checked</th>
+                <th scope="col">Latency</th>
               </tr>
             </thead>
             <tbody>
               {[
                 ...rows,
                 ...extras.map((service) => ({
-                  label: service.serviceName,
+                  label: safeServiceName(service.serviceName),
                   status: service.status,
-                  reported: service.serviceName,
+                  reported: safeServiceName(service.serviceName),
+                  lastChecked: timing.lastChecked,
+                  latency: timing.latency,
                 })),
-              ].map((row) => (
-                <tr key={row.label}>
+              ].map((row, index) => (
+                <tr key={`${row.label}-${index}`}>
                   <td>{row.label}</td>
                   <td>
                     <span className={`health-pill health-pill--${healthTone(row.status)}`}>
                       {healthLabel(row.status)}
                     </span>
                   </td>
-                  <td>
-                    <StatusBadge
-                      status={row.reported === 'Not reported' ? 'UNAVAILABLE' : row.status}
-                    />
-                  </td>
+                  <td>{row.lastChecked}</td>
+                  <td>{row.latency}</td>
                 </tr>
               ))}
             </tbody>
