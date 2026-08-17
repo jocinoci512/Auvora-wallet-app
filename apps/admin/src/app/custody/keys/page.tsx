@@ -16,7 +16,7 @@ export default function AdminCustodyKeysPage(): ReactElement {
       setItems(result.items);
     } catch (err) {
       if (err instanceof AuvoraClientError && err.status === 401) {
-        setError('Unauthorized — save a JWT access token above.');
+        setError('Your Admin session expired. Sign in again.');
       } else {
         setError(formatApiError(err));
       }

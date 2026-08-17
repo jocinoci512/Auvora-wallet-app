@@ -22,8 +22,9 @@ function LoginForm(): ReactElement {
     try {
       const result = await adminLogin(email, password);
       const next = params.get('next') || '/';
+      const dest = next.startsWith('/') && !next.startsWith('//') ? next : '/';
       if (result.status === 'authenticated') {
-        router.replace(next);
+        router.replace(dest);
         return;
       }
       sessionStorage.setItem('auvora_admin_mfa_token', result.mfaToken ?? '');
@@ -47,7 +48,8 @@ function LoginForm(): ReactElement {
   return (
     <AuthScreen
       title="Administrator sign in"
-      description="Use your Auvora identity. Wallet users cannot enter Admin."
+      description="Use your Auvora administrator identity. Wallet customers cannot enter this control plane."
+      homeLink={false}
     >
       {error ? (
         <Alert tone="error" title="Sign in failed">

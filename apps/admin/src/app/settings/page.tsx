@@ -50,12 +50,9 @@ export default function SystemSettingsPage(): ReactElement {
         <li>
           <strong>Content management</strong>
           <p className="page-subtitle">
-            Support KB preview under Support. Marketing/education CMS remains a Phase 8 gap — see
-            docs.
+            Marketing and education CMS remains outside this control plane. Runtime secrets stay in
+            the secret manager.
           </p>
-          <Link href="/support/kb">
-            <Button variant="ghost">Support KB preview</Button>
-          </Link>
         </li>
       </ul>
     </main>

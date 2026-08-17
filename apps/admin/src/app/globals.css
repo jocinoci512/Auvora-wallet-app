@@ -433,6 +433,330 @@ code {
   place-items: center;
   gap: 0.75rem;
 }
+
+.admin-shell {
+  background:
+    linear-gradient(180deg, var(--auvora-color-background) 0%, var(--auvora-color-background-subtle) 100%);
+}
+
+.admin-shell .admin-main,
+.admin-main {
+  max-width: min(1440px, 100%);
+  margin: 0;
+  padding: 1.15rem 1.35rem 2.75rem;
+}
+
+.admin-header {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.2fr) minmax(0, 2fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--auvora-color-border);
+  background: var(--auvora-color-surface-solid);
+}
+
+.admin-header__identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-header__name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.admin-header__email {
+  color: var(--auvora-color-text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--auvora-color-border);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--auvora-color-background-subtle);
+}
+
+.admin-chip--quiet {
+  font-weight: 500;
+  color: var(--auvora-color-text-muted);
+}
+
+.admin-sidebar {
+  flex-basis: 15.5rem;
+  min-height: calc(100vh - 3.5rem);
+  padding: 1rem 0.85rem 2rem;
+  background: var(--auvora-color-surface-solid);
+}
+
+.admin-sidebar__brand {
+  margin: 0 0.65rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--auvora-color-text-muted);
+}
+
+.admin-sidebar__nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-sidebar__nav a {
+  display: block;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.admin-sidebar__nav a:hover {
+  background: var(--auvora-color-hover);
+}
+
+.admin-sidebar__nav a[aria-current='page'] {
+  background: var(--auvora-color-primary-muted);
+  color: var(--auvora-color-primary);
+  font-weight: 600;
+}
+
+.admin-sidebar__more {
+  margin: 1rem 0.65rem 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--auvora-color-text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-sidebar__nav--secondary a {
+  font-size: 0.84rem;
+  font-weight: 450;
+  color: var(--auvora-color-text-muted);
+}
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-kpi {
+  border: 1px solid var(--auvora-color-border);
+  border-radius: 10px;
+  background: var(--auvora-color-surface-solid);
+  padding: 0.9rem 1rem;
+  min-height: 5.4rem;
+}
+
+.admin-kpi__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--auvora-color-text-muted);
+}
+
+.admin-kpi__value {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.45rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.admin-kpi__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--auvora-color-text-muted);
+}
+
+.admin-section {
+  margin-top: 1.25rem;
+}
+
+.admin-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.65rem;
+}
+
+.admin-confirm-form {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.admin-inline-error {
+  margin: 0;
+  color: var(--auvora-color-error, #d92d20);
+  font-size: 0.85rem;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+}
+
+.admin-tabs a,
+.admin-tabs button {
+  border: 1px solid var(--auvora-color-border);
+  background: var(--auvora-color-surface-solid);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admin-tabs a[aria-current='page'],
+.admin-tabs button[aria-current='true'] {
+  background: var(--auvora-color-primary-muted);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.health-pill--healthy {
+  color: #067647;
+}
+
+.health-pill--degraded {
+  color: #b54708;
+}
+
+.health-pill--unavailable {
+  color: #b42318;
+}
+
+[data-theme='dark'] .health-pill--healthy {
+  color: #75e0a7;
+}
+
+[data-theme='dark'] .health-pill--degraded {
+  color: #fdb022;
+}
+
+[data-theme='dark'] .health-pill--unavailable {
+  color: #fda29b;
+}
+
+.admin-dl {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+
+.admin-dl dt {
+  color: var(--auvora-color-text-muted);
+  font-size: 0.8rem;
+}
+
+.admin-dl dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.admin-auth-screen {
+  background:
+    radial-gradient(circle at top, rgba(14, 79, 92, 0.16), transparent 38%),
+    var(--auvora-color-background);
+}
+
+.admin-auth-card h1 {
+  font-size: 1.55rem;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 1024px) {
+  .admin-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .admin-header__meta {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .admin-sidebar {
+    flex-basis: 13.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-header__actions {
+    justify-content: flex-start;
+  }
+
+  .admin-shell .auvora-app-shell__body--with-sidebar {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--auvora-color-border);
+  }
+
+  .admin-dl {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--auvora-color-focus, #5eead4);
   outline-offset: 2px;

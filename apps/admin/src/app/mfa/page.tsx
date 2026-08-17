@@ -35,8 +35,8 @@ export default function MfaPage(): ReactElement {
 
   return (
     <AuthScreen
-      title="Authenticator code"
-      description="Enter the 6-digit code from your authenticator app."
+      title="Authenticator challenge"
+      description="Enter the 6-digit code from your authenticator app. Recovery codes are for one-time use only."
     >
       {error ? (
         <Alert tone="error" title="Verification failed">

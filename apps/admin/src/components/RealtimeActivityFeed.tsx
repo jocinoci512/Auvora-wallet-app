@@ -35,8 +35,8 @@ function formatTime(ts: string): string {
 
 function describe(event: AdminEvent): string {
   const who = event.userId ? `user ${event.userId.slice(0, 8)}` : 'system';
-  const platform = event.platform ? ` (${event.platform})` : '';
-  return `${who}${platform}`;
+  const platform = event.platform ? event.platform : 'n/a';
+  return `${who} · ${platform} · ${event.service}`;
 }
 
 export interface RealtimeActivityFeedProps {
@@ -100,7 +100,8 @@ export function RealtimeActivityFeed({
                 borderBottom: '1px solid var(--auvora-border, #eee)',
               }}
             >
-              <Badge tone={SEVERITY_TONE[event.severity] ?? 'neutral'}>{event.type}</Badge>
+              <Badge tone={SEVERITY_TONE[event.severity] ?? 'neutral'}>{event.severity}</Badge>
+              <Badge tone="neutral">{event.type}</Badge>
               <span style={{ flex: 1 }}>{describe(event)}</span>
               <span style={{ opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>
                 {formatTime(event.timestamp)}

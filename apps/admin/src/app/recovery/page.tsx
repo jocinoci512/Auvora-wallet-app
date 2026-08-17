@@ -36,7 +36,7 @@ export default function RecoveryPage(): ReactElement {
   return (
     <AuthScreen
       title="Recovery code"
-      description="Use a one-time recovery code. Each code works once."
+      description="Use a one-time recovery code. Each code works once and is consumed immediately."
     >
       {error ? (
         <Alert tone="error" title="Recovery failed">

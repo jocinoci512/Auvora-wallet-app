@@ -51,7 +51,7 @@ export default function MfaEnrollPage(): ReactElement {
     return (
       <AuthScreen
         title="Save recovery codes"
-        description="These codes are shown once. Store them offline. They will not be displayed again."
+        description="These recovery codes are shown once. Store them offline. They will not be displayed again and are never written to application logs."
       >
         <ol className="admin-recovery-codes">
           {recovery.map((item) => (
@@ -70,7 +70,7 @@ export default function MfaEnrollPage(): ReactElement {
   return (
     <AuthScreen
       title="Enroll authenticator"
-      description="Scan the otpauth URL or enter the secret, then confirm a code."
+      description="Scan the otpauth URL or enter the enrollment secret, then confirm a code. This secret is shown once and is never stored in this browser."
     >
       {error ? (
         <Alert tone="error" title="Enrollment failed">

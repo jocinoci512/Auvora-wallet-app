@@ -1,11 +1,23 @@
 'use client';
 
-import { AuvoraClientError, type OpsHealthOverview } from '@auvora/sdk';
+import type { OpsHealthOverview } from '@auvora/sdk';
 import { AsyncStates, PageHeader, StatusBadge } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../../components/Subnav';
-import { createApiClient, formatApiError } from '../../../lib/api-client';
+import { healthLabel, healthTone } from '../../../lib/admin-format';
+import { createApiClient, formatAdminError } from '../../../lib/api-client';
 import { OPS_LINKS } from '../../../lib/section-nav';
+
+const EXPECTED = [
+  { key: 'gateway', label: 'Gateway' },
+  { key: 'auth', label: 'Auth' },
+  { key: 'wallet', label: 'Wallet' },
+  { key: 'blockchain', label: 'Blockchain' },
+  { key: 'market', label: 'Market data' },
+  { key: 'connection', label: 'Connections' },
+  { key: 'postgres', label: 'Postgres' },
+  { key: 'redis', label: 'Redis' },
+];
 
 export default function AdminHealthPage(): ReactElement {
   const [data, setData] = useState<OpsHealthOverview | null>(null);
@@ -19,11 +31,7 @@ export default function AdminHealthPage(): ReactElement {
       const client = createApiClient();
       setData(await client.adminObservabilityHealth());
     } catch (err) {
-      setError(
-        err instanceof AuvoraClientError && err.status === 401
-          ? 'Unauthorized — save a JWT access token above.'
-          : formatApiError(err),
-      );
+      setError(formatAdminError(err));
     } finally {
       setLoading(false);
     }
@@ -33,11 +41,27 @@ export default function AdminHealthPage(): ReactElement {
     void load();
   }, [load]);
 
+  const services = data?.services ?? [];
+  const rows = EXPECTED.map((expected) => {
+    const found = services.find((service) =>
+      service.serviceName.toLowerCase().includes(expected.key),
+    );
+    return {
+      label: expected.label,
+      status: found?.status ?? 'UNAVAILABLE',
+      reported: found?.serviceName ?? 'Not reported',
+    };
+  });
+  const extras = services.filter(
+    (service) =>
+      !EXPECTED.some((expected) => service.serviceName.toLowerCase().includes(expected.key)),
+  );
+
   return (
-    <main className="page">
+    <div className="page">
       <PageHeader
-        title="Service health"
-        subtitle="Aggregated health from the observability monitor — API, DB, cache, and workers when reported."
+        title="System health"
+        subtitle="Aggregated control-plane health. Hostnames and credentials are never shown."
       >
         <Subnav label="Observability sections" links={OPS_LINKS} />
       </PageHeader>
@@ -46,45 +70,57 @@ export default function AdminHealthPage(): ReactElement {
         loading={loading}
         loadingMessage="Loading health…"
         error={error}
-        errorTitle="Could not load health"
+        errorTitle="Health unavailable"
         onRetry={() => void load()}
-        empty={!loading && !error && (!data || data.services.length === 0)}
-        emptyTitle="No health samples"
-        emptyDescription="Services have not reported status to the observability monitor yet."
+        empty={false}
       >
-        {data ? (
-          <>
-            <ul className="stack">
-              {data.services.map((service) => (
-                <li key={service.serviceName}>
-                  <span
-                    className={`dot ${service.status === 'OK' || service.status === 'HEALTHY' ? 'dot--healthy' : 'dot--unhealthy'}`}
-                    aria-hidden
-                  />
-                  {service.serviceName}: <StatusBadge status={service.status} />
-                </li>
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="auvora-sr-only">Service health</caption>
+            <thead>
+              <tr>
+                <th scope="col">Service</th>
+                <th scope="col">State</th>
+                <th scope="col">Reported as</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ...rows,
+                ...extras.map((service) => ({
+                  label: service.serviceName,
+                  status: service.status,
+                  reported: service.serviceName,
+                })),
+              ].map((row) => (
+                <tr key={row.label}>
+                  <td>{row.label}</td>
+                  <td>
+                    <span className={`health-pill health-pill--${healthTone(row.status)}`}>
+                      {healthLabel(row.status)}
+                    </span>
+                  </td>
+                  <td>
+                    <StatusBadge
+                      status={row.reported === 'Not reported' ? 'UNAVAILABLE' : row.status}
+                    />
+                  </td>
+                </tr>
               ))}
-            </ul>
-            {Array.isArray(data.recent) && data.recent.length > 0 ? (
-              <section style={{ marginTop: '1.5rem' }}>
-                <h2>Recent samples</h2>
-                <ul className="stack">
-                  {data.recent.slice(0, 20).map((sample, index) => {
-                    const row = sample as Record<string, unknown>;
-                    const name = String(row.serviceName ?? row.service ?? `sample-${index}`);
-                    const status = String(row.status ?? 'unknown');
-                    return (
-                      <li key={`${name}-${index}`}>
-                        <StatusBadge status={status} /> {name}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ) : null}
-          </>
-        ) : null}
+            </tbody>
+          </table>
+        </div>
+        {data && Array.isArray(data.recent) && data.recent.length > 0 ? (
+          <p className="page-subtitle" style={{ marginTop: '0.75rem' }}>
+            Last checked from {data.recent.length} recent sample
+            {data.recent.length === 1 ? '' : 's'}.
+          </p>
+        ) : (
+          <p className="page-subtitle" style={{ marginTop: '0.75rem' }}>
+            Last checked: not reported.
+          </p>
+        )}
       </AsyncStates>
-    </main>
+    </div>
   );
 }

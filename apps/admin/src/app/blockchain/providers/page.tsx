@@ -29,7 +29,7 @@ export default function AdminBlockchainProvidersPage(): ReactElement {
       setHealth(healthList);
     } catch (err) {
       if (err instanceof AuvoraClientError && err.status === 401) {
-        setError('Unauthorized — save an admin JWT access token above.');
+        setError('Your Admin session expired. Sign in again.');
       } else {
         setError(formatApiError(err));
       }

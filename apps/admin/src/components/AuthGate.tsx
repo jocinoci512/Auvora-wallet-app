@@ -3,13 +3,19 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { Loader } from '@auvora/ui';
+import { AdminIdentityProvider } from '../lib/admin-identity';
 import { isAdminPublicPath } from '../lib/api-client';
-import { adminRefresh, adminSession } from '../lib/admin-session';
+import { adminRefresh, adminSession, type AdminOperator } from '../lib/admin-session';
 
 export function AuthGate({ children }: { children: ReactNode }): ReactElement {
   const pathname = usePathname() || '/';
   const router = useRouter();
   const [ready, setReady] = useState(isAdminPublicPath(pathname));
+  const [identity, setIdentity] = useState<{
+    operator: AdminOperator;
+    sessionId: string;
+    stepUpExp: number | null;
+  } | null>(null);
 
   useEffect(() => {
     if (isAdminPublicPath(pathname)) {
@@ -19,14 +25,20 @@ export function AuthGate({ children }: { children: ReactNode }): ReactElement {
     let cancelled = false;
     void (async () => {
       try {
-        await adminSession();
-        if (!cancelled) setReady(true);
+        const session = await adminSession();
+        if (!cancelled) {
+          setIdentity(session);
+          setReady(true);
+        }
       } catch (error) {
         const status = (error as { status?: number }).status;
         try {
           await adminRefresh();
-          await adminSession();
-          if (!cancelled) setReady(true);
+          const session = await adminSession();
+          if (!cancelled) {
+            setIdentity(session);
+            setReady(true);
+          }
           return;
         } catch {
           /* fall through */
@@ -53,5 +65,9 @@ export function AuthGate({ children }: { children: ReactNode }): ReactElement {
     );
   }
 
-  return <>{children}</>;
+  if (!identity) {
+    return <>{children}</>;
+  }
+
+  return <AdminIdentityProvider value={identity}>{children}</AdminIdentityProvider>;
 }

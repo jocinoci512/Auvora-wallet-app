@@ -1,14 +1,20 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useState, type FormEvent, type ReactElement } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Button, Field, Input } from '@auvora/ui';
 import { AuthScreen } from '../../components/AdminChrome';
 import { formatApiError } from '../../lib/api-client';
 import { adminStepUp } from '../../lib/admin-session';
 
-export default function StepUpFormPage(): ReactElement {
+function safeNext(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/';
+  return value;
+}
+
+function StepUpForm(): ReactElement {
   const router = useRouter();
+  const params = useSearchParams();
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +26,7 @@ export default function StepUpFormPage(): ReactElement {
     setError(null);
     try {
       await adminStepUp(password, code);
-      router.replace('/');
+      router.replace(safeNext(params.get('next')));
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -42,6 +48,7 @@ export default function StepUpFormPage(): ReactElement {
         <Field label="Password">
           <Input
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -50,15 +57,24 @@ export default function StepUpFormPage(): ReactElement {
         <Field label="Authenticator code">
           <Input
             inputMode="numeric"
+            autoComplete="one-time-code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             required
           />
         </Field>
         <Button type="submit" disabled={pending}>
-          {pending ? 'Confirming…' : 'Confirm'}
+          {pending ? 'Confirming…' : 'Confirm identity'}
         </Button>
       </form>
     </AuthScreen>
+  );
+}
+
+export default function StepUpFormPage(): ReactElement {
+  return (
+    <Suspense>
+      <StepUpForm />
+    </Suspense>
   );
 }

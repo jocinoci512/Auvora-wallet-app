@@ -58,11 +58,6 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
   const connect = useCallback(async () => {
     if (stoppedRef.current) return;
     const token = isProductionBuild() ? null : getStoredAccessToken();
-    if (!isProductionBuild() && !token) {
-      setStatus('offline');
-      scheduleReconnect();
-      return;
-    }
 
     const runId = ++runIdRef.current;
     const controller = new AbortController();
