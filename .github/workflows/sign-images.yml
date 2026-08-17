@@ -58,5 +58,5 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: '1'
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}/${{ matrix.image }}:${{ steps.tag.outputs.value }}"
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}/${{ matrix.image }}:${{ steps.tag.outputs.value }}"
           cosign sign --yes "$IMAGE" || echo "Sign skipped (image may not exist yet): $IMAGE"
