@@ -239,7 +239,7 @@ $kp = @(
   "storePassword=$storePassProp",
   "keyPassword=$keyPassProp",
   "keyAlias=$ALIAS",
-  'storeFile=upload-keystore.jks'
+  'storeFile=../upload-keystore.jks'
 ) -join "`r`n"
 Set-Content -Path $keyPropsPath -Value $kp -Encoding ASCII -NoNewline
 # Confirm not tracked.
