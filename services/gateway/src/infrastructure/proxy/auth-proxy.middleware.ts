@@ -9,6 +9,7 @@ export const AUTH_PROXY_PREFIXES = [
   '/api/v1/me',
   '/api/v1/admin/users',
   '/api/v1/admin/audit',
+  '/api/v1/admin/operators',
 ] as const;
 
 function isAuthProxyPath(pathname: string): boolean {

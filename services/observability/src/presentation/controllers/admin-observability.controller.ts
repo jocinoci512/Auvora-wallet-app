@@ -25,8 +25,7 @@ import {
   PERMISSION_OBSERVABILITY_ALERTS,
   PERMISSION_OBSERVABILITY_INCIDENTS,
   PERMISSION_OBSERVABILITY_SLO,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
 import { Permissions, Roles } from '../decorators/auth.decorators';
@@ -125,7 +124,7 @@ void _adminDtoRuntime;
 
 @ApiTags('admin-observability')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Controller('api/v1/admin/observability')
 export class AdminObservabilityController {
   constructor(

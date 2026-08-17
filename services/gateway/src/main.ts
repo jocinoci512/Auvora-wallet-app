@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { loadEnv } from './config/env.schema';
 import { createUnifiedGatewayProxyMiddleware } from './infrastructure/proxy/unified-gateway-proxy.middleware';
 import { createRealtimeProxyMiddleware } from './infrastructure/proxy/realtime-proxy.middleware';
+import { createAdminLiveSessionMiddleware } from './infrastructure/proxy/admin-live-session.middleware';
 import { createNftGoneMiddleware } from './infrastructure/proxy/nft-gone.middleware';
 import { createSecurityHeadersMiddleware } from './infrastructure/security/security-headers.middleware';
 import { createInternalRouteDenyMiddleware } from './infrastructure/security/internal-route-deny.middleware';
@@ -67,6 +68,7 @@ async function bootstrap(): Promise<void> {
   // Admin realtime SSE proxy BEFORE the unified proxy: it needs an untimed,
   // unbuffered long-lived stream that the timed unified proxy cannot provide.
   app.use(createRealtimeProxyMiddleware(env.AUTH_SERVICE_URL));
+  app.use(createAdminLiveSessionMiddleware(env.AUTH_SERVICE_URL));
   // ONE http-proxy-middleware instance for all upstreams — avoids N server 'close' listeners.
   app.use(createUnifiedGatewayProxyMiddleware(env));
 

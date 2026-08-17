@@ -31,6 +31,7 @@ export const envSchema = z
      */
     COOKIE_DOMAIN: z.string().optional(),
     CSRF_SECRET: z.string().min(32),
+    AUTH_FIELD_ENCRYPTION_KEY: z.string().min(32).optional(),
     LOCKOUT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
     LOCKOUT_DURATION_SECONDS: z.coerce.number().int().positive().default(900),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
@@ -38,6 +39,11 @@ export const envSchema = z
     /** Stricter Redis limits for register/resend/forgot/reset mail flows. */
     MAIL_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(900),
     MAIL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+    /** Step-up recent-auth window for high-risk Admin actions. */
+    STEP_UP_WINDOW_SECONDS: z.coerce.number().int().positive().default(600),
+    /** Stricter Redis limits for Admin MFA / recovery / step-up challenges. */
+    MFA_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(900),
+    MFA_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
     /**
      * console — local/dev only (never production).
      * smtp — nodemailer SMTP (Resend SMTP / SES SMTP / SendGrid SMTP, etc.).
@@ -93,6 +99,24 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['COOKIE_SECURE'],
         message: 'COOKIE_SECURE must be true in production',
+      });
+    }
+    if (data.NODE_ENV === 'production' && !data.AUTH_FIELD_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_FIELD_ENCRYPTION_KEY'],
+        message: 'AUTH_FIELD_ENCRYPTION_KEY is required in production',
+      });
+    }
+    if (
+      data.NODE_ENV === 'production' &&
+      data.AUTH_FIELD_ENCRYPTION_KEY &&
+      data.AUTH_FIELD_ENCRYPTION_KEY === data.JWT_ACCESS_SECRET
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_FIELD_ENCRYPTION_KEY'],
+        message: 'AUTH_FIELD_ENCRYPTION_KEY must not equal JWT_ACCESS_SECRET in production',
       });
     }
     if (data.NODE_ENV === 'production' && data.AUTH_ALLOW_UNVERIFIED_LOGIN) {
@@ -193,7 +217,11 @@ export const envSchema = z
       corsOriginsCsv: data.CORS_ORIGINS,
       nodeEnv: data.NODE_ENV,
     });
-    return { ...data, corsOrigins };
+    return {
+      ...data,
+      corsOrigins,
+      AUTH_FIELD_ENCRYPTION_KEY: data.AUTH_FIELD_ENCRYPTION_KEY ?? data.JWT_ACCESS_SECRET,
+    };
   });
 
 export type ServiceEnv = z.infer<typeof envSchema>;

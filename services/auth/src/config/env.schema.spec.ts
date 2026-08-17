@@ -6,6 +6,7 @@ const base = {
   JWT_ACCESS_SECRET: 'a'.repeat(32),
   JWT_REFRESH_SECRET: 'b'.repeat(32),
   CSRF_SECRET: 'c'.repeat(32),
+  AUTH_FIELD_ENCRYPTION_KEY: 'e'.repeat(32),
 };
 
 describe('auth env schema — origin / cookie / CORS production config', () => {

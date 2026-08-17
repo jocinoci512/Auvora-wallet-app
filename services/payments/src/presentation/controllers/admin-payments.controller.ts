@@ -11,8 +11,7 @@ import {
   PERMISSION_PAYMENT_ADMIN,
   PERMISSION_PAYMENT_RECONCILE,
   PERMISSION_PAYMENT_SETTLE,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain/permission-codes';
 import { successResponse } from '@auvora/nest-common';
 import {
@@ -52,7 +51,7 @@ void _adminPaymentsDtoRuntime;
 
 @ApiTags('admin-payments')
 @ApiBearerAuth()
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 @Permissions(PERMISSION_PAYMENT_ADMIN)
 @Controller('api/v1/admin/payments')
 export class AdminPaymentsController {

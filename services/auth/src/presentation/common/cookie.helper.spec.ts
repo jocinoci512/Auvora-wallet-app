@@ -1,8 +1,19 @@
 import type { Response } from 'express';
-import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@auvora/security';
 import {
+  ACCESS_TOKEN_COOKIE,
+  ADMIN_ACCESS_TOKEN_COOKIE,
+  ADMIN_CSRF_TOKEN_COOKIE,
+  ADMIN_REFRESH_TOKEN_COOKIE,
+  CSRF_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+} from '@auvora/security';
+import {
+  clearAdminAuthCookies,
   clearAuthCookies,
   setAccessTokenCookie,
+  setAdminAccessTokenCookie,
+  setAdminCsrfTokenCookie,
+  setAdminRefreshTokenCookie,
   setCsrfTokenCookie,
   setRefreshTokenCookie,
 } from './cookie.helper';
@@ -84,6 +95,45 @@ describe('cookie.helper', () => {
     expect(res.clearCookie).toHaveBeenCalledWith(
       REFRESH_TOKEN_COOKIE,
       expect.objectContaining({ secure: true, maxAge: 0 }),
+    );
+  });
+
+  it('sets isolated HttpOnly Secure Lax admin cookies and never consumer names', () => {
+    const res = mockRes();
+    setAdminRefreshTokenCookie(res, prodEnv, 'admin-refresh');
+    setAdminAccessTokenCookie(res, prodEnv, 'admin-access');
+    setAdminCsrfTokenCookie(res, prodEnv, 'admin-csrf');
+    const names = res.cookie.mock.calls.map((call) => call[0]);
+    expect(names).toEqual([
+      ADMIN_REFRESH_TOKEN_COOKIE,
+      ADMIN_ACCESS_TOKEN_COOKIE,
+      ADMIN_CSRF_TOKEN_COOKIE,
+    ]);
+    expect(names).not.toContain(REFRESH_TOKEN_COOKIE);
+    expect(names).not.toContain(ACCESS_TOKEN_COOKIE);
+    expect(names).not.toContain(CSRF_TOKEN_COOKIE);
+    expect(res.cookie).toHaveBeenCalledWith(
+      ADMIN_ACCESS_TOKEN_COOKIE,
+      'admin-access',
+      expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'lax', path: '/' }),
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      ADMIN_CSRF_TOKEN_COOKIE,
+      'admin-csrf',
+      expect.objectContaining({ httpOnly: false, secure: true, sameSite: 'lax' }),
+    );
+  });
+
+  it('clears admin cookies on logout', () => {
+    const res = mockRes();
+    clearAdminAuthCookies(res, prodEnv);
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      ADMIN_REFRESH_TOKEN_COOKIE,
+      expect.objectContaining({ maxAge: 0 }),
+    );
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      ADMIN_ACCESS_TOKEN_COOKIE,
+      expect.objectContaining({ maxAge: 0 }),
     );
   });
 });

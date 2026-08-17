@@ -6,7 +6,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { CSRF_TOKEN_COOKIE, CSRF_TOKEN_HEADER, timingSafeEqualString } from '@auvora/security';
+import { CSRF_TOKEN_HEADER, extractCsrfCookie, timingSafeEqualString } from '@auvora/security';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY, SKIP_CSRF_KEY } from './auth.decorators';
 
@@ -36,7 +36,10 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
-    const cookieToken = request.cookies?.[CSRF_TOKEN_COOKIE] as string | undefined;
+    const cookieToken = extractCsrfCookie(
+      request.cookies as Record<string, unknown> | undefined,
+      request.path,
+    );
     const headerToken = request.headers[CSRF_TOKEN_HEADER] as string | undefined;
 
     if (!cookieToken || !headerToken || !timingSafeEqualString(cookieToken, headerToken)) {

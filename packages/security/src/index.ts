@@ -39,6 +39,50 @@ export const ACCESS_TOKEN_COOKIE = 'access_token';
 export const CSRF_TOKEN_COOKIE = 'csrf_token';
 export const CSRF_TOKEN_HEADER = 'x-csrf-token';
 
+/** Isolated Admin cookie family — never reuse consumer cookie names. */
+export const ADMIN_REFRESH_TOKEN_COOKIE = 'admin_refresh_token';
+export const ADMIN_ACCESS_TOKEN_COOKIE = 'admin_access_token';
+export const ADMIN_CSRF_TOKEN_COOKIE = 'admin_csrf_token';
+
+export function extractAccessTokenFromCookies(
+  cookies: Record<string, unknown> | undefined,
+): string | null {
+  if (!cookies) {
+    return null;
+  }
+  const admin = cookies[ADMIN_ACCESS_TOKEN_COOKIE];
+  if (typeof admin === 'string' && admin.length > 0) {
+    return admin;
+  }
+  const access = cookies[ACCESS_TOKEN_COOKIE];
+  if (typeof access === 'string' && access.length > 0) {
+    return access;
+  }
+  return null;
+}
+
+export function isAdminApiPath(pathname: string | undefined): boolean {
+  if (!pathname) {
+    return false;
+  }
+  return pathname.startsWith('/api/v1/admin') || pathname.startsWith('/api/v1/auth/admin');
+}
+
+export function extractCsrfCookie(
+  cookies: Record<string, unknown> | undefined,
+  pathname: string | undefined,
+): string | undefined {
+  if (!cookies) {
+    return undefined;
+  }
+  if (isAdminApiPath(pathname)) {
+    const admin = cookies[ADMIN_CSRF_TOKEN_COOKIE];
+    return typeof admin === 'string' ? admin : undefined;
+  }
+  const consumer = cookies[CSRF_TOKEN_COOKIE];
+  return typeof consumer === 'string' ? consumer : undefined;
+}
+
 export function timingSafeEqualString(a: string, b: string): boolean {
   if (a.length !== b.length) {
     return false;

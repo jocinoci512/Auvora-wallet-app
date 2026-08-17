@@ -8,8 +8,7 @@ import {
   PERMISSION_WALLETS_ARCHIVE,
   PERMISSION_WALLETS_READ,
   PERMISSION_WALLETS_SUSPEND,
-  ROLE_ADMIN,
-  ROLE_SUPER_ADMIN,
+  ADMIN_PORTAL_ROLES,
 } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -35,7 +34,7 @@ void _adminWalletDtoRuntime;
 
 @ApiTags('admin-wallets')
 @Controller('api/v1/admin/wallets')
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 export class AdminWalletsController {
   constructor(@Inject(WalletService) private readonly walletService: WalletService) {}
 

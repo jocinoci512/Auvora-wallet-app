@@ -8,6 +8,7 @@ import {
   ROLE_SECURITY_ANALYST,
   ROLE_SUPER_ADMIN,
   ROLE_SUPPORT,
+  adminSessionPermissions,
 } from './permission-codes';
 
 const caps = (role: string): readonly string[] => ADMIN_ROLE_CAPABILITIES[role] ?? [];
@@ -104,5 +105,16 @@ describe('admin RBAC capability matrix', () => {
     );
     expect(MFA_REQUIRED_ROLES).not.toContain(ROLE_READ_ONLY);
     expect(MFA_REQUIRED_ROLES).not.toContain(ROLE_SUPPORT);
+  });
+
+  it('strips custody and wallet-admin grants from Admin session permissions', () => {
+    const filtered = adminSessionPermissions(
+      [ROLE_SUPER_ADMIN],
+      [...caps(ROLE_SUPER_ADMIN), 'custody:sign', 'wallets:admin', 'wallets:write'],
+    );
+    expect(filtered).not.toContain('custody:sign');
+    expect(filtered).not.toContain('wallets:admin');
+    expect(filtered).not.toContain('wallets:write');
+    expect(filtered).toEqual([...caps(ROLE_SUPER_ADMIN)]);
   });
 });

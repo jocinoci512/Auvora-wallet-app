@@ -5,6 +5,7 @@ import { BridgeWorkersService } from '../../application/services/bridge-workers.
 import { BRIDGE_PERMISSIONS } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { successResponse } from '@auvora/nest-common';
+import { ADMIN_PORTAL_ROLES } from '@auvora/types';
 
 @ApiTags('admin-bridge')
 @ApiBearerAuth()
@@ -16,35 +17,35 @@ export class AdminBridgeController {
   ) {}
 
   @Get('providers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(BRIDGE_PERMISSIONS.ADMIN)
   async providers() {
     return successResponse(await this.dashboard.providers());
   }
 
   @Get('routes')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(BRIDGE_PERMISSIONS.ADMIN)
   async routes() {
     return successResponse(await this.dashboard.routes());
   }
 
   @Get('failures')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(BRIDGE_PERMISSIONS.ADMIN)
   async failures() {
     return successResponse(await this.dashboard.failures());
   }
 
   @Get('sync-status')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(BRIDGE_PERMISSIONS.ADMIN)
   async syncStatus() {
     return successResponse(await this.dashboard.syncStatus());
   }
 
   @Get('workers')
-  @Roles('admin', 'super_admin')
+  @Roles(...ADMIN_PORTAL_ROLES)
   @Permissions(BRIDGE_PERMISSIONS.ADMIN)
   workersHealth() {
     return successResponse(this.workers.status());

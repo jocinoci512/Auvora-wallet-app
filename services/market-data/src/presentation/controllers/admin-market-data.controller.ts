@@ -5,13 +5,14 @@ import { MarketWorkersService } from '../../application/services/market-workers.
 import { PriceAlertService } from '../../application/services/price-alert.service';
 import { PriceHistoryService } from '../../application/services/price-history.service';
 import { TokenMetadataService } from '../../application/services/token-metadata.service';
-import { PERMISSION_MARKET_DATA_ADMIN } from '../../domain/permission-codes';
+import { PERMISSION_MARKET_DATA_ADMIN, ADMIN_PORTAL_ROLES } from '../../domain/permission-codes';
 import { successResponse } from '@auvora/nest-common';
-import { Permissions } from '../decorators/auth.decorators';
+import { Permissions, Roles } from '../decorators/auth.decorators';
 
 @ApiTags('admin-market-data')
 @ApiBearerAuth()
 @Controller('api/v1/admin/market-data')
+@Roles(...ADMIN_PORTAL_ROLES)
 export class AdminMarketDataController {
   constructor(
     @Inject(MarketDataEngineService) private readonly engine: MarketDataEngineService,

@@ -1,7 +1,7 @@
 import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from '../../application/services/auth.service';
-import { PERMISSION_AUDIT_READ, ROLE_ADMIN, ROLE_SUPER_ADMIN } from '../../domain/permission-codes';
+import { PERMISSION_AUDIT_READ, ADMIN_PORTAL_ROLES } from '../../domain/permission-codes';
 import { Permissions, Roles } from '../decorators/auth.decorators';
 import { successResponse } from '@auvora/nest-common';
 import { AdminAuditQueryDto } from '../dto/admin.dto';
@@ -12,7 +12,7 @@ void _adminAuditDtoRuntime;
 
 @ApiTags('admin-audit')
 @Controller('api/v1/admin/audit')
-@Roles(ROLE_ADMIN, ROLE_SUPER_ADMIN)
+@Roles(...ADMIN_PORTAL_ROLES)
 export class AdminAuditController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 

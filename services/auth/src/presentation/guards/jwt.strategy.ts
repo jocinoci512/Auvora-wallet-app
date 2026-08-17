@@ -1,7 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ACCESS_TOKEN_COOKIE } from '@auvora/security';
+import { extractAccessTokenFromCookies } from '@auvora/security';
 import type { JwtAccessClaims } from '@auvora/types';
 import type { Request } from 'express';
 import {
@@ -19,10 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
-        (req: Request) => {
-          const cookies = req.cookies as Record<string, string | undefined>;
-          return cookies[ACCESS_TOKEN_COOKIE] ?? null;
-        },
+        (req: Request) => extractAccessTokenFromCookies(req.cookies as Record<string, unknown>),
       ]),
       ignoreExpiration: false,
       secretOrKey: env.JWT_ACCESS_SECRET,
@@ -40,6 +37,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (session.userId !== payload.sub) {
       throw new UnauthorizedException('Session does not match token subject');
     }
-    return payload;
+    if ((payload.surface ?? 'consumer') !== session.surface) {
+      throw new UnauthorizedException('Session surface mismatch');
+    }
+    const stepUpExp = session.stepUpExpiresAt
+      ? Math.floor(session.stepUpExpiresAt.getTime() / 1000)
+      : undefined;
+    return {
+      ...payload,
+      surface: session.surface === 'admin' ? 'admin' : 'consumer',
+      stepUpExp,
+    };
   }
 }

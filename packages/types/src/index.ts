@@ -125,12 +125,40 @@ export type PermissionCode =
   | 'health:read'
   | 'realtime:read';
 
+export const ROLE_USER = 'user';
+export const ROLE_ADMIN = 'admin';
+export const ROLE_SUPER_ADMIN = 'super_admin';
+export const ROLE_SUPPORT = 'support';
+export const ROLE_SECURITY_ANALYST = 'security_analyst';
+export const ROLE_READ_ONLY = 'read_only';
+
+/** Roles that may enter the Admin control plane. Normal `user` is never included. */
+export const ADMIN_PORTAL_ROLES = [
+  ROLE_SUPER_ADMIN,
+  ROLE_ADMIN,
+  ROLE_SUPPORT,
+  ROLE_SECURITY_ANALYST,
+  ROLE_READ_ONLY,
+] as const;
+
+export type AdminPortalRole = (typeof ADMIN_PORTAL_ROLES)[number];
+
+export function isAdminPortalRole(role: string): boolean {
+  return (ADMIN_PORTAL_ROLES as readonly string[]).includes(role);
+}
+
+export type AuthSurface = 'consumer' | 'admin';
+
 export interface JwtAccessClaims {
   sub: string;
   email: string;
   sessionId: string;
   roles: string[];
   permissions: PermissionCode[];
+  /** Token audience surface. Admin APIs require `admin`. */
+  surface?: AuthSurface;
+  /** Epoch seconds until which step-up is valid. Absent when not stepped up. */
+  stepUpExp?: number;
   iat?: number;
   exp?: number;
 }

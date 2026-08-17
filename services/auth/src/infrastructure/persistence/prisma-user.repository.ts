@@ -10,7 +10,7 @@ import type {
   UserSearchFilters,
   UserSearchResult,
 } from '../../application/ports/user-repository.port';
-import { ROLE_USER } from '../../domain/permission-codes';
+import { ADMIN_PORTAL_ROLES, ROLE_USER } from '../../domain/permission-codes';
 
 const userInclude = {
   roles: {
@@ -246,6 +246,11 @@ export class PrismaUserRepository implements UserRepositoryPort {
     const where: Record<string, unknown> = {};
     if (filters.status) {
       where.status = filters.status as PrismaUserStatus;
+    }
+    if (filters.adminPortalOnly) {
+      where.roles = {
+        some: { role: { name: { in: [...ADMIN_PORTAL_ROLES] } } },
+      };
     }
     if (filters.query) {
       where.OR = [

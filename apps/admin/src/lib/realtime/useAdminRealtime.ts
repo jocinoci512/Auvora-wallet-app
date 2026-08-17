@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { env } from '../../env';
-import { ACCESS_TOKEN_CHANGED_EVENT, getStoredAccessToken } from '../api-client';
+import { ACCESS_TOKEN_CHANGED_EVENT, getStoredAccessToken, isProductionBuild } from '../api-client';
 import {
   SseParser,
   nextBackoffMs,
@@ -30,10 +30,8 @@ export interface UseAdminRealtimeResult {
 }
 
 /**
- * Auth-aware admin realtime client (SSE over fetch so we can send the admin
- * Bearer token — `EventSource` cannot set headers). Reconnects with bounded
- * backoff, exposes a visible connection status, and cleans up fully on unmount /
- * token loss. The browser only ever talks to the Gateway; never to Redis.
+ * Admin realtime client. Production uses HttpOnly admin_access_token cookies
+ * (`credentials: 'include'`). Non-production may still send a pasted Bearer token.
  */
 export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdminRealtimeResult {
   const { onEvent, bufferSize = MAX_BUFFERED_EVENTS, enabled = true } = options;
@@ -59,10 +57,9 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
 
   const connect = useCallback(async () => {
     if (stoppedRef.current) return;
-    const token = getStoredAccessToken();
-    if (!token) {
+    const token = isProductionBuild() ? null : getStoredAccessToken();
+    if (!isProductionBuild() && !token) {
       setStatus('offline');
-      // Retry later in case the operator pastes a token.
       scheduleReconnect();
       return;
     }
@@ -74,9 +71,13 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
 
     try {
       const url = `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')}/api/v1/admin/realtime/events`;
+      const headers: Record<string, string> = { Accept: 'text/event-stream' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetch(url, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+        headers,
         credentials: 'include',
         signal: controller.signal,
       });
