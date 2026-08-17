@@ -220,7 +220,7 @@ if ($useExisting) {
   Info 'Generating RSA 2048 upload key (validity 10000 days)...'
   $dname = 'CN=Auvora Wallet, OU=Engineering, O=Auvora, L=NA, ST=NA, C=US'
   # Feed passwords via stdin so they never appear in the process command line.
-  $ktInput = "$storePass`n$storePass`n$keyPass`n"
+  $ktInput = "$storePass`n$storePass`n$keyPass`n$keyPass`n"
   $ktArgs = @('-genkeypair','-v','-keystore',$keystorePath,'-storetype','JKS','-keyalg','RSA','-keysize','2048','-validity','10000','-alias',$ALIAS,'-dname',$dname)
   $ktInput | & $keytool @ktArgs
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path $keystorePath)) { Die 'keytool failed to create the keystore.' }
