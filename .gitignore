@@ -61,6 +61,12 @@ coverage
 # Misc
 .tools
 *.pem
+# Android / iOS signing material (never commit)
+*.jks
+*.keystore
+*.p12
+key.properties
+keystore.properties
 .cache
 tmp
 .tmp

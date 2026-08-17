@@ -1,0 +1,36 @@
+APP NAME:
+Auvora Wallet
+
+SHORT DESCRIPTION:
+Non-custodial multi-chain wallet. Keys stay on your device.
+
+FULL DESCRIPTION:
+Auvora Wallet is a non-custodial cryptocurrency wallet. Your recovery phrase, private keys, and mnemonic stay on this device. Auvora does not custody your funds and does not sign transactions on a server.
+
+Use Auvora to:
+• Create or import a self-custody wallet
+• View a multi-chain portfolio (Bitcoin, Ethereum, Solana, Polygon, BNB Smart Chain, Tron, and more as listed in the app)
+• Prepare send and receive flows with on-device review
+• Protect access with a device passcode and optional biometrics
+• Connect to dApps with WalletConnect via Reown when this build is configured — you approve every session; nothing is auto-approved
+
+Current release limitations (Version 1.0):
+• Live on-chain broadcast is disabled. Send, swap, and similar actions stay on-device as previews until broadcast is audited and enabled.
+• Receive funding addresses remain locked. QR, copy, and share for deposit addresses are off — do not send real funds to this release.
+• Fiat on-ramp checkout is not live. Buy remains a preview until partner rails are enabled.
+• NFT features are not included.
+
+Account sign-in (email) is optional and separate from your wallet vault. Signing in never uploads your keys.
+
+Support: support@auvorawallet.com
+Privacy: https://auvorawallet.com/legal/privacy
+Website: https://auvorawallet.com
+
+WEBSITE:
+https://auvorawallet.com
+
+PRIVACY POLICY:
+https://auvorawallet.com/legal/privacy
+
+SUPPORT:
+support@auvorawallet.com

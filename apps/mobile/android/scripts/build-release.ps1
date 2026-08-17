@@ -11,7 +11,9 @@
   RUN THIS ONLY ON YOUR LOCAL WINDOWS MACHINE at D:\auvora-wallet.
   It intentionally refuses to run in a CI / Cloud Agent / non-Windows / ephemeral
   environment. It NEVER commits the keystore, key.properties, passwords, backups,
-  or WC_PROJECT_ID, and NEVER passes server secrets into the app build.
+  WC_PROJECT_ID, or AUVORA_API_BASE_URL, and NEVER passes server secrets into
+  the app build. Client dart-defines (WC + public Gateway URL) are resolved from
+  local/gitignored config only — never hardcoded.
 
 .NOTES
   Usage (from anywhere):  powershell -ExecutionPolicy Bypass -File D:\auvora-wallet\apps\mobile\android\scripts\build-release.ps1
@@ -229,18 +231,48 @@ if ($certText -notmatch 'RSA') { Warn 'Could not confirm RSA in cert listing (co
 Ok "Key verified. Alias=$ALIAS SHA-1=$sha1"
 
 # ============================================================================
-# 8. WC_PROJECT_ID (local only; never from git history; never committed)
+# 8. CLIENT DART-DEFINES (local only; never from git history; never committed)
 # ============================================================================
-Info 'Resolving WC_PROJECT_ID from local/gitignored config only...'
-$wc = $env:WC_PROJECT_ID
-if (-not $wc) {
-  foreach ($f in @((Join-Path $androidDir 'wc.local'), (Join-Path $mobileDir '.env.local'), (Join-Path $mobileDir '.env'))) {
-    if (Test-Path $f) {
-      $line = (Get-Content $f | Where-Object { $_ -match '^\s*WC_PROJECT_ID\s*=' } | Select-Object -First 1)
-      if ($line) { $wc = ($line -replace '^\s*WC_PROJECT_ID\s*=\s*','').Trim().Trim('"').Trim("'"); break }
+# Resolves WC_PROJECT_ID / REOWN_PROJECT_ID and AUVORA_API_BASE_URL from the
+# process environment or gitignored files. Values are never printed. Temporary
+# Railway private / localhost URLs are rejected (not hardcoded, not injected).
+
+function Read-GitignoredDefine {
+  param([string[]]$Names)
+  foreach ($name in $Names) {
+    $fromEnv = [Environment]::GetEnvironmentVariable($name)
+    if ($fromEnv -and $fromEnv.Trim()) { return $fromEnv.Trim() }
+  }
+  $files = @(
+    (Join-Path $androidDir 'wc.local'),
+    (Join-Path $androidDir 'api.local'),
+    (Join-Path $mobileDir '.env.local'),
+    (Join-Path $mobileDir '.env'),
+    (Join-Path $repoRoot '.env.local'),
+    (Join-Path $repoRoot '.env')
+  )
+  foreach ($f in $files) {
+    if (-not (Test-Path $f)) { continue }
+    foreach ($name in $Names) {
+      $line = (Get-Content $f | Where-Object { $_ -match ("^\s*" + [Regex]::Escape($name) + "\s*=") } | Select-Object -First 1)
+      if ($line) {
+        $val = ($line -replace ("^\s*" + [Regex]::Escape($name) + "\s*=\s*"), '').Trim().Trim('"').Trim("'")
+        if ($val) { return $val }
+      }
     }
   }
+  return $null
 }
+
+function Test-TemporaryApiUrl([string]$url) {
+  $l = $url.ToLowerInvariant()
+  return ($l -match 'localhost' -or $l -match '127\.0\.0\.1' -or $l -match '\[::1\]' -or
+          $l -match 'railway\.internal' -or $l -match '\.rlwy\.' -or $l -match 'up\.railway\.app' -or
+          $l -match 'ngrok' -or $l -match 'cloudflare-tunnel')
+}
+
+Info 'Resolving WC_PROJECT_ID from local/gitignored config only...'
+$wc = Read-GitignoredDefine -Names @('WC_PROJECT_ID','REOWN_PROJECT_ID')
 $wcConfigured = $false
 if (-not $wc) {
   $entered = Read-Host 'WC_PROJECT_ID not found locally. Paste production Reown/WC project ID (leave blank to skip)'
@@ -248,6 +280,38 @@ if (-not $wc) {
 }
 if ($wc) { $wcConfigured = $true; Ok 'WC_PROJECT_ID resolved (value hidden).' }
 else { Warn 'WC_PROJECT_ID MISSING — WalletConnect/Reown will be unconfigured in this build.' }
+
+Info 'Resolving AUVORA_API_BASE_URL from local/gitignored config only...'
+$apiBase = Read-GitignoredDefine -Names @('AUVORA_API_BASE_URL')
+$apiConfigured = $false
+if ($apiBase -and (Test-TemporaryApiUrl $apiBase)) {
+  Warn 'AUVORA_API_BASE_URL looks like a temporary/private host — not injecting. Use the public gateway URL.'
+  $apiBase = $null
+}
+if (-not $apiBase) {
+  $enteredApi = Read-Host 'AUVORA_API_BASE_URL not found. Paste production gateway URL (leave blank to skip; do not use Railway private domains)'
+  if ($enteredApi.Trim()) {
+    if (Test-TemporaryApiUrl $enteredApi.Trim()) {
+      Warn 'Rejected temporary/private AUVORA_API_BASE_URL — account features will stay unconfigured in this build.'
+    } else {
+      $apiBase = $enteredApi.Trim().TrimEnd('/')
+    }
+  }
+}
+if ($apiBase) {
+  try {
+    $parsedApi = [Uri]$apiBase
+    if ($parsedApi.Scheme -ne 'https') {
+      Warn 'AUVORA_API_BASE_URL must be https — not injecting.'
+      $apiBase = $null
+    }
+  } catch {
+    Warn 'AUVORA_API_BASE_URL is not a valid URL — not injecting.'
+    $apiBase = $null
+  }
+}
+if ($apiBase) { $apiConfigured = $true; Ok 'AUVORA_API_BASE_URL resolved (value hidden).' }
+else { Warn 'AUVORA_API_BASE_URL MISSING — Android account features will stay unconfigured in this build.' }
 
 # ============================================================================
 # 10. TOOLCHAIN CHECK
@@ -277,6 +341,7 @@ try {
   # ==========================================================================
   $defines = @()
   if ($wcConfigured) { $defines += "--dart-define=WC_PROJECT_ID=$wc" }
+  if ($apiConfigured) { $defines += "--dart-define=AUVORA_API_BASE_URL=$apiBase" }
 
   Info 'Building release AAB...'
   & $flutter build appbundle --release @defines
@@ -472,6 +537,7 @@ Write-Host ("KEY ALIAS: " + $ALIAS)
 Write-Host ("CERT SHA-1: " + $sha1)
 Write-Host ("CERT SHA-256: " + $sha256)
 Write-Host ("WC_PROJECT_ID: " + $(if ($wcConfigured) {'CONFIGURED'} else {'MISSING'}))
+Write-Host ("AUVORA_API_BASE_URL: " + $(if ($apiConfigured) {'CONFIGURED'} else {'MISSING'}))
 Write-Host 'FLUTTER ANALYZE: PASS'
 Write-Host 'FLUTTER TEST: PASS'
 Write-Host ("AAB: PASS  " + $aabItem.FullName)
@@ -490,7 +556,7 @@ Write-Host ("UNEXPECTED PERMISSIONS: " + $(if ($permsBad.Count) {($permsBad -joi
 Write-Host 'SERVER SECRET EXPOSURE: NONE'
 Write-Host ("GIT SIGNING FILE SAFETY: " + $gitSafety)
 Write-Host ("DEVICE TEST: " + $deviceTest)
-$ready = ($apkSigned -and $aabSigned -and $certMatch -and (-not $apkDebug) -and $sixteenKb -and ($gitSafety -eq 'PASS') -and $wcConfigured)
+$ready = ($apkSigned -and $aabSigned -and $certMatch -and (-not $apkDebug) -and $sixteenKb -and ($gitSafety -eq 'PASS') -and $wcConfigured -and $apiConfigured)
 Write-Host ("READY FOR PLAY CONSOLE: " + $(if ($ready) {'YES'} else {'NO — review flags above'}))
 Write-Host ''
 Write-Host 'BACKUP ACTION REQUIRED:' -ForegroundColor Yellow

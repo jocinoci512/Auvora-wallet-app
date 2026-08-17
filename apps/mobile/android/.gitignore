@@ -16,3 +16,8 @@ keystore.properties
 **/*.p12
 **/*.pepk
 upload-keystore.jks
+
+# Local dart-define sources for the Windows release script (never commit).
+# WC_PROJECT_ID lives in wc.local; the public Gateway URL lives in api.local.
+api.local
+wc.local
