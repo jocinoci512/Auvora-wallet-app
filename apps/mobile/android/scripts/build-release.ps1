@@ -191,9 +191,23 @@ function Read-StrongSecret([string]$prompt, [switch]$NoStrength) {
 
 $storePass = $null; $keyPass = $null
 if ($useExisting) {
-  # Existing production key: accept its real password without imposing new strength rules.
-  $storePass = Read-StrongSecret 'Enter EXISTING keystore (store) password' -NoStrength
-  $keyPass   = Read-StrongSecret "Enter EXISTING key password for alias '$ALIAS'" -NoStrength
+  $loadedFromProps = $false
+  if ($ReuseExistingKey -and (Test-Path $keyPropsPath)) {
+    $kpMap = @{}
+    Get-Content $keyPropsPath | ForEach-Object {
+      if ($_ -match '^\s*([^#=]+)=(.*)$') { $kpMap[$Matches[1].Trim()] = $Matches[2] }
+    }
+    if ($kpMap['storePassword'] -and $kpMap['keyPassword']) {
+      $storePass = $kpMap['storePassword'] -replace '\\','\'
+      $keyPass = $kpMap['keyPassword'] -replace '\\','\'
+      $loadedFromProps = $true
+      Ok 'Loaded existing key passwords from gitignored key.properties (values hidden).'
+    }
+  }
+  if (-not $loadedFromProps) {
+    $storePass = Read-StrongSecret 'Enter EXISTING keystore (store) password' -NoStrength
+    $keyPass   = Read-StrongSecret "Enter EXISTING key password for alias '$ALIAS'" -NoStrength
+  }
 } else {
   Info 'Creating a NEW production upload key. Choose strong passwords (store them in your password manager).'
   $storePass = Read-StrongSecret 'Create keystore (store) password'
@@ -516,7 +530,7 @@ $storePass=$null; $keyPass=$null; [GC]::Collect()
 # 17/21. DEVICE QA (optional)
 # ============================================================================
 $deviceTest = 'NOT RUN'
-if ($adb) {
+if ($adb -and -not $ReuseExistingKey) {
   $devs = (& $adb devices) -join "`n"
   $connected = ($devs -split "`n" | Where-Object { $_ -match "`tdevice$" }).Count
   if ($connected -ge 1) {
