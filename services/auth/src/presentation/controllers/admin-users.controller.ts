@@ -78,6 +78,7 @@ export class AdminUsersController {
 
   @Patch(':userId/status')
   @Permissions(PERMISSION_USERS_WRITE)
+  @RequireStepUp()
   async updateStatus(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,
@@ -95,6 +96,7 @@ export class AdminUsersController {
 
   @Delete(':userId')
   @Permissions(PERMISSION_USERS_DELETE)
+  @RequireStepUp()
   async softDelete(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,
@@ -110,6 +112,7 @@ export class AdminUsersController {
 
   @Post(':userId/restore')
   @Permissions(PERMISSION_USERS_WRITE)
+  @RequireStepUp()
   async restore(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,
@@ -159,6 +162,7 @@ export class AdminUsersController {
 
   @Patch(':userId/mfa')
   @Permissions(PERMISSION_USERS_WRITE)
+  @RequireStepUp()
   async toggleMfa(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,

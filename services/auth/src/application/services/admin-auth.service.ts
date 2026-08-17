@@ -12,6 +12,7 @@ import {
   ADMIN_PORTAL_ROLES,
   MFA_REQUIRED_ROLES,
   ROLE_SUPER_ADMIN,
+  adminSessionPermissions,
   buildOtpauthUrl,
   generateRecoveryCodes,
   generateTotpSecret,
@@ -371,7 +372,7 @@ export class AdminAuthService {
       email: user.email,
       sessionId,
       roles: user.roles,
-      permissions: user.permissions,
+      permissions: adminSessionPermissions(user.roles, user.permissions),
       surface: 'admin',
       stepUpExp,
     });
@@ -427,7 +428,7 @@ export class AdminAuthService {
       email: user.email,
       sessionId: session.id,
       roles: user.roles,
-      permissions: user.permissions,
+      permissions: adminSessionPermissions(user.roles, user.permissions),
       surface: 'admin',
       stepUpExp,
     });
@@ -678,7 +679,7 @@ export class AdminAuthService {
       email: latest.email,
       sessionId: session.id,
       roles: latest.roles,
-      permissions: latest.permissions,
+      permissions: adminSessionPermissions(latest.roles, latest.permissions),
       surface: 'admin' satisfies AuthSurface,
     });
     await this.loginHistory.record({

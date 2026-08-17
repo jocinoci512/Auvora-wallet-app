@@ -36,6 +36,14 @@ describe('Admin route protection contract', () => {
     expect(source.match(/@RequireStepUp\(\)/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
+  it('high-risk user mutations require step-up', () => {
+    const source = readFileSync(
+      join(repoRoot, 'services/auth/src/presentation/controllers/admin-users.controller.ts'),
+      'utf8',
+    );
+    expect(source.match(/@RequireStepUp\(\)/g)?.length).toBeGreaterThanOrEqual(6);
+  });
+
   it('Admin login JSON does not return access or refresh tokens', () => {
     const source = readFileSync(
       join(repoRoot, 'services/auth/src/presentation/controllers/admin-auth.controller.ts'),

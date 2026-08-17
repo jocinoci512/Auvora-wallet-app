@@ -166,3 +166,23 @@ export const MFA_REQUIRED_ROLES: readonly string[] = [
   ROLE_ADMIN,
   ROLE_SECURITY_ANALYST,
 ];
+
+/**
+ * Admin JWT permissions are the intersection of DB grants and the capability
+ * matrix. Over-granted catalog permissions (custody:sign, wallets:admin, …)
+ * must never appear on an Admin-surface token.
+ */
+export function adminSessionPermissions(
+  roles: readonly string[],
+  dbPermissions: readonly string[],
+): string[] {
+  const allowed = new Set<string>();
+  for (const role of roles) {
+    const caps = ADMIN_ROLE_CAPABILITIES[role];
+    if (!caps) continue;
+    for (const permission of caps) {
+      allowed.add(permission);
+    }
+  }
+  return dbPermissions.filter((permission) => allowed.has(permission));
+}

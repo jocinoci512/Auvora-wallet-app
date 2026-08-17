@@ -158,7 +158,18 @@ function createService(overrides: Record<string, unknown> = {}) {
     fieldEncryption,
     redis as never,
   );
-  return { service, users, sessions, totp, recovery, audit, rateLimiter, fieldEncryption, store };
+  return {
+    service,
+    users,
+    sessions,
+    totp,
+    recovery,
+    audit,
+    rateLimiter,
+    fieldEncryption,
+    store,
+    tokenService,
+  };
 }
 
 const loginInput = {
@@ -170,7 +181,7 @@ const loginInput = {
 describe('AdminAuthService', () => {
   it('1. valid Admin login without MFA (support) issues an admin session', async () => {
     const user = adminUser({ roles: ['support'], mfaEnabled: false, permissions: ['users:read'] });
-    const { service, users } = createService();
+    const { service, users, tokenService } = createService();
     users.findByEmail.mockResolvedValue(user);
     users.findById.mockResolvedValue(user);
     const result = await service.login(loginInput, { ipAddress: '1.1.1.1' });
@@ -179,6 +190,12 @@ describe('AdminAuthService', () => {
       expect(result.tokens.sessionId).toBe('sess-1');
       expect(JSON.stringify(result.tokens)).not.toContain('passwordHash');
     }
+    expect(tokenService.issueAccessToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        surface: 'admin',
+        permissions: expect.not.arrayContaining(['custody:sign', 'wallets:admin']),
+      }),
+    );
   });
 
   it('2. normal user is denied', async () => {
