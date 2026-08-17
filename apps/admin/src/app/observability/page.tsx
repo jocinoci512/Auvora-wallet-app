@@ -22,7 +22,7 @@ export default function AdminObservabilityPage(): ReactElement {
       setOverview(null);
       setError(
         err instanceof AuvoraClientError && err.status === 401
-          ? 'Unauthorized — save a JWT access token above.'
+          ? 'Your Admin session expired. Sign in again.'
           : formatApiError(err),
       );
     } finally {

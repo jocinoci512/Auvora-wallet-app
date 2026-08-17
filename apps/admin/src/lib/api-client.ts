@@ -11,6 +11,8 @@ export function isProductionBuild(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
+/** Phase 3 Admin security architecture is frozen. Visual work must not weaken cookie/MFA/RBAC flows. */
+
 export function getStoredAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   if (isProductionBuild()) return null;
@@ -67,7 +69,37 @@ export function formatApiError(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
   return 'An unexpected error occurred';
+}
+
+export function formatAdminError(error: unknown): string {
+  const status = (error as { status?: number } | null)?.status;
+  if (status === 401) return 'Your Admin session expired. Sign in again.';
+  if (status === 403) {
+    const message = formatApiError(error);
+    if (/step-up/i.test(message)) {
+      return 'This action needs a recent password and authenticator confirmation.';
+    }
+    return 'You do not have permission for this action.';
+  }
+  if (status === 429) return 'Too many requests. Wait a moment and try again.';
+  if (status === 502 || status === 503 || status === 504) {
+    return 'A dependent service is unavailable. Try again shortly.';
+  }
+  if (status === 500) return 'The control plane could not complete this request.';
+  const message = formatApiError(error);
+  if (/request failed with status/i.test(message)) {
+    return 'A dependent service is unavailable. Try again shortly.';
+  }
+  return message;
+}
+
+export function isStepUpRequired(error: unknown): boolean {
+  return /step-up/i.test(formatApiError(error));
 }
 
 export const ADMIN_PUBLIC_PATHS = [

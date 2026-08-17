@@ -15,7 +15,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: env.NEXT_PUBLIC_APP_NAME,
-  description: 'Auvora Wallet platform',
+  description: 'Auvora Wallet control plane',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {

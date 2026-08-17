@@ -25,10 +25,11 @@ export const INFRA_LINKS: SubnavLink[] = [
 ];
 
 export const IDENTITY_LINKS: SubnavLink[] = [
-  { href: '/users', label: 'Accounts' },
-  { href: '/security/audit', label: 'Audit logs' },
+  { href: '/users', label: 'Users' },
+  { href: '/operators', label: 'Administrators' },
   { href: '/security', label: 'Security' },
-  { href: '/settings', label: 'System settings' },
+  { href: '/security/audit', label: 'Audit' },
+  { href: '/settings', label: 'Settings' },
 ];
 
 export const SUPPORT_LINKS: SubnavLink[] = [

@@ -29,7 +29,7 @@ export default function MaintenancePage(): ReactElement {
     } catch (err) {
       setError(
         err instanceof AuvoraClientError && err.status === 401
-          ? 'Unauthorized — save an admin JWT access token above.'
+          ? 'Your Admin session expired. Sign in again.'
           : formatApiError(err),
       );
     } finally {
