@@ -21,7 +21,8 @@
 
 [CmdletBinding()]
 param(
-  [string]$ExpectedRepoRoot = 'D:\auvora-wallet'
+  [string]$ExpectedRepoRoot = 'D:\auvora-wallet',
+  [switch]$ReuseExistingKey
 )
 
 $ErrorActionPreference = 'Stop'
@@ -150,10 +151,15 @@ $useExisting = $false
 
 if (Test-Path $keystorePath) {
   Warn "An upload keystore already exists: $keystorePath"
-  $ans = Read-Host 'Use the EXISTING key? (yes = reuse / no = abort — will NOT overwrite) [yes/no]'
-  if ($ans -notin @('y','yes')) { Die 'Aborting to protect the existing production upload key. Nothing changed.' }
-  $useExisting = $true
-  Ok 'Reusing existing upload keystore (no overwrite).'
+  if ($ReuseExistingKey) {
+    $useExisting = $true
+    Ok 'Reusing existing upload keystore (no overwrite; -ReuseExistingKey).'
+  } else {
+    $ans = Read-Host 'Use the EXISTING key? (yes = reuse / no = abort — will NOT overwrite) [yes/no]'
+    if ($ans -notin @('y','yes')) { Die 'Aborting to protect the existing production upload key. Nothing changed.' }
+    $useExisting = $true
+    Ok 'Reusing existing upload keystore (no overwrite).'
+  }
 }
 
 # ============================================================================
