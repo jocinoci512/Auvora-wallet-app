@@ -29,7 +29,17 @@ class AccountController extends ChangeNotifier {
   bool get isConfigured => _client.isConfigured;
   bool get isSignedIn => _status == AccountStatus.signedIn;
 
+  static bool _isTransient(AuthException e) =>
+      e.kind == AuthErrorKind.network ||
+      e.kind == AuthErrorKind.timeout ||
+      e.kind == AuthErrorKind.server ||
+      e.kind == AuthErrorKind.rateLimited;
+
   /// Restore a prior session on app start (refresh if the access token expired).
+  ///
+  /// Transient network/server failures keep tokens so the user is not signed
+  /// out just because the device is offline. Invalid/revoked refresh still
+  /// returns safely to signed-out (no login loop).
   Future<void> bootstrap() async {
     if (!isConfigured) {
       _set(status: AccountStatus.signedOut);
@@ -42,20 +52,53 @@ class AccountController extends ChangeNotifier {
     }
     try {
       _profile = await _client.currentUser(access);
+      _error = null;
       _set(status: AccountStatus.signedIn);
     } on AuthException catch (e) {
-      if (e.kind == AuthErrorKind.invalidCredentials) {
-        final refreshed = await _tryRefresh();
-        if (refreshed) return;
+      if (e.kind == AuthErrorKind.invalidCredentials || e.kind == AuthErrorKind.forbidden) {
+        await _tryRefresh();
+        return;
+      }
+      if (_isTransient(e)) {
+        await _restoreCachedSignedIn(e.message);
+        return;
       }
       await _store.clear();
+      _profile = null;
       _set(status: AccountStatus.signedOut);
+    }
+  }
+
+  /// Re-check the backend session after resume / reconnect. Never wipes tokens
+  /// on a transport failure.
+  Future<void> revalidate() async {
+    if (!isConfigured || _busy) return;
+    final access = await _store.readAccessToken();
+    if (access == null || access.isEmpty) return;
+    try {
+      _profile = await _client.currentUser(access);
+      _error = null;
+      _set(status: AccountStatus.signedIn);
+    } on AuthException catch (e) {
+      if (e.kind == AuthErrorKind.invalidCredentials || e.kind == AuthErrorKind.forbidden) {
+        await _tryRefresh();
+        return;
+      }
+      if (_isTransient(e)) {
+        _error = e.message;
+        notifyListeners();
+      }
     }
   }
 
   Future<bool> _tryRefresh() async {
     final refresh = await _store.readRefreshToken();
-    if (refresh == null || refresh.isEmpty) return false;
+    if (refresh == null || refresh.isEmpty) {
+      await _store.clear();
+      _profile = null;
+      _set(status: AccountStatus.signedOut);
+      return false;
+    }
     try {
       final session = await _client.refresh(refresh);
       await _store.saveSession(
@@ -64,13 +107,30 @@ class AccountController extends ChangeNotifier {
         refreshToken: session.refreshToken,
       );
       _profile = await _client.currentUser(session.accessToken);
+      _error = null;
       _set(status: AccountStatus.signedIn);
       return true;
-    } on AuthException {
+    } on AuthException catch (e) {
+      if (_isTransient(e)) {
+        await _restoreCachedSignedIn(e.message);
+        return true;
+      }
       await _store.clear();
+      _profile = null;
       _set(status: AccountStatus.signedOut);
       return false;
     }
+  }
+
+  Future<void> _restoreCachedSignedIn(String message) async {
+    final id = await _store.readUserId();
+    final email = await _store.readEmail();
+    final username = await _store.readUsername();
+    if (id != null && id.isNotEmpty) {
+      _profile = AuthProfile(id: id, email: email ?? '', username: username ?? '');
+    }
+    _error = message;
+    _set(status: AccountStatus.signedIn);
   }
 
   /// Create an account, then sign in with the same credentials.

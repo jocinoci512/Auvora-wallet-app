@@ -123,7 +123,7 @@ class AuthApiClient {
     } catch (_) {
       throw const AuthException(
         AuthErrorKind.network,
-        'Cannot reach Auvora right now. Check your connection and try again.',
+        'No internet connection. Check your connection and try again.',
       );
     }
   }
@@ -159,11 +159,16 @@ class AuthApiClient {
         return const AuthException(AuthErrorKind.conflict, 'An account with these details already exists.');
       case 423:
         return const AuthException(AuthErrorKind.forbidden, 'Account temporarily locked. Try again later.');
+      case 404:
+        return const AuthException(AuthErrorKind.unknown, 'That resource was not found. Please try again.');
       case 429:
         return const AuthException(AuthErrorKind.rateLimited, 'Too many attempts. Please wait and try again.');
       default:
         if (status >= 500) {
-          return const AuthException(AuthErrorKind.server, 'Auvora is having trouble. Please try again shortly.');
+          return const AuthException(
+            AuthErrorKind.server,
+            'Auvora is having trouble. Please try again shortly.',
+          );
         }
         return const AuthException(AuthErrorKind.unknown, 'Something went wrong. Please try again.');
     }

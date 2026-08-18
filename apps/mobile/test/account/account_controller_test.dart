@@ -164,4 +164,55 @@ void main() {
     await c.bootstrap();
     expect(c.status, AccountStatus.signedOut);
   });
+
+  test('bootstrap network failure keeps tokens and cached identity', () async {
+    store['auvora_acct_access_v1'] = 'acc-1';
+    store['auvora_acct_refresh_v1'] = 'ref-1';
+    store['auvora_acct_uid_v1'] = 'u1';
+    store['auvora_acct_email_v1'] = 'a@b.com';
+    store['auvora_acct_username_v1'] = 'alice';
+    final mock = MockClient((req) async => throw http.ClientException('offline'));
+    final c = controllerWith(mock);
+    await c.bootstrap();
+    expect(c.isSignedIn, isTrue);
+    expect(c.profile?.email, 'a@b.com');
+    expect(store['auvora_acct_access_v1'], 'acc-1');
+    expect(store['auvora_acct_refresh_v1'], 'ref-1');
+    expect(c.error, contains('internet'));
+  });
+
+  test('bootstrap invalid refresh signs out (no login loop)', () async {
+    store['auvora_acct_access_v1'] = 'stale';
+    store['auvora_acct_refresh_v1'] = 'revoked';
+    final c = controllerWith(
+      routed({
+        'GET /api/v1/me': [err(401)],
+        'POST /api/v1/auth/refresh': [err(401)],
+      }),
+    );
+    await c.bootstrap();
+    expect(c.status, AccountStatus.signedOut);
+    expect(store.containsKey('auvora_acct_access_v1'), isFalse);
+  });
+
+  test('revalidate recovers after a transient failure', () async {
+    store['auvora_acct_access_v1'] = 'acc-1';
+    store['auvora_acct_uid_v1'] = 'u1';
+    store['auvora_acct_email_v1'] = 'a@b.com';
+    store['auvora_acct_username_v1'] = 'alice';
+    var calls = 0;
+    final mock = MockClient((req) async {
+      calls += 1;
+      if (calls == 1) throw http.ClientException('offline');
+      return ok(profile);
+    });
+    final c = controllerWith(mock);
+    await c.bootstrap();
+    expect(c.isSignedIn, isTrue);
+    expect(c.error, isNotNull);
+    await c.revalidate();
+    expect(c.isSignedIn, isTrue);
+    expect(c.error, isNull);
+    expect(c.profile?.username, 'alice');
+  });
 }

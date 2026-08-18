@@ -96,12 +96,22 @@ void main() {
       );
     });
 
-    test('maps 500 to server error', () async {
-      final client = clientReturning(500, {});
+    test('maps 404 to unknown without leaking server text', () async {
+      final client = clientReturning(404, {'error': {'message': 'stack'}});
       expect(
         () => client.login(email: 'a@b.com', password: 'x', deviceFingerprint: 'and-fp-12345678'),
-        throwsA(isA<AuthException>().having((e) => e.kind, 'kind', AuthErrorKind.server)),
+        throwsA(isA<AuthException>().having((e) => e.kind, 'kind', AuthErrorKind.unknown)),
       );
+    });
+
+    test('maps 502 and 503 to server error', () async {
+      for (final status in [502, 503, 504]) {
+        final client = clientReturning(status, {});
+        expect(
+          () => client.login(email: 'a@b.com', password: 'x', deviceFingerprint: 'and-fp-12345678'),
+          throwsA(isA<AuthException>().having((e) => e.kind, 'kind', AuthErrorKind.server)),
+        );
+      }
     });
 
     test('maps transport failure to a network error', () async {

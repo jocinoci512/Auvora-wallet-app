@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../account/account_controller.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'backup_screen.dart';
@@ -42,6 +43,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       if (wallet.hasPin && wallet.unlocked && wallet.stage == AppStage.dashboard) {
         wallet.lock();
       }
+    } else if (state == AppLifecycleState.resumed) {
+      // Re-check account session after background / network change. Transient
+      // failures keep tokens; invalid refresh still returns to sign-in.
+      // ignore: discarded_futures
+      context.read<AccountController>().revalidate();
     }
   }
 

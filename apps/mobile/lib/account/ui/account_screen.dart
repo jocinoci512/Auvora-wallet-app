@@ -90,6 +90,26 @@ class _ProfileView extends StatelessWidget {
         _row(context, 'Email', p?.email ?? '—'),
         _row(context, 'Status', p?.status ?? '—'),
         _row(context, 'Email verified', (p?.emailVerified ?? false) ? 'Yes' : 'No'),
+        if (account.error != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            color: t.colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(account.error!, style: t.textTheme.bodyMedium),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => account.revalidate(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         Card(
           child: Padding(
