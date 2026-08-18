@@ -27,6 +27,7 @@ import type { JwtAccessClaims } from '@auvora/types';
 import { successResponse } from '@auvora/nest-common';
 import {
   AdminAssignRolesDto,
+  AdminReasonDto,
   AdminSearchUsersQueryDto,
   AdminToggleMfaDto,
   AdminUpdateStatusDto,
@@ -35,6 +36,7 @@ import {
 
 const _adminUsersDtoRuntime = {
   AdminAssignRolesDto,
+  AdminReasonDto,
   AdminSearchUsersQueryDto,
   AdminToggleMfaDto,
   AdminUpdateStatusDto,
@@ -89,6 +91,7 @@ export class AdminUsersController {
       actor.sub,
       params.userId,
       dto.status,
+      dto.reason,
       extractRequestContext(req),
     );
     return successResponse(data);
@@ -116,11 +119,13 @@ export class AdminUsersController {
   async restore(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,
+    @Body() dto: AdminReasonDto,
     @Req() req: Request,
   ) {
     const data = await this.authService.adminRestore(
       actor.sub,
       params.userId,
+      dto.reason,
       extractRequestContext(req),
     );
     return successResponse(data);
@@ -139,6 +144,7 @@ export class AdminUsersController {
       actor.sub,
       params.userId,
       dto.roles,
+      dto.reason,
       extractRequestContext(req),
     );
     return successResponse(data);
@@ -150,11 +156,13 @@ export class AdminUsersController {
   async forceLogout(
     @CurrentUser() actor: JwtAccessClaims,
     @Param() params: UserIdParamDto,
+    @Body() dto: AdminReasonDto,
     @Req() req: Request,
   ) {
     const data = await this.authService.adminForceLogout(
       actor.sub,
       params.userId,
+      dto.reason,
       extractRequestContext(req),
     );
     return successResponse(data);
@@ -173,6 +181,7 @@ export class AdminUsersController {
       actor.sub,
       params.userId,
       dto.enabled,
+      dto.reason,
       extractRequestContext(req),
     );
     return successResponse(data);

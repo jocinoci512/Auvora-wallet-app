@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 
+import '../account/account_controller.dart';
 import '../intelligence/catalog.dart';
 import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
@@ -16,6 +18,7 @@ import '../transfer/address_book.dart';
 import '../transfer/address_validation.dart';
 import '../transfer/domain_resolution.dart';
 import '../transfer/large_transfer_policy.dart';
+import '../transfer/transfer_prepare_client.dart';
 import '../wallet_engine/network_manager.dart';
 import '../wallet_engine/transaction_engine.dart';
 import 'home/home_shared.dart';
@@ -57,6 +60,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   String? _resolvedFromName;
   String? _domainProviderNote;
   _TxProgressPhase _progress = _TxProgressPhase.broadcasting;
+  String? _prepareIdempotencyKey;
+  String? _pendingReviewId;
+  String? _pendingReviewStatus;
+  String? _pendingReviewAt;
+  String? _pendingReviewMessage;
+  final _prepareClient = TransferPrepareClient();
 
   final _toCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
@@ -140,7 +149,13 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     return ok == true;
   }
 
-  void _go(_SendStep s) => setState(() => _step = s);
+  void _go(_SendStep s) {
+    if (s == _SendStep.amount || s == _SendStep.recipient || s == _SendStep.asset) {
+      _prepareIdempotencyKey = null;
+      _pendingReviewId = null;
+    }
+    setState(() => _step = s);
+  }
 
   List<_SendStep> get _visibleSteps => [
         if (_showWalletStep) _SendStep.wallet,
@@ -230,7 +245,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       case _SendStep.status:
         return 'Status';
       case _SendStep.done:
-        return 'Submitted';
+        return _pendingReviewId != null ? 'Pending review' : 'Submitted';
     }
   }
 
@@ -683,6 +698,15 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     return n;
   }
 
+  String _amountDecimalString(AssetHolding asset) {
+    if (!_fiatMode) {
+      final raw = _amountCtrl.text.replaceAll(',', '').trim();
+      return raw.isEmpty ? '0' : raw;
+    }
+    final decimals = LargeTransferPolicy.nativeDecimals(asset.ticker);
+    return _parsedAmount(asset).toStringAsFixed(decimals);
+  }
+
   Widget _reviewStep() {
     final asset = _asset!;
     final p = context.watch<PortfolioController>();
@@ -923,9 +947,38 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         priceUsd: asset.priceUsd,
         quoteAt: _portfolio.snapshot?.updatedAt,
       );
-      if (review.blocksUnauditedBroadcast && ReleaseConfig.liveBroadcastEnabled) {
+      _prepareIdempotencyKey ??= const Uuid().v4();
+      final account = context.read<AccountController>();
+      if (account.isConfigured && account.isSignedIn) {
+        final token = await account.readAccessToken();
+        if (token == null || token.isEmpty) {
+          throw StateError('Sign in is required before this transfer can be prepared.');
+        }
+        final prepared = await _prepareClient.prepare(
+          accessToken: token,
+          assetCode: asset.ticker,
+          destinationAddress: _toCtrl.text.trim(),
+          amount: _amountDecimalString(asset),
+          idempotencyKey: _prepareIdempotencyKey!,
+          fromAddress: _wallet.addressFor(asset.network) ?? _wallet.address,
+        );
+        if (!prepared.allowed) {
+          if (!mounted) return;
+          setState(() {
+            _pendingReviewId = prepared.reviewId;
+            _pendingReviewStatus = prepared.reviewStatus;
+            _pendingReviewAt = prepared.requestedAt;
+            _pendingReviewMessage = prepared.message;
+            _submitting = false;
+            _doubleTapGuard = false;
+            _step = _SendStep.done;
+          });
+          return;
+        }
+      } else if (review.blocksUnauditedBroadcast) {
         throw StateError(
-          'Large-transfer review is required before broadcast. Keys stay on this device.',
+          review.message ??
+              'Large-transfer review is required before signing. Keys stay on this device.',
         );
       }
       final pause = reduce ? Duration.zero : const Duration(milliseconds: 420);
@@ -1104,6 +1157,32 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   }
 
   Widget _doneStep() {
+    if (_pendingReviewId != null) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: [
+          const Icon(Icons.hourglass_top_rounded, size: 48, color: AetherColors.lagoon),
+          const SizedBox(height: 12),
+          Text('Transaction pending review', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            _pendingReviewMessage ??
+                'An administrator must approve this transfer before this device can sign. Keys stay on this device.',
+            style: const TextStyle(color: AetherColors.muted, height: 1.45),
+          ),
+          const SizedBox(height: 16),
+          _kv('Review ID', _pendingReviewId!),
+          if (_pendingReviewStatus != null) _kv('Status', _pendingReviewStatus!),
+          if (_pendingReviewAt != null) _kv('Requested', _pendingReviewAt!),
+          const SizedBox(height: 12),
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message:
+                'Nothing was signed or broadcast. After approval, you still sign locally on this device.',
+          ),
+        ],
+      );
+    }
     final tx = _result!;
     final asset = _asset!;
     return ListView(

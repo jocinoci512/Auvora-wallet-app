@@ -6,7 +6,9 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { type WalletStatus } from '@auvora/database';
@@ -60,6 +62,37 @@ export class StatusChangeDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+export class PrepareTransferDto {
+  @IsOptional()
+  @IsUUID()
+  walletId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  assetCode!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
+  destinationAddress!: string;
+
+  /** Decimal string in whole-token units. Never a binary float. */
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d+(\.\d+)?$/)
+  @MaxLength(80)
+  amount!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  fromAddress?: string;
+
+  @IsUUID()
+  idempotencyKey!: string;
 }
 
 export class CreditDebitDto {

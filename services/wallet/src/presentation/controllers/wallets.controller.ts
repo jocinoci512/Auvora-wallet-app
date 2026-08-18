@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import type { JwtAccessClaims } from '@auvora/types';
+import { TransferPrepareService } from '../../application/services/transfer-prepare.service';
 import { WalletService } from '../../application/services/wallet.service';
 import { PERMISSION_WALLETS_READ, PERMISSION_WALLETS_WRITE } from '../../domain/permission-codes';
 import { Permissions } from '../decorators/auth.decorators';
@@ -10,6 +11,7 @@ import {
   CreateWalletDto,
   ListUserWalletsQueryDto,
   PaginationQueryDto,
+  PrepareTransferDto,
   SnapshotBalanceDto,
   StatusChangeDto,
   UpdateWalletDto,
@@ -21,6 +23,7 @@ const _walletDtoRuntime = {
   CreateWalletDto,
   ListUserWalletsQueryDto,
   PaginationQueryDto,
+  PrepareTransferDto,
   SnapshotBalanceDto,
   StatusChangeDto,
   UpdateWalletDto,
@@ -32,7 +35,10 @@ void _walletDtoRuntime;
 @ApiBearerAuth()
 @Controller('api/v1/wallets')
 export class WalletsController {
-  constructor(@Inject(WalletService) private readonly walletService: WalletService) {}
+  constructor(
+    @Inject(WalletService) private readonly walletService: WalletService,
+    @Inject(TransferPrepareService) private readonly transferPrepare: TransferPrepareService,
+  ) {}
 
   @Post()
   @Permissions(PERMISSION_WALLETS_WRITE)
@@ -45,6 +51,22 @@ export class WalletsController {
       label: dto.label,
       metadata: dto.metadata,
       preferences: dto.preferences,
+    });
+    return successResponse(data);
+  }
+
+  @Post('transfers/prepare')
+  @Permissions(PERMISSION_WALLETS_WRITE)
+  @ApiBody({ type: PrepareTransferDto })
+  async prepareTransfer(@CurrentUser() user: JwtAccessClaims, @Body() dto: PrepareTransferDto) {
+    const data = await this.transferPrepare.prepare({
+      ownerUserId: user.sub,
+      walletId: dto.walletId,
+      assetCode: dto.assetCode,
+      destinationAddress: dto.destinationAddress,
+      amount: dto.amount,
+      fromAddress: dto.fromAddress,
+      idempotencyKey: dto.idempotencyKey,
     });
     return successResponse(data);
   }

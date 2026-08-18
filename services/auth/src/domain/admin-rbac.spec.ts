@@ -28,6 +28,7 @@ const MUTATING = [
   'admins:manage',
   'roles:manage',
   'transactions:review:large',
+  'simulation:manage',
 ];
 
 // Wallet custody / signing must never be grantable to any admin role.
@@ -40,13 +41,15 @@ describe('admin RBAC capability matrix', () => {
     );
   });
 
-  it('production Admin portal access is SUPER_ADMIN only', () => {
-    expect([...ADMIN_PORTAL_ROLES]).toEqual([ROLE_SUPER_ADMIN]);
+  it('production Admin portal access includes the full staff matrix', () => {
+    expect([...ADMIN_PORTAL_ROLES].sort()).toEqual(
+      [ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_SUPPORT, ROLE_SECURITY_ANALYST, ROLE_READ_ONLY].sort(),
+    );
     expect(isAdminPortalRole(ROLE_SUPER_ADMIN)).toBe(true);
-    expect(isAdminPortalRole(ROLE_ADMIN)).toBe(false);
-    expect(isAdminPortalRole(ROLE_SUPPORT)).toBe(false);
-    expect(isAdminPortalRole(ROLE_SECURITY_ANALYST)).toBe(false);
-    expect(isAdminPortalRole(ROLE_READ_ONLY)).toBe(false);
+    expect(isAdminPortalRole(ROLE_ADMIN)).toBe(true);
+    expect(isAdminPortalRole(ROLE_SUPPORT)).toBe(true);
+    expect(isAdminPortalRole(ROLE_SECURITY_ANALYST)).toBe(true);
+    expect(isAdminPortalRole(ROLE_READ_ONLY)).toBe(true);
   });
 
   it('READ_ONLY holds only read permissions (no mutations, ever)', () => {
@@ -65,6 +68,7 @@ describe('admin RBAC capability matrix', () => {
     expect(has(ROLE_SUPPORT, 'security:manage')).toBe(false);
     expect(has(ROLE_SUPPORT, 'sessions:revoke')).toBe(false);
     expect(has(ROLE_SUPPORT, 'users:suspend')).toBe(false);
+    expect(has(ROLE_SUPPORT, 'simulation:read')).toBe(true);
   });
 
   it('SECURITY_ANALYST can act on security but not manage roles/admins', () => {
@@ -75,6 +79,7 @@ describe('admin RBAC capability matrix', () => {
     expect(has(ROLE_SECURITY_ANALYST, 'roles:manage')).toBe(false);
     expect(has(ROLE_SECURITY_ANALYST, 'admins:manage')).toBe(false);
     expect(has(ROLE_SECURITY_ANALYST, 'users:write')).toBe(false);
+    expect(has(ROLE_SECURITY_ANALYST, 'simulation:read')).toBe(true);
   });
 
   it('ADMIN administers users/security but cannot manage admins or roles (reserved to SUPER_ADMIN)', () => {
@@ -85,6 +90,7 @@ describe('admin RBAC capability matrix', () => {
     expect(has(ROLE_ADMIN, 'admins:manage')).toBe(false);
     expect(has(ROLE_ADMIN, 'roles:manage')).toBe(false);
     expect(has(ROLE_ADMIN, 'transactions:review:large')).toBe(true);
+    expect(has(ROLE_ADMIN, 'simulation:manage')).toBe(true);
   });
 
   it('SUPER_ADMIN is a strict superset of ADMIN plus admins:manage and roles:manage', () => {
@@ -128,5 +134,31 @@ describe('admin RBAC capability matrix', () => {
     expect(filtered).not.toContain('wallets:admin');
     expect(filtered).not.toContain('wallets:write');
     expect(filtered).toEqual([...caps(ROLE_SUPER_ADMIN)]);
+  });
+
+  it('portal membership does not grant mutation permissions the role lacks', () => {
+    expect(isAdminPortalRole(ROLE_READ_ONLY)).toBe(true);
+    expect(isAdminPortalRole(ROLE_SUPPORT)).toBe(true);
+    expect(isAdminPortalRole(ROLE_SECURITY_ANALYST)).toBe(true);
+
+    for (const staff of [ROLE_READ_ONLY, ROLE_SUPPORT, ROLE_SECURITY_ANALYST]) {
+      expect(has(staff, 'simulation:manage')).toBe(false);
+      expect(has(staff, 'transactions:review:large')).toBe(false);
+    }
+
+    expect(has(ROLE_READ_ONLY, 'users:write')).toBe(false);
+    expect(has(ROLE_SECURITY_ANALYST, 'users:write')).toBe(false);
+    expect(has(ROLE_READ_ONLY, 'users:suspend')).toBe(false);
+    expect(has(ROLE_SUPPORT, 'users:suspend')).toBe(false);
+    expect(has(ROLE_SECURITY_ANALYST, 'users:suspend')).toBe(false);
+
+    expect(has(ROLE_ADMIN, 'simulation:manage')).toBe(true);
+    expect(has(ROLE_ADMIN, 'transactions:review:large')).toBe(true);
+    expect(has(ROLE_ADMIN, 'users:write')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'simulation:manage')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'transactions:review:large')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'users:write')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'users:suspend')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'audit:read')).toBe(true);
   });
 });

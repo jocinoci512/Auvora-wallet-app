@@ -6,6 +6,8 @@ import { getProxyTimeoutMs } from './proxy-timeout';
 export const WALLET_PROXY_PREFIXES = [
   '/api/v1/wallets',
   '/api/v1/admin/wallets',
+  '/api/v1/admin/simulation',
+  '/api/v1/admin/transaction-reviews',
   '/api/v1/wallet-engine',
 ] as const;
 

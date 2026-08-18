@@ -45,11 +45,11 @@ describe('admin live-session middleware', () => {
 
   it('rejects non-auth Admin mutations when the live session is revoked', async () => {
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 }) as never;
-    const { middleware, res, next } = run('POST', '/api/v1/admin/wallets/w1/credit');
+    const { middleware, res, next } = run('POST', '/api/v1/admin/wallets/w1/suspend');
     middleware(
       {
         method: 'POST',
-        originalUrl: '/api/v1/admin/wallets/w1/credit',
+        originalUrl: '/api/v1/admin/wallets/w1/suspend',
         headers: { cookie: 'admin_access_token=dead' },
       } as never,
       res as never,

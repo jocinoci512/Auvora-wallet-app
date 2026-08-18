@@ -29,6 +29,8 @@ class AccountController extends ChangeNotifier {
   bool get isConfigured => _client.isConfigured;
   bool get isSignedIn => _status == AccountStatus.signedIn;
 
+  Future<String?> readAccessToken() => _store.readAccessToken();
+
   static bool _isTransient(AuthException e) =>
       e.kind == AuthErrorKind.network ||
       e.kind == AuthErrorKind.timeout ||

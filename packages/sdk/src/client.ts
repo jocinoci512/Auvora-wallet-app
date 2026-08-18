@@ -111,6 +111,27 @@ export interface UpdateWalletInput {
   preferences?: Record<string, unknown>;
 }
 
+export interface PrepareTransferInput {
+  walletId?: string;
+  assetCode: string;
+  destinationAddress: string;
+  amount: string;
+  fromAddress?: string;
+  idempotencyKey: string;
+}
+
+export interface PrepareTransferResult {
+  allowed: boolean;
+  status: string;
+  reviewId: string | null;
+  reviewStatus: string | null;
+  requestedAt: string | null;
+  message: string;
+  amountUsdCents: string | null;
+  assetCode: string;
+  network: string;
+}
+
 export interface AdminListWalletsQuery {
   ownerUserId?: string;
   assetCode?: string;
@@ -1794,6 +1815,10 @@ export class AuvoraClient {
     return this.request<Wallet>('POST', '/api/v1/wallets', input);
   }
 
+  async prepareWalletTransfer(input: PrepareTransferInput): Promise<PrepareTransferResult> {
+    return this.request<PrepareTransferResult>('POST', '/api/v1/wallets/transfers/prepare', input);
+  }
+
   async getWallet(walletId: string): Promise<Wallet> {
     return this.request<Wallet>('GET', `/api/v1/wallets/${walletId}`);
   }
@@ -2843,34 +2868,43 @@ export class AuvoraClient {
     return this.request<UserProfile>('GET', `/api/v1/admin/users/${encodeURIComponent(userId)}`);
   }
 
-  async adminUpdateUserStatus(userId: string, status: string): Promise<UserProfile> {
+  async adminUpdateUserStatus(
+    userId: string,
+    status: string,
+    reason: string,
+  ): Promise<UserProfile> {
     return this.request<UserProfile>(
       'PATCH',
       `/api/v1/admin/users/${encodeURIComponent(userId)}/status`,
-      { status },
+      { status, reason },
     );
   }
 
-  async adminAssignUserRoles(userId: string, roles: string[]): Promise<UserProfile> {
+  async adminAssignUserRoles(
+    userId: string,
+    roles: string[],
+    reason: string,
+  ): Promise<UserProfile> {
     return this.request<UserProfile>(
       'PATCH',
       `/api/v1/admin/users/${encodeURIComponent(userId)}/roles`,
-      { roles },
+      { roles, reason },
     );
   }
 
-  async adminForceLogoutUser(userId: string): Promise<{ revoked: number }> {
+  async adminForceLogoutUser(userId: string, reason: string): Promise<{ revoked: number }> {
     return this.request<{ revoked: number }>(
       'POST',
       `/api/v1/admin/users/${encodeURIComponent(userId)}/force-logout`,
+      { reason },
     );
   }
 
-  async adminToggleUserMfa(userId: string, enabled: boolean): Promise<UserProfile> {
+  async adminToggleUserMfa(userId: string, enabled: boolean, reason: string): Promise<UserProfile> {
     return this.request<UserProfile>(
       'PATCH',
       `/api/v1/admin/users/${encodeURIComponent(userId)}/mfa`,
-      { enabled },
+      { enabled, reason },
     );
   }
 

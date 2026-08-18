@@ -4,19 +4,16 @@ import { type WalletStatus } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
 import { WalletService } from '../../application/services/wallet.service';
 import {
-  PERMISSION_WALLETS_ADMIN,
   PERMISSION_WALLETS_ARCHIVE,
   PERMISSION_WALLETS_READ,
   PERMISSION_WALLETS_SUSPEND,
   ADMIN_PORTAL_ROLES,
 } from '../../domain/permission-codes';
-import { Permissions, Roles } from '../decorators/auth.decorators';
+import { Permissions, RequireStepUp, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { successResponse } from '@auvora/nest-common';
 import {
   AdminSearchWalletsQueryDto,
-  CreditDebitDto,
-  InternalTransferDto,
   PaginationQueryDto,
   StatusChangeDto,
   WalletIdParamDto,
@@ -24,8 +21,6 @@ import {
 
 const _adminWalletDtoRuntime = {
   AdminSearchWalletsQueryDto,
-  CreditDebitDto,
-  InternalTransferDto,
   PaginationQueryDto,
   StatusChangeDto,
   WalletIdParamDto,
@@ -60,6 +55,7 @@ export class AdminWalletsController {
 
   @Post(':walletId/suspend')
   @Permissions(PERMISSION_WALLETS_SUSPEND)
+  @RequireStepUp()
   @ApiBody({ type: StatusChangeDto })
   async suspend(
     @CurrentUser() actor: JwtAccessClaims,
@@ -72,6 +68,7 @@ export class AdminWalletsController {
 
   @Post(':walletId/restore')
   @Permissions(PERMISSION_WALLETS_SUSPEND)
+  @RequireStepUp()
   @ApiBody({ type: StatusChangeDto })
   async restore(
     @CurrentUser() actor: JwtAccessClaims,
@@ -84,6 +81,7 @@ export class AdminWalletsController {
 
   @Post(':walletId/archive')
   @Permissions(PERMISSION_WALLETS_ARCHIVE)
+  @RequireStepUp()
   @ApiBody({ type: StatusChangeDto })
   async archive(
     @CurrentUser() actor: JwtAccessClaims,
@@ -91,67 +89,6 @@ export class AdminWalletsController {
     @Body() dto: StatusChangeDto,
   ) {
     const data = await this.walletService.adminArchive(params.walletId, actor.sub, dto.reason);
-    return successResponse(data);
-  }
-
-  @Post(':walletId/credit')
-  @Permissions(PERMISSION_WALLETS_ADMIN)
-  @ApiBody({ type: CreditDebitDto })
-  async credit(
-    @CurrentUser() actor: JwtAccessClaims,
-    @Param() params: WalletIdParamDto,
-    @Body() dto: CreditDebitDto,
-  ) {
-    const data = await this.walletService.creditWallet(
-      {
-        walletId: params.walletId,
-        amount: dto.amount,
-        description: dto.description,
-        metadata: dto.metadata,
-      },
-      actor,
-    );
-    return successResponse(data);
-  }
-
-  @Post(':walletId/debit')
-  @Permissions(PERMISSION_WALLETS_ADMIN)
-  @ApiBody({ type: CreditDebitDto })
-  async debit(
-    @CurrentUser() actor: JwtAccessClaims,
-    @Param() params: WalletIdParamDto,
-    @Body() dto: CreditDebitDto,
-  ) {
-    const data = await this.walletService.debitWallet(
-      {
-        walletId: params.walletId,
-        amount: dto.amount,
-        description: dto.description,
-        metadata: dto.metadata,
-      },
-      actor,
-    );
-    return successResponse(data);
-  }
-
-  @Post(':walletId/transfer')
-  @Permissions(PERMISSION_WALLETS_ADMIN)
-  @ApiBody({ type: InternalTransferDto })
-  async transfer(
-    @CurrentUser() actor: JwtAccessClaims,
-    @Param() params: WalletIdParamDto,
-    @Body() dto: InternalTransferDto,
-  ) {
-    const data = await this.walletService.createInternalTransfer(
-      {
-        fromWalletId: params.walletId,
-        toWalletId: dto.toWalletId,
-        amount: dto.amount,
-        description: dto.description,
-        metadata: dto.metadata,
-      },
-      actor,
-    );
     return successResponse(data);
   }
 

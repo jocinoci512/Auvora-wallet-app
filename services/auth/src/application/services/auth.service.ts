@@ -818,6 +818,7 @@ export class AuthService {
     actorId: string,
     userId: string,
     status: UserStatus,
+    reason: string,
     ctx: RequestContext,
   ): Promise<UserProfileDto> {
     const user = await this.users.updateStatus(userId, status);
@@ -836,14 +837,14 @@ export class AuthService {
       targetUserId: userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
-      metadata: { status },
+      metadata: { status, reason },
     });
     this.emitAdminEvent({
       type: 'ACCOUNT_STATUS_CHANGED',
       service: 'auth',
       userId,
       severity: status === UserStatus.Active ? 'info' : 'warning',
-      metadata: { status: String(status) },
+      metadata: { status: String(status), reason },
     });
     return this.toProfile(user);
   }
@@ -869,6 +870,7 @@ export class AuthService {
   async adminRestore(
     actorId: string,
     userId: string,
+    reason: string,
     ctx: RequestContext,
   ): Promise<UserProfileDto> {
     const user = await this.users.restore(userId);
@@ -878,6 +880,7 @@ export class AuthService {
       targetUserId: userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
+      metadata: { reason },
     });
     return this.toProfile(user);
   }
@@ -886,6 +889,7 @@ export class AuthService {
     actorId: string,
     userId: string,
     roleNames: string[],
+    reason: string,
     ctx: RequestContext,
   ): Promise<UserProfileDto> {
     const user = await this.users.assignRoles(userId, roleNames);
@@ -895,14 +899,14 @@ export class AuthService {
       targetUserId: userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
-      metadata: { roles: roleNames },
+      metadata: { roles: roleNames, reason },
     });
     this.emitAdminEvent({
       type: 'SECURITY_EVENT',
       service: 'auth',
       userId,
       severity: 'warning',
-      metadata: { action: 'roles_updated', roles: roleNames },
+      metadata: { action: 'roles_updated', roles: roleNames, reason },
     });
     return this.toProfile(user);
   }
@@ -910,6 +914,7 @@ export class AuthService {
   async adminForceLogout(
     actorId: string,
     userId: string,
+    reason: string,
     ctx: RequestContext,
   ): Promise<{ revoked: number }> {
     const revoked = await this.sessions.revokeAllForUser(userId);
@@ -920,14 +925,14 @@ export class AuthService {
       targetUserId: userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
-      metadata: { forced: true, revoked },
+      metadata: { forced: true, revoked, reason },
     });
     this.emitAdminEvent({
       type: 'SESSION_REVOKED',
       service: 'auth',
       userId,
       severity: 'warning',
-      metadata: { forced: true, revoked },
+      metadata: { forced: true, revoked, reason },
     });
     return { revoked };
   }
@@ -953,6 +958,7 @@ export class AuthService {
     actorId: string,
     userId: string,
     enabled: boolean,
+    reason: string,
     ctx: RequestContext,
   ): Promise<UserProfileDto> {
     const user = await this.users.toggleMfa(userId, enabled);
@@ -962,14 +968,14 @@ export class AuthService {
       targetUserId: userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
-      metadata: { enabled },
+      metadata: { enabled, reason },
     });
     this.emitAdminEvent({
       type: 'SECURITY_EVENT',
       service: 'auth',
       userId,
       severity: 'warning',
-      metadata: { action: 'mfa_toggled', enabled },
+      metadata: { action: 'mfa_toggled', enabled, reason },
     });
     return this.toProfile(user);
   }

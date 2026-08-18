@@ -19,6 +19,12 @@ const PRIMARY: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', permission: 'health:read' },
   { href: '/users', label: 'Users', permission: 'users:read' },
   { href: '/wallets', label: 'Wallets', permission: 'wallets:read' },
+  {
+    href: '/transaction-reviews',
+    label: 'Transaction Reviews',
+    permission: 'transactions:review:large',
+  },
+  { href: '/simulation', label: 'Simulation', permission: 'simulation:read' },
   { href: '/connections', label: 'Connections', permission: 'connections:read' },
   { href: '/security', label: 'Security', permission: 'security:read' },
   { href: '/security/audit', label: 'Audit', permission: 'audit:read' },

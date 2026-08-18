@@ -145,3 +145,249 @@ export function toSafeConnection(row: Record<string, unknown>): SafeConnectionRo
 export function isUnsafeField(key: string): boolean {
   return SECRET_KEYS.test(key);
 }
+
+export interface SimulationBalanceRow {
+  id: string;
+  assetCode: string;
+  assetSymbol: string;
+  assetName: string;
+  chain: string;
+  quantity: string;
+  valueUsd: string | null;
+  priceUsd: string | null;
+  priceSource: string | null;
+  priceTimestamp: string | null;
+  label: string;
+  updatedAt: string;
+}
+
+export interface SimulationEventRow {
+  id: string;
+  assetCode: string | null;
+  eventType: string;
+  previousQuantity: string | null;
+  newQuantity: string | null;
+  deltaQuantity: string | null;
+  valuationUsd: string | null;
+  reason: string;
+  adminUserId: string | null;
+  createdAt: string;
+}
+
+export interface SimulationTransactionRow {
+  id: string;
+  reference: string;
+  status: string;
+  direction: string;
+  assetCode: string;
+  amount: string;
+  feeAmount: string;
+  destinationAddress: string | null;
+  note: string | null;
+  reviewId: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface SimulationAccountView {
+  id: string;
+  ownerUserId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  balances: SimulationBalanceRow[];
+  events: SimulationEventRow[];
+  transactions: SimulationTransactionRow[];
+}
+
+export interface LargeTransferReviewRow {
+  id: string;
+  ownerUserId: string;
+  walletId: string | null;
+  sourceType: string;
+  sourceId: string | null;
+  assetCode: string;
+  assetSymbol: string;
+  network: string;
+  fromAddress: string | null;
+  destinationAddress: string;
+  amount: string;
+  amountUsdCents: string;
+  priceUsdCentsPerWhole: string | null;
+  priceTimestamp: string | null;
+  status: string;
+  requestedAt: string;
+  decisionAt: string | null;
+  decisionReason: string | null;
+  rejectionReason: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export async function adminGetSimulationAccount(
+  userId: string,
+): Promise<SimulationAccountView | null> {
+  return adminRequest(`/api/v1/admin/simulation/accounts/${encodeURIComponent(userId)}`);
+}
+
+export async function adminListSimulationAccounts(query?: string): Promise<
+  Array<{
+    id: string;
+    ownerUserId: string;
+    status: string;
+    assetCount: number;
+    updatedAt: string;
+    createdAt: string;
+  }>
+> {
+  const suffix = query ? `?${new URLSearchParams({ query }).toString()}` : '';
+  return adminRequest(`/api/v1/admin/simulation/accounts${suffix}`);
+}
+
+export async function adminEnableTestAccount(
+  userId: string,
+  reason: string,
+): Promise<SimulationAccountView | null> {
+  return adminRequest(`/api/v1/admin/simulation/accounts/${encodeURIComponent(userId)}/enable`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function adminDisableTestAccount(
+  userId: string,
+  reason: string,
+): Promise<SimulationAccountView | null> {
+  return adminRequest(`/api/v1/admin/simulation/accounts/${encodeURIComponent(userId)}/disable`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function adminUpsertSimulationBalance(input: {
+  userId: string;
+  assetCode: string;
+  operation: 'set' | 'increase' | 'decrease';
+  amount: string;
+  reason: string;
+}): Promise<SimulationAccountView | null> {
+  return adminRequest(
+    `/api/v1/admin/simulation/accounts/${encodeURIComponent(input.userId)}/balances`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        assetCode: input.assetCode,
+        operation: input.operation,
+        amount: input.amount,
+        reason: input.reason,
+      }),
+    },
+  );
+}
+
+export async function adminRemoveSimulationBalance(
+  userId: string,
+  assetCode: string,
+  reason: string,
+): Promise<SimulationAccountView | null> {
+  return adminRequest(
+    `/api/v1/admin/simulation/accounts/${encodeURIComponent(userId)}/balances/${encodeURIComponent(assetCode)}`,
+    {
+      method: 'DELETE',
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export async function adminResetSimulationPortfolio(
+  userId: string,
+  reason: string,
+): Promise<SimulationAccountView | null> {
+  return adminRequest(`/api/v1/admin/simulation/accounts/${encodeURIComponent(userId)}/reset`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function adminApplySimulationPreset(
+  userId: string,
+  presetCode: string,
+  reason: string,
+): Promise<SimulationAccountView | null> {
+  return adminRequest(
+    `/api/v1/admin/simulation/accounts/${encodeURIComponent(userId)}/presets/${encodeURIComponent(presetCode)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export async function adminCreateSimulationTransaction(input: {
+  userId: string;
+  assetCode: string;
+  scenario: string;
+  amount: string;
+  destinationAddress?: string;
+  note?: string;
+  reason: string;
+}) {
+  return adminRequest(
+    `/api/v1/admin/simulation/accounts/${encodeURIComponent(input.userId)}/transactions`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        assetCode: input.assetCode,
+        scenario: input.scenario,
+        amount: input.amount,
+        destinationAddress: input.destinationAddress,
+        note: input.note,
+        reason: input.reason,
+      }),
+    },
+  );
+}
+
+export async function adminListLargeTransferReviews(
+  query: {
+    status?: string;
+    ownerUserId?: string;
+    skip?: number;
+    take?: number;
+  } = {},
+): Promise<{ total: number; counts: Record<string, number>; items: LargeTransferReviewRow[] }> {
+  const params = new URLSearchParams();
+  if (query.status) params.set('status', query.status);
+  if (query.ownerUserId) params.set('ownerUserId', query.ownerUserId);
+  if (query.skip != null) params.set('skip', String(query.skip));
+  if (query.take != null) params.set('take', String(query.take));
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return adminRequest(`/api/v1/admin/transaction-reviews${suffix}`);
+}
+
+export async function adminReviewSummary(): Promise<{
+  pending: number;
+  approved: number;
+  rejected: number;
+}> {
+  return adminRequest('/api/v1/admin/transaction-reviews/summary');
+}
+
+export async function adminGetLargeTransferReview(
+  reviewId: string,
+): Promise<LargeTransferReviewRow> {
+  return adminRequest(`/api/v1/admin/transaction-reviews/${encodeURIComponent(reviewId)}`);
+}
+
+export async function adminApproveLargeTransferReview(reviewId: string, reason: string) {
+  return adminRequest(`/api/v1/admin/transaction-reviews/${encodeURIComponent(reviewId)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function adminRejectLargeTransferReview(reviewId: string, reason: string) {
+  return adminRequest(`/api/v1/admin/transaction-reviews/${encodeURIComponent(reviewId)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}

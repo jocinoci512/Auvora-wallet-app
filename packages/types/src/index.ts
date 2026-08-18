@@ -124,7 +124,9 @@ export type PermissionCode =
   | 'roles:read'
   | 'health:read'
   | 'realtime:read'
-  | 'transactions:review:large';
+  | 'transactions:review:large'
+  | 'simulation:read'
+  | 'simulation:manage';
 
 export const ROLE_USER = 'user';
 export const ROLE_ADMIN = 'admin';
@@ -142,8 +144,8 @@ export const ADMIN_STAFF_ROLES = [
   ROLE_READ_ONLY,
 ] as const;
 
-/** Production Admin control plane is owner-only. Other staff roles cannot enter the live Admin application. */
-export const ADMIN_PORTAL_ROLES = [ROLE_SUPER_ADMIN] as const;
+/** Staff roles allowed to enter the live Admin application. */
+export const ADMIN_PORTAL_ROLES = [...ADMIN_STAFF_ROLES] as const;
 
 export type AdminPortalRole = (typeof ADMIN_PORTAL_ROLES)[number];
 export type AdminStaffRole = (typeof ADMIN_STAFF_ROLES)[number];

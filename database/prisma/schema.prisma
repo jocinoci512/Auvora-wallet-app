@@ -55,6 +55,14 @@ enum AuditAction {
   ADMIN_ROLE_CHANGED
   ADMIN_STATUS_CHANGED
   ADMIN_SESSION_REVOKED
+  TEST_ACCOUNT_CLASSIFIED
+  TEST_ACCOUNT_UNCLASSIFIED
+  SIMULATION_BALANCE_CHANGED
+  SIMULATION_PORTFOLIO_RESET
+  SIMULATION_PRESET_APPLIED
+  LARGE_TRANSFER_REVIEW_CREATED
+  LARGE_TRANSFER_REVIEW_APPROVED
+  LARGE_TRANSFER_REVIEW_REJECTED
 }
 
 /// Infrastructure metadata row used to validate migrations without product models.
@@ -377,6 +385,39 @@ enum TransactionStatus {
   REVERSED
 }
 
+enum LargeTransferReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum SimulationAccountStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum SimulationBalanceEventType {
+  ACCOUNT_ENABLED
+  ACCOUNT_DISABLED
+  ASSET_ADDED
+  BALANCE_SET
+  BALANCE_INCREASED
+  BALANCE_DECREASED
+  ASSET_REMOVED
+  PORTFOLIO_RESET
+  PRESET_APPLIED
+}
+
+enum SimulationTransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REJECTED
+  SECURITY_HOLD
+  PENDING_REVIEW
+}
+
 model Asset {
   id              String        @id @default(uuid()) @db.Uuid
   code            String        @unique
@@ -398,6 +439,10 @@ model Asset {
   balanceSnapshots BalanceSnapshot[]
   balanceAudits    BalanceAudit[]
   marketMetadata   AssetMarketMetadata?
+  largeTransferReviews LargeTransferReview[]
+  simulationBalances   SimulationBalance[]
+  simulationBalanceEvents SimulationBalanceEvent[]
+  simulationTransactions  SimulationTransaction[]
 
   @@index([chain, standard])
   @@map("assets")
@@ -425,6 +470,8 @@ model Wallet {
   balanceSnapshots BalanceSnapshot[]
   balanceAudits    BalanceAudit[]
   statusHistory    WalletStatusHistory[]
+  largeTransferReviews LargeTransferReview[]
+  simulationTransactions SimulationTransaction[]
 
   @@unique([ownerUserId, assetId, alias])
   @@index([ownerUserId, status])
@@ -562,6 +609,130 @@ model WalletStatusHistory {
 
   @@index([walletId, createdAt])
   @@map("wallet_status_history")
+}
+
+model LargeTransferReview {
+  id                       String                    @id @default(uuid()) @db.Uuid
+  ownerUserId              String                    @map("owner_user_id") @db.Uuid
+  walletId                 String?                   @map("wallet_id") @db.Uuid
+  assetId                  String                    @map("asset_id") @db.Uuid
+  sourceType               String                    @map("source_type")
+  sourceId                 String?                   @map("source_id") @db.Uuid
+  network                  String
+  fromAddress              String?                   @map("from_address")
+  destinationAddress       String                    @map("destination_address")
+  amount                   Decimal                   @db.Decimal(36, 18)
+  amountUsdCents           BigInt                    @default(0) @map("amount_usd_cents")
+  priceUsdCentsPerWhole    BigInt?                   @map("price_usd_cents_per_whole")
+  priceTimestamp           DateTime?                 @map("price_timestamp")
+  status                   LargeTransferReviewStatus @default(PENDING)
+  requestedByUserId        String?                   @map("requested_by_user_id") @db.Uuid
+  requestedAt              DateTime                  @default(now()) @map("requested_at")
+  decisionByUserId         String?                   @map("decision_by_user_id") @db.Uuid
+  decisionAt               DateTime?                 @map("decision_at")
+  decisionReason           String?                   @map("decision_reason")
+  rejectionReason          String?                   @map("rejection_reason")
+  expiresAt                DateTime?                 @map("expires_at")
+  metadata                 Json?
+
+  wallet Wallet? @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  asset  Asset   @relation(fields: [assetId], references: [id])
+  simulationTransaction SimulationTransaction? @relation("SimulationReview")
+
+  @@index([ownerUserId, status, requestedAt])
+  @@index([walletId, requestedAt])
+  @@unique([sourceType, sourceId])
+  @@index([status, requestedAt])
+  @@map("large_transfer_reviews")
+}
+
+model SimulationAccount {
+  id              String                  @id @default(uuid()) @db.Uuid
+  ownerUserId     String                  @unique @map("owner_user_id") @db.Uuid
+  status          SimulationAccountStatus @default(ACTIVE)
+  createdByUserId String?                 @map("created_by_user_id") @db.Uuid
+  updatedByUserId String?                 @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  balances     SimulationBalance[]
+  events       SimulationBalanceEvent[]
+  transactions SimulationTransaction[]
+
+  @@index([status, createdAt])
+  @@map("simulation_accounts")
+}
+
+model SimulationBalance {
+  id                  String   @id @default(uuid()) @db.Uuid
+  simulationAccountId String   @map("simulation_account_id") @db.Uuid
+  assetId             String   @map("asset_id") @db.Uuid
+  quantity            Decimal  @default(0) @db.Decimal(36, 18)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  simulationAccount SimulationAccount      @relation(fields: [simulationAccountId], references: [id], onDelete: Cascade)
+  asset             Asset                  @relation(fields: [assetId], references: [id])
+  events            SimulationBalanceEvent[]
+  transactions      SimulationTransaction[]
+
+  @@unique([simulationAccountId, assetId])
+  @@index([simulationAccountId, updatedAt])
+  @@map("simulation_balances")
+}
+
+model SimulationBalanceEvent {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  simulationAccountId String                     @map("simulation_account_id") @db.Uuid
+  simulationBalanceId String?                    @map("simulation_balance_id") @db.Uuid
+  assetId             String?                    @map("asset_id") @db.Uuid
+  eventType           SimulationBalanceEventType @map("event_type")
+  previousQuantity    Decimal?                   @map("previous_quantity") @db.Decimal(36, 18)
+  newQuantity         Decimal?                   @map("new_quantity") @db.Decimal(36, 18)
+  deltaQuantity       Decimal?                   @map("delta_quantity") @db.Decimal(36, 18)
+  valuationUsd        Decimal?                   @map("valuation_usd") @db.Decimal(20, 2)
+  reason              String
+  adminUserId         String?                    @map("admin_user_id") @db.Uuid
+  metadata            Json?
+  createdAt           DateTime                   @default(now()) @map("created_at")
+
+  simulationAccount SimulationAccount @relation(fields: [simulationAccountId], references: [id], onDelete: Cascade)
+  simulationBalance SimulationBalance? @relation(fields: [simulationBalanceId], references: [id], onDelete: SetNull)
+  asset             Asset?            @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([simulationAccountId, createdAt])
+  @@index([adminUserId, createdAt])
+  @@map("simulation_balance_events")
+}
+
+model SimulationTransaction {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  simulationAccountId String                    @map("simulation_account_id") @db.Uuid
+  simulationBalanceId String?                   @map("simulation_balance_id") @db.Uuid
+  assetId             String                    @map("asset_id") @db.Uuid
+  walletId            String?                   @map("wallet_id") @db.Uuid
+  reference           String                    @unique
+  status              SimulationTransactionStatus @default(PENDING)
+  direction           String
+  amount              Decimal                   @db.Decimal(36, 18)
+  feeAmount           Decimal                   @default(0) @map("fee_amount") @db.Decimal(36, 18)
+  destinationAddress  String?                   @map("destination_address")
+  note                String?
+  reviewId            String?                   @unique @map("review_id") @db.Uuid
+  metadata            Json?
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+  completedAt         DateTime?                 @map("completed_at")
+
+  simulationAccount SimulationAccount   @relation(fields: [simulationAccountId], references: [id], onDelete: Cascade)
+  simulationBalance SimulationBalance?  @relation(fields: [simulationBalanceId], references: [id], onDelete: SetNull)
+  asset             Asset               @relation(fields: [assetId], references: [id])
+  wallet            Wallet?             @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  review            LargeTransferReview? @relation("SimulationReview", fields: [reviewId], references: [id], onDelete: SetNull)
+
+  @@index([simulationAccountId, createdAt])
+  @@index([status, createdAt])
+  @@map("simulation_transactions")
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,8 @@
 
 export const DEFAULT_LARGE_TRANSFER_USD_CENTS = 1_000_000n; // $10,000.00
 export const MAX_PRICE_AGE_MS = 5 * 60 * 1000;
+export const USER_TRANSFER_SOURCE_TYPE = 'USER_TRANSFER';
+export const SIMULATION_TRANSFER_SOURCE_TYPE = 'SIMULATION_TRANSACTION';
 
 export type LargeTransferStatus =
   'below_threshold' | 'review_required' | 'price_unavailable' | 'stale_price';

@@ -7,4 +7,6 @@ export {
   Permissions,
   SKIP_CSRF_KEY,
   SkipCsrf,
+  REQUIRE_STEP_UP_KEY,
+  RequireStepUp,
 } from '@auvora/nest-common';

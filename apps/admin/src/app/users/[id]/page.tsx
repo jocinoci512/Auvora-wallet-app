@@ -19,11 +19,13 @@ import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { ConfirmReasonDialog } from '../../../components/ConfirmReasonDialog';
 import { Subnav } from '../../../components/Subnav';
 import {
+  adminGetSimulationAccount,
   adminListUserDevices,
   adminListUserSessions,
   type AdminUserAccount,
   type AdminUserDevice,
   type AdminUserSession,
+  type SimulationAccountView,
 } from '../../../lib/admin-control-plane';
 import { displayName, formatWhen, shortId } from '../../../lib/admin-format';
 import { useAdminIdentity } from '../../../lib/admin-identity';
@@ -49,6 +51,21 @@ export default function AdminUserDetailPage(): ReactElement {
   const [devices, setDevices] = useState<AdminUserDevice[]>([]);
   const [sessions, setSessions] = useState<AdminUserSession[]>([]);
   const [audit, setAudit] = useState<SecurityAuditLog[]>([]);
+  const [portfolio, setPortfolio] = useState<{
+    wallets: Array<{
+      walletId: string;
+      assetCode: string;
+      assetChain: string;
+      ledgerBalance: string;
+      chainBalance: string | null;
+      valueUsd?: string | null;
+      priceUsd?: string | null;
+      lastSyncedAt: string | null;
+    }>;
+    portfolioValueUsd?: string | null;
+    portfolioLedgerTotal: string;
+  } | null>(null);
+  const [simulation, setSimulation] = useState<SimulationAccountView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -64,15 +81,25 @@ export default function AdminUserDetailPage(): ReactElement {
     setError(null);
     try {
       const client = createApiClient();
-      const [profile, walletResult, addressResult, deviceRows, sessionRows, auditResult] =
-        await Promise.all([
-          client.adminGetUser(userId),
-          client.adminListWallets({ ownerUserId: userId, take: 50 }).catch(() => ({ items: [] })),
-          client.adminListAddresses({ ownerUserId: userId, take: 50 }).catch(() => ({ items: [] })),
-          adminListUserDevices(userId).catch(() => []),
-          adminListUserSessions(userId).catch(() => []),
-          client.adminListAudit({ targetUserId: userId, take: 50 }).catch(() => ({ logs: [] })),
-        ]);
+      const [
+        profile,
+        walletResult,
+        addressResult,
+        deviceRows,
+        sessionRows,
+        auditResult,
+        portfolioResult,
+        simulationResult,
+      ] = await Promise.all([
+        client.adminGetUser(userId),
+        client.adminListWallets({ ownerUserId: userId, take: 50 }).catch(() => ({ items: [] })),
+        client.adminListAddresses({ ownerUserId: userId, take: 50 }).catch(() => ({ items: [] })),
+        adminListUserDevices(userId).catch(() => []),
+        adminListUserSessions(userId).catch(() => []),
+        client.adminListAudit({ targetUserId: userId, take: 50 }).catch(() => ({ logs: [] })),
+        client.getWalletEnginePortfolio(userId).catch(() => null),
+        adminGetSimulationAccount(userId).catch(() => null),
+      ]);
       const account = profile as AdminUserAccount;
       setUser(account);
       setStatus(account.status);
@@ -82,6 +109,8 @@ export default function AdminUserDetailPage(): ReactElement {
       setDevices(deviceRows);
       setSessions(sessionRows);
       setAudit(auditResult.logs);
+      setPortfolio(portfolioResult as typeof portfolio);
+      setSimulation(simulationResult);
     } catch (err) {
       setError(formatAdminError(err));
     } finally {
@@ -101,19 +130,18 @@ export default function AdminUserDetailPage(): ReactElement {
     try {
       const client = createApiClient();
       if (pending.kind === 'roles') {
-        await client.adminAssignUserRoles(user.id, roles);
+        await client.adminAssignUserRoles(user.id, roles, reason);
         setActionOk('Roles updated');
       } else if (pending.kind === 'status') {
-        await client.adminUpdateUserStatus(user.id, status);
+        await client.adminUpdateUserStatus(user.id, status, reason);
         setActionOk(`Status set to ${status}`);
       } else if (pending.kind === 'logout') {
-        await client.adminForceLogoutUser(user.id);
+        await client.adminForceLogoutUser(user.id, reason);
         setActionOk('Sessions revoked');
       } else if (pending.kind === 'mfa') {
-        await client.adminToggleUserMfa(user.id, !user.mfaEnabled);
+        await client.adminToggleUserMfa(user.id, !user.mfaEnabled, reason);
         setActionOk(user.mfaEnabled ? 'MFA disabled' : 'MFA enabled');
       }
-      void reason;
       setPending(null);
       await load();
     } catch (err) {
@@ -164,6 +192,7 @@ export default function AdminUserDetailPage(): ReactElement {
               <TabsTrigger value="account">Account</TabsTrigger>
               <TabsTrigger value="wallets">Wallets</TabsTrigger>
               <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+              <TabsTrigger value="simulation">Simulation</TabsTrigger>
               <TabsTrigger value="devices">Devices</TabsTrigger>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="connections">Connections</TabsTrigger>
@@ -232,10 +261,143 @@ export default function AdminUserDetailPage(): ReactElement {
             </TabsContent>
 
             <TabsContent value="portfolio">
-              <EmptyState
-                title="No Admin portfolio valuation"
-                description="Admin can inspect wallet metadata and public addresses only. Private keys and seed material are never exposed."
-              />
+              {!portfolio || portfolio.wallets.length === 0 ? (
+                <EmptyState
+                  title="No real on-chain portfolio summary"
+                  description="No wallet-engine portfolio summary is available for this user yet."
+                />
+              ) : (
+                <>
+                  <section className="admin-kpi-grid" aria-label="Real portfolio">
+                    <div className="admin-kpi">
+                      <span className="admin-kpi__label">Real On-Chain</span>
+                      <span className="admin-kpi__value">
+                        {portfolio.portfolioValueUsd
+                          ? `$${Number(portfolio.portfolioValueUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : 'Unavailable'}
+                      </span>
+                    </div>
+                    <div className="admin-kpi">
+                      <span className="admin-kpi__label">Ledger total</span>
+                      <span className="admin-kpi__value">{portfolio.portfolioLedgerTotal}</span>
+                    </div>
+                    <div className="admin-kpi">
+                      <span className="admin-kpi__label">Simulation</span>
+                      <span className="admin-kpi__value">
+                        {simulation
+                          ? `$${simulation.balances.reduce((sum, row) => sum + Number(row.valueUsd ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TEST`
+                          : 'Not enabled'}
+                      </span>
+                    </div>
+                  </section>
+                  <div className="table-scroll">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Asset</th>
+                          <th scope="col">Network</th>
+                          <th scope="col">Ledger</th>
+                          <th scope="col">On-chain</th>
+                          <th scope="col">Value</th>
+                          <th scope="col">Last sync</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {portfolio.wallets.map((row) => (
+                          <tr key={row.walletId}>
+                            <td>{row.assetCode}</td>
+                            <td>{row.assetChain}</td>
+                            <td>{row.ledgerBalance}</td>
+                            <td>{row.chainBalance ?? 'Unavailable'}</td>
+                            <td>
+                              {row.valueUsd
+                                ? `$${Number(row.valueUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : 'Price unavailable'}
+                            </td>
+                            <td>{formatWhen(row.lastSyncedAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="simulation">
+              {!simulation ? (
+                <EmptyState
+                  title="Simulation disabled"
+                  description="This user is not currently classified as a protected TEST account."
+                />
+              ) : (
+                <>
+                  <section className="admin-kpi-grid" aria-label="Simulation summary">
+                    <div className="admin-kpi">
+                      <span className="admin-kpi__label">Environment</span>
+                      <span className="admin-kpi__value">TEST</span>
+                    </div>
+                    <div className="admin-kpi">
+                      <span className="admin-kpi__label">Simulation balance</span>
+                      <span className="admin-kpi__value">
+                        $
+                        {simulation.balances
+                          .reduce((sum, row) => sum + Number(row.valueUsd ?? 0), 0)
+                          .toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{' '}
+                        TEST
+                      </span>
+                    </div>
+                    <div className="admin-kpi">
+                      <span className="admin-kpi__label">Assets</span>
+                      <span className="admin-kpi__value">{simulation.balances.length}</span>
+                    </div>
+                  </section>
+                  {simulation.balances.length === 0 ? (
+                    <EmptyState
+                      title="No simulated balances"
+                      description="Use the Simulation page to add test-only balances and scenarios."
+                    />
+                  ) : (
+                    <div className="table-scroll">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">Asset</th>
+                            <th scope="col">Network</th>
+                            <th scope="col">Quantity</th>
+                            <th scope="col">Value</th>
+                            <th scope="col">Label</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {simulation.balances.map((row) => (
+                            <tr key={row.id}>
+                              <td>{row.assetCode}</td>
+                              <td>{row.chain}</td>
+                              <td>{row.quantity}</td>
+                              <td>
+                                {row.valueUsd
+                                  ? `$${Number(row.valueUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : 'Price unavailable'}
+                              </td>
+                              <td>{row.label}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <p className="page-subtitle" style={{ marginTop: '1rem' }}>
+                    Simulation is isolated from genuine blockchain balances, signatures, and
+                    broadcasts.
+                    <br />
+                    <Link href={`/simulation`}>Open Simulation controls</Link>
+                  </p>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="devices">

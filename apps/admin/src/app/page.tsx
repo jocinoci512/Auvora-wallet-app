@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useState, type ReactElement } from 'react';
 import { RealtimeActivityFeed } from '../components/RealtimeActivityFeed';
 import { MfaEnabledNotice } from '../components/MfaEnabledNotice';
+import { adminListSimulationAccounts, adminReviewSummary } from '../lib/admin-control-plane';
 import { createApiClient, formatAdminError } from '../lib/api-client';
 import { useAdminRealtimeContext, useRealtimeRefetch } from '../lib/admin-realtime-context';
 import { healthLabel, healthTone } from '../lib/admin-format';
@@ -27,6 +28,10 @@ type OverviewState = {
   wallets: number | null;
   auditEvents: number | null;
   connectionSessions: number | null;
+  pendingReviews: number | null;
+  testAccounts: number | null;
+  queuedNotifications: number | null;
+  enabledFlags: number | null;
   ops: OpsDashboardOverview | null;
   analytics: AnalyticsInsightsSummary | null;
   errors: string[];
@@ -41,7 +46,11 @@ function shouldRefreshDashboard(event: AdminEvent): boolean {
     event.type === 'CONNECTION_CREATED' ||
     event.type === 'CONNECTION_DISCONNECTED' ||
     event.type === 'SECURITY_EVENT' ||
-    event.type === 'SERVICE_HEALTH_CHANGED'
+    event.type === 'SERVICE_HEALTH_CHANGED' ||
+    event.type === 'TRANSACTION_REVIEW_CREATED' ||
+    event.type === 'TRANSACTION_REVIEW_APPROVED' ||
+    event.type === 'TRANSACTION_REVIEW_REJECTED' ||
+    event.type === 'SIMULATION_BALANCE_CHANGED'
   );
 }
 
@@ -54,6 +63,10 @@ export default function HomePage(): ReactElement {
     wallets: null,
     auditEvents: null,
     connectionSessions: null,
+    pendingReviews: null,
+    testAccounts: null,
+    queuedNotifications: null,
+    enabledFlags: null,
     ops: null,
     analytics: null,
     errors: [],
@@ -70,6 +83,10 @@ export default function HomePage(): ReactElement {
       wallets: null,
       auditEvents: null,
       connectionSessions: null,
+      pendingReviews: null,
+      testAccounts: null,
+      queuedNotifications: null,
+      enabledFlags: null,
       ops: null,
       analytics: null,
       errors: [],
@@ -128,6 +145,28 @@ export default function HomePage(): ReactElement {
           if (!res.ok) return;
           const payload = (await res.json()) as { data?: { active?: number } };
           next.connectionSessions = payload.data?.active ?? null;
+        })
+        .catch(() => undefined),
+      adminReviewSummary()
+        .then((summary) => {
+          next.pendingReviews = summary.pending;
+        })
+        .catch(() => undefined),
+      adminListSimulationAccounts()
+        .then((items) => {
+          next.testAccounts = items.length;
+        })
+        .catch(() => undefined),
+      client
+        .adminNotificationDashboard()
+        .then((metrics) => {
+          next.queuedNotifications = metrics.queueLength ?? null;
+        })
+        .catch(() => undefined),
+      client
+        .adminInfrastructureDashboard()
+        .then((infra) => {
+          next.enabledFlags = infra.enabledFeatureFlagCount ?? null;
         })
         .catch(() => undefined),
     ];
@@ -198,6 +237,18 @@ export default function HomePage(): ReactElement {
             hint="WalletConnect sessions currently active"
           />
           <Metric label="Security events" value={state.auditEvents} href="/security/audit" />
+          <Metric
+            label="Pending reviews"
+            value={state.pendingReviews}
+            href="/transaction-reviews"
+          />
+          <Metric label="TEST accounts" value={state.testAccounts} href="/simulation" />
+          <Metric
+            label="Queued notifications"
+            value={state.queuedNotifications}
+            href="/notifications/queue"
+          />
+          <Metric label="Enabled flags" value={state.enabledFlags} href="/infrastructure/config" />
           <Metric
             label="Open alerts"
             value={state.ops?.openAlertCount ?? null}

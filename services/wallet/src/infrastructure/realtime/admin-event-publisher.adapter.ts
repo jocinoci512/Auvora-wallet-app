@@ -11,7 +11,13 @@ import { REDIS_PORT, type RedisPort } from '../redis/redis.port';
 export const ADMIN_EVENT_PUBLISHER = Symbol('ADMIN_EVENT_PUBLISHER');
 export const ADMIN_EVENTS_CHANNEL = 'auvora:admin:events';
 
-export type AdminEventType = 'WALLET_ADDED' | 'WALLET_REMOVED';
+export type AdminEventType =
+  | 'WALLET_ADDED'
+  | 'WALLET_REMOVED'
+  | 'SIMULATION_BALANCE_CHANGED'
+  | 'TRANSACTION_REVIEW_CREATED'
+  | 'TRANSACTION_REVIEW_APPROVED'
+  | 'TRANSACTION_REVIEW_REJECTED';
 export type AdminEventSeverity = 'info' | 'warning' | 'critical';
 
 export interface AdminEventInput {

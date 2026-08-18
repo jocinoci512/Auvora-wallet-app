@@ -27,6 +27,11 @@ export function buildWalletProxyOpenApiPaths(): OpenAPIObject['paths'] {
       ...proxyPath('get', 'List wallets for the authenticated user', walletTag),
       ...proxyPath('post', 'Create a wallet', walletTag),
     },
+    '/api/v1/wallets/transfers/prepare': proxyPath(
+      'post',
+      'Prepare a user transfer and persist a large-transfer review when required',
+      walletTag,
+    ),
     '/api/v1/wallets/{walletId}': {
       ...proxyPath('get', 'Get wallet details', walletTag),
       ...proxyPath('patch', 'Update wallet alias, label, or preferences', walletTag),
@@ -76,13 +81,6 @@ export function buildWalletProxyOpenApiPaths(): OpenAPIObject['paths'] {
     '/api/v1/admin/wallets/{walletId}/archive': proxyPath(
       'post',
       'Archive wallet (admin)',
-      adminTag,
-    ),
-    '/api/v1/admin/wallets/{walletId}/credit': proxyPath('post', 'Credit wallet (admin)', adminTag),
-    '/api/v1/admin/wallets/{walletId}/debit': proxyPath('post', 'Debit wallet (admin)', adminTag),
-    '/api/v1/admin/wallets/{walletId}/transfer': proxyPath(
-      'post',
-      'Internal transfer (admin)',
       adminTag,
     ),
     '/api/v1/admin/wallets/{walletId}/balance': proxyPath(

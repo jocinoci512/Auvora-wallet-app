@@ -13,6 +13,8 @@ export type {
   WalletTransaction,
   CreateWalletInput,
   UpdateWalletInput,
+  PrepareTransferInput,
+  PrepareTransferResult,
   AdminListWalletsQuery,
   StatusChangeInput,
   ChainNetwork,

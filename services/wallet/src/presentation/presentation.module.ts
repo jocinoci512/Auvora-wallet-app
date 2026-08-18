@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PassportModule } from '@nestjs/passport';
 import { ApplicationModule } from '../application/application.module';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { AdminSimulationController } from './controllers/admin-simulation.controller';
 import { AdminWalletsController } from './controllers/admin-wallets.controller';
 import { InternalLedgerController } from './controllers/internal-ledger.controller';
 import { InternalWalletController } from './controllers/internal-wallet.controller';
@@ -30,6 +31,7 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
     WalletsController,
     WalletEngineController,
     AdminWalletsController,
+    AdminSimulationController,
     InternalLedgerController,
     InternalWalletController,
   ],

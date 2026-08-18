@@ -31,6 +31,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'simulation:read',
   ],
   security_analyst: [
     'users:read',
@@ -49,6 +50,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'simulation:read',
   ],
   admin: [
     'users:read',
@@ -71,6 +73,9 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'transactions:review:large',
+    'simulation:read',
+    'simulation:manage',
   ],
   super_admin: [
     'users:read',
@@ -95,6 +100,9 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:manage',
     'health:read',
     'realtime:read',
+    'transactions:review:large',
+    'simulation:read',
+    'simulation:manage',
   ],
 };
 
@@ -137,9 +145,24 @@ export function hasPermission(
 }
 
 export function canEnterAdminControlPlane(operator: AdminOperator | null | undefined): boolean {
-  return Boolean(operator?.roles.includes('super_admin'));
+  return Boolean(
+    operator?.roles.some((role) =>
+      ['super_admin', 'admin', 'security_analyst', 'support', 'read_only'].includes(role),
+    ),
+  );
 }
 
 export function canMutate(operator: AdminOperator | null | undefined): boolean {
-  return canEnterAdminControlPlane(operator);
+  const permissions = operatorPermissions(operator);
+  return Array.from(permissions).some(
+    (permission) =>
+      permission.endsWith(':write') ||
+      permission.endsWith(':manage') ||
+      permission.endsWith(':revoke') ||
+      permission.endsWith(':suspend') ||
+      permission.endsWith(':reactivate') ||
+      permission === 'roles:manage' ||
+      permission === 'transactions:review:large' ||
+      permission === 'simulation:manage',
+  );
 }

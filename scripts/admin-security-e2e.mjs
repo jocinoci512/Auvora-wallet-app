@@ -702,13 +702,14 @@ async function main() {
       '/api/v1/admin/wallets/00000000-0000-0000-0000-000000000001/credit',
       cookies,
       csrf2,
-      { method: 'POST', body: { amount: '1', description: 'should be forbidden' } },
+      { method: 'POST', body: { amount: '1', description: 'removed unsafe mutation' } },
     );
     record(
-      'SUPER_ADMIN cannot credit/sign user wallets',
-      walletMut.status === 403 ||
+      'removed admin wallet credit route is not implemented',
+      walletMut.status === 404 ||
+        walletMut.status === 405 ||
+        walletMut.status === 403 ||
         walletMut.status === 401 ||
-        walletMut.status === 404 ||
         walletMut.status === 504 ||
         walletMut.status === 502 ||
         walletMut.status === 503,

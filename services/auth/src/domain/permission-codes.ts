@@ -53,6 +53,8 @@ export const PERMISSION_ADMINS_MANAGE: PermissionCode = 'admins:manage';
 export const PERMISSION_ROLES_READ: PermissionCode = 'roles:read';
 export const PERMISSION_HEALTH_READ: PermissionCode = 'health:read';
 export const PERMISSION_REALTIME_READ: PermissionCode = 'realtime:read';
+export const PERMISSION_SIMULATION_READ: PermissionCode = 'simulation:read';
+export const PERMISSION_SIMULATION_MANAGE: PermissionCode = 'simulation:manage';
 
 /** All admin control-plane permission codes introduced for the 5-role model. */
 export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
@@ -79,6 +81,8 @@ export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_HEALTH_READ,
   PERMISSION_REALTIME_READ,
   PERMISSION_TRANSACTIONS_REVIEW_LARGE,
+  PERMISSION_SIMULATION_READ,
+  PERMISSION_SIMULATION_MANAGE,
 ] as const;
 
 export const ROLE_USER = 'user';
@@ -126,6 +130,7 @@ const SUPPORT_PERMISSIONS: readonly PermissionCode[] = [
   ...READ_ONLY_ADMIN_PERMISSIONS,
   PERMISSION_USERS_WRITE,
   PERMISSION_SUPPORT_WRITE,
+  PERMISSION_SIMULATION_READ,
 ] as const;
 
 const SECURITY_ANALYST_PERMISSIONS: readonly PermissionCode[] = [
@@ -134,6 +139,7 @@ const SECURITY_ANALYST_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_SESSIONS_REVOKE,
   PERMISSION_DEVICES_REVOKE,
   PERMISSION_CONNECTIONS_REVOKE,
+  PERMISSION_SIMULATION_READ,
 ] as const;
 
 const ADMIN_PERMISSIONS: readonly PermissionCode[] = [
@@ -147,6 +153,8 @@ const ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_SECURITY_MANAGE,
   PERMISSION_SUPPORT_WRITE,
   PERMISSION_TRANSACTIONS_REVIEW_LARGE,
+  PERMISSION_SIMULATION_READ,
+  PERMISSION_SIMULATION_MANAGE,
 ] as const;
 
 // SUPER_ADMIN additionally manages admins and roles (reserved elevation powers).

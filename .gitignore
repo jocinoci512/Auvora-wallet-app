@@ -37,6 +37,8 @@ Thumbs.db
 # Logs
 logs
 *.log
+!apps/admin/src/app/observability/logs/
+!apps/admin/src/app/observability/logs/**
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*

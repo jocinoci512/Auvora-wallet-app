@@ -5,11 +5,14 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 import { UserStatus } from '@auvora/types';
 
@@ -44,6 +47,13 @@ export class AdminUpdateStatusDto {
   @ApiProperty({ enum: UserStatus })
   @IsEnum(UserStatus)
   status!: UserStatus;
+
+  @ApiProperty({ description: 'Administrative reason recorded in the audit log.' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(500)
+  reason!: string;
 }
 
 export class AdminAssignRolesDto {
@@ -51,12 +61,35 @@ export class AdminAssignRolesDto {
   @IsArray()
   @IsString({ each: true })
   roles!: string[];
+
+  @ApiProperty({ description: 'Administrative reason recorded in the audit log.' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(500)
+  reason!: string;
 }
 
 export class AdminToggleMfaDto {
   @ApiProperty()
   @IsBoolean()
   enabled!: boolean;
+
+  @ApiProperty({ description: 'Administrative reason recorded in the audit log.' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(500)
+  reason!: string;
+}
+
+export class AdminReasonDto {
+  @ApiProperty({ description: 'Administrative reason recorded in the audit log.' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(500)
+  reason!: string;
 }
 
 export class AdminAuditQueryDto {
