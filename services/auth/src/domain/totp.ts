@@ -5,6 +5,10 @@ const TOTP_PERIOD_SECONDS = 30;
 const TOTP_DIGITS = 6;
 /** Bounded clock skew: previous, current, and next 30s window. */
 export const TOTP_SKEW_WINDOWS = 1;
+/** Authenticator account issuer. Display-only; TOTP is derived from the secret. */
+export const TOTP_ISSUER = 'Auvora Wallet';
+/** Authenticator account label. Avoids putting the operator email in the otpauth URI. */
+export const TOTP_ACCOUNT_LABEL = 'Admin';
 
 export function generateTotpSecret(bytes = 20): string {
   return encodeBase32(randomBytes(bytes));
@@ -15,7 +19,7 @@ export function buildOtpauthUrl(input: {
   accountName: string;
   issuer?: string;
 }): string {
-  const issuer = encodeURIComponent(input.issuer ?? 'Auvora Admin');
+  const issuer = encodeURIComponent(input.issuer ?? TOTP_ISSUER);
   const account = encodeURIComponent(input.accountName);
   return `otpauth://totp/${issuer}:${account}?secret=${input.secret}&issuer=${issuer}&algorithm=SHA1&digits=${TOTP_DIGITS}&period=${TOTP_PERIOD_SECONDS}`;
 }

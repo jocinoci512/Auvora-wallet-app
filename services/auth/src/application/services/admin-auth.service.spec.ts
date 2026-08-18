@@ -217,22 +217,31 @@ describe('AdminAuthService', () => {
 
   it('6-8. MFA enrollment + valid TOTP + invalid TOTP', async () => {
     const user = adminUser();
-    const { service, users, totp, fieldEncryption } = createService();
+    const { service, users, totp } = createService();
     users.findByEmail.mockResolvedValue(user);
     users.findById.mockResolvedValue(user);
     users.toggleMfa.mockResolvedValue(user);
     const login = await service.login(loginInput, {});
     expect(login.status).toBe('mfa_enrollment_required');
     if (login.status === 'authenticated') throw new Error('expected enrollment');
+    let pending: {
+      secretEncrypted: string;
+      confirmedAt: Date | null;
+      lastUsedStep: bigint | null;
+    } | null = null;
+    totp.findByUserId.mockImplementation(async () => pending);
+    totp.upsertPending.mockImplementation(async (_userId: string, secretEncrypted: string) => {
+      pending = { secretEncrypted, confirmedAt: null, lastUsedStep: null };
+      return pending;
+    });
     const start = await service.startEnrollment(login.mfaToken, {});
     expect(start.secret).toBeTruthy();
-    expect(start.otpauthUrl.startsWith('otpauth://totp/')).toBe(true);
-    const encrypted = fieldEncryption.encrypt(start.secret);
-    totp.findByUserId.mockResolvedValue({
-      secretEncrypted: encrypted,
-      confirmedAt: null,
-      lastUsedStep: null,
-    });
+    expect(start.otpauthUrl.startsWith('otpauth://totp/Auvora%20Wallet:Admin?')).toBe(true);
+    expect(start.otpauthUrl).toContain('issuer=Auvora%20Wallet');
+    expect(start.otpauthUrl).not.toMatch(/@|admin@auvora/);
+    const startAgain = await service.startEnrollment(login.mfaToken, {});
+    expect(startAgain.secret).toBe(start.secret);
+    expect(totp.upsertPending).toHaveBeenCalledTimes(1);
     const step = Math.floor(now.getTime() / 1000 / 30);
     const code = generateTotpCode(start.secret, step);
     const confirmed = await service.confirmEnrollment(login.mfaToken, code, {});
@@ -269,6 +278,24 @@ describe('AdminAuthService', () => {
     users.findByEmail.mockResolvedValue(adminUser({ mfaEnabled: false }));
     const result = await service.login(loginInput, {});
     expect(result.status).toBe('mfa_enrollment_required');
+  });
+
+  it('does not start enrollment from a login MFA challenge', async () => {
+    const secret = generateTotpSecret();
+    const user = adminUser();
+    const { service, users, totp, fieldEncryption } = createService();
+    users.findByEmail.mockResolvedValue(user);
+    users.findById.mockResolvedValue(user);
+    totp.findByUserId.mockResolvedValue({
+      secretEncrypted: fieldEncryption.encrypt(secret),
+      confirmedAt: now,
+      lastUsedStep: null,
+    });
+    const login = await service.login(loginInput, {});
+    if (login.status !== 'mfa_required') throw new Error('expected mfa');
+    await expect(service.startEnrollment(login.mfaToken, {})).rejects.toBeInstanceOf(
+      UnauthorizedError,
+    );
   });
 
   it('11-12. recovery code works once then reuse is rejected', async () => {

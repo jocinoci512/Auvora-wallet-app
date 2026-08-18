@@ -16,7 +16,7 @@ interface NavItem {
 }
 
 const PRIMARY: NavItem[] = [
-  { href: '/', label: 'Dashboard', permission: 'health:read' },
+  { href: '/dashboard', label: 'Dashboard', permission: 'health:read' },
   { href: '/users', label: 'Users', permission: 'users:read' },
   { href: '/wallets', label: 'Wallets', permission: 'wallets:read' },
   { href: '/connections', label: 'Connections', permission: 'connections:read' },
@@ -40,7 +40,7 @@ const MORE: NavItem[] = [
 ];
 
 function isCurrent(pathname: string, href: string): boolean {
-  if (href === '/') return pathname === '/';
+  if (href === '/dashboard' || href === '/') return pathname === '/' || pathname === '/dashboard';
   if (href === '/security') return pathname === '/security';
   if (href === '/observability') {
     return (

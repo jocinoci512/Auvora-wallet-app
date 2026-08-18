@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Button, Field, Input } from '@auvora/ui';
 import { AuthScreen } from '../../components/AdminChrome';
-import { formatApiError } from '../../lib/api-client';
 import { adminVerifyRecovery } from '../../lib/admin-session';
+import { formatMfaAuthError } from '../../lib/mfa-enrollment';
 
 export default function RecoveryPage(): ReactElement {
   const router = useRouter();
@@ -25,9 +25,9 @@ export default function RecoveryPage(): ReactElement {
     try {
       await adminVerifyRecovery(mfaToken, code);
       sessionStorage.removeItem('auvora_admin_mfa_token');
-      router.replace('/');
+      router.replace('/dashboard');
     } catch (err) {
-      setError(formatApiError(err));
+      setError(formatMfaAuthError(err));
     } finally {
       setPending(false);
     }

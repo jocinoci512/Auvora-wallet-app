@@ -11,8 +11,9 @@ import {
   StatusBadge,
 } from '@auvora/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { Suspense, useCallback, useEffect, useState, type ReactElement } from 'react';
 import { RealtimeActivityFeed } from '../components/RealtimeActivityFeed';
+import { MfaEnabledNotice } from '../components/MfaEnabledNotice';
 import { createApiClient, formatAdminError } from '../lib/api-client';
 import { useAdminRealtimeContext, useRealtimeRefetch } from '../lib/admin-realtime-context';
 import { healthLabel, healthTone } from '../lib/admin-format';
@@ -158,6 +159,10 @@ export default function HomePage(): ReactElement {
           </div>
         }
       />
+
+      <Suspense fallback={null}>
+        <MfaEnabledNotice />
+      </Suspense>
 
       {activeMaintenance.length > 0 ? (
         <Alert tone="warn" title="Maintenance notices">

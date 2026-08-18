@@ -393,7 +393,7 @@ code {
 }
 
 .admin-auth-card {
-  width: min(28rem, 100%);
+  width: min(32rem, 100%);
   border: 1px solid var(--auvora-color-border, var(--auvora-border));
   border-radius: var(--auvora-radius-md, 10px);
   background: var(--auvora-color-surface-solid, var(--auvora-color-surface));
@@ -441,6 +441,103 @@ code {
   display: grid;
   place-items: center;
   gap: 0.75rem;
+}
+
+.admin-mfa-steps {
+  margin: 0 0 1.15rem;
+  padding-left: 1.2rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-mfa-qr {
+  display: grid;
+  justify-items: center;
+  gap: 0.65rem;
+  margin: 0 auto 1.25rem;
+  padding: 1rem;
+  width: fit-content;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.admin-mfa-qr img,
+.admin-mfa-qr__placeholder,
+.admin-mfa-qr--loading {
+  width: 256px;
+  height: 256px;
+  image-rendering: pixelated;
+}
+
+.admin-mfa-qr__placeholder,
+.admin-mfa-qr--loading {
+  background: #f3f5f7;
+  border-radius: 8px;
+}
+
+.admin-mfa-qr figcaption {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.admin-mfa-manual {
+  margin: 0 0 1.25rem;
+  color: var(--auvora-color-text-muted, var(--auvora-muted));
+}
+
+.admin-mfa-manual summary {
+  cursor: pointer;
+}
+
+.admin-mfa-manual__meta {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.admin-mfa-manual__meta div {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 0.5rem;
+}
+
+.admin-mfa-manual__meta dt {
+  margin: 0;
+  font-weight: 600;
+}
+
+.admin-mfa-manual__meta dd {
+  margin: 0;
+}
+
+.admin-mfa-manual-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.admin-mfa-manual-key p {
+  margin: 0;
+  word-break: break-all;
+}
+
+.admin-mfa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0 0 1rem;
+}
+
+.admin-mfa-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
 }
 
 .admin-shell {

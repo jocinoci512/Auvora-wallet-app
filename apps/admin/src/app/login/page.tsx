@@ -21,8 +21,8 @@ function LoginForm(): ReactElement {
     setError(null);
     try {
       const result = await adminLogin(email, password);
-      const next = params.get('next') || '/';
-      const dest = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      const next = params.get('next') || '/dashboard';
+      const dest = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
       if (result.status === 'authenticated') {
         router.replace(dest);
         return;

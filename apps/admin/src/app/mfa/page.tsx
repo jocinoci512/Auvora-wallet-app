@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Button, Field, Input } from '@auvora/ui';
 import { AuthScreen } from '../../components/AdminChrome';
-import { formatApiError } from '../../lib/api-client';
 import { adminVerifyMfa } from '../../lib/admin-session';
+import { formatMfaAuthError, normalizeTotpInput } from '../../lib/mfa-enrollment';
 
 export default function MfaPage(): ReactElement {
   const router = useRouter();
@@ -25,9 +25,14 @@ export default function MfaPage(): ReactElement {
     try {
       await adminVerifyMfa(mfaToken, code);
       sessionStorage.removeItem('auvora_admin_mfa_token');
-      router.replace('/');
+      router.replace('/dashboard');
     } catch (err) {
-      setError(formatApiError(err));
+      const status = (err as { status?: number }).status;
+      if (status === 401 && /expired/i.test((err as Error).message)) {
+        router.replace('/session-expired');
+        return;
+      }
+      setError(formatMfaAuthError(err));
     } finally {
       setPending(false);
     }
@@ -35,8 +40,8 @@ export default function MfaPage(): ReactElement {
 
   return (
     <AuthScreen
-      title="Authenticator challenge"
-      description="Enter the 6-digit code from your authenticator app. Recovery codes are for one-time use only."
+      title="Two-factor authentication"
+      description="Enter the 6-digit code from Google Authenticator."
     >
       {error ? (
         <Alert tone="error" title="Verification failed">
@@ -44,17 +49,20 @@ export default function MfaPage(): ReactElement {
         </Alert>
       ) : null}
       <form className="admin-auth-form" onSubmit={(e) => void onSubmit(e)}>
-        <Field label="One-time code">
+        <Field label="6-digit code" htmlFor="admin-totp-challenge">
           <Input
+            id="admin-totp-challenge"
             inputMode="numeric"
             autoComplete="one-time-code"
+            autoFocus
+            maxLength={6}
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => setCode(normalizeTotpInput(e.target.value))}
             required
           />
         </Field>
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Verifying…' : 'Verify'}
+        <Button type="submit" disabled={pending || code.length !== 6}>
+          {pending ? 'Verifying…' : 'Verify & Continue'}
         </Button>
         <Button type="button" variant="ghost" onClick={() => router.push('/recovery')}>
           Use a recovery code

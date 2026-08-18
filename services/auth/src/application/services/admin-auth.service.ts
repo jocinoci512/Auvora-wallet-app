@@ -15,6 +15,8 @@ import {
   buildOtpauthUrl,
   generateRecoveryCodes,
   generateTotpSecret,
+  TOTP_ACCOUNT_LABEL,
+  TOTP_ISSUER,
   isCurrentlyLocked,
   normalizeRecoveryCode,
   shouldLock,
@@ -198,20 +200,32 @@ export class AdminAuthService {
   ): Promise<{ otpauthUrl: string; secret: string }> {
     await this.enforceMfaRateLimit(ctx, mfaToken);
     const challenge = await this.getChallenge(mfaToken);
-    if (challenge.purpose !== 'enroll' && challenge.purpose !== 'login') {
+    if (challenge.purpose !== 'enroll') {
       throw new UnauthorizedError('Invalid MFA challenge');
     }
     const user = await this.requireAdminUser(challenge.userId);
+    const existing = await this.totp.findByUserId(user.id);
+    if (existing?.confirmedAt) {
+      throw new UnauthorizedError('Invalid MFA challenge');
+    }
+    const otpauthFor = (secret: string): string =>
+      buildOtpauthUrl({
+        secret,
+        accountName: TOTP_ACCOUNT_LABEL,
+        issuer: TOTP_ISSUER,
+      });
+    if (existing?.secretEncrypted) {
+      const secret = this.fieldEncryption.decrypt(existing.secretEncrypted);
+      challenge.enrollSecretEncrypted = existing.secretEncrypted;
+      await this.putChallenge(challenge, mfaToken);
+      return { secret, otpauthUrl: otpauthFor(secret) };
+    }
     const secret = generateTotpSecret();
     const secretEncrypted = this.fieldEncryption.encrypt(secret);
     await this.totp.upsertPending(user.id, secretEncrypted);
-    challenge.purpose = 'enroll';
     challenge.enrollSecretEncrypted = secretEncrypted;
     await this.putChallenge(challenge, mfaToken);
-    return {
-      secret,
-      otpauthUrl: buildOtpauthUrl({ secret, accountName: user.email }),
-    };
+    return { secret, otpauthUrl: otpauthFor(secret) };
   }
 
   async confirmEnrollment(
@@ -221,6 +235,9 @@ export class AdminAuthService {
   ): Promise<{ tokens: AdminAuthTokens; recoveryCodes: string[] }> {
     await this.enforceMfaRateLimit(ctx, mfaToken);
     const challenge = await this.getChallenge(mfaToken);
+    if (challenge.purpose !== 'enroll') {
+      throw new UnauthorizedError('Invalid MFA challenge');
+    }
     const user = await this.requireAdminUser(challenge.userId);
     const factor = await this.totp.findByUserId(user.id);
     if (!factor) {
@@ -260,6 +277,9 @@ export class AdminAuthService {
   async verifyMfa(mfaToken: string, code: string, ctx: RequestContext): Promise<AdminAuthTokens> {
     await this.enforceMfaRateLimit(ctx, mfaToken);
     const challenge = await this.getChallenge(mfaToken);
+    if (challenge.purpose !== 'login') {
+      throw new UnauthorizedError('Invalid MFA challenge');
+    }
     const user = await this.requireAdminUser(challenge.userId);
     const factor = await this.totp.findByUserId(user.id);
     if (!factor?.confirmedAt) {
@@ -288,6 +308,9 @@ export class AdminAuthService {
   ): Promise<AdminAuthTokens> {
     await this.enforceMfaRateLimit(ctx, mfaToken);
     const challenge = await this.getChallenge(mfaToken);
+    if (challenge.purpose !== 'login') {
+      throw new UnauthorizedError('Invalid MFA challenge');
+    }
     const user = await this.requireAdminUser(challenge.userId);
     const normalized = normalizeRecoveryCode(recoveryCode);
     const active = await this.recovery.listActiveByUserId(user.id);

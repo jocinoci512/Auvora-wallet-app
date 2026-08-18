@@ -80,6 +80,9 @@ importers:
       next:
         specifier: ^15.2.2
         version: 15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -99,6 +102,9 @@ importers:
       '@types/node':
         specifier: ^22.13.10
         version: 22.20.1
+      '@types/qrcode':
+        specifier: ^1.5.6
+        version: 1.5.6
       '@types/react':
         specifier: ^19.0.10
         version: 19.2.17
