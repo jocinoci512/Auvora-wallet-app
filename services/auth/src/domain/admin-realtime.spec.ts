@@ -67,6 +67,7 @@ describe('admin-realtime contract', () => {
       'private_key',
       'mnemonic',
       'seedPhrase',
+      'recoveryPhrase',
       'seed',
       'symKey',
       'sym_key',

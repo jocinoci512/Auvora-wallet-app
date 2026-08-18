@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../intelligence/intelligence_controller.dart';
+import '../preferences/preferences_controller.dart';
+import '../privacy/sensitive_screen.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'app_shell.dart';
@@ -46,7 +48,9 @@ class _ImportScreenState extends State<ImportScreen> {
     final error = _localError ?? c.errorMessage;
     final count = _wordCount;
 
-    return ScreenScaffold(
+    return SensitiveScope(
+      keepEnabledOnExit: context.watch<PreferencesController>().screenshotProtectionHint,
+      child: ScreenScaffold(
       title: 'Import wallet',
       subtitle:
           'Enter the recovery phrase from your existing wallet. Validation happens on this device.',
@@ -58,7 +62,7 @@ class _ImportScreenState extends State<ImportScreen> {
           const SoftBanner(
             tone: BannerTone.info,
             message:
-                'Make sure nobody can see your screen. Auvora never asks for this phrase by email or chat.',
+                'Make sure nobody can see your screen. Recovery words are BIP-39 English — changing the app language does not change these words. Auvora never asks for this phrase by email or chat.',
           ),
           const SizedBox(height: 16),
           TextField(
@@ -95,6 +99,7 @@ class _ImportScreenState extends State<ImportScreen> {
         onPressed: c.busy || (count != 12 && count != 24) ? null : () => _submit(c),
         child: Text(c.busy ? 'Importing…' : 'Import on this device'),
       ),
+    ),
     );
   }
 }

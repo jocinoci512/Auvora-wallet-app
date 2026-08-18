@@ -31,6 +31,12 @@ export const ADMIN_EVENT_TYPES = [
   'SIGN_REQUEST_FAILED',
   'SECURITY_EVENT',
   'SERVICE_HEALTH_CHANGED',
+  'FEATURE_FLAG_CHANGED',
+  'ANNOUNCEMENT',
+  'MAINTENANCE_CHANGED',
+  'TRANSACTION_REVIEW_REQUESTED',
+  'TRANSACTION_REVIEW_DECIDED',
+  'COMPLIANCE_STATUS_CHANGED',
 ] as const;
 
 export type AdminEventType = (typeof ADMIN_EVENT_TYPES)[number];
@@ -87,6 +93,7 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'privatekey',
   'private_key',
   'mnemonic',
+  'recoveryphrase',
   'seed',
   'symkey',
   'sym_key',

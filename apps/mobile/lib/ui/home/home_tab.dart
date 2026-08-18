@@ -6,6 +6,7 @@ import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
+import '../../release/integration_config.dart';
 import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
@@ -162,7 +163,28 @@ class _MobileHome extends StatelessWidget {
                   onReceive: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
                   ),
-                  onBuy: () => openDigitalAssetFlow(context, EngineOp.buy),
+                  onBuy: () {
+                    final buyLive = IntegrationConfig.onRampPartnerCheckoutEnabled &&
+                        (IntegrationConfig.moonPayConfigured ||
+                            IntegrationConfig.rampConfigured ||
+                            IntegrationConfig.transakConfigured);
+                    if (buyLive) {
+                      openDigitalAssetFlow(context, EngineOp.buy);
+                      return;
+                    }
+                    showDialog<void>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Buy'),
+                        content: const Text(
+                          'Buy stays unavailable until a configured on-ramp partner is live for this build.',
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+                        ],
+                      ),
+                    );
+                  },
                 )
               : _PortfolioHero(
                   portfolio: portfolio,
@@ -808,8 +830,8 @@ class _EmptyPortfolio extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           fundingUnlocked
-              ? 'Your keys are secured on this device. Receive crypto or buy to see your portfolio here.'
-              : 'Your keys are secured on this device. Real funding receive is locked in Alpha — explore Buy (preview) or open Receive to see why QR/copy stay off.',
+              ? 'Your keys are secured on this device. Receive crypto or wait for Buy when an on-ramp is configured.'
+              : 'Your keys are secured on this device. Receive is locked in this build.',
           style: const TextStyle(color: AetherColors.muted, height: 1.45),
         ),
         const SizedBox(height: 18),
@@ -818,7 +840,7 @@ class _EmptyPortfolio extends StatelessWidget {
           const SizedBox(height: 10),
           OutlinedButton(onPressed: onBuy, child: const Text('Buy')),
         ] else ...[
-          FilledButton(onPressed: onBuy, child: const Text('Buy (preview)')),
+          FilledButton(onPressed: onBuy, child: const Text('Buy')),
           const SizedBox(height: 10),
           OutlinedButton(onPressed: onReceive, child: const Text('Receive (locked)')),
         ],
@@ -837,36 +859,70 @@ class _EmptyPortfolio extends StatelessWidget {
 class _PrimaryActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final fundingUnlocked = ReleaseConfig.allowFundingAddresses;
     final broadcastOn = ReleaseConfig.liveBroadcastEnabled;
-    final primary = [
-      (Icons.arrow_upward_rounded, broadcastOn ? 'Send' : 'Send (preview)'),
-      (Icons.arrow_downward_rounded, fundingUnlocked ? 'Receive' : 'Receive (locked)'),
-      (Icons.swap_horiz_rounded, broadcastOn ? 'Swap' : 'Swap (preview)'),
-      (Icons.shopping_bag_outlined, broadcastOn ? 'Buy' : 'Buy (preview)'),
-    ];
+    final buyLive = IntegrationConfig.onRampPartnerCheckoutEnabled &&
+        (IntegrationConfig.moonPayConfigured ||
+            IntegrationConfig.rampConfigured ||
+            IntegrationConfig.transakConfigured);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!fundingUnlocked) ...[
-          const SoftBanner(
-            tone: BannerTone.warn,
-            message:
-                'Receive funding is locked in Alpha. Send/Swap/Buy run as on-device previews — live broadcast stays off.',
-          ),
-          const SizedBox(height: 10),
-        ],
+        SoftBanner(
+          tone: BannerTone.warn,
+          message: broadcastOn
+              ? 'Live broadcast is on. Double-check network and amount before you confirm.'
+              : 'Send signs on this device. Live broadcast stays off until independent transaction safety review.',
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
-            for (var i = 0; i < primary.length; i++) ...[
-              if (i > 0) const SizedBox(width: 10),
-              Expanded(
-                child: _ActionButton(
-                  icon: primary[i].$1,
-                  label: primary[i].$2,
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.arrow_upward_rounded,
+                label: 'Send',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const SendFlowScreen()),
                 ),
               ),
-            ],
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.arrow_downward_rounded,
+                label: 'Receive',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.swap_horiz_rounded,
+                label: 'Swap',
+                onTap: () => _showUnavailable(
+                  context,
+                  title: 'Swap',
+                  body:
+                      'Swap stays unavailable until a production quote provider is wired. Preview simulators are not offered as live trading.',
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.shopping_bag_outlined,
+                label: 'Buy',
+                onTap: buyLive
+                    ? () => openDigitalAssetFlow(context, EngineOp.buy)
+                    : () => _showUnavailable(
+                          context,
+                          title: 'Buy',
+                          body:
+                              'Buy stays unavailable until an on-ramp partner is configured for this build. No card is charged from this button.',
+                        ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -878,6 +934,19 @@ class _PrimaryActions extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showUnavailable(BuildContext context, {required String title, required String body}) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('$title unavailable'),
+        content: Text(body, style: const TextStyle(height: 1.45)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
     );
   }
 
@@ -936,10 +1005,11 @@ class _PrimaryActions extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, required this.label});
+  const _ActionButton({required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -950,28 +1020,7 @@ class _ActionButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () {
-            if (label == 'Send') {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const SendFlowScreen()),
-              );
-              return;
-            }
-            if (label == 'Receive') {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
-              );
-              return;
-            }
-            if (label == 'Swap') {
-              openDigitalAssetFlow(context, EngineOp.swap);
-              return;
-            }
-            if (label == 'Buy') {
-              openDigitalAssetFlow(context, EngineOp.buy);
-              return;
-            }
-          },
+          onTap: onTap,
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),

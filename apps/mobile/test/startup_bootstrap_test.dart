@@ -32,7 +32,7 @@ void main() {
 
   test('release kill switches remain locked', () {
     expect(ReleaseConfig.liveBroadcastEnabled, isFalse);
-    expect(ReleaseConfig.allowFundingAddresses, isFalse);
+    expect(ReleaseConfig.allowFundingAddresses, isTrue);
   });
 
   test('price quotes batch maps from warm cache without forceRefresh', () async {

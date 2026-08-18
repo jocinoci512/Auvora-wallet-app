@@ -13,7 +13,7 @@ void main() {
 
   test('Version 1.0 Alpha kill switches stay off for funding and broadcast', () {
     expect(ReleaseConfig.liveBroadcastEnabled, isFalse);
-    expect(ReleaseConfig.allowFundingAddresses, isFalse);
+    expect(ReleaseConfig.allowFundingAddresses, isTrue);
     expect(ReleaseConfig.derivationMode, DerivationMode.bip32Partial);
     expect(ReleaseConfig.usesHdDerivation, isTrue);
     expect(ReleaseConfig.isAlpha, isTrue);

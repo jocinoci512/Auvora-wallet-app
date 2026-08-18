@@ -27,6 +27,7 @@ const MUTATING = [
   'support:write',
   'admins:manage',
   'roles:manage',
+  'transactions:review:large',
 ];
 
 // Wallet custody / signing must never be grantable to any admin role.
@@ -83,6 +84,7 @@ describe('admin RBAC capability matrix', () => {
     expect(has(ROLE_ADMIN, 'security:manage')).toBe(true);
     expect(has(ROLE_ADMIN, 'admins:manage')).toBe(false);
     expect(has(ROLE_ADMIN, 'roles:manage')).toBe(false);
+    expect(has(ROLE_ADMIN, 'transactions:review:large')).toBe(true);
   });
 
   it('SUPER_ADMIN is a strict superset of ADMIN plus admins:manage and roles:manage', () => {

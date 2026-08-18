@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../connections/connections_controller.dart';
-import '../../crypto/wallet_crypto.dart';
+import '../../crypto/phrase_confirmation.dart';
 import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../security/security_controller.dart';
@@ -748,9 +748,8 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
     if (!allowed) return;
     final phrase = await wallet.revealRecoveryPhrase();
     if (phrase == null || !mounted) return;
-    final words = WalletCrypto.words(phrase);
-    final quiz = WalletCrypto.pickQuizIndices(words.length);
-    final answers = <int, String>{};
+    final session = PhraseConfirmationSession.fromMnemonic(phrase);
+    String? error;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -762,24 +761,32 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Pick the correct saved word for each prompt.'),
+                const Text('Pick the exact saved word for each position. Wrong answers stay on this step.'),
                 const SizedBox(height: 12),
-                for (final index in quiz) ...[
-                  Text('Word #${index + 1}', style: Theme.of(ctx).textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: WalletCrypto.quizChoices(words, index).map((option) {
-                      final selected = answers[index] == option;
-                      return ChoiceChip(
-                        label: Text(option),
-                        selected: selected,
-                        onSelected: (_) => setDialog(() => answers[index] = option),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 10),
+                Text(
+                  'Select word #${session.currentIndex + 1}',
+                  style: Theme.of(ctx).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: session.currentChoices.map((option) {
+                    final selected = session.answers[session.currentIndex] == option;
+                    return ChoiceChip(
+                      label: Text(option),
+                      selected: selected,
+                      onSelected: (_) => setDialog(() {
+                        final correct = session.select(option);
+                        error = session.error;
+                        if (correct) session.advanceIfCurrentCorrect();
+                      }),
+                    );
+                  }).toList(),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
                 ],
               ],
             ),
@@ -787,10 +794,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
             FilledButton(
-              onPressed: () {
-                final passed = quiz.every((index) => answers[index] == words[index]);
-                Navigator.pop(ctx, passed);
-              },
+              onPressed: session.complete ? () => Navigator.pop(ctx, true) : null,
               child: const Text('Verify'),
             ),
           ],

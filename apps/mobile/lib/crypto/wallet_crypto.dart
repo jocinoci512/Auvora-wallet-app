@@ -3,6 +3,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
+// ignore: implementation_imports
+import 'package:bip39/src/wordlists/english.dart' show WORDLIST;
 import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 
@@ -15,19 +17,60 @@ import 'hd_derivation.dart';
 class WalletCrypto {
   WalletCrypto._();
 
+  /// BIP-39 mnemonic from CSPRNG entropy (each byte 0–255). Does not use the
+  /// upstream helper that called `Random.nextInt(255)` and never produced `0xFF`.
   static String generateMnemonic({int strength = 128}) {
-    return bip39.generateMnemonic(strength: strength);
+    if (strength % 32 != 0 || strength < 128 || strength > 256) {
+      throw ArgumentError('BIP-39 strength must be 128–256 and divisible by 32.');
+    }
+    final rng = Random.secure();
+    final bytes = Uint8List(strength ~/ 8);
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = rng.nextInt(256);
+    }
+    return bip39.entropyToMnemonic(hex.encode(bytes));
   }
 
   static bool validateMnemonic(String phrase) {
-    final normalized = phrase.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    final normalized = normalizeMnemonic(phrase);
     if (normalized.isEmpty) return false;
     return bip39.validateMnemonic(normalized);
   }
 
+  /// Trim, lowercase, collapse whitespace, strip zero-width / NBSP.
+  /// Does **not** translate words — BIP-39 English wordlist stays English.
   static String normalizeMnemonic(String phrase) {
-    return phrase.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    var s = phrase.replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '');
+    s = s.replaceAll(RegExp(r'[\u00A0\u202F]'), ' ');
+    return s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
+
+  /// Why a phrase failed — never includes the phrase itself.
+  static MnemonicIssue diagnoseMnemonic(String phrase) {
+    final normalized = normalizeMnemonic(phrase);
+    if (normalized.isEmpty) return MnemonicIssue.empty;
+    final parts = normalized.split(' ');
+    if (parts.length != 12 && parts.length != 24) return MnemonicIssue.badCount;
+    if (bip39.validateMnemonic(normalized)) return MnemonicIssue.none;
+    for (final word in parts) {
+      if (!_bip39English.contains(word)) return MnemonicIssue.unknownWord;
+    }
+    return MnemonicIssue.checksum;
+  }
+
+  static String issueMessage(MnemonicIssue issue) {
+    return switch (issue) {
+      MnemonicIssue.none => '',
+      MnemonicIssue.empty => 'Enter your recovery phrase.',
+      MnemonicIssue.badCount => 'Use a 12- or 24-word recovery phrase.',
+      MnemonicIssue.unknownWord =>
+        'One or more words are not on the BIP-39 English word list. Check spelling — app language does not change these words.',
+      MnemonicIssue.checksum =>
+        'That phrase isn’t valid. Check each word and the order carefully.',
+    };
+  }
+
+  static final Set<String> _bip39English = WORDLIST.toSet();
 
   /// Deterministic ETH-style fingerprint for display / legacy callers.
   static String fingerprintAddress(String mnemonic) {
@@ -71,8 +114,8 @@ class WalletCrypto {
 
   static List<String> words(String mnemonic) => normalizeMnemonic(mnemonic).split(' ');
 
-  static List<int> pickQuizIndices(int wordCount, {int quizSize = 3}) {
-    final rng = Random.secure();
+  static List<int> pickQuizIndices(int wordCount, {int quizSize = 3, Random? random}) {
+    final rng = random ?? Random.secure();
     final indices = <int>{};
     while (indices.length < quizSize && indices.length < wordCount) {
       indices.add(rng.nextInt(wordCount));
@@ -81,16 +124,29 @@ class WalletCrypto {
     return list;
   }
 
-  /// Correct word plus two distractors from the same phrase (shuffled).
-  static List<String> quizChoices(List<String> allWords, int targetIndex) {
+  /// Correct word plus distractors from the BIP-39 English list (never the
+  /// same string twice, never another word copied from this phrase).
+  static List<String> quizChoices(
+    List<String> allWords,
+    int targetIndex, {
+    int distractors = 2,
+    Random? random,
+  }) {
+    final rng = random ?? Random.secure();
     final correct = allWords[targetIndex];
-    final pool = <String>{
-      for (var i = 0; i < allWords.length; i++)
-        if (i != targetIndex) allWords[i],
-    }.toList();
-    pool.shuffle(Random.secure());
-    final choices = <String>[correct, ...pool.take(2)];
-    choices.shuffle(Random.secure());
+    final banned = allWords.toSet();
+    final pool = [
+      for (final w in WORDLIST)
+        if (!banned.contains(w)) w,
+    ];
+    pool.shuffle(rng);
+    final extras = <String>[];
+    for (final w in pool) {
+      extras.add(w);
+      if (extras.length >= distractors) break;
+    }
+    final choices = <String>[correct, ...extras];
+    choices.shuffle(rng);
     return choices;
   }
 
@@ -164,3 +220,5 @@ class WalletCrypto {
     return text.isEmpty ? alphabet[0] : text;
   }
 }
+
+enum MnemonicIssue { none, empty, badCount, unknownWord, checksum }

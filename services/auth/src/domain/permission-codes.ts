@@ -15,6 +15,7 @@ export const PERMISSION_BLOCKCHAIN_READ: PermissionCode = 'blockchain:read';
 export const PERMISSION_BLOCKCHAIN_WRITE: PermissionCode = 'blockchain:write';
 export const PERMISSION_BLOCKCHAIN_ADMIN: PermissionCode = 'blockchain:admin';
 export const PERMISSION_BLOCKCHAIN_SYNC: PermissionCode = 'blockchain:sync';
+export const PERMISSION_TRANSACTIONS_REVIEW_LARGE: PermissionCode = 'transactions:review:large';
 
 export const ALL_PERMISSION_CODES: readonly PermissionCode[] = [
   PERMISSION_USERS_READ,
@@ -32,6 +33,7 @@ export const ALL_PERMISSION_CODES: readonly PermissionCode[] = [
   PERMISSION_BLOCKCHAIN_WRITE,
   PERMISSION_BLOCKCHAIN_ADMIN,
   PERMISSION_BLOCKCHAIN_SYNC,
+  PERMISSION_TRANSACTIONS_REVIEW_LARGE,
 ] as const;
 
 // --- Admin control-plane granular permissions (Phase 3 increment 2) ---
@@ -76,6 +78,7 @@ export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_ROLES_MANAGE,
   PERMISSION_HEALTH_READ,
   PERMISSION_REALTIME_READ,
+  PERMISSION_TRANSACTIONS_REVIEW_LARGE,
 ] as const;
 
 export const ROLE_USER = 'user';
@@ -143,6 +146,7 @@ const ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_CONNECTIONS_REVOKE,
   PERMISSION_SECURITY_MANAGE,
   PERMISSION_SUPPORT_WRITE,
+  PERMISSION_TRANSACTIONS_REVIEW_LARGE,
 ] as const;
 
 // SUPER_ADMIN additionally manages admins and roles (reserved elevation powers).

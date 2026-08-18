@@ -123,7 +123,8 @@ export type PermissionCode =
   | 'admins:manage'
   | 'roles:read'
   | 'health:read'
-  | 'realtime:read';
+  | 'realtime:read'
+  | 'transactions:review:large';
 
 export const ROLE_USER = 'user';
 export const ROLE_ADMIN = 'admin';

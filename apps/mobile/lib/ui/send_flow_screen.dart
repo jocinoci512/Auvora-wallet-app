@@ -15,6 +15,7 @@ import '../theme/aether_theme.dart';
 import '../transfer/address_book.dart';
 import '../transfer/address_validation.dart';
 import '../transfer/domain_resolution.dart';
+import '../transfer/large_transfer_policy.dart';
 import '../wallet_engine/network_manager.dart';
 import '../wallet_engine/transaction_engine.dart';
 import 'home/home_shared.dart';
@@ -695,6 +696,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     final short = to.length > 10 ? '…${to.substring(to.length - 6)}' : to;
     final walletLabel = _wallet.wallet?.name ?? 'Primary wallet';
     final risk = assessAddressRisk(to);
+    final transferReview = LargeTransferPolicy.evaluateDisplayAmount(
+      amount: amount,
+      ticker: asset.ticker,
+      priceUsd: asset.priceUsd,
+      quoteAt: p.snapshot?.updatedAt,
+    );
 
     final items = <(String, String)>[
       ('recipient', 'I checked the full recipient address (ends $short)'),
@@ -714,6 +721,19 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           message:
               'This transaction cannot be reversed. Double-check the recipient address before you continue.',
         ),
+        const SizedBox(height: 10),
+        const SoftBanner(
+          tone: BannerTone.warn,
+          message: ReleaseConfig.broadcastPreviewMessage,
+        ),
+        if (transferReview.blocksUnauditedBroadcast) ...[
+          const SizedBox(height: 10),
+          SoftBanner(
+            tone: BannerTone.warn,
+            message: transferReview.message ??
+                'This transfer needs Auvora review before any live broadcast. Keys stay on this device. This is not a blockchain freeze.',
+          ),
+        ],
         const SizedBox(height: 16),
         _kv('Wallet used', walletLabel),
         _kv('Asset', '${asset.name} (${asset.ticker})'),
@@ -897,6 +917,17 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     try {
       final asset = _asset!;
       final amount = _parsedAmount(asset);
+      final review = LargeTransferPolicy.evaluateDisplayAmount(
+        amount: amount,
+        ticker: asset.ticker,
+        priceUsd: asset.priceUsd,
+        quoteAt: _portfolio.snapshot?.updatedAt,
+      );
+      if (review.blocksUnauditedBroadcast && ReleaseConfig.liveBroadcastEnabled) {
+        throw StateError(
+          'Large-transfer review is required before broadcast. Keys stay on this device.',
+        );
+      }
       final pause = reduce ? Duration.zero : const Duration(milliseconds: 420);
 
       await Future<void>.delayed(pause);

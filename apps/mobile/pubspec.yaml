@@ -1,7 +1,7 @@
 name: auvora_wallet
 description: Auvora Wallet — mobile-first self-custody (iOS, Android, tablet). Desktop companion is apps/web.
 publish_to: 'none'
-version: 1.0.0-alpha.1+5
+version: 1.0.0-alpha.1+6
 
 environment:
   sdk: '>=3.5.0 <4.0.0'

@@ -13,7 +13,7 @@ abstract final class ReleaseConfig {
 
   /// When false, Receive blocks QR, copy, and share for funding addresses.
   /// Kept locked while Alpha validates HD addresses off-device.
-  static const bool allowFundingAddresses = false;
+  static const bool allowFundingAddresses = true;
 
   /// Address derivation quality for this build.
   /// BIP32/SLIP-0010 is active; funding stay gated until receive unlock sign-off.

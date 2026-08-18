@@ -30,6 +30,7 @@ class PreferencesController extends ChangeNotifier {
   bool requireAuthToRevealBalances = false;
   bool clearClipboardAfterCopy = true;
   bool screenshotProtectionHint = false;
+  bool localeManualOverride = false;
   DateTime? networkCacheResetAt;
 
   static const _kBlob = 'auvora_user_prefs_v1';
@@ -56,6 +57,17 @@ class PreferencesController extends ChangeNotifier {
     if (!loading) return;
     _prefs ??= await SharedPreferences.getInstance();
     _readBlob();
+    if (!localeManualOverride) {
+      final loc = WidgetsBinding.instance.platformDispatcher.locale;
+      final resolved = AuvoraLocale.resolveDeviceLanguage(
+        loc.languageCode,
+        scriptCode: loc.scriptCode,
+        countryCode: loc.countryCode,
+      );
+      if (resolved != locale.languageCode) {
+        locale = locale.copyWith(languageCode: resolved);
+      }
+    }
     priceAlerts = _readList(_kAlerts, PriceAlert.fromJson);
     inbox = _readList(_kInbox, AppNotificationItem.fromJson);
     if (previewWallets.isEmpty) {
@@ -160,12 +172,12 @@ class PreferencesController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setLocale(LocalePrefs value) async {
-    // Alpha ships English UI only — never persist an unready language pack.
+  Future<void> setLocale(LocalePrefs value, {bool manual = true}) async {
     final code = AuvoraStrings.supportedLanguageCodes.contains(value.languageCode)
         ? value.languageCode
         : 'en';
     locale = value.copyWith(languageCode: code);
+    localeManualOverride = manual;
     await _persistBlob();
     notifyListeners();
   }
@@ -412,6 +424,7 @@ class PreferencesController extends ChangeNotifier {
         'requireAuthToRevealBalances': requireAuthToRevealBalances,
         'clearClipboardAfterCopy': clearClipboardAfterCopy,
         'screenshotProtectionHint': screenshotProtectionHint,
+        'localeManualOverride': localeManualOverride,
         'networkCacheResetAt': networkCacheResetAt?.toIso8601String(),
         'previewWallets': [
           for (final w in previewWallets)
@@ -455,6 +468,7 @@ class PreferencesController extends ChangeNotifier {
       requireAuthToRevealBalances = data['requireAuthToRevealBalances'] == true;
       clearClipboardAfterCopy = data['clearClipboardAfterCopy'] != false;
       screenshotProtectionHint = data['screenshotProtectionHint'] == true;
+      localeManualOverride = data['localeManualOverride'] == true;
       networkCacheResetAt = data['networkCacheResetAt'] == null
           ? null
           : DateTime.tryParse(data['networkCacheResetAt'] as String);

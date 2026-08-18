@@ -320,10 +320,20 @@ class _AuvoraAppState extends State<AuvoraApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [
-              Locale('en'),
+            supportedLocales: [
+              for (final code in kSupportedUiLanguageCodes)
+                if (code == 'zh-Hant')
+                  const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant')
+                else
+                  Locale(code),
             ],
-            locale: Locale(prefs.locale.languageCode, prefs.locale.regionCode),
+            locale: prefs.locale.languageCode == 'zh-Hant'
+                ? Locale.fromSubtags(
+                    languageCode: 'zh',
+                    scriptCode: 'Hant',
+                    countryCode: prefs.locale.regionCode,
+                  )
+                : Locale(prefs.locale.languageCode, prefs.locale.regionCode),
             builder: (context, child) {
               final media = MediaQuery.of(context);
               return MediaQuery(
@@ -333,10 +343,15 @@ class _AuvoraAppState extends State<AuvoraApp> {
                   ),
                   boldText: a11y.highContrast ? true : media.boldText,
                 ),
-                child: AnimatedTheme(
-                  data: Theme.of(context),
-                  duration: a11y.reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
-                  child: DeepLinkListener(child: child ?? const SizedBox.shrink()),
+                child: Directionality(
+                  textDirection: const {'ar', 'he', 'fa', 'ur'}.contains(prefs.locale.languageCode)
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  child: AnimatedTheme(
+                    data: Theme.of(context),
+                    duration: a11y.reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+                    child: DeepLinkListener(child: child ?? const SizedBox.shrink()),
+                  ),
                 ),
               );
             },

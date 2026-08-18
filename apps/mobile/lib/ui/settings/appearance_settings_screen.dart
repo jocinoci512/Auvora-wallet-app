@@ -20,7 +20,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           const Text(
-            'Theme and formats update instantly on this device. Language packs can plug in later without redesign.',
+            'Theme, language, and formats update on this device. Recovery-phrase words stay BIP-39 English.',
             style: TextStyle(color: AetherColors.muted, height: 1.45),
           ),
           const SizedBox(height: 16),
@@ -65,23 +65,21 @@ class AppearanceSettingsScreen extends StatelessWidget {
           Text('Language', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           const Text(
-            'English is the only active language in Version 1.0 Alpha. Other languages are listed as Coming Soon so partial localization never appears.',
+            'App language is separate from your BIP-39 recovery phrase. Recovery words stay English so the wallet can be restored in any compatible client.',
             style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
+          DropdownButtonFormField<String>(
+            initialValue: prefs.locale.languageCode,
+            decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Display language'),
+            items: [
               for (final pack in kLanguagePackCatalog)
-                ChoiceChip(
-                  label: Text(pack.ready ? pack.label : '${pack.label} · Coming Soon'),
-                  selected: prefs.locale.languageCode == pack.code,
-                  onSelected: pack.ready
-                      ? (_) => prefs.setLocale(prefs.locale.copyWith(languageCode: pack.code))
-                      : null,
-                ),
+                DropdownMenuItem(value: pack.code, child: Text(pack.label)),
             ],
+            onChanged: (code) {
+              if (code == null) return;
+              prefs.setLocale(prefs.locale.copyWith(languageCode: code));
+            },
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,

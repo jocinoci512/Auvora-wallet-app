@@ -247,7 +247,8 @@ class WalletController extends ChangeNotifier {
   }
 
   void generateAndShowBackup() {
-    draftMnemonic = WalletCrypto.generateMnemonic();
+    // Never regenerate a phrase the user may already have written down.
+    draftMnemonic ??= WalletCrypto.generateMnemonic();
     stage = AppStage.createBackup;
     errorMessage = null;
     notifyListeners();
@@ -260,6 +261,14 @@ class WalletController extends ChangeNotifier {
   }
 
   void continueToVerify() {
+    final phrase = draftMnemonic ?? '';
+    if (!draftBackupConfirmed || !WalletCrypto.validateMnemonic(phrase)) {
+      errorMessage = !draftBackupConfirmed
+          ? 'Confirm you wrote the phrase down before continuing.'
+          : WalletCrypto.issueMessage(WalletCrypto.diagnoseMnemonic(phrase));
+      notifyListeners();
+      return;
+    }
     stage = AppStage.createVerify;
     errorMessage = null;
     notifyListeners();
@@ -273,17 +282,17 @@ class WalletController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> commitMnemonic(String mnemonic) async {
+  Future<void> commitMnemonic(String mnemonic, {bool backupQuizPassed = false}) async {
     final engine = _engine;
-    final normalized = WalletCrypto.normalizeMnemonic(mnemonic);
-    final count = normalized.isEmpty ? 0 : normalized.split(' ').length;
-    if (count != 12 && count != 24) {
-      errorMessage = 'Use a 12- or 24-word recovery phrase.';
+    if (stage == AppStage.createVerify && !backupQuizPassed) {
+      errorMessage = 'Confirm each recovery word before continuing.';
       notifyListeners();
       return;
     }
-    if (!WalletCrypto.validateMnemonic(normalized)) {
-      errorMessage = 'That phrase isn’t valid. Check each word carefully.';
+    final normalized = WalletCrypto.normalizeMnemonic(mnemonic);
+    final issue = WalletCrypto.diagnoseMnemonic(normalized);
+    if (issue != MnemonicIssue.none) {
+      errorMessage = WalletCrypto.issueMessage(issue);
       notifyListeners();
       return;
     }

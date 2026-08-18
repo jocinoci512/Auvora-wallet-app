@@ -35,11 +35,17 @@ void main() {
       expect(AuvoraStrings.lookup('intelligence.send_irreversible'), contains('reversed'));
     });
 
-    test('non-English language packs are not ready in Alpha', () {
+    test('language packs include English and additional UI locales', () {
       expect(isLanguagePackReady('en'), isTrue);
-      expect(isLanguagePackReady('es'), isFalse);
-      expect(kLanguagePackCatalog.where((p) => p.ready).length, 1);
-      expect(LocalePrefs.fromJson(const {'languageCode': 'es'}).languageCode, 'en');
+      expect(isLanguagePackReady('es'), isTrue);
+      expect(isLanguagePackReady('ar'), isTrue);
+      expect(kLanguagePackCatalog.where((p) => p.ready).length, greaterThan(1));
+      expect(LocalePrefs.fromJson(const {'languageCode': 'es'}).languageCode, 'es');
+      expect(AuvoraStrings.lookup('recovery.wrong_word', languageCode: 'fr'), isNot(contains('That isn’t')));
+      expect(AuvoraLocale.resolveDeviceLanguage('xx'), 'en');
+      expect(AuvoraLocale.resolveDeviceLanguage('zh', scriptCode: 'Hant'), 'zh-Hant');
+      expect(AuvoraLocale.resolveDeviceLanguage('zh', countryCode: 'TW'), 'zh-Hant');
+      expect(AuvoraLocale(const LocalePrefs(languageCode: 'ar')).isRtl, isTrue);
     });
   });
 

@@ -285,6 +285,20 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 13, height: 1.4, fontWeight: FontWeight.w600),
                     ),
+                    Builder(
+                      builder: (context) {
+                        final check = AddressValidation.validate(address, expected: _network);
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: SoftBanner(
+                            tone: check.ok ? BannerTone.info : BannerTone.error,
+                            message: check.ok
+                                ? 'Address format verified for ${_network.label}. Confirm the first and last characters match your records.'
+                                : (check.message ?? 'This address did not pass format checks for ${_network.label}.'),
+                          ),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 14),
                     SoftBanner(
                       tone: BannerTone.warn,

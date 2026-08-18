@@ -5,6 +5,7 @@ export const PERMISSION_WALLETS_WRITE: PermissionCode = 'wallets:write';
 export const PERMISSION_WALLETS_ADMIN: PermissionCode = 'wallets:admin';
 export const PERMISSION_WALLETS_SUSPEND: PermissionCode = 'wallets:suspend';
 export const PERMISSION_WALLETS_ARCHIVE: PermissionCode = 'wallets:archive';
+export const PERMISSION_TRANSACTIONS_REVIEW_LARGE: PermissionCode = 'transactions:review:large';
 
 export const ALL_WALLET_PERMISSION_CODES: readonly PermissionCode[] = [
   PERMISSION_WALLETS_READ,
@@ -12,6 +13,7 @@ export const ALL_WALLET_PERMISSION_CODES: readonly PermissionCode[] = [
   PERMISSION_WALLETS_ADMIN,
   PERMISSION_WALLETS_SUSPEND,
   PERMISSION_WALLETS_ARCHIVE,
+  PERMISSION_TRANSACTIONS_REVIEW_LARGE,
 ] as const;
 
 export const ROLE_ADMIN = 'admin';

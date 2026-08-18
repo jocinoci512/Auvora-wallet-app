@@ -351,6 +351,11 @@ class AccessibilityPrefs {
   }
 }
 
+const kSupportedUiLanguageCodes = <String>[
+  'en', 'fr', 'es', 'de', 'pt', 'it', 'nl', 'sv', 'pl', 'ro', 'tr', 'ru', 'uk',
+  'ar', 'hi', 'id', 'vi', 'th', 'zh', 'zh-Hant', 'ja', 'ko',
+];
+
 @immutable
 class LocalePrefs {
   const LocalePrefs({
@@ -397,9 +402,11 @@ class LocalePrefs {
       };
 
   factory LocalePrefs.fromJson(Map<String, dynamic> json) {
-    // Alpha: English UI only — ignore any persisted non-English language code.
+    final raw = ((json['languageCode'] as String?) ?? 'en').trim();
+    final normalized = raw == 'zh-tw' || raw == 'zh-TW' || raw == 'zh-hant' ? 'zh-Hant' : raw;
+    final code = kSupportedUiLanguageCodes.contains(normalized) ? normalized : 'en';
     return LocalePrefs(
-      languageCode: 'en',
+      languageCode: code,
       regionCode: (json['regionCode'] as String?) ?? 'US',
       currency: FiatCurrency.values.firstWhere(
         (c) => c.name == json['currency'],

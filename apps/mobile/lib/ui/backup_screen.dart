@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../crypto/wallet_crypto.dart';
+import '../preferences/preferences_controller.dart';
+import '../privacy/sensitive_screen.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'app_shell.dart';
@@ -19,13 +21,16 @@ class _BackupScreenState extends State<BackupScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.watch<WalletController>();
+    final prefs = context.watch<PreferencesController>();
     final mnemonic = c.draftMnemonic ?? '';
     final words = WalletCrypto.words(mnemonic);
 
-    return ScreenScaffold(
+    return SensitiveScope(
+      keepEnabledOnExit: prefs.screenshotProtectionHint,
+      child: ScreenScaffold(
       title: 'Write these words down',
       subtitle:
-          'This is your recovery phrase — the only backup of this wallet. Anyone with these words can move your funds.',
+          'This is your recovery phrase — the only backup of this wallet. Anyone with these words can move your funds. These words are BIP-39 English and do not change when you change the app language.',
       reassure:
           'Auvora does not send this phrase off your device. After setup it stays encrypted in this phone’s secure storage. Write it down — you need it if you lose the device.',
       onBack: c.backToExplain,
@@ -70,7 +75,7 @@ class _BackupScreenState extends State<BackupScreen> {
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: c.draftBackupConfirmed,
-            onChanged: words.length == 12
+            onChanged: (words.length == 12 || words.length == 24)
                 ? (v) => c.setDraftBackupConfirmed(v ?? false)
                 : null,
             controlAffinity: ListTileControlAffinity.leading,
@@ -82,9 +87,12 @@ class _BackupScreenState extends State<BackupScreen> {
         ],
       ),
       footer: FilledButton(
-        onPressed: c.draftBackupConfirmed && words.length == 12 ? c.continueToVerify : null,
+        onPressed: c.draftBackupConfirmed && (words.length == 12 || words.length == 24)
+            ? c.continueToVerify
+            : null,
         child: const Text('Continue to confirmation'),
       ),
+    ),
     );
   }
 }
