@@ -22,7 +22,7 @@ import { getProxyTimeoutMs } from './proxy-timeout';
 type ProxyRoute = {
   name: string;
   prefixes: readonly string[];
-  target: string;
+  target: string | undefined;
 };
 
 function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
@@ -84,11 +84,11 @@ export function createUnifiedGatewayProxyMiddleware(env: ServiceEnv): RequestHan
       target: env.CONNECTIONS_SERVICE_URL,
     },
     { name: 'bridge', prefixes: BRIDGE_PROXY_PREFIXES, target: env.BRIDGE_SERVICE_URL },
-  ].map((route) => ({ ...route, target: route.target.replace(/\/$/, '') }));
+  ].map((route) => ({ ...route, target: route.target?.replace(/\/$/, '') }));
 
   const timeoutMs = getProxyTimeoutMs();
 
-  return createProxyMiddleware({
+  const proxy = createProxyMiddleware({
     // Fallback only — router always selects a real target for filtered paths.
     target: env.AUTH_SERVICE_URL.replace(/\/$/, ''),
     changeOrigin: true,
@@ -107,4 +107,18 @@ export function createUnifiedGatewayProxyMiddleware(env: ServiceEnv): RequestHan
       },
     },
   });
+
+  const handler: RequestHandler = (req, res, next) => {
+    const pathname = pathnameOf(req.url);
+    const route = routes.find((candidate) => matchesPrefix(pathname, candidate.prefixes));
+    if (route && !route.target) {
+      res.status(503).json({
+        error: 'service_unavailable',
+        message: `${route.name} is not configured on this gateway`,
+      });
+      return;
+    }
+    return proxy(req, res, next);
+  };
+  return handler;
 }

@@ -56,7 +56,7 @@ export async function collectGatewayMeshHealth(
             : target.key === 'MARKET_DATA_SERVICE_URL'
               ? env.MARKET_DATA_SERVICE_URL
               : env.CONNECTIONS_SERVICE_URL;
-    if (env.NODE_ENV === 'production' && isLocalFallback(url)) {
+    if (!url || (env.NODE_ENV === 'production' && isLocalFallback(url))) {
       return { id: target.id, status: 'unknown' as const, latencyMs: null };
     }
     const result = await probeHealthUrl(url, fetchImpl);

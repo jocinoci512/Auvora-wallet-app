@@ -31,6 +31,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "infrastructure/docker/Dockerfile.service"
 
 [deploy]
+startCommand = "node dist/main.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

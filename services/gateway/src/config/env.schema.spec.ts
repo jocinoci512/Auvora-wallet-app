@@ -19,6 +19,7 @@ describe('gateway env schema — CORS production config', () => {
   it('accepts production apex + www allowlist', () => {
     const env = loadEnv({
       NODE_ENV: 'production',
+      AUTH_SERVICE_URL: 'http://auth-prods.railway.internal:4001',
       CORS_ORIGINS:
         'https://auvorawallet.com,https://www.auvorawallet.com,https://admin.auvorawallet.com',
     });
@@ -50,6 +51,7 @@ describe('gateway env schema — CORS production config', () => {
     expect(() =>
       loadEnv({
         NODE_ENV: 'production',
+        AUTH_SERVICE_URL: 'http://auth-prods.railway.internal:4001',
         CORS_ORIGINS: 'https://auvorawallet.com,http://localhost:3000',
       }),
     ).toThrow(/not allowed in production|CORS/i);
@@ -86,7 +88,21 @@ describe('gateway env schema — CORS production config', () => {
     ).toThrow(/unresolved Railway template|quote it/i);
   });
 
-  it('falls back optional upstreams when Railway private domain is empty', () => {
+  it('falls back optional upstreams in development only', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const env = loadEnv({
+      NODE_ENV: 'development',
+      AUTH_SERVICE_URL: 'http://127.0.0.1:4001',
+      WALLET_SERVICE_URL: 'http://:3002',
+      MARKET_DATA_SERVICE_URL: 'http://:3012',
+    });
+    expect(env.WALLET_SERVICE_URL).toBe('http://127.0.0.1:3002');
+    expect(env.MARKET_DATA_SERVICE_URL).toBe('http://127.0.0.1:3012');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('does not fall back optional upstreams to loopback in production', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const env = loadEnv({
       NODE_ENV: 'production',
@@ -95,11 +111,20 @@ describe('gateway env schema — CORS production config', () => {
       WALLET_SERVICE_URL: 'http://:3002',
       MARKET_DATA_SERVICE_URL: 'http://:3012',
     });
-    expect(env.WALLET_SERVICE_URL).toBe('http://127.0.0.1:3002');
-    expect(env.MARKET_DATA_SERVICE_URL).toBe('http://127.0.0.1:3012');
+    expect(env.WALLET_SERVICE_URL).toBeUndefined();
+    expect(env.MARKET_DATA_SERVICE_URL).toBeUndefined();
     expect(env.AUTH_SERVICE_URL).toBe('http://auth-prods.railway.internal:4001');
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('requires AUTH_SERVICE_URL in production', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'https://auvorawallet.com',
+      }),
+    ).toThrow(/AUTH_SERVICE_URL is required in production/i);
   });
 
   it('still fails hard when required AUTH has empty hostname', () => {

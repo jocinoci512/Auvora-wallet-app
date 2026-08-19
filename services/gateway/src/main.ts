@@ -168,7 +168,7 @@ async function bootstrap(): Promise<void> {
   const bind = env.HOST ? `${env.HOST}:${env.PORT}` : `*:${env.PORT}`;
   logger.log(`${env.SERVICE_NAME} listening on ${bind}`, 'Bootstrap');
   logger.log(
-    `Upstreams auth=${env.AUTH_SERVICE_URL} wallet=${env.WALLET_SERVICE_URL} blockchain=${env.BLOCKCHAIN_SERVICE_URL} market-data=${env.MARKET_DATA_SERVICE_URL} connections=${env.CONNECTIONS_SERVICE_URL}`,
+    `Upstreams auth=${env.AUTH_SERVICE_URL} wallet=${env.WALLET_SERVICE_URL ?? 'unset'} blockchain=${env.BLOCKCHAIN_SERVICE_URL ?? 'unset'} market-data=${env.MARKET_DATA_SERVICE_URL ?? 'unset'} connections=${env.CONNECTIONS_SERVICE_URL ?? 'unset'}`,
     'Bootstrap',
   );
 }

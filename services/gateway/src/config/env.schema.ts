@@ -68,7 +68,8 @@ export function assertServiceBaseUrl(varName: string, raw: string): string {
 
 /**
  * AUTH is required for Closed Beta.
- * Other mesh upstreams may not exist yet — fall back to local defaults so gateway can boot.
+ * Optional mesh upstreams default to loopback only in development/test so
+ * local gateway can boot. Production never falls back to 127.0.0.1.
  */
 type ServiceUrlMode = 'required' | 'optional';
 
@@ -80,23 +81,41 @@ export function consumeUnresolvedUpstreamWarnings(): string[] {
   return copy;
 }
 
-const serviceUrl = (varName: string, fallback: string, mode: ServiceUrlMode = 'optional') =>
+const LOCAL_UPSTREAM_DEFAULTS = {
+  AUTH_SERVICE_URL: 'http://127.0.0.1:4001',
+  WALLET_SERVICE_URL: 'http://127.0.0.1:3002',
+  BLOCKCHAIN_SERVICE_URL: 'http://127.0.0.1:3003',
+  PAYMENTS_SERVICE_URL: 'http://127.0.0.1:3004',
+  COMPLIANCE_SERVICE_URL: 'http://127.0.0.1:3005',
+  CUSTODY_SERVICE_URL: 'http://127.0.0.1:3009',
+  NOTIFICATIONS_SERVICE_URL: 'http://127.0.0.1:3006',
+  ANALYTICS_SERVICE_URL: 'http://127.0.0.1:3007',
+  OBSERVABILITY_SERVICE_URL: 'http://127.0.0.1:3010',
+  AI_SERVICE_URL: 'http://127.0.0.1:3008',
+  MARKET_DATA_SERVICE_URL: 'http://127.0.0.1:3012',
+  SWAP_SERVICE_URL: 'http://127.0.0.1:3013',
+  NFT_SERVICE_URL: 'http://127.0.0.1:3014',
+  STAKING_SERVICE_URL: 'http://127.0.0.1:3015',
+  CONNECTIONS_SERVICE_URL: 'http://127.0.0.1:3016',
+  BRIDGE_SERVICE_URL: 'http://127.0.0.1:3017',
+} as const;
+
+const serviceUrl = (varName: string, mode: ServiceUrlMode = 'optional') =>
   z
     .preprocess((value) => {
       const cleaned = emptyToUndefined(value);
       if (cleaned == null || typeof cleaned !== 'string') return cleaned;
 
-      // Unresolved Railway private-domain refs become http://:PORT — treat optional
-      // upstreams as unset so incremental mesh deploys can boot (auth-only first).
       if (mode === 'optional' && (isEmptyHostnameServiceUrl(cleaned) || /\$\{\{/.test(cleaned))) {
         unresolvedUpstreamWarnings.push(
-          `${varName}=${JSON.stringify(cleaned)} did not resolve; using ${fallback} until the Railway service exists`,
+          `${varName}=${JSON.stringify(cleaned)} did not resolve; leaving unset (no loopback fallback)`,
         );
         return undefined;
       }
       return cleaned;
-    }, z.string().default(fallback))
+    }, z.string().optional())
     .superRefine((value, ctx) => {
+      if (value == null || value === '') return;
       try {
         assertServiceBaseUrl(varName, value);
       } catch (error) {
@@ -115,22 +134,22 @@ export const envSchema = z
     /** Optional bind host. Leave unset on Railway so Nest binds dual-stack (IPv4+IPv6 private mesh). */
     HOST: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     PORT: z.coerce.number().int().positive().default(4000),
-    AUTH_SERVICE_URL: serviceUrl('AUTH_SERVICE_URL', 'http://127.0.0.1:4001', 'required'),
-    WALLET_SERVICE_URL: serviceUrl('WALLET_SERVICE_URL', 'http://127.0.0.1:3002'),
-    BLOCKCHAIN_SERVICE_URL: serviceUrl('BLOCKCHAIN_SERVICE_URL', 'http://127.0.0.1:3003'),
-    PAYMENTS_SERVICE_URL: serviceUrl('PAYMENTS_SERVICE_URL', 'http://127.0.0.1:3004'),
-    COMPLIANCE_SERVICE_URL: serviceUrl('COMPLIANCE_SERVICE_URL', 'http://127.0.0.1:3005'),
-    CUSTODY_SERVICE_URL: serviceUrl('CUSTODY_SERVICE_URL', 'http://127.0.0.1:3009'),
-    NOTIFICATIONS_SERVICE_URL: serviceUrl('NOTIFICATIONS_SERVICE_URL', 'http://127.0.0.1:3006'),
-    ANALYTICS_SERVICE_URL: serviceUrl('ANALYTICS_SERVICE_URL', 'http://127.0.0.1:3007'),
-    OBSERVABILITY_SERVICE_URL: serviceUrl('OBSERVABILITY_SERVICE_URL', 'http://127.0.0.1:3010'),
-    AI_SERVICE_URL: serviceUrl('AI_SERVICE_URL', 'http://127.0.0.1:3008'),
-    MARKET_DATA_SERVICE_URL: serviceUrl('MARKET_DATA_SERVICE_URL', 'http://127.0.0.1:3012'),
-    SWAP_SERVICE_URL: serviceUrl('SWAP_SERVICE_URL', 'http://127.0.0.1:3013'),
-    NFT_SERVICE_URL: serviceUrl('NFT_SERVICE_URL', 'http://127.0.0.1:3014'),
-    STAKING_SERVICE_URL: serviceUrl('STAKING_SERVICE_URL', 'http://127.0.0.1:3015'),
-    CONNECTIONS_SERVICE_URL: serviceUrl('CONNECTIONS_SERVICE_URL', 'http://127.0.0.1:3016'),
-    BRIDGE_SERVICE_URL: serviceUrl('BRIDGE_SERVICE_URL', 'http://127.0.0.1:3017'),
+    AUTH_SERVICE_URL: serviceUrl('AUTH_SERVICE_URL', 'required'),
+    WALLET_SERVICE_URL: serviceUrl('WALLET_SERVICE_URL'),
+    BLOCKCHAIN_SERVICE_URL: serviceUrl('BLOCKCHAIN_SERVICE_URL'),
+    PAYMENTS_SERVICE_URL: serviceUrl('PAYMENTS_SERVICE_URL'),
+    COMPLIANCE_SERVICE_URL: serviceUrl('COMPLIANCE_SERVICE_URL'),
+    CUSTODY_SERVICE_URL: serviceUrl('CUSTODY_SERVICE_URL'),
+    NOTIFICATIONS_SERVICE_URL: serviceUrl('NOTIFICATIONS_SERVICE_URL'),
+    ANALYTICS_SERVICE_URL: serviceUrl('ANALYTICS_SERVICE_URL'),
+    OBSERVABILITY_SERVICE_URL: serviceUrl('OBSERVABILITY_SERVICE_URL'),
+    AI_SERVICE_URL: serviceUrl('AI_SERVICE_URL'),
+    MARKET_DATA_SERVICE_URL: serviceUrl('MARKET_DATA_SERVICE_URL'),
+    SWAP_SERVICE_URL: serviceUrl('SWAP_SERVICE_URL'),
+    NFT_SERVICE_URL: serviceUrl('NFT_SERVICE_URL'),
+    STAKING_SERVICE_URL: serviceUrl('STAKING_SERVICE_URL'),
+    CONNECTIONS_SERVICE_URL: serviceUrl('CONNECTIONS_SERVICE_URL'),
+    BRIDGE_SERVICE_URL: serviceUrl('BRIDGE_SERVICE_URL'),
     SERVICE_NAME: z.string().default('gateway'),
     SERVICE_VERSION: z.string().default('1.0.0-alpha.1'),
     LOG_LEVEL: z
@@ -155,6 +174,14 @@ export const envSchema = z
     INTERNAL_API_KEY: z.preprocess(emptyToUndefined, z.string().min(8).optional()),
   })
   .superRefine((data, ctx) => {
+    if (data.NODE_ENV === 'production' && !data.AUTH_SERVICE_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_SERVICE_URL'],
+        message: 'AUTH_SERVICE_URL is required in production (no 127.0.0.1 default).',
+      });
+    }
+
     const corsRaw =
       data.CORS_ORIGINS ?? (data.NODE_ENV === 'production' ? undefined : DEV_CORS_DEFAULT);
 
@@ -182,8 +209,32 @@ export const envSchema = z
   })
   .transform((data) => {
     const corsRaw = data.CORS_ORIGINS ?? (data.NODE_ENV === 'production' ? '' : DEV_CORS_DEFAULT);
+    const local = data.NODE_ENV !== 'production';
+    const fill = (key: keyof typeof LOCAL_UPSTREAM_DEFAULTS, current: string | undefined) => {
+      if (current) return current.replace(/\/$/, '');
+      return local ? LOCAL_UPSTREAM_DEFAULTS[key] : undefined;
+    };
+    const auth =
+      data.AUTH_SERVICE_URL?.replace(/\/$/, '') ??
+      (local ? LOCAL_UPSTREAM_DEFAULTS.AUTH_SERVICE_URL : undefined);
     return {
       ...data,
+      AUTH_SERVICE_URL: auth as string,
+      WALLET_SERVICE_URL: fill('WALLET_SERVICE_URL', data.WALLET_SERVICE_URL),
+      BLOCKCHAIN_SERVICE_URL: fill('BLOCKCHAIN_SERVICE_URL', data.BLOCKCHAIN_SERVICE_URL),
+      PAYMENTS_SERVICE_URL: fill('PAYMENTS_SERVICE_URL', data.PAYMENTS_SERVICE_URL),
+      COMPLIANCE_SERVICE_URL: fill('COMPLIANCE_SERVICE_URL', data.COMPLIANCE_SERVICE_URL),
+      CUSTODY_SERVICE_URL: fill('CUSTODY_SERVICE_URL', data.CUSTODY_SERVICE_URL),
+      NOTIFICATIONS_SERVICE_URL: fill('NOTIFICATIONS_SERVICE_URL', data.NOTIFICATIONS_SERVICE_URL),
+      ANALYTICS_SERVICE_URL: fill('ANALYTICS_SERVICE_URL', data.ANALYTICS_SERVICE_URL),
+      OBSERVABILITY_SERVICE_URL: fill('OBSERVABILITY_SERVICE_URL', data.OBSERVABILITY_SERVICE_URL),
+      AI_SERVICE_URL: fill('AI_SERVICE_URL', data.AI_SERVICE_URL),
+      MARKET_DATA_SERVICE_URL: fill('MARKET_DATA_SERVICE_URL', data.MARKET_DATA_SERVICE_URL),
+      SWAP_SERVICE_URL: fill('SWAP_SERVICE_URL', data.SWAP_SERVICE_URL),
+      NFT_SERVICE_URL: fill('NFT_SERVICE_URL', data.NFT_SERVICE_URL),
+      STAKING_SERVICE_URL: fill('STAKING_SERVICE_URL', data.STAKING_SERVICE_URL),
+      CONNECTIONS_SERVICE_URL: fill('CONNECTIONS_SERVICE_URL', data.CONNECTIONS_SERVICE_URL),
+      BRIDGE_SERVICE_URL: fill('BRIDGE_SERVICE_URL', data.BRIDGE_SERVICE_URL),
       CORS_ORIGINS: assertCredentialedCorsAllowlist(parseCorsOrigins(corsRaw), {
         nodeEnv: data.NODE_ENV,
       }),

@@ -60,4 +60,14 @@ describe('collectGatewayMeshHealth', () => {
     );
     expect(rows.find((row) => row.id === 'wallet-prod')?.status).toBe('unknown');
   });
+
+  it('marks missing production upstreams as unknown', async () => {
+    const fetchImpl = jest.fn(async () => new Response(null, { status: 200 }));
+    const rows = await collectGatewayMeshHealth(
+      env({ WALLET_SERVICE_URL: undefined }),
+      fetchImpl as unknown as typeof fetch,
+    );
+    expect(rows.find((row) => row.id === 'wallet-prod')?.status).toBe('unknown');
+    expect(JSON.stringify(fetchImpl.mock.calls)).not.toMatch(/:3002/);
+  });
 });
