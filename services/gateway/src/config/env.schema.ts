@@ -163,7 +163,7 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['CORS_ORIGINS'],
         message:
-          'CORS_ORIGINS is required in production (e.g. https://auvorawallet.com,https://www.auvorawallet.com). Do not leave it empty or unset.',
+          'CORS_ORIGINS is required in production (e.g. https://auvorawallet.com,https://www.auvorawallet.com,https://admin.auvorawallet.com). Do not leave it empty or unset.',
       });
       return;
     }

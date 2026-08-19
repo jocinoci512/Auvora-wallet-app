@@ -32,6 +32,8 @@ import { useAdminIdentity } from '../../../lib/admin-identity';
 import { canMutate, hasPermission } from '../../../lib/admin-rbac';
 import { createApiClient, formatAdminError, isStepUpRequired } from '../../../lib/api-client';
 import { IDENTITY_LINKS } from '../../../lib/section-nav';
+import { useRealtimeRefetch } from '../../../lib/admin-realtime-context';
+import type { AdminEvent } from '../../../lib/realtime/admin-event';
 
 const ROLE_OPTIONS = ['user', 'admin', 'super_admin'];
 const STATUS_OPTIONS = ['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'LOCKED', 'DEACTIVATED'];
@@ -121,6 +123,17 @@ export default function AdminUserDetailPage(): ReactElement {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useRealtimeRefetch(
+    (event: AdminEvent) =>
+      event.userId === userId &&
+      (event.type === 'ACCOUNT_STATUS_CHANGED' ||
+        event.type === 'SIMULATION_BALANCE_CHANGED' ||
+        event.type === 'SESSION_REVOKED' ||
+        event.type === 'SECURITY_EVENT'),
+    () => void load(),
+    800,
+  );
 
   async function runConfirmed(reason: string): Promise<void> {
     if (!user || !pending) return;
@@ -287,14 +300,6 @@ export default function AdminUserDetailPage(): ReactElement {
                     <div className="admin-kpi">
                       <span className="admin-kpi__label">Ledger total</span>
                       <span className="admin-kpi__value">{portfolio.portfolioLedgerTotal}</span>
-                    </div>
-                    <div className="admin-kpi">
-                      <span className="admin-kpi__label">Simulation</span>
-                      <span className="admin-kpi__value">
-                        {simulation
-                          ? `$${simulation.balances.reduce((sum, row) => sum + Number(row.valueUsd ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TEST`
-                          : 'Not enabled'}
-                      </span>
                     </div>
                   </section>
                   <div className="table-scroll">

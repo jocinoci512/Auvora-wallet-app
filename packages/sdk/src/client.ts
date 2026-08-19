@@ -1430,6 +1430,15 @@ export interface OpsHealthOverview {
   recent: unknown[];
 }
 
+export interface ProductionMeshHealth {
+  generatedAt: string;
+  services: Array<{
+    id: string;
+    status: 'healthy' | 'degraded' | 'offline' | 'unknown';
+    latencyMs: number | null;
+  }>;
+}
+
 export interface OpsDependencyGraph {
   nodes: Array<{ id: string }>;
   edges: unknown[];
@@ -2748,6 +2757,10 @@ export class AuvoraClient {
 
   async adminObservabilityHealth(): Promise<OpsHealthOverview> {
     return this.request<OpsHealthOverview>('GET', '/api/v1/admin/observability/health');
+  }
+
+  async adminProductionSystemHealth(): Promise<ProductionMeshHealth> {
+    return this.request<ProductionMeshHealth>('GET', '/api/v1/admin/system-health');
   }
 
   async adminObservabilityDependencies(): Promise<OpsDependencyGraph> {

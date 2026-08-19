@@ -17,6 +17,8 @@ import {
 import { ConfirmReasonDialog } from '../../components/ConfirmReasonDialog';
 import { formatWhen } from '../../lib/admin-format';
 import { formatAdminError, isStepUpRequired } from '../../lib/api-client';
+import { useRealtimeRefetch } from '../../lib/admin-realtime-context';
+import type { AdminEvent } from '../../lib/realtime/admin-event';
 import { useRouter } from 'next/navigation';
 
 const PRESETS = [
@@ -98,6 +100,14 @@ export default function SimulationPage(): ReactElement {
   async function refresh(): Promise<void> {
     await Promise.all([loadList(), fetchAccount(lookupUserId)]);
   }
+
+  useRealtimeRefetch(
+    (event: AdminEvent) => event.type === 'SIMULATION_BALANCE_CHANGED',
+    () => {
+      void refresh();
+    },
+    800,
+  );
 
   const portfolioUsd = useMemo(() => {
     if (!account) return null;

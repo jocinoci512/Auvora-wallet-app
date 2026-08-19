@@ -77,6 +77,11 @@ export interface AdminEventInput {
   metadata?: Record<string, unknown>;
 }
 
+const ADMIN_EVENT_TYPE_ALIASES: Record<string, AdminEventType> = {
+  USER_STATUS_CHANGED: 'ACCOUNT_STATUS_CHANGED',
+  SYSTEM_HEALTH_CHANGED: 'SERVICE_HEALTH_CHANGED',
+};
+
 const ADMIN_EVENT_TYPE_SET: ReadonlySet<string> = new Set(ADMIN_EVENT_TYPES);
 
 /**
@@ -234,14 +239,15 @@ function generateEventId(): string {
  */
 export function sanitizeAdminEvent(input: unknown): AdminEvent | null {
   if (!input || typeof input !== 'object') return null;
-  const raw = input as AdminEventInput;
-  if (typeof raw.type !== 'string' || !ADMIN_EVENT_TYPE_SET.has(raw.type)) {
+  const raw = input as AdminEventInput & { type: string };
+  const mappedType = ADMIN_EVENT_TYPE_ALIASES[raw.type] ?? raw.type;
+  if (typeof mappedType !== 'string' || !ADMIN_EVENT_TYPE_SET.has(mappedType)) {
     return null;
   }
 
   const event: AdminEvent = {
     id: typeof raw.id === 'string' && raw.id.length > 0 ? raw.id.slice(0, 128) : generateEventId(),
-    type: raw.type as AdminEventType,
+    type: mappedType as AdminEventType,
     timestamp: normaliseTimestamp(raw.timestamp),
     service: typeof raw.service === 'string' && raw.service ? raw.service.slice(0, 64) : 'auth',
     severity: raw.severity === 'warning' || raw.severity === 'critical' ? raw.severity : 'info',

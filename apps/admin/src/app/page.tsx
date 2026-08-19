@@ -17,7 +17,7 @@ import { MfaEnabledNotice } from '../components/MfaEnabledNotice';
 import { adminListSimulationAccounts, adminReviewSummary } from '../lib/admin-control-plane';
 import { createApiClient, formatAdminError } from '../lib/api-client';
 import { useAdminRealtimeContext, useRealtimeRefetch } from '../lib/admin-realtime-context';
-import { healthLabel, healthTone } from '../lib/admin-format';
+import { formatWhen, healthLabel, healthTone } from '../lib/admin-format';
 import { env } from '../env';
 import type { AdminEvent } from '../lib/realtime/admin-event';
 
@@ -47,6 +47,10 @@ function shouldRefreshDashboard(event: AdminEvent): boolean {
     event.type === 'CONNECTION_DISCONNECTED' ||
     event.type === 'SECURITY_EVENT' ||
     event.type === 'SERVICE_HEALTH_CHANGED' ||
+    event.type === 'FEATURE_FLAG_CHANGED' ||
+    event.type === 'ANNOUNCEMENT' ||
+    event.type === 'MAINTENANCE_CHANGED' ||
+    event.type === 'COMPLIANCE_STATUS_CHANGED' ||
     event.type === 'TRANSACTION_REVIEW_CREATED' ||
     event.type === 'TRANSACTION_REVIEW_APPROVED' ||
     event.type === 'TRANSACTION_REVIEW_REJECTED' ||
@@ -125,13 +129,26 @@ export default function HomePage(): ReactElement {
         })
         .catch(() => undefined),
       client
-        .adminObservabilityDashboard()
-        .then((ops) => {
-          next.ops = ops;
+        .adminProductionSystemHealth()
+        .then((mesh) => {
+          next.ops = {
+            generatedAt: mesh.generatedAt,
+            openAlertCount: 0,
+            openIncidentCount: 0,
+            unhealthyServiceCount: mesh.services.filter(
+              (row) => row.status === 'offline' || row.status === 'degraded',
+            ).length,
+            openAlerts: [],
+            openIncidents: [],
+            services: mesh.services.map((row) => ({
+              serviceName: row.id,
+              status: row.status,
+            })),
+            maintenanceNotices: [],
+            slos: [],
+          };
         })
-        .catch((err) => {
-          next.errors.push(formatAdminError(err));
-        }),
+        .catch(() => undefined),
       client
         .adminAnalyticsInsights()
         .then((analytics) => {
@@ -285,7 +302,7 @@ export default function HomePage(): ReactElement {
         {!state.ops || state.ops.services.length === 0 ? (
           <EmptyState
             title="Health unavailable"
-            description="Observability has not reported service status yet."
+            description="Production mesh health has not reported yet."
           />
         ) : (
           <ul className="stack">
@@ -296,7 +313,10 @@ export default function HomePage(): ReactElement {
                 </span>{' '}
                 {service.serviceName}
                 {state.ops?.generatedAt ? (
-                  <span className="page-subtitle"> · last checked {state.ops.generatedAt}</span>
+                  <span className="page-subtitle">
+                    {' '}
+                    · last checked {formatWhen(state.ops.generatedAt)}
+                  </span>
                 ) : null}
               </li>
             ))}

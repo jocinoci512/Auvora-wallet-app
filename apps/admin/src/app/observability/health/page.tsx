@@ -1,48 +1,32 @@
 'use client';
 
-import type { OpsHealthOverview } from '@auvora/sdk';
+import type { ProductionMeshHealth } from '@auvora/sdk';
 import { AsyncStates, PageHeader } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../../components/Subnav';
-import { healthLabel, healthTone, formatWhen, safeServiceName } from '../../../lib/admin-format';
+import { healthLabel, healthTone, formatWhen } from '../../../lib/admin-format';
 import { createApiClient, formatAdminError } from '../../../lib/api-client';
+import { useAdminRealtimeContext, useRealtimeRefetch } from '../../../lib/admin-realtime-context';
+import type { AdminEvent } from '../../../lib/realtime/admin-event';
 import { OPS_LINKS } from '../../../lib/section-nav';
 
-const EXPECTED = [
-  { key: 'gateway', label: 'Gateway' },
-  { key: 'auth', label: 'Auth' },
-  { key: 'wallet', label: 'Wallet' },
-  { key: 'blockchain', label: 'Blockchain' },
-  { key: 'market', label: 'Market data' },
-  { key: 'connection', label: 'Connections' },
-  { key: 'postgres', label: 'Postgres' },
-  { key: 'redis', label: 'Redis' },
-];
+const PRODUCTION_MESH = [
+  'gateway-prod',
+  'auth-prods',
+  'wallet-prod',
+  'blockchain-prod',
+  'market-data-prod',
+  'connections-prod',
+  'Postgres',
+  'Redis',
+] as const;
 
-function sampleTiming(recent: unknown[]): { lastChecked: string; latency: string } {
-  const first = recent.find((item) => item && typeof item === 'object') as
-    Record<string, unknown> | undefined;
-  if (!first) return { lastChecked: 'Not reported', latency: 'Not reported' };
-  const when =
-    (typeof first.occurredAt === 'string' && first.occurredAt) ||
-    (typeof first.checkedAt === 'string' && first.checkedAt) ||
-    (typeof first.generatedAt === 'string' && first.generatedAt) ||
-    (typeof first.updatedAt === 'string' && first.updatedAt) ||
-    null;
-  const latencyValue =
-    typeof first.latencyMs === 'number'
-      ? first.latencyMs
-      : typeof first.durationMs === 'number'
-        ? first.durationMs
-        : null;
-  return {
-    lastChecked: when ? formatWhen(when) : 'Not reported',
-    latency: latencyValue == null ? 'Not reported' : `${Math.round(latencyValue)} ms`,
-  };
+function shouldRefreshHealth(event: AdminEvent): boolean {
+  return event.type === 'SERVICE_HEALTH_CHANGED';
 }
 
 export default function AdminHealthPage(): ReactElement {
-  const [data, setData] = useState<OpsHealthOverview | null>(null);
+  const [data, setData] = useState<ProductionMeshHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +35,7 @@ export default function AdminHealthPage(): ReactElement {
     setError(null);
     try {
       const client = createApiClient();
-      setData(await client.adminObservabilityHealth());
+      setData(await client.adminProductionSystemHealth());
     } catch (err) {
       setError(formatAdminError(err));
     } finally {
@@ -62,38 +46,33 @@ export default function AdminHealthPage(): ReactElement {
   useEffect(() => {
     void load();
   }, [load]);
+  useRealtimeRefetch(shouldRefreshHealth, () => void load(), 1500);
 
-  const services = data?.services ?? [];
-  const timing = sampleTiming(Array.isArray(data?.recent) ? data.recent : []);
-  const rows = EXPECTED.map((expected) => {
-    const found = services.find((service) =>
-      service.serviceName.toLowerCase().includes(expected.key),
-    );
+  const { status: realtimeStatus } = useAdminRealtimeContext();
+  const byId = new Map((data?.services ?? []).map((row) => [row.id, row]));
+  const rows = PRODUCTION_MESH.map((id) => {
+    const found = byId.get(id);
     return {
-      label: expected.label,
-      status: found?.status ?? 'UNAVAILABLE',
-      reported: found ? safeServiceName(found.serviceName) : 'Not reported',
-      lastChecked: found ? timing.lastChecked : 'Not reported',
-      latency: found ? timing.latency : 'Not reported',
+      id,
+      status: found?.status ?? 'unknown',
+      lastChecked: data?.generatedAt ? formatWhen(data.generatedAt) : 'Not reported',
+      latency: found?.latencyMs == null ? 'Not reported' : `${Math.round(found.latencyMs)} ms`,
     };
   });
-  const extras = services.filter(
-    (service) =>
-      !EXPECTED.some((expected) => service.serviceName.toLowerCase().includes(expected.key)),
-  );
 
   return (
     <div className="page">
       <PageHeader
         title="System health"
-        subtitle="Aggregated control-plane health. Hostnames and credentials are never shown."
+        subtitle="Production mesh only. Legacy Railway services are never shown."
       >
         <Subnav label="Observability sections" links={OPS_LINKS} />
       </PageHeader>
+      <p className="page-subtitle">Realtime {realtimeStatus}</p>
 
       <AsyncStates
         loading={loading}
-        loadingMessage="Loading health…"
+        loadingMessage="Loading production health…"
         error={error}
         errorTitle="Health unavailable"
         onRetry={() => void load()}
@@ -101,7 +80,7 @@ export default function AdminHealthPage(): ReactElement {
       >
         <div className="table-scroll">
           <table className="data-table">
-            <caption className="auvora-sr-only">Service health</caption>
+            <caption className="auvora-sr-only">Production service health</caption>
             <thead>
               <tr>
                 <th scope="col">Service</th>
@@ -111,18 +90,9 @@ export default function AdminHealthPage(): ReactElement {
               </tr>
             </thead>
             <tbody>
-              {[
-                ...rows,
-                ...extras.map((service) => ({
-                  label: safeServiceName(service.serviceName),
-                  status: service.status,
-                  reported: safeServiceName(service.serviceName),
-                  lastChecked: timing.lastChecked,
-                  latency: timing.latency,
-                })),
-              ].map((row, index) => (
-                <tr key={`${row.label}-${index}`}>
-                  <td>{row.label}</td>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.id}</td>
                   <td>
                     <span className={`health-pill health-pill--${healthTone(row.status)}`}>
                       {healthLabel(row.status)}
@@ -135,16 +105,6 @@ export default function AdminHealthPage(): ReactElement {
             </tbody>
           </table>
         </div>
-        {data && Array.isArray(data.recent) && data.recent.length > 0 ? (
-          <p className="page-subtitle" style={{ marginTop: '0.75rem' }}>
-            Last checked from {data.recent.length} recent sample
-            {data.recent.length === 1 ? '' : 's'}.
-          </p>
-        ) : (
-          <p className="page-subtitle" style={{ marginTop: '0.75rem' }}>
-            Last checked: not reported.
-          </p>
-        )}
       </AsyncStates>
     </div>
   );

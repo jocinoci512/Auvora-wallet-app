@@ -8,6 +8,7 @@ import {
 import { HealthStatus, type HealthCheckResponse } from '@auvora/types';
 import type { Response } from 'express';
 import { loadEnv } from '../../config/env.schema';
+import { collectGatewayMeshHealth } from '../../infrastructure/health/mesh-health';
 import {
   getGatewayProxyCircuitStates,
   getGatewayProxyResilienceMetrics,
@@ -53,6 +54,18 @@ export class HealthController {
     // Probe-compatible: non-2xx when dependencies are not ready (body still returned).
     res.status(ready ? 200 : 503);
     return payload;
+  }
+
+  @Get('internal/mesh-health')
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Production mesh health for Admin (internal key required)' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid x-internal-api-key' })
+  async getMeshHealth(@Headers('x-internal-api-key') internalKey?: string) {
+    this.assertResilienceMetricsAccess(internalKey);
+    return {
+      generatedAt: new Date().toISOString(),
+      services: await collectGatewayMeshHealth(this.env),
+    };
   }
 
   @Get('metrics/resilience')

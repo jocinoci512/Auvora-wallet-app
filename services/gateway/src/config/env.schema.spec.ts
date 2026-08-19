@@ -19,9 +19,14 @@ describe('gateway env schema — CORS production config', () => {
   it('accepts production apex + www allowlist', () => {
     const env = loadEnv({
       NODE_ENV: 'production',
-      CORS_ORIGINS: 'https://auvorawallet.com,https://www.auvorawallet.com',
+      CORS_ORIGINS:
+        'https://auvorawallet.com,https://www.auvorawallet.com,https://admin.auvorawallet.com',
     });
-    expect(env.CORS_ORIGINS).toEqual(['https://auvorawallet.com', 'https://www.auvorawallet.com']);
+    expect(env.CORS_ORIGINS).toEqual([
+      'https://auvorawallet.com',
+      'https://www.auvorawallet.com',
+      'https://admin.auvorawallet.com',
+    ]);
   });
 
   it('requires CORS_ORIGINS in production (no localhost default)', () => {

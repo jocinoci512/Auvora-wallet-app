@@ -42,7 +42,7 @@
 #   BLOCKCHAIN_SERVICE_URL=http://${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003
 #   MARKET_DATA_SERVICE_URL=http://${{ "market-data-prod".RAILWAY_PRIVATE_DOMAIN }}:3012
 #   CONNECTIONS_SERVICE_URL=http://${{connections-prod.RAILWAY_PRIVATE_DOMAIN}}:3016
-#   CORS_ORIGINS=https://auvorawallet.com,https://www.auvorawallet.com
+#   CORS_ORIGINS=https://auvorawallet.com,https://www.auvorawallet.com,https://admin.auvorawallet.com
 #   GATEWAY_RATE_LIMIT_MAX=400
 #   GATEWAY_RATE_LIMIT_WINDOW_SECONDS=60
 #   PROXY_TIMEOUT_MS=30000
@@ -64,6 +64,8 @@
 #   - Public networking: leave OFF until GET /health returns 200, then enable
 #     for client traffic (gateway is the only public Nest edge).
 #   - Auth service reference must be auth-prods (healthy), not auth / auth-v2.
+#   - auth-prods should set GATEWAY_INTERNAL_URL=http://${{gateway-prod.RAILWAY_PRIVATE_DOMAIN}}:4000
+#     plus the shared INTERNAL_API_KEY so Admin System Health can probe the mesh.
 #   - All upstream refs MUST target the production services (auth-prods, wallet-prod,
 #     blockchain-prod, market-data-prod, connections-prod) — never the legacy
 #     unsuffixed names (wallet, blockchain, market-data, connections), which do not

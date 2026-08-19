@@ -5,6 +5,7 @@ const AUTH_SESSION_PREFIXES = [
   '/api/v1/admin/audit',
   '/api/v1/admin/operators',
   '/api/v1/admin/realtime',
+  '/api/v1/admin/system-health',
 ] as const;
 
 function pathnameOf(url: string | undefined): string {

@@ -5,6 +5,8 @@ import { Alert, AsyncStates, Button, PageHeader, StatusBadge } from '@auvora/ui'
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../../components/Subnav';
 import { createApiClient, formatApiError } from '../../../lib/api-client';
+import { useRealtimeRefetch } from '../../../lib/admin-realtime-context';
+import type { AdminEvent } from '../../../lib/realtime/admin-event';
 import { INFRA_LINKS } from '../../../lib/section-nav';
 
 export default function InfrastructureConfigPage(): ReactElement {
@@ -34,6 +36,12 @@ export default function InfrastructureConfigPage(): ReactElement {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useRealtimeRefetch(
+    (event: AdminEvent) => event.type === 'FEATURE_FLAG_CHANGED',
+    () => void load(),
+    800,
+  );
 
   async function toggleFlag(flag: FeatureFlag) {
     const next = flag.enabled ? 'disable' : 'enable';

@@ -47,6 +47,8 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stoppedRef = useRef(false);
   const runIdRef = useRef(0);
+  const lastEventIdRef = useRef<string | null>(null);
+  const seenIdsRef = useRef(new Set<string>());
 
   const clearTimer = (): void => {
     if (reconnectTimer.current) {
@@ -69,6 +71,9 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
       const headers: Record<string, string> = { Accept: 'text/event-stream' };
       if (token) {
         headers.Authorization = `Bearer ${token}`;
+      }
+      if (lastEventIdRef.current) {
+        headers['Last-Event-ID'] = lastEventIdRef.current;
       }
       const res = await fetch(url, {
         method: 'GET',
@@ -97,6 +102,12 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
         for (const frame of parser.push(chunk)) {
           const event = parseAdminEvent(frame);
           if (!event) continue;
+          if (seenIdsRef.current.has(event.id)) continue;
+          seenIdsRef.current.add(event.id);
+          if (seenIdsRef.current.size > 500) {
+            seenIdsRef.current = new Set(Array.from(seenIdsRef.current).slice(-250));
+          }
+          lastEventIdRef.current = frame.id ?? event.id;
           setLastEventAt(Date.now());
           setEvents((prev) => {
             const next = [event, ...prev];

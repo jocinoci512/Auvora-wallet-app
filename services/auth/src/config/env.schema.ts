@@ -62,12 +62,21 @@ export const envSchema = z
     /**
      * Optional extra browser origins for credentialed CORS (comma-separated).
      * Always merged with APP_PUBLIC_URL. Never `*`.
-     * Prod example: https://www.auvorawallet.com (apex is APP_PUBLIC_URL).
+     * Prod extras: https://www.auvorawallet.com,https://admin.auvorawallet.com
+     * (apex is APP_PUBLIC_URL).
      */
     CORS_ORIGINS: z.string().optional(),
     NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
     ANALYTICS_SERVICE_URL: z.string().url().optional(),
     OBSERVABILITY_SERVICE_URL: z.string().url().optional(),
+    /**
+     * Private gateway-prod base for Admin mesh health (not a public URL).
+     * Example: http://${{gateway-prod.RAILWAY_PRIVATE_DOMAIN}}:4000
+     */
+    GATEWAY_INTERNAL_URL: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z.string().url().optional(),
+    ),
     INTERNAL_API_KEY: z.string().min(32).optional(),
     OTEL_ENABLED: z
       .enum(['true', 'false'])

@@ -13,6 +13,8 @@ import {
 } from '../../lib/admin-control-plane';
 import { formatUsdCents, formatWhen, reviewOrigin, shortId } from '../../lib/admin-format';
 import { formatAdminError, isStepUpRequired } from '../../lib/api-client';
+import { useRealtimeRefetch } from '../../lib/admin-realtime-context';
+import type { AdminEvent } from '../../lib/realtime/admin-event';
 
 const FILTERS = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'ALL'] as const;
 
@@ -49,6 +51,17 @@ export default function TransactionReviewsPage(): ReactElement {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useRealtimeRefetch(
+    (event: AdminEvent) =>
+      event.type === 'TRANSACTION_REVIEW_CREATED' ||
+      event.type === 'TRANSACTION_REVIEW_APPROVED' ||
+      event.type === 'TRANSACTION_REVIEW_REJECTED' ||
+      event.type === 'TRANSACTION_REVIEW_REQUESTED' ||
+      event.type === 'TRANSACTION_REVIEW_DECIDED',
+    () => void load(),
+    800,
+  );
 
   async function confirm(reason: string): Promise<void> {
     if (!pendingAction) return;

@@ -73,7 +73,15 @@ export function healthTone(status: string): 'healthy' | 'degraded' | 'unavailabl
 }
 
 export function healthLabel(status: string): string {
-  return healthTone(status);
+  const normalized = status.toUpperCase();
+  if (normalized === 'OK' || normalized === 'HEALTHY' || normalized === 'UP') return 'Healthy';
+  if (normalized === 'DEGRADED' || normalized === 'WARN' || normalized === 'WARNING') {
+    return 'Degraded';
+  }
+  if (normalized === 'OFFLINE' || normalized === 'UNHEALTHY' || normalized === 'DOWN') {
+    return 'Offline';
+  }
+  return 'Unknown';
 }
 
 export function safeServiceName(name: string): string {

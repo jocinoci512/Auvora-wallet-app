@@ -27,6 +27,15 @@ describe('admin-realtime contract', () => {
     }
   });
 
+  it('maps USER_STATUS_CHANGED and SYSTEM_HEALTH_CHANGED aliases', () => {
+    expect(sanitizeAdminEvent({ type: 'USER_STATUS_CHANGED' })?.type).toBe(
+      'ACCOUNT_STATUS_CHANGED',
+    );
+    expect(sanitizeAdminEvent({ type: 'SYSTEM_HEALTH_CHANGED' })?.type).toBe(
+      'SERVICE_HEALTH_CHANGED',
+    );
+  });
+
   it('fills id/timestamp/service/severity defaults', () => {
     const event = sanitizeAdminEvent({ type: 'USER_CREATED' });
     expect(event?.id).toMatch(/^evt_/);

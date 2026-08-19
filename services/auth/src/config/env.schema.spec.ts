@@ -24,12 +24,12 @@ describe('auth env schema — origin / cookie / CORS production config', () => {
     expect(env.COOKIE_SECURE).toBe(false);
   });
 
-  it('accepts production apex + www allowlist with Secure cookies and host-only domain', () => {
+  it('accepts production apex + www + admin allowlist with Secure cookies and host-only domain', () => {
     const env = loadEnv({
       ...base,
       NODE_ENV: 'production',
       APP_PUBLIC_URL: 'https://auvorawallet.com',
-      CORS_ORIGINS: 'https://www.auvorawallet.com',
+      CORS_ORIGINS: 'https://www.auvorawallet.com,https://admin.auvorawallet.com',
       COOKIE_SECURE: 'true',
       COOKIE_DOMAIN: '',
       MAIL_DRIVER: 'smtp',
@@ -38,7 +38,11 @@ describe('auth env schema — origin / cookie / CORS production config', () => {
       SMTP_FROM: 'noreply@auvorawallet.com',
     });
     expect(env.APP_PUBLIC_URL).toBe('https://auvorawallet.com');
-    expect(env.corsOrigins).toEqual(['https://auvorawallet.com', 'https://www.auvorawallet.com']);
+    expect(env.corsOrigins).toEqual([
+      'https://auvorawallet.com',
+      'https://www.auvorawallet.com',
+      'https://admin.auvorawallet.com',
+    ]);
     expect(env.COOKIE_SECURE).toBe(true);
     expect(env.COOKIE_DOMAIN ?? '').toBe('');
   });

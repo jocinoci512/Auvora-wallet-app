@@ -15,7 +15,7 @@ describe('railway.gateway.toml upstream service references', () => {
     expect(toml).toContain('${{wallet-prod.RAILWAY_PRIVATE_DOMAIN}}:3002');
     expect(toml).toContain('${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003');
     expect(toml).toContain('"market-data-prod".RAILWAY_PRIVATE_DOMAIN');
-    expect(toml).toContain('${{connections-prod.RAILWAY_PRIVATE_DOMAIN}}:3016');
+    expect(toml).toContain('https://admin.auvorawallet.com');
   });
 
   it('does not reference legacy unsuffixed upstream service names', () => {

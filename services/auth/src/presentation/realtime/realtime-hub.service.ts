@@ -108,6 +108,8 @@ export class RealtimeHubService implements OnModuleInit, OnModuleDestroy {
   private heartbeatTimer?: ReturnType<typeof setInterval>;
   private initialized = false;
   private counter = 0;
+  private readonly recentEventIds: string[] = [];
+  private readonly recentEventIdSet = new Set<string>();
 
   constructor(
     @Inject(ENV) private readonly env: ServiceEnv,
@@ -183,6 +185,13 @@ export class RealtimeHubService implements OnModuleInit, OnModuleDestroy {
   }
 
   private deliver(event: AdminEvent): void {
+    if (this.recentEventIdSet.has(event.id)) return;
+    this.recentEventIdSet.add(event.id);
+    this.recentEventIds.push(event.id);
+    if (this.recentEventIds.length > 512) {
+      const expired = this.recentEventIds.shift();
+      if (expired) this.recentEventIdSet.delete(expired);
+    }
     const frame = `id: ${event.id}\nevent: ${event.type}\ndata: ${serializeAdminEvent(event)}\n\n`;
     for (const conn of this.connections.values()) {
       conn.enqueueFrame(frame);

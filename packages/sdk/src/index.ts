@@ -165,6 +165,7 @@ export type {
   OpsSlo,
   OpsCapacityOverview,
   OpsHealthOverview,
+  ProductionMeshHealth,
   OpsDependencyGraph,
   OpsTrace,
   OpsLogEntry,

@@ -7,6 +7,7 @@ import { AdminAuthController } from './controllers/admin-auth.controller';
 import { AdminOperatorsController } from './controllers/admin-operators.controller';
 import { AdminAuditController } from './controllers/admin-audit.controller';
 import { AdminUsersController } from './controllers/admin-users.controller';
+import { AdminSystemHealthController } from './controllers/admin-system-health.controller';
 import { AuthController } from './controllers/auth.controller';
 import { MeController } from './controllers/me.controller';
 import { DomainExceptionFilter } from '@auvora/nest-common';
@@ -36,6 +37,7 @@ import { RealtimeHubService } from './realtime/realtime-hub.service';
     AdminUsersController,
     AdminOperatorsController,
     AdminAuditController,
+    AdminSystemHealthController,
     RealtimeController,
   ],
   providers: [
