@@ -6,7 +6,6 @@ import {
   parseAmount,
   recipientIssue,
   resolveNamePreview,
-  truncateMiddle,
   validateAddressFormat,
   validateSendAmount,
 } from './validation';
