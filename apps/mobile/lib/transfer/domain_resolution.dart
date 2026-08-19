@@ -72,17 +72,12 @@ class PreviewDomainResolver implements DomainResolver {
     }
     final tld = n.split('.').last;
     final provider = _udTlds.contains(tld) ? 'Unstoppable Domains' : 'ENS';
-    var h = 0;
-    for (final code in n.codeUnits) {
-      h = (h * 31 + code) & 0xffffffff;
-    }
-    final hex = ('${h.toRadixString(16)}a1b2c3d4e5f67890abcdef0123456789').substring(0, 40);
     return DomainResolveResult(
-      ok: true,
-      address: '0x$hex',
+      ok: false,
       providerLabel: provider,
       previewOnly: true,
-      message: 'Demo resolve only — not a live $provider lookup.',
+      message:
+          'Live $provider lookup is not available yet. Enter a native address — demo names are not converted into send destinations.',
     );
   }
 }

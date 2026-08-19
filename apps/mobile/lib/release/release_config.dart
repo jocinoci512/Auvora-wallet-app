@@ -12,11 +12,12 @@ abstract final class ReleaseConfig {
   static const bool liveBroadcastEnabled = false;
 
   /// When false, Receive blocks QR, copy, and share for funding addresses.
-  /// Kept locked while Alpha validates HD addresses off-device.
+  /// Addresses may be shown while live broadcast remains off — deposits cannot
+  /// be withdrawn on-chain in this Alpha until broadcast is enabled.
   static const bool allowFundingAddresses = true;
 
   /// Address derivation quality for this build.
-  /// BIP32/SLIP-0010 is active; funding stay gated until receive unlock sign-off.
+  /// BIP32/SLIP-0010 is active.
   static const DerivationMode derivationMode = DerivationMode.bip32Partial;
 
   static const String fundingBlockedMessage =

@@ -9,6 +9,7 @@ import '../../portfolio/portfolio_controller.dart';
 import '../../security/security_controller.dart';
 import '../../security/security_models.dart';
 import '../../state/wallet_controller.dart';
+import '../../privacy/sensitive_screen.dart';
 import '../../theme/aether_theme.dart';
 import '../connections/permission_center_screen.dart';
 import '../home/home_shared.dart';
@@ -733,12 +734,14 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Recovery phrase'),
-        content: SelectableText(phrase, style: const TextStyle(height: 1.6)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
-        ],
+      builder: (ctx) => SensitiveScope(
+        child: AlertDialog(
+          title: const Text('Recovery phrase'),
+          content: SelectableText(phrase, style: const TextStyle(height: 1.6)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+          ],
+        ),
       ),
     );
   }
@@ -752,7 +755,8 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
     String? error;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) => SensitiveScope(
+        child: StatefulBuilder(
         builder: (ctx, setDialog) => AlertDialog(
           title: const Text('Verify recovery phrase'),
           content: SizedBox(
@@ -798,6 +802,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
               child: const Text('Verify'),
             ),
           ],
+        ),
         ),
       ),
     );

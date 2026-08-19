@@ -8,6 +8,7 @@ import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../wallet_engine/market_data_provider.dart';
 import '../wallet_engine/price_service.dart';
+import '../release/integration_config.dart';
 import 'home/home_shared.dart';
 import 'home/home_tab.dart';
 import 'receive_flow_screen.dart';
@@ -187,18 +188,30 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
                     ReleaseConfig.allowFundingAddresses ? 'Copy address' : 'Copy address (locked)',
                   ),
                 ),
-              for (final entry in [
-                ('Swap', EngineOp.swap),
-                ('Buy', EngineOp.buy),
-              ])
-                OutlinedButton(
-                  onPressed: () => openDigitalAssetFlow(
-                    context,
-                    entry.$2,
-                    initialFrom: asset.ticker,
-                  ),
-                  child: Text(entry.$1),
+              OutlinedButton(
+                onPressed: () => showActionSheet(
+                  context,
+                  title: 'Swap unavailable',
+                  body:
+                      'Swap stays unavailable until a production quote provider is wired. Preview simulators are not offered as live trading.',
                 ),
+                child: const Text('Swap'),
+              ),
+              OutlinedButton(
+                onPressed: IntegrationConfig.onRampPartnerCheckoutEnabled
+                    ? () => openDigitalAssetFlow(
+                          context,
+                          EngineOp.buy,
+                          initialFrom: asset.ticker,
+                        )
+                    : () => showActionSheet(
+                          context,
+                          title: 'Buy unavailable',
+                          body:
+                              'Buy stays unavailable until an on-ramp partner is configured for this build. No card is charged from this button.',
+                        ),
+                child: const Text('Buy'),
+              ),
             ],
           ),
           const SizedBox(height: 28),

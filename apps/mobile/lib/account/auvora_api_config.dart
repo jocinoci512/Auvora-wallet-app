@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Backend API configuration for the Auvora account (identity) layer.
 ///
 /// The mobile app is a non-custodial wallet: wallet keys stay on-device. The
@@ -18,7 +20,16 @@ abstract final class AuvoraApiConfig {
       String.fromEnvironment('AUVORA_API_BASE_URL', defaultValue: '');
 
   /// Coarse platform label recorded on the backend session/device.
-  static const String platform = 'android';
+  static String get platform {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.macOS:
+        return 'macos';
+      default:
+        return 'android';
+    }
+  }
 
   static bool get isConfigured => baseUrl.trim().isNotEmpty;
 

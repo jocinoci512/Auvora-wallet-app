@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../crypto/wallet_crypto.dart';
+import '../../privacy/sensitive_screen.dart';
 import '../../preferences/preferences_controller.dart';
 import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
@@ -215,7 +216,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final nameCtrl = TextEditingController(text: 'Wallet ${(wallet.vaults.length + 1)}');
     final choice = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => SensitiveScope(
+        child: AlertDialog(
         title: const Text('Add wallet'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -237,6 +239,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, 'create'), child: const Text('Create')),
         ],
       ),
+      ),
     );
     if (choice == null || !context.mounted) {
       nameCtrl.dispose();
@@ -249,19 +252,22 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       if (!context.mounted) return;
       await showDialog<void>(
         context: context,
-        builder: (ctx) => AlertDialog(
+        builder: (ctx) => SensitiveScope(
+          child: AlertDialog(
           title: const Text('Write down your phrase'),
           content: SelectableText(mnemonic, style: const TextStyle(height: 1.5)),
           actions: [
             FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('I saved it')),
           ],
         ),
+        ),
       );
     } else {
       final phraseCtrl = TextEditingController();
       final imported = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
+        builder: (ctx) => SensitiveScope(
+          child: AlertDialog(
           title: const Text('Import wallet'),
           content: TextField(
             controller: phraseCtrl,
@@ -275,6 +281,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
             FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
           ],
+        ),
         ),
       );
       if (imported == true) {

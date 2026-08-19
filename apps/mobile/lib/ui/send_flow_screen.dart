@@ -489,7 +489,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
                   if (_domainResolver.isNameLike(raw)) {
                     final resolved = await _domainResolver.resolve(raw, network: asset.network);
                     if (!mounted) return;
-                    if (!resolved.ok || resolved.address == null) {
+                    if (!resolved.ok || resolved.previewOnly || resolved.address == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(resolved.message ?? 'Could not resolve that name.')),
                       );

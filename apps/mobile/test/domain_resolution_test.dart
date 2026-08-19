@@ -12,13 +12,12 @@ void main() {
     expect(resolver.isNameLike('plain'), isFalse);
   });
 
-  test('preview resolve returns deterministic address', () async {
+  test('preview resolve never substitutes a dummy address', () async {
     final a = await resolver.resolve('demo.eth', network: AssetNetwork.ethereum);
-    final b = await resolver.resolve('demo.eth', network: AssetNetwork.ethereum);
-    expect(a.ok, isTrue);
-    expect(a.address, startsWith('0x'));
-    expect(a.address, b.address);
+    expect(a.ok, isFalse);
+    expect(a.address, isNull);
     expect(a.previewOnly, isTrue);
+    expect(a.message, contains('not available'));
   });
 
   test('risk assessment flags burn address', () {
