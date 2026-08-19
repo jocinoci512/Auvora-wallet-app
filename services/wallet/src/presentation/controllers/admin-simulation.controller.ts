@@ -23,6 +23,20 @@ import {
   UserIdParamDto,
 } from '../dto/admin-simulation.dto';
 
+// Keep DTO classes as runtime values for Nest ValidationPipe + Swagger.
+const _adminSimulationDtoRuntime = {
+  AdminListReviewsQueryDto,
+  AdminReasonDto,
+  AssetCodeParamDto,
+  CreateSimulationTransactionDto,
+  ReviewDecisionDto,
+  ReviewIdParamDto,
+  SimulationPresetParamDto,
+  UpsertSimulationBalanceDto,
+  UserIdParamDto,
+};
+void _adminSimulationDtoRuntime;
+
 @ApiTags('admin-simulation')
 @ApiBearerAuth()
 @Roles(...ADMIN_PORTAL_ROLES)
