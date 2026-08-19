@@ -13,6 +13,35 @@ export function shortId(value: string | null | undefined, size = 8): string {
   return value.length <= size ? value : `${value.slice(0, size)}…`;
 }
 
+/** Formats integer USD cents without binary floating point. */
+export function formatUsdCents(cents: string | number | bigint | null | undefined): string {
+  try {
+    const n = BigInt(cents ?? 0);
+    const sign = n < 0n ? '-' : '';
+    const abs = n < 0n ? -n : n;
+    const whole = abs / 100n;
+    const frac = (abs % 100n).toString().padStart(2, '0');
+    const grouped = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${sign}$${grouped}.${frac}`;
+  } catch {
+    return '—';
+  }
+}
+
+export function reviewOrigin(
+  sourceType: string,
+  metadata?: Record<string, unknown> | null,
+): { label: string; simulated: boolean } {
+  const simulated =
+    sourceType === 'SIMULATION_TRANSACTION' ||
+    metadata?.simulated === true ||
+    metadata?.label === 'SIMULATED';
+  return {
+    simulated,
+    label: simulated ? 'SIMULATED' : 'Auvora transfer',
+  };
+}
+
 export function displayName(input: {
   firstName?: string | null;
   lastName?: string | null;

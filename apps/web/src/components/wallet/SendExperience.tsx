@@ -1,6 +1,7 @@
 'use client';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@auvora/ui';
+import { AuvoraClientError, type PrepareTransferResult } from '@auvora/sdk';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -39,6 +40,7 @@ import {
 } from '../transaction/TransactionShell';
 import { PublicAddress } from './PublicAddress';
 import { networkLabel } from '../../lib/product/networks';
+import { createApiClient, getStoredAccessToken } from '../../lib/api-client';
 import '../../app/core-experience.css';
 import '../../app/wallet-flow.css';
 
@@ -86,7 +88,15 @@ const DEMO_PRICES: Partial<Record<WalletAsset, number>> = {
 };
 
 type FailKind =
-  'insufficient_gas' | 'rpc' | 'user_rejected' | 'failed' | 'timeout' | 'offline' | 'rate_limited';
+  | 'insufficient_gas'
+  | 'rpc'
+  | 'user_rejected'
+  | 'failed'
+  | 'timeout'
+  | 'offline'
+  | 'rate_limited'
+  | 'pending_review'
+  | 'review_blocked';
 
 function failCopy(kind: FailKind): { title: string; body: string } {
   switch (kind) {
@@ -115,10 +125,15 @@ function failCopy(kind: FailKind): { title: string; body: string } {
         title: 'You are offline',
         body: 'Reconnect this device, then review the transaction again.',
       };
-    case 'rate_limited':
+    case 'pending_review':
       return {
-        title: 'Temporarily limited',
-        body: 'The network asked us to slow down. Wait a moment, then try again.',
+        title: 'Transaction pending review',
+        body: 'This transfer is at or above the Auvora review threshold. An administrator must approve it before this device can sign. Keys stay on your device. Nothing was broadcast.',
+      };
+    case 'review_blocked':
+      return {
+        title: 'Review required before signing',
+        body: 'Auvora could not complete the server-side review check. Large transfers cannot skip this step. Sign in and try again. Nothing was sent.',
       };
     default:
       return {
@@ -155,6 +170,8 @@ export function SendExperience(): ReactElement {
   } | null>(null);
   const progressTimer = useRef<number | null>(null);
   const deepLinked = useRef(false);
+  const idempotencyKey = useRef<string | null>(null);
+  const [pendingReview, setPendingReview] = useState<PrepareTransferResult | null>(null);
 
   useEffect(
     () => () => {
@@ -201,6 +218,10 @@ export function SendExperience(): ReactElement {
   const destination = resolvedTo?.address ?? to.trim();
   const networkName = NETWORKS.find((n) => n.id === network)?.label ?? networkLabel(network);
   const liveRecipient = to.trim() ? recipientIssue(to, network) : null;
+
+  useEffect(() => {
+    idempotencyKey.current = null;
+  }, [amount, destination, asset]);
 
   const filteredNetworks = useMemo(() => {
     const q = assetQuery.trim().toLowerCase();
@@ -283,13 +304,49 @@ export function SendExperience(): ReactElement {
     });
   }
 
-  function submit(): void {
+  async function submit(): Promise<void> {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       setFailKind('offline');
       setStep('failure');
       return;
     }
+    const amountRaw = amount.replace(/,/g, '').trim();
+    const signedIn = Boolean(getStoredAccessToken());
+    const largeNotional = fiatApprox >= 10_000;
+    setPendingReview(null);
     setSigning(true);
+    if (signedIn) {
+      try {
+        const client = createApiClient();
+        idempotencyKey.current ??= crypto.randomUUID();
+        const prepared = await client.prepareWalletTransfer({
+          assetCode: asset,
+          destinationAddress: destination,
+          amount: amountRaw,
+          fromAddress,
+          idempotencyKey: idempotencyKey.current,
+        });
+        if (!prepared.allowed) {
+          setPendingReview(prepared);
+          setFailKind('pending_review');
+          setStep('failure');
+          setSigning(false);
+          return;
+        }
+      } catch (err) {
+        setSigning(false);
+        const authBlocked =
+          err instanceof AuvoraClientError && (err.status === 401 || err.status === 403);
+        setFailKind(largeNotional || authBlocked ? 'review_blocked' : 'rpc');
+        setStep('failure');
+        return;
+      }
+    } else if (largeNotional) {
+      setSigning(false);
+      setFailKind('review_blocked');
+      setStep('failure');
+      return;
+    }
     setStep('progress');
     setProgress(12);
     if (progressTimer.current != null) window.clearInterval(progressTimer.current);
@@ -725,6 +782,15 @@ export function SendExperience(): ReactElement {
               <p>Risk signals are still active for this destination.</p>
             </div>
           ) : null}
+          {fiatApprox >= 10_000 ? (
+            <div className="cx-alert cx-alert--info" role="status">
+              <strong>Large-transfer review</strong>
+              <p>
+                This amount is at or above the $10,000 USD review threshold. Auvora must approve it
+                before your device can sign. Auvora never signs for you.
+              </p>
+            </div>
+          ) : null}
           <fieldset style={{ border: 'none', padding: 0, margin: '1rem 0' }}>
             <legend style={{ fontWeight: 700, marginBottom: 8 }}>Before you continue</legend>
             {(
@@ -866,12 +932,35 @@ export function SendExperience(): ReactElement {
         <section className="cx-panel">
           <h2>{failCopy(failKind).title}</h2>
           <p>{failCopy(failKind).body}</p>
+          {failKind === 'pending_review' && pendingReview ? (
+            <dl className="wf-review">
+              <div>
+                <dt>Review ID</dt>
+                <dd>
+                  <code>{pendingReview.reviewId ?? '—'}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>{pendingReview.reviewStatus ?? pendingReview.status}</dd>
+              </div>
+              <div>
+                <dt>Requested</dt>
+                <dd>
+                  {pendingReview.requestedAt
+                    ? new Date(pendingReview.requestedAt).toLocaleString()
+                    : '—'}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
           <div className="wf-actions">
             <button
               type="button"
               className="cx-btn cx-btn--primary"
               onClick={() => {
                 setFailKind(null);
+                setPendingReview(null);
                 setStep('preview');
               }}
             >

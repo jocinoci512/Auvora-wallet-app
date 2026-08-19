@@ -5,6 +5,7 @@ import { AsyncStates, Button, EmptyState, PageHeader, StatusBadge } from '@auvor
 import {
   adminApplySimulationPreset,
   adminCreateSimulationTransaction,
+  adminDisableTestAccount,
   adminEnableTestAccount,
   adminGetSimulationAccount,
   adminListSimulationAccounts,
@@ -14,6 +15,7 @@ import {
   type SimulationAccountView,
 } from '../../lib/admin-control-plane';
 import { ConfirmReasonDialog } from '../../components/ConfirmReasonDialog';
+import { formatWhen } from '../../lib/admin-format';
 import { formatAdminError, isStepUpRequired } from '../../lib/api-client';
 import { useRouter } from 'next/navigation';
 
@@ -43,7 +45,7 @@ export default function SimulationPage(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | {
-    kind: 'enable' | 'reset' | 'preset' | 'remove' | 'scenario';
+    kind: 'enable' | 'disable' | 'reset' | 'preset' | 'remove' | 'scenario';
     presetCode?: string;
     assetCode?: string;
   }>(null);
@@ -63,28 +65,39 @@ export default function SimulationPage(): ReactElement {
 
   const currentUserId = account?.ownerUserId ?? lookupUserId.trim();
 
-  const load = useCallback(async () => {
+  const loadList = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const [rows, selected] = await Promise.all([
-        adminListSimulationAccounts(lookupUserId.trim() || undefined),
-        lookupUserId.trim()
-          ? adminGetSimulationAccount(lookupUserId.trim())
-          : Promise.resolve(null),
-      ]);
-      setAccounts(rows);
-      setAccount(selected);
+      setAccounts(await adminListSimulationAccounts());
     } catch (err) {
       setError(formatAdminError(err));
     } finally {
       setLoading(false);
     }
-  }, [lookupUserId]);
+  }, []);
+
+  const fetchAccount = useCallback(async (userId: string): Promise<void> => {
+    const id = userId.trim();
+    if (!id) {
+      setAccount(null);
+      return;
+    }
+    try {
+      setAccount(await adminGetSimulationAccount(id));
+    } catch (err) {
+      setAccount(null);
+      setError(formatAdminError(err));
+    }
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadList();
+  }, [loadList]);
+
+  async function refresh(): Promise<void> {
+    await Promise.all([loadList(), fetchAccount(lookupUserId)]);
+  }
 
   const portfolioUsd = useMemo(() => {
     if (!account) return null;
@@ -96,6 +109,8 @@ export default function SimulationPage(): ReactElement {
       if (!currentUserId || !dialog) return;
       if (dialog.kind === 'enable') {
         setAccount(await adminEnableTestAccount(currentUserId, reason));
+      } else if (dialog.kind === 'disable') {
+        setAccount(await adminDisableTestAccount(currentUserId, reason));
       } else if (dialog.kind === 'reset') {
         setAccount(await adminResetSimulationPortfolio(currentUserId, reason));
       } else if (dialog.kind === 'preset' && dialog.presetCode) {
@@ -113,7 +128,7 @@ export default function SimulationPage(): ReactElement {
         setAccount(await adminGetSimulationAccount(currentUserId));
       }
       setDialog(null);
-      await load();
+      await refresh();
     } catch (err) {
       if (isStepUpRequired(err)) {
         router.push(`/step-up?next=${encodeURIComponent('/simulation')}`);
@@ -134,7 +149,7 @@ export default function SimulationPage(): ReactElement {
         reason,
       });
       setAccount(next);
-      await load();
+      await refresh();
     } catch (err) {
       if (isStepUpRequired(err)) {
         router.push(`/step-up?next=${encodeURIComponent('/simulation')}`);
@@ -150,7 +165,7 @@ export default function SimulationPage(): ReactElement {
         title="Simulation"
         subtitle="TEST-account-only balances and transactions. Never mixed with real on-chain holdings."
         actions={
-          <Button type="button" variant="secondary" onClick={() => void load()}>
+          <Button type="button" variant="secondary" onClick={() => void refresh()}>
             Refresh
           </Button>
         }
@@ -164,10 +179,16 @@ export default function SimulationPage(): ReactElement {
               className="field-input"
               value={lookupUserId}
               onChange={(event) => setLookupUserId(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void fetchAccount(lookupUserId);
+                }
+              }}
               placeholder="Lookup a TEST account by user id"
             />
           </label>
-          <Button type="button" onClick={() => void load()}>
+          <Button type="button" onClick={() => void fetchAccount(lookupUserId)}>
             Open
           </Button>
           <Button
@@ -178,6 +199,14 @@ export default function SimulationPage(): ReactElement {
           >
             Mark as Test Account
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setDialog({ kind: 'disable' })}
+            disabled={!lookupUserId.trim()}
+          >
+            Disable TEST account
+          </Button>
         </div>
       </section>
 
@@ -186,7 +215,7 @@ export default function SimulationPage(): ReactElement {
         loadingMessage="Loading simulation control plane…"
         error={error}
         errorTitle="Could not load simulation data"
-        onRetry={() => void load()}
+        onRetry={() => void refresh()}
         empty={!loading && !error && !account && accounts.length === 0}
         emptyTitle="No TEST accounts yet"
         emptyDescription="Enable simulation for a user to start a protected test portfolio."
@@ -226,17 +255,40 @@ export default function SimulationPage(): ReactElement {
                     <th scope="col">Status</th>
                     <th scope="col">Assets</th>
                     <th scope="col">Updated</th>
+                    <th scope="col">Open</th>
                   </tr>
                 </thead>
                 <tbody>
                   {accounts.map((row) => (
-                    <tr key={row.id}>
+                    <tr
+                      key={row.id}
+                      className={`admin-table-row--selectable${
+                        row.ownerUserId === lookupUserId.trim() ? ' admin-table-row--selected' : ''
+                      }`}
+                      onClick={() => {
+                        setLookupUserId(row.ownerUserId);
+                        void fetchAccount(row.ownerUserId);
+                      }}
+                    >
                       <td className="mono">{row.ownerUserId}</td>
                       <td>
                         <StatusBadge status={row.status} />
                       </td>
                       <td>{row.assetCount}</td>
-                      <td>{row.updatedAt}</td>
+                      <td>{formatWhen(row.updatedAt)}</td>
+                      <td>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setLookupUserId(row.ownerUserId);
+                            void fetchAccount(row.ownerUserId);
+                          }}
+                        >
+                          Select
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -311,7 +363,7 @@ export default function SimulationPage(): ReactElement {
                           </td>
                           <td>{row.priceUsd ? `$${row.priceUsd}` : '—'}</td>
                           <td>{row.label}</td>
-                          <td>{row.updatedAt}</td>
+                          <td>{formatWhen(row.updatedAt)}</td>
                           <td>
                             <Button
                               type="button"
@@ -428,6 +480,7 @@ export default function SimulationPage(): ReactElement {
                     <li key={event.id}>
                       <strong>{event.eventType}</strong>{' '}
                       {event.assetCode ? `· ${event.assetCode}` : ''} · {event.reason}
+                      <div className="page-subtitle">{formatWhen(event.createdAt)}</div>
                     </li>
                   ))}
                 </ul>
@@ -452,6 +505,7 @@ export default function SimulationPage(): ReactElement {
                         <th scope="col">Amount</th>
                         <th scope="col">Status</th>
                         <th scope="col">Review</th>
+                        <th scope="col">Created</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -465,6 +519,7 @@ export default function SimulationPage(): ReactElement {
                             <StatusBadge status={tx.status} />
                           </td>
                           <td className="mono">{tx.reviewId ?? '—'}</td>
+                          <td>{formatWhen(tx.createdAt)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -481,13 +536,15 @@ export default function SimulationPage(): ReactElement {
         title={
           dialog?.kind === 'enable'
             ? 'Mark as Test Account'
-            : dialog?.kind === 'reset'
-              ? 'Reset simulation portfolio'
-              : dialog?.kind === 'remove'
-                ? 'Remove simulated asset'
-                : dialog?.kind === 'scenario'
-                  ? 'Create SIMULATED transaction'
-                  : 'Apply simulation preset'
+            : dialog?.kind === 'disable'
+              ? 'Disable TEST account'
+              : dialog?.kind === 'reset'
+                ? 'Reset simulation portfolio'
+                : dialog?.kind === 'remove'
+                  ? 'Remove simulated asset'
+                  : dialog?.kind === 'scenario'
+                    ? 'Create SIMULATED transaction'
+                    : 'Apply simulation preset'
         }
         description="This action is restricted to authorized admins, requires a reason, and never changes real on-chain funds."
         onOpenChange={(open) => {

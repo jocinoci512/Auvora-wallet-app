@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { AsyncStates, Button, PageHeader, StatusBadge } from '@auvora/ui';
 import { ConfirmReasonDialog } from '../../components/ConfirmReasonDialog';
@@ -10,7 +11,7 @@ import {
   adminRejectLargeTransferReview,
   type LargeTransferReviewRow,
 } from '../../lib/admin-control-plane';
-import { formatWhen } from '../../lib/admin-format';
+import { formatUsdCents, formatWhen, reviewOrigin, shortId } from '../../lib/admin-format';
 import { formatAdminError, isStepUpRequired } from '../../lib/api-client';
 
 const FILTERS = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'ALL'] as const;
@@ -75,7 +76,7 @@ export default function TransactionReviewsPage(): ReactElement {
     <div className="page">
       <PageHeader
         title="Transaction Reviews"
-        subtitle="Large-transfer reviews are persistent, audited, and separate from user signing."
+        subtitle="High-value Auvora transfers and TEST simulations share this queue. Approval never signs or broadcasts for the user."
         actions={
           <Button type="button" variant="secondary" onClick={() => void load()}>
             Refresh
@@ -84,15 +85,21 @@ export default function TransactionReviewsPage(): ReactElement {
       />
 
       <section className="admin-kpi-grid" aria-label="Review counts">
-        {FILTERS.filter((item) => item !== 'ALL').map((item) => (
+        {FILTERS.map((item) => (
           <button
             key={item}
             type="button"
             className={`admin-kpi${status === item ? ' admin-kpi--active' : ''}`}
             onClick={() => setStatus(item)}
           >
-            <span className="admin-kpi__label">{item.toLowerCase()}</span>
-            <span className="admin-kpi__value">{counts[item] ?? 0}</span>
+            <span className="admin-kpi__label">
+              {item === 'ALL' ? 'all queues' : item.toLowerCase()}
+            </span>
+            <span className="admin-kpi__value">
+              {item === 'ALL'
+                ? Object.values(counts).reduce((sum, value) => sum + value, 0)
+                : (counts[item] ?? 0)}
+            </span>
           </button>
         ))}
       </section>
@@ -112,6 +119,7 @@ export default function TransactionReviewsPage(): ReactElement {
             <caption className="auvora-sr-only">Transaction review queue</caption>
             <thead>
               <tr>
+                <th scope="col">Origin</th>
                 <th scope="col">Review</th>
                 <th scope="col">User</th>
                 <th scope="col">Asset</th>
@@ -124,53 +132,65 @@ export default function TransactionReviewsPage(): ReactElement {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="mono">{row.id.slice(0, 12)}</td>
-                  <td className="mono">{row.ownerUserId.slice(0, 12)}</td>
-                  <td>
-                    <strong>{row.assetCode}</strong>
-                    <div className="page-subtitle">{row.network}</div>
-                  </td>
-                  <td>{row.amount}</td>
-                  <td>
-                    $
-                    {(Number(row.amountUsdCents) / 100).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="mono">{row.destinationAddress}</td>
-                  <td>
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td>{formatWhen(row.requestedAt)}</td>
-                  <td>
-                    {row.status === 'PENDING' ? (
-                      <div className="action-row">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => setPendingAction({ id: row.id, kind: 'approve' })}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setPendingAction({ id: row.id, kind: 'reject' })}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="page-subtitle">
-                        {row.decisionReason ?? row.rejectionReason ?? 'Finalized'}
+              {rows.map((row) => {
+                const origin = reviewOrigin(row.sourceType, row.metadata);
+                return (
+                  <tr key={row.id}>
+                    <td>
+                      <span
+                        className={`admin-source-badge admin-source-badge--${origin.simulated ? 'simulated' : 'live'}`}
+                      >
+                        {origin.label}
                       </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="mono" title={row.id}>
+                      {shortId(row.id, 12)}
+                    </td>
+                    <td className="mono">
+                      <Link href={`/users/${row.ownerUserId}`} title={row.ownerUserId}>
+                        {shortId(row.ownerUserId, 12)}
+                      </Link>
+                    </td>
+                    <td>
+                      <strong>{row.assetCode}</strong>
+                      <div className="page-subtitle">{row.network}</div>
+                    </td>
+                    <td>{row.amount}</td>
+                    <td>{formatUsdCents(row.amountUsdCents)}</td>
+                    <td className="mono" title={row.destinationAddress}>
+                      {shortId(row.destinationAddress, 14)}
+                    </td>
+                    <td>
+                      <StatusBadge status={row.status} />
+                    </td>
+                    <td>{formatWhen(row.requestedAt)}</td>
+                    <td>
+                      {row.status === 'PENDING' ? (
+                        <div className="action-row">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setPendingAction({ id: row.id, kind: 'approve' })}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setPendingAction({ id: row.id, kind: 'reject' })}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="page-subtitle">
+                          {row.decisionReason ?? row.rejectionReason ?? 'Finalized'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -179,7 +199,7 @@ export default function TransactionReviewsPage(): ReactElement {
       <ConfirmReasonDialog
         open={pendingAction !== null}
         title={pendingAction?.kind === 'approve' ? 'Approve review' : 'Reject review'}
-        description="This decision is audited and may change a simulation transaction state, but never signs or broadcasts a real blockchain transaction."
+        description="This decision is audited. Simulated reviews only move TEST balances. Real reviews never sign or broadcast — the user still signs on their device after approval."
         confirmLabel={pendingAction?.kind === 'approve' ? 'Approve' : 'Reject'}
         pending={busy}
         onOpenChange={(open) => {

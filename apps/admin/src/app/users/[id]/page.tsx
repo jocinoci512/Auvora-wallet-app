@@ -157,7 +157,10 @@ export default function AdminUserDetailPage(): ReactElement {
 
   return (
     <div className="page">
-      <PageHeader title={user ? displayName(user) : 'User'} subtitle={user?.email ?? userId}>
+      <PageHeader
+        title={user ? displayName(user) : 'User'}
+        subtitle={user ? `${user.email}${simulation ? ' · protected TEST account' : ''}` : userId}
+      >
         <Subnav label="Identity" links={IDENTITY_LINKS} />
       </PageHeader>
       <p>
@@ -222,6 +225,10 @@ export default function AdminUserDetailPage(): ReactElement {
                 <div className="admin-kpi">
                   <span className="admin-kpi__label">Devices</span>
                   <span className="admin-kpi__value">{user.deviceCount ?? devices.length}</span>
+                </div>
+                <div className="admin-kpi">
+                  <span className="admin-kpi__label">Classification</span>
+                  <span className="admin-kpi__value">{simulation ? 'TEST' : 'Live'}</span>
                 </div>
               </section>
               <dl className="admin-dl" style={{ marginTop: '1rem' }}>

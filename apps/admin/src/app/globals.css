@@ -739,6 +739,77 @@ code {
   min-height: 5.4rem;
 }
 
+button.admin-kpi {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-kpi--active {
+  border-color: var(--auvora-color-accent, #0f766e);
+  box-shadow: inset 0 0 0 1px var(--auvora-color-accent, #0f766e);
+}
+
+.admin-source-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-source-badge--simulated {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.admin-source-badge--live {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.admin-table-row--selectable {
+  cursor: pointer;
+}
+
+.admin-table-row--selectable:hover,
+.admin-table-row--selected {
+  background: color-mix(in srgb, var(--auvora-color-accent, #0f766e) 8%, transparent);
+}
+
+.admin-posture {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.1rem;
+}
+
+.admin-posture__item {
+  border: 1px solid var(--auvora-color-border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: var(--auvora-color-surface-solid);
+}
+
+.admin-posture__item strong {
+  display: block;
+  font-size: 0.82rem;
+  margin-bottom: 0.2rem;
+}
+
+.admin-posture__item p {
+  margin: 0;
+  color: var(--auvora-color-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
 .admin-kpi__label {
   display: block;
   font-size: 0.72rem;

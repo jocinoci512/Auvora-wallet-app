@@ -213,6 +213,24 @@ export default function HomePage(): ReactElement {
         </Alert>
       ) : null}
 
+      <section className="admin-posture" aria-label="Control-plane guarantees">
+        <article className="admin-posture__item">
+          <strong>Self-custody preserved</strong>
+          <p>Administrators never receive user keys and never sign transfers on a user’s behalf.</p>
+        </article>
+        <article className="admin-posture__item">
+          <strong>$10,000 review threshold</strong>
+          <p>
+            Real Auvora transfers at or above this USD equivalent wait for review before device
+            signing.
+          </p>
+        </article>
+        <article className="admin-posture__item">
+          <strong>TEST funds isolated</strong>
+          <p>Simulation balances never mix with live on-chain holdings and cannot be broadcast.</p>
+        </article>
+      </section>
+
       {state.errors.length > 0 ? (
         <Alert tone="error" title="Some metrics could not be loaded">
           {state.errors[0]}

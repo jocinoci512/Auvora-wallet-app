@@ -144,6 +144,10 @@ const FAQS = [
     a: 'Never. Do not enter a real recovery phrase into the web companion. Encrypted cross-device wallet-secret sync is a separate security milestone.',
   },
   {
+    q: 'What happens if I send $10,000 or more?',
+    a: 'Transfers at or above $10,000 USD equivalent are held for Auvora review before your device can sign. Administrators never receive your keys and never sign for you.',
+  },
+  {
     q: 'Does Auvora work on mobile and desktop?',
     a: 'Android is the self-custody home. Web is the calm companion for portfolio context, account settings, and pairing — one ecosystem, not unrelated products.',
   },
