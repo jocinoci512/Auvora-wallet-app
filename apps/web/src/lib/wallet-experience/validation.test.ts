@@ -58,4 +58,10 @@ describe('send validation', () => {
     expect(resolved.address).toBeUndefined();
     expect(validateAddressFormat('vitalik.eth', 'ethereum').ok).toBe(false);
   });
+
+  it('truncates addresses for display without dropping the source value', () => {
+    const full = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+    expect(truncateMiddle(full)).toContain('…');
+    expect(truncateMiddle(full).startsWith('0x71C765')).toBe(true);
+  });
 });
