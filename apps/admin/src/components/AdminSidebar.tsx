@@ -33,8 +33,9 @@ const PRIMARY: NavItem[] = [
   { href: '/settings', label: 'Settings' },
 ];
 
-const MORE: NavItem[] = [
-  { href: '/blockchain', label: 'Blockchain' },
+const MORE_MESH: NavItem[] = [{ href: '/blockchain', label: 'Blockchain' }];
+
+const MORE_DEFERRED: NavItem[] = [
   { href: '/payments', label: 'Payments' },
   { href: '/compliance', label: 'Compliance' },
   { href: '/custody', label: 'Custody' },
@@ -61,8 +62,11 @@ export function AdminSidebar(): ReactElement {
   const pathname = usePathname() || '/';
   const identity = useAdminIdentity();
   const { open, setOpen } = useAdminNav();
-  const [moreOpen, setMoreOpen] = useState(MORE.some((item) => isCurrent(pathname, item.href)));
+  const [moreOpen, setMoreOpen] = useState(
+    [...MORE_MESH, ...MORE_DEFERRED].some((item) => isCurrent(pathname, item.href)),
+  );
   const extra = isProductionBuild() ? [] : [{ href: '/design-system', label: 'Design system' }];
+  const moreItems = isProductionBuild() ? MORE_MESH : [...MORE_MESH, ...MORE_DEFERRED, ...extra];
 
   return (
     <>
@@ -105,7 +109,7 @@ export function AdminSidebar(): ReactElement {
         </button>
         {moreOpen ? (
           <ul className="admin-sidebar__nav admin-sidebar__nav--secondary">
-            {[...MORE, ...extra].map((item) => {
+            {[...moreItems].map((item) => {
               const current = isCurrent(pathname, item.href);
               return (
                 <li key={item.href}>

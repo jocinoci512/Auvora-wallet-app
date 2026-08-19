@@ -1,5 +1,21 @@
 import { z } from 'zod';
 
+/** Vercel / CI often inject empty strings for unset UI fields — treat as omitted. */
+function emptyToUndefined(value: string | undefined): string | undefined {
+  return value === '' ? undefined : value;
+}
+
+function assertPublicProductionApiUrl(url: string): string {
+  if (process.env['VERCEL_ENV'] !== 'production') return url;
+  const host = new URL(url).hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    throw new Error(
+      'NEXT_PUBLIC_API_URL must be a public HTTPS gateway (https://api.auvorawallet.com), not localhost, in Vercel production.',
+    );
+  }
+  return url;
+}
+
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
   NEXT_PUBLIC_APP_NAME: z.string().default('Auvora Admin'),
@@ -14,12 +30,14 @@ const envSchema = z.object({
 export type AppEnv = z.infer<typeof envSchema>;
 
 export const env: AppEnv = envSchema.parse({
-  NEXT_PUBLIC_API_URL: process.env['NEXT_PUBLIC_API_URL'],
-  NEXT_PUBLIC_APP_NAME: process.env['NEXT_PUBLIC_APP_NAME'] ?? 'Auvora Admin',
-  NEXT_PUBLIC_APP_URL: process.env['NEXT_PUBLIC_APP_URL'],
-  NEXT_PUBLIC_ADMIN_URL: process.env['NEXT_PUBLIC_ADMIN_URL'],
-  NEXT_PUBLIC_DOCS_URL: process.env['NEXT_PUBLIC_DOCS_URL'],
-  NEXT_PUBLIC_STATUS_URL: process.env['NEXT_PUBLIC_STATUS_URL'],
-  NEXT_PUBLIC_MARKETING_URL: process.env['NEXT_PUBLIC_MARKETING_URL'],
-  NEXT_PUBLIC_CDN_ASSET_BASE_URL: process.env['NEXT_PUBLIC_CDN_ASSET_BASE_URL'],
+  NEXT_PUBLIC_API_URL: emptyToUndefined(process.env['NEXT_PUBLIC_API_URL']),
+  NEXT_PUBLIC_APP_NAME: emptyToUndefined(process.env['NEXT_PUBLIC_APP_NAME']) ?? 'Auvora Admin',
+  NEXT_PUBLIC_APP_URL: emptyToUndefined(process.env['NEXT_PUBLIC_APP_URL']),
+  NEXT_PUBLIC_ADMIN_URL: emptyToUndefined(process.env['NEXT_PUBLIC_ADMIN_URL']),
+  NEXT_PUBLIC_DOCS_URL: emptyToUndefined(process.env['NEXT_PUBLIC_DOCS_URL']),
+  NEXT_PUBLIC_STATUS_URL: emptyToUndefined(process.env['NEXT_PUBLIC_STATUS_URL']),
+  NEXT_PUBLIC_MARKETING_URL: emptyToUndefined(process.env['NEXT_PUBLIC_MARKETING_URL']),
+  NEXT_PUBLIC_CDN_ASSET_BASE_URL: emptyToUndefined(process.env['NEXT_PUBLIC_CDN_ASSET_BASE_URL']),
 });
+
+assertPublicProductionApiUrl(env.NEXT_PUBLIC_API_URL);
