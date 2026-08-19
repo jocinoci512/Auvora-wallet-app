@@ -20,8 +20,8 @@ export function ComingSoonPanel({
         <FeatureStatusBadge status="COMING_SOON" />
       </div>
       <p className="auv-soon__body">
-        This surface is part of the Auvora roadmap. Preview UI may exist below, but it does not move
-        funds and live broadcast remains off.
+        This surface is part of the Auvora roadmap. It does not move funds, and live broadcast
+        remains off.
       </p>
       {children}
       <p>

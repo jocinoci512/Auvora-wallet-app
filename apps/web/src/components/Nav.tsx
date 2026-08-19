@@ -55,6 +55,16 @@ function MarketingNav(): ReactElement {
           Trust
         </Link>
       </nav>
+      <details className="mh-nav__menu">
+        <summary>Menu</summary>
+        <nav aria-label="Mobile">
+          <Link href="/#security">Security</Link>
+          <Link href="/#networks">Networks</Link>
+          <Link href="/#features">Features</Link>
+          <Link href="/trust">Trust</Link>
+          <Link href="/auth/login">Sign in</Link>
+        </nav>
+      </details>
       <div className="mh-nav__actions">
         <Link href="/auth/login" className="mh-nav__link mh-nav__link--signin">
           Sign in

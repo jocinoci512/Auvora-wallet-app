@@ -5,6 +5,7 @@ import {
   nativeGasAsset,
   parseAmount,
   recipientIssue,
+  resolveNamePreview,
   truncateMiddle,
   validateAddressFormat,
   validateSendAmount,
@@ -51,9 +52,10 @@ describe('send validation', () => {
     expect(nativeGasAsset('solana')).toBe('SOL');
   });
 
-  it('truncates addresses for display without dropping the source value', () => {
-    const full = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
-    expect(truncateMiddle(full)).toContain('…');
-    expect(truncateMiddle(full).startsWith('0x71C765')).toBe(true);
+  it('does not substitute a dummy address for ENS-style names', () => {
+    const resolved = resolveNamePreview('vitalik.eth');
+    expect(resolved.ok).toBe(false);
+    expect(resolved.address).toBeUndefined();
+    expect(validateAddressFormat('vitalik.eth', 'ethereum').ok).toBe(false);
   });
 });

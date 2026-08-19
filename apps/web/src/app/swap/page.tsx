@@ -1,17 +1,13 @@
 import type { ReactElement } from 'react';
 import { ComingSoonPanel } from '../../components/shell/ComingSoonPanel';
-import { SwapExperience } from '../../components/trading/SwapExperience';
 
 export default function SwapPage(): ReactElement {
   return (
-    <>
-      <ComingSoonPanel title="Swap">
-        <p>
-          Preview quotes may appear below. Confirming does not broadcast — liveBroadcastEnabled
-          remains false.
-        </p>
-      </ComingSoonPanel>
-      <SwapExperience />
-    </>
+    <ComingSoonPanel title="Swap">
+      <p>
+        Swap is not available until a production quote provider is wired. Simulated quotes are not
+        shown as live prices.
+      </p>
+    </ComingSoonPanel>
   );
 }

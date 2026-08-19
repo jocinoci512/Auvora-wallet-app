@@ -32,13 +32,7 @@ import {
   truncateMiddle,
   validateSendAmount,
 } from '../../lib/wallet-experience/validation';
-import {
-  CxActions,
-  CxProgressTrack,
-  humanizeError,
-  TransactionShell,
-} from '../transaction/TransactionShell';
-import { PublicAddress } from './PublicAddress';
+import { CxActions, humanizeError, TransactionShell } from '../transaction/TransactionShell';
 import { networkLabel } from '../../lib/product/networks';
 import { createApiClient, getStoredAccessToken } from '../../lib/api-client';
 import '../../app/core-experience.css';
@@ -51,7 +45,6 @@ const STEPS = [
   { id: 'fee', label: 'Fee' },
   { id: 'preview', label: 'Review' },
   { id: 'authorize', label: 'Sign' },
-  { id: 'progress', label: 'Send' },
   { id: 'receipt', label: 'Done' },
 ] as const;
 
@@ -154,8 +147,6 @@ export function SendExperience(): ReactElement {
   const [customGwei, setCustomGwei] = useState(24);
   const [qrOpen, setQrOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
   const [assetQuery, setAssetQuery] = useState('');
   const [failKind, setFailKind] = useState<FailKind | null>(null);
   const [signing, setSigning] = useState(false);
@@ -168,17 +159,9 @@ export function SendExperience(): ReactElement {
     address: string;
     provider: string;
   } | null>(null);
-  const progressTimer = useRef<number | null>(null);
   const deepLinked = useRef(false);
   const idempotencyKey = useRef<string | null>(null);
   const [pendingReview, setPendingReview] = useState<PrepareTransferResult | null>(null);
-
-  useEffect(
-    () => () => {
-      if (progressTimer.current != null) window.clearInterval(progressTimer.current);
-    },
-    [],
-  );
 
   useEffect(() => {
     if (deepLinked.current) return;
@@ -347,25 +330,10 @@ export function SendExperience(): ReactElement {
       setStep('failure');
       return;
     }
-    setStep('progress');
-    setProgress(12);
-    if (progressTimer.current != null) window.clearInterval(progressTimer.current);
-    progressTimer.current = window.setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          if (progressTimer.current != null) window.clearInterval(progressTimer.current);
-          progressTimer.current = null;
-          const hash = `0x${crypto.randomUUID().replace(/-/g, '')}`;
-          setTxHash(hash);
-          const match = contacts.find((c) => c.address.toLowerCase() === to.trim().toLowerCase());
-          if (match) markContactUsed(match.id);
-          setSigning(false);
-          setStep('receipt');
-          return 100;
-        }
-        return p + 22;
-      });
-    }, 280);
+    const match = contacts.find((c) => c.address.toLowerCase() === to.trim().toLowerCase());
+    if (match) markContactUsed(match.id);
+    setSigning(false);
+    setStep('receipt');
   }
 
   const visibleStep = step === 'failure' ? 'authorize' : step;
@@ -865,24 +833,15 @@ export function SendExperience(): ReactElement {
         </section>
       ) : null}
 
-      {step === 'progress' ? (
-        <CxProgressTrack
-          progress={progress}
-          label="Preparing transfer preview — waiting on local wallet…"
-          stages={['Queued', 'Local sign', 'Submitted', 'Done']}
-        />
-      ) : null}
-
       {step === 'receipt' ? (
         <div className="cx-success">
           <div className="cx-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Transaction submitted</h2>
+          <h2>Prepared — not broadcast</h2>
           <p>
-            This companion recorded a review receipt. Live broadcast stays off until wallet signing
-            rails are connected. Treat the reference as a preview hash — not a confirmed on-chain
-            transfer.
+            Live broadcast stays off. There is no on-chain transaction hash. Sign and submit from
+            the mobile wallet after any required review. This companion does not invent receipts.
           </p>
           <dl className="wf-review">
             <div>
@@ -902,20 +861,12 @@ export function SendExperience(): ReactElement {
               <dd>{networkName}</dd>
             </div>
             <div>
-              <dt>Reference</dt>
-              <dd>
-                <PublicAddress
-                  value={txHash ?? ''}
-                  copyEnabled
-                  label="Preview reference"
-                  copyLabel="Copy reference"
-                />
-              </dd>
+              <dt>On-chain hash</dt>
+              <dd>None — live broadcast is off</dd>
             </div>
           </dl>
           <p className="wf-quiet">
-            Explorer links open when a live network hash is available. Preview references are not
-            sent to a block explorer.
+            Explorer links open only for a live network hash. None is created in this mode.
           </p>
           <div className="cx-success__cta">
             <Link href="/dashboard" className="cx-btn cx-btn--primary">

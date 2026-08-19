@@ -41,15 +41,10 @@ export function resolveNamePreview(name: string): {
   }
   const tld = n.split('.').pop() ?? '';
   const provider: 'ENS' | 'Unstoppable Domains' = UD_TLDS.has(tld) ? 'Unstoppable Domains' : 'ENS';
-  // Deterministic demo address so review screens stay stable — NOT a chain lookup.
-  let h = 0;
-  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
-  const hex = (h.toString(16) + 'a1b2c3d4e5f67890abcdef0123456789').slice(0, 40);
   return {
-    ok: true,
-    address: `0x${hex}`,
+    ok: false,
     provider,
-    message: 'Demo resolve only — not a live ENS or Unstoppable Domains lookup',
+    message: `Live ${provider} lookup is not available yet. Enter a native address.`,
   };
 }
 

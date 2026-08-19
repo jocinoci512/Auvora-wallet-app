@@ -87,7 +87,7 @@ const PROOF = [
   { label: 'Non-custodial', detail: 'You hold the keys' },
   { label: 'On-device storage', detail: 'Keys never leave your device' },
   { label: 'Clear confirmations', detail: 'Review every action in plain language' },
-  { label: 'Multi-chain', detail: 'Six networks, one wallet' },
+  { label: 'Multi-chain', detail: 'Six networks, one self-custody wallet' },
   { label: 'Cross-device account', detail: 'Sync identity — never seed phrases' },
 ];
 
@@ -102,7 +102,7 @@ const FRUSTRATIONS = [
   },
   {
     pain: 'Too many steps to send',
-    relief: 'Send, receive, and connect are always one tap away.',
+    relief: 'Send, receive, and connect stay visible — live broadcast remains off in Alpha.',
   },
   {
     pain: 'Security that feels intimidating',
