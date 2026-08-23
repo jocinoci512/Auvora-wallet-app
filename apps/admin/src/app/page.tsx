@@ -32,6 +32,7 @@ type OverviewState = {
   testAccounts: number | null;
   queuedNotifications: number | null;
   enabledFlags: number | null;
+  openAlertCount: number | null;
   ops: OpsDashboardOverview | null;
   analytics: AnalyticsInsightsSummary | null;
   errors: string[];
@@ -71,6 +72,7 @@ export default function HomePage(): ReactElement {
     testAccounts: null,
     queuedNotifications: null,
     enabledFlags: null,
+    openAlertCount: null,
     ops: null,
     analytics: null,
     errors: [],
@@ -91,6 +93,7 @@ export default function HomePage(): ReactElement {
       testAccounts: null,
       queuedNotifications: null,
       enabledFlags: null,
+      openAlertCount: null,
       ops: null,
       analytics: null,
       errors: [],
@@ -147,6 +150,12 @@ export default function HomePage(): ReactElement {
             maintenanceNotices: [],
             slos: [],
           };
+        })
+        .catch(() => undefined),
+      client
+        .adminObservabilityDashboard()
+        .then((obs) => {
+          next.openAlertCount = obs.openAlertCount;
         })
         .catch(() => undefined),
       client
@@ -286,9 +295,9 @@ export default function HomePage(): ReactElement {
           <Metric label="Enabled flags" value={state.enabledFlags} unavailable="Not configured" />
           <Metric
             label="Open alerts"
-            value={state.ops?.openAlertCount ?? null}
+            value={state.openAlertCount}
             href="/observability/health"
-            unavailable="Unavailable"
+            unavailable="Not deployed"
           />
           <Metric
             label="Unhealthy services"

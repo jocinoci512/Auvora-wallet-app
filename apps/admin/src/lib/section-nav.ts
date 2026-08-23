@@ -13,6 +13,12 @@ export const OPS_LINKS: SubnavLink[] = [
   { href: '/observability/maintenance', label: 'Maintenance' },
 ];
 
+/** Production mesh exposes only System Health — other observability consoles are deferred. */
+export const PRODUCTION_OPS_LINKS: SubnavLink[] = [
+  { href: '/observability/health', label: 'System health' },
+  { href: '/dashboard', label: 'Operations dashboard' },
+];
+
 export const INFRA_LINKS: SubnavLink[] = [
   { href: '/infrastructure', label: 'Dashboard' },
   { href: '/infrastructure/environments', label: 'Environments' },

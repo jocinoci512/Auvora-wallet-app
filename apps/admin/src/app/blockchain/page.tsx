@@ -6,7 +6,7 @@ import {
   type LiveProviderRpcHealthSummary,
   type ProviderHealthSnapshot,
 } from '@auvora/sdk';
-import { Button } from '@auvora/ui';
+import { AsyncStates, Button, PageHeader } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
@@ -60,120 +60,116 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
   const perChainHealth = latestByChain(health);
 
   return (
-    <main>
-      <header className="page-header">
-        <div>
-          <h1>Blockchain</h1>
-          <p className="page-subtitle">Provider health, sync activity, and network metrics</p>
-        </div>
-      </header>
-
-      {loading ? <p className="state-message">Loading dashboard…</p> : null}
-
-      {error ? (
-        <div className="alert alert--error">
-          {error}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void load()}
-            style={{ marginTop: '0.75rem' }}
-          >
-            Retry
+    <div className="page">
+      <PageHeader
+        title="Blockchain"
+        subtitle="Provider health, sync activity, and network metrics"
+        actions={
+          <Button type="button" variant="secondary" onClick={() => void load()}>
+            Refresh
           </Button>
-        </div>
-      ) : null}
+        }
+      />
 
-      {!loading && !error && metrics ? (
-        <div className="metric-grid">
-          <div className="metric-card">
-            <span className="metric-card__label">Addresses</span>
-            <span className="metric-card__value">{metrics.totalAddresses}</span>
+      <AsyncStates
+        loading={loading}
+        loadingMessage="Loading blockchain dashboard…"
+        error={error}
+        errorTitle="Blockchain data unavailable"
+        onRetry={() => void load()}
+        empty={!metrics}
+        emptyTitle="No blockchain metrics"
+        emptyDescription="Blockchain service has not reported metrics yet."
+      >
+        {metrics ? (
+          <div className="metric-grid">
+            <div className="metric-card">
+              <span className="metric-card__label">Addresses</span>
+              <span className="metric-card__value">{metrics.totalAddresses}</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-card__label">Transactions</span>
+              <span className="metric-card__value">{metrics.totalTransactions}</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-card__label">Pending transactions</span>
+              <span className="metric-card__value">{metrics.pendingTransactions}</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-card__label">Failed transactions</span>
+              <span className="metric-card__value">{metrics.failedTransactions}</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-card__label">Active sync jobs</span>
+              <span className="metric-card__value">{metrics.activeSyncJobs}</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-card__label">Providers healthy</span>
+              <span className="metric-card__value">
+                {metrics.healthyProviders}/{metrics.totalProviders}
+              </span>
+            </div>
           </div>
-          <div className="metric-card">
-            <span className="metric-card__label">Transactions</span>
-            <span className="metric-card__value">{metrics.totalTransactions}</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-card__label">Pending transactions</span>
-            <span className="metric-card__value">{metrics.pendingTransactions}</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-card__label">Failed transactions</span>
-            <span className="metric-card__value">{metrics.failedTransactions}</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-card__label">Active sync jobs</span>
-            <span className="metric-card__value">{metrics.activeSyncJobs}</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-card__label">Providers healthy</span>
-            <span className="metric-card__value">
-              {metrics.healthyProviders}/{metrics.totalProviders}
-            </span>
-          </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {!loading && !error && liveRpc ? (
-        <section className="panel">
-          <div className="section-header">
-            <h2>Live RPC health</h2>
-            <span className="tag">
-              sync={liveRpc.sync.mode} · primary={liveRpc.sync.primaryProvider}
-            </span>
-          </div>
-          <p className="page-subtitle" style={{ marginBottom: '1rem' }}>
-            Ledger sync {liveRpc.sync.ledgerSyncEnabled ? 'enabled' : 'disabled'} · live providers{' '}
-            {liveRpc.sync.liveProvidersExpected ? 'expected' : 'not configured'}
-          </p>
-          {liveRpc.providers.length === 0 ? (
-            <p className="state-message">No registered providers.</p>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Chain</th>
-                  <th>Status</th>
-                  <th>Backend</th>
-                  <th>Sync mode</th>
-                  <th>Latency</th>
-                  <th>Tip</th>
-                  <th>Endpoint</th>
-                  <th>Last RPC</th>
-                  <th>Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {liveRpc.providers.map((row) => (
-                  <tr key={row.chain}>
-                    <td>{row.chain.replace(/_/g, ' ')}</td>
-                    <td>
-                      <span
-                        className={`dot ${row.status === 'up' ? 'dot--healthy' : 'dot--unhealthy'}`}
-                      />
-                      {row.status}
-                    </td>
-                    <td>{row.backend}</td>
-                    <td>{row.syncMode}</td>
-                    <td>{row.latencyMs}ms</td>
-                    <td>{row.latestBlockHeight ?? '—'}</td>
-                    <td>{row.endpoint ?? '—'}</td>
-                    <td>
-                      {row.lastSuccessfulRpc
-                        ? new Date(row.lastSuccessfulRpc).toLocaleString()
-                        : '—'}
-                    </td>
-                    <td>{row.errorState ?? '—'}</td>
+        {liveRpc ? (
+          <section className="panel">
+            <div className="section-header">
+              <h2>Live RPC health</h2>
+              <span className="tag">
+                sync={liveRpc.sync.mode} · primary={liveRpc.sync.primaryProvider}
+              </span>
+            </div>
+            <p className="page-subtitle" style={{ marginBottom: '1rem' }}>
+              Ledger sync {liveRpc.sync.ledgerSyncEnabled ? 'enabled' : 'disabled'} · live providers{' '}
+              {liveRpc.sync.liveProvidersExpected ? 'expected' : 'not configured'}
+            </p>
+            {liveRpc.providers.length === 0 ? (
+              <p className="state-message">No registered providers.</p>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Chain</th>
+                    <th>Status</th>
+                    <th>Backend</th>
+                    <th>Sync mode</th>
+                    <th>Latency</th>
+                    <th>Tip</th>
+                    <th>Endpoint</th>
+                    <th>Last RPC</th>
+                    <th>Error</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      ) : null}
+                </thead>
+                <tbody>
+                  {liveRpc.providers.map((row) => (
+                    <tr key={row.chain}>
+                      <td>{row.chain.replace(/_/g, ' ')}</td>
+                      <td>
+                        <span
+                          className={`dot ${row.status === 'up' ? 'dot--healthy' : 'dot--unhealthy'}`}
+                        />
+                        {row.status}
+                      </td>
+                      <td>{row.backend}</td>
+                      <td>{row.syncMode}</td>
+                      <td>{row.latencyMs}ms</td>
+                      <td>{row.latestBlockHeight ?? '—'}</td>
+                      <td>{row.endpoint ?? '—'}</td>
+                      <td>
+                        {row.lastSuccessfulRpc
+                          ? new Date(row.lastSuccessfulRpc).toLocaleString()
+                          : '—'}
+                      </td>
+                      <td>{row.errorState ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        ) : null}
 
-      {!loading && !error ? (
         <section className="panel">
           <div className="section-header">
             <h2>Provider health by chain</h2>
@@ -211,31 +207,31 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
             </table>
           )}
         </section>
-      ) : null}
 
-      <section className="panel">
-        <h2>Quick links</h2>
-        <div className="action-row">
-          <Link href="/blockchain/providers">
-            <Button variant="secondary">Providers</Button>
-          </Link>
-          <Link href="/blockchain/sync">
-            <Button variant="secondary">Sync jobs</Button>
-          </Link>
-          <Link href="/blockchain/blocks">
-            <Button variant="secondary">Blocks</Button>
-          </Link>
-          <Link href="/blockchain/transactions">
-            <Button variant="secondary">Transactions</Button>
-          </Link>
-          <Link href="/blockchain/addresses">
-            <Button variant="secondary">Addresses</Button>
-          </Link>
-          <Link href="/blockchain/events">
-            <Button variant="secondary">Events</Button>
-          </Link>
-        </div>
-      </section>
-    </main>
+        <section className="panel">
+          <h2>Quick links</h2>
+          <div className="action-row">
+            <Link href="/blockchain/providers">
+              <Button variant="secondary">Providers</Button>
+            </Link>
+            <Link href="/blockchain/sync">
+              <Button variant="secondary">Sync jobs</Button>
+            </Link>
+            <Link href="/blockchain/blocks">
+              <Button variant="secondary">Blocks</Button>
+            </Link>
+            <Link href="/blockchain/transactions">
+              <Button variant="secondary">Transactions</Button>
+            </Link>
+            <Link href="/blockchain/addresses">
+              <Button variant="secondary">Addresses</Button>
+            </Link>
+            <Link href="/blockchain/events">
+              <Button variant="secondary">Events</Button>
+            </Link>
+          </div>
+        </section>
+      </AsyncStates>
+    </div>
   );
 }

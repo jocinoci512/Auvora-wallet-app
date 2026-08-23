@@ -78,9 +78,15 @@ export function healthLabel(status: string): string {
   if (normalized === 'DEGRADED' || normalized === 'WARN' || normalized === 'WARNING') {
     return 'Degraded';
   }
-  if (normalized === 'OFFLINE' || normalized === 'UNHEALTHY' || normalized === 'DOWN') {
-    return 'Offline';
+  if (
+    normalized === 'OFFLINE' ||
+    normalized === 'UNHEALTHY' ||
+    normalized === 'DOWN' ||
+    normalized === 'UNAVAILABLE'
+  ) {
+    return 'Unavailable';
   }
+  if (normalized === 'UNKNOWN') return 'Unknown';
   return 'Unknown';
 }
 

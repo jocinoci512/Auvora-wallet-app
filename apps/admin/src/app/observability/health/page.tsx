@@ -8,7 +8,8 @@ import { healthLabel, healthTone, formatWhen } from '../../../lib/admin-format';
 import { createApiClient, formatAdminError } from '../../../lib/api-client';
 import { useAdminRealtimeContext, useRealtimeRefetch } from '../../../lib/admin-realtime-context';
 import type { AdminEvent } from '../../../lib/realtime/admin-event';
-import { OPS_LINKS } from '../../../lib/section-nav';
+import { isProductionBuild } from '../../../lib/api-client';
+import { OPS_LINKS, PRODUCTION_OPS_LINKS } from '../../../lib/section-nav';
 
 const PRODUCTION_MESH = [
   'gateway-prod',
@@ -49,6 +50,7 @@ export default function AdminHealthPage(): ReactElement {
   useRealtimeRefetch(shouldRefreshHealth, () => void load(), 1500);
 
   const { status: realtimeStatus } = useAdminRealtimeContext();
+  const subnavLinks = isProductionBuild() ? PRODUCTION_OPS_LINKS : OPS_LINKS;
   const byId = new Map((data?.services ?? []).map((row) => [row.id, row]));
   const rows = PRODUCTION_MESH.map((id) => {
     const found = byId.get(id);
@@ -66,7 +68,7 @@ export default function AdminHealthPage(): ReactElement {
         title="System health"
         subtitle="Production mesh only. Legacy Railway services are never shown."
       >
-        <Subnav label="Observability sections" links={OPS_LINKS} />
+        <Subnav label="Observability sections" links={subnavLinks} />
       </PageHeader>
       <p className="page-subtitle">Realtime {realtimeStatus}</p>
 
