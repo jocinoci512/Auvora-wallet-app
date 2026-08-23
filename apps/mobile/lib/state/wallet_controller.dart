@@ -478,10 +478,20 @@ class WalletController extends ChangeNotifier {
   Future<WalletVaultRecord?> createAdditionalWallet({
     required String mnemonic,
     String? name,
+    required bool backupQuizPassed,
   }) async {
     final engine = _engine;
     if (engine == null || !unlocked) return null;
-    final created = await engine.createWallet(mnemonic: mnemonic, name: name, backupConfirmed: false);
+    if (!backupQuizPassed) {
+      errorMessage = 'Confirm each recovery word before continuing.';
+      notifyListeners();
+      return null;
+    }
+    final created = await engine.createWallet(
+      mnemonic: mnemonic,
+      name: name,
+      backupConfirmed: true,
+    );
     wallet = created;
     address = created.primaryAddress();
     if (address != null) await _secure.write(key: _kAddress, value: address!);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../crypto/phrase_confirmation.dart';
 import '../../crypto/wallet_crypto.dart';
 import '../../privacy/sensitive_screen.dart';
 import '../../preferences/preferences_controller.dart';
@@ -205,6 +206,67 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
+  Future<bool> _confirmNewRecoveryPhrase(BuildContext context, String mnemonic) async {
+    final session = PhraseConfirmationSession.fromMnemonic(mnemonic);
+    String? error;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => SensitiveScope(
+        child: StatefulBuilder(
+          builder: (ctx, setDialog) => AlertDialog(
+            title: const Text('Confirm recovery phrase'),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pick the exact saved word for each position before this wallet is stored on the device.',
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Select word #${session.currentIndex + 1}',
+                    style: Theme.of(ctx).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: session.currentChoices.map((option) {
+                      final selected = session.answers[session.currentIndex] == option;
+                      return ChoiceChip(
+                        label: Text(option),
+                        selected: selected,
+                        onSelected: (_) => setDialog(() {
+                          final correct = session.select(option);
+                          error = session.error;
+                          if (correct) session.advanceIfCurrentCorrect();
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: session.complete ? () => Navigator.pop(ctx, true) : null,
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return ok == true;
+  }
+
   Future<void> _addWallet(BuildContext context, WalletController wallet) async {
     final okAuth = await authenticateConnectionsAction(
       context,
@@ -248,19 +310,35 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
     if (choice == 'create') {
       final mnemonic = WalletCrypto.generateMnemonic();
-      await wallet.createAdditionalWallet(mnemonic: mnemonic, name: nameCtrl.text.trim());
-      if (!context.mounted) return;
+      if (!context.mounted) {
+        nameCtrl.dispose();
+        return;
+      }
       await showDialog<void>(
         context: context,
         builder: (ctx) => SensitiveScope(
           child: AlertDialog(
-          title: const Text('Write down your phrase'),
-          content: SelectableText(mnemonic, style: const TextStyle(height: 1.5)),
-          actions: [
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('I saved it')),
-          ],
+            title: const Text('Write down your phrase'),
+            content: SelectableText(mnemonic, style: const TextStyle(height: 1.5)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Continue')),
+            ],
+          ),
         ),
-        ),
+      );
+      if (!context.mounted) {
+        nameCtrl.dispose();
+        return;
+      }
+      final confirmed = await _confirmNewRecoveryPhrase(context, mnemonic);
+      if (!confirmed || !context.mounted) {
+        nameCtrl.dispose();
+        return;
+      }
+      await wallet.createAdditionalWallet(
+        mnemonic: mnemonic,
+        name: nameCtrl.text.trim(),
+        backupQuizPassed: true,
       );
     } else {
       final phraseCtrl = TextEditingController();
@@ -287,7 +365,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       if (imported == true) {
         final phrase = WalletCrypto.normalizeMnemonic(phraseCtrl.text);
         if (WalletCrypto.validateMnemonic(phrase)) {
-          await wallet.createAdditionalWallet(mnemonic: phrase, name: nameCtrl.text.trim());
+          await wallet.createAdditionalWallet(
+            mnemonic: phrase,
+            name: nameCtrl.text.trim(),
+            backupQuizPassed: true,
+          );
         } else if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('That recovery phrase is not valid')),
