@@ -89,6 +89,11 @@ export default function SecurityAuditPage(): ReactElement {
         <Subnav label="Identity" links={IDENTITY_LINKS} />
       </PageHeader>
 
+      <p className="page-subtitle">
+        Action, actor, and target filters are applied server-side. Date and request ID refine the
+        currently loaded page of results.
+      </p>
+
       <section className="panel filters" aria-label="Audit filters">
         <form
           className="filters__row"

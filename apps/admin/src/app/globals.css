@@ -72,9 +72,18 @@ body {
 
 main,
 .auvora-page {
-  max-width: 1100px;
+  max-width: min(1680px, 100%);
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
+}
+
+/* Shell pages fill the admin main column; avoid nested narrow max-width. */
+.admin-main > main.page,
+.admin-main > .auvora-page,
+.admin-main > main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .token-panel {
@@ -100,22 +109,36 @@ main,
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  min-width: 10rem;
+  gap: 0.4rem;
+  min-width: 12rem;
+  flex: 1 1 12rem;
 }
 
 .field-label {
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--auvora-color-text-muted, var(--auvora-muted));
 }
 
 .field-input {
   font: inherit;
-  padding: 0.5rem 0.65rem;
+  font-size: 0.9375rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.75rem;
   border-radius: 8px;
   border: 1px solid var(--auvora-color-border, var(--auvora-border));
   background: var(--auvora-color-surface-solid, #fff);
   color: inherit;
+}
+
+.field-input:focus-visible {
+  outline: 2px solid var(--auvora-color-focus);
+  outline-offset: 1px;
+}
+
+.filters__row .auvora-button,
+.filters__row button {
+  min-height: 2.5rem;
 }
 
 .table-scroll {
@@ -548,14 +571,23 @@ code {
 
 .admin-shell .admin-main,
 .admin-main {
-  max-width: min(1440px, 100%);
+  max-width: min(1680px, 100%);
   margin: 0;
   min-width: 0;
-  padding: 1.15rem 1.35rem 2.75rem;
+  width: 100%;
+  padding: 1.35rem 1.75rem 3rem;
 }
 
 .admin-main .auvora-page-header__title {
-  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  letter-spacing: -0.03em;
+}
+
+.admin-main .auvora-page-header__description,
+.admin-main .page-subtitle {
+  font-size: 0.975rem;
+  max-width: 48rem;
+  line-height: 1.55;
 }
 
 .admin-main .auvora-tabs__list {
@@ -590,19 +622,24 @@ code {
 
 .admin-header {
   display: grid;
-  grid-template-columns: minmax(12rem, 1.2fr) minmax(0, 2fr) auto;
+  grid-template-columns: minmax(14rem, 1.1fr) minmax(0, 2.2fr) auto;
   gap: 1rem;
   align-items: center;
-  padding: 0.7rem 1.25rem;
+  padding: 0.85rem 1.35rem;
   border-bottom: 1px solid var(--auvora-color-border);
-  background: var(--auvora-color-surface-solid);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--auvora-color-surface-solid) 92%, var(--auvora-color-primary-muted)) 0%,
+      var(--auvora-color-surface-solid) 100%
+    );
 }
 
 .admin-header__identity {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.65rem;
   min-width: 0;
 }
 
@@ -617,16 +654,38 @@ code {
 }
 
 .admin-header__name {
-  font-weight: 600;
-  font-size: 0.92rem;
+  font-weight: 650;
+  font-size: 0.98rem;
+  letter-spacing: -0.01em;
 }
 
 .admin-header__email {
   color: var(--auvora-color-text-muted);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-header__ops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.admin-header__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-header__retry {
+  min-height: 1.85rem;
+  padding-inline: 0.55rem;
+  font-size: 0.8rem;
 }
 
 .admin-header__meta {
@@ -639,7 +698,7 @@ code {
 .admin-header__actions {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   justify-content: flex-end;
 }
 
@@ -648,11 +707,24 @@ code {
   align-items: center;
   border: 1px solid var(--auvora-color-border);
   border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 650;
   letter-spacing: 0.02em;
   background: var(--auvora-color-background-subtle);
+  white-space: nowrap;
+}
+
+.admin-chip--role {
+  border-color: color-mix(in srgb, var(--auvora-color-primary) 35%, var(--auvora-color-border));
+  background: var(--auvora-color-primary-muted);
+  color: var(--auvora-color-primary);
+}
+
+.admin-chip--env {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
 }
 
 .admin-chip--quiet {
@@ -661,17 +733,31 @@ code {
 }
 
 .admin-sidebar {
-  flex-basis: 15.5rem;
-  min-height: calc(100vh - 3.5rem);
-  padding: 1rem 0.85rem 2rem;
+  flex-basis: 16.5rem;
+  min-height: calc(100vh - 3.75rem);
+  padding: 1.1rem 0.9rem 2rem;
   background: var(--auvora-color-surface-solid);
+  border-right: 1px solid var(--auvora-color-border);
 }
 
 .admin-sidebar__brand {
-  margin: 0 0.65rem 1rem;
+  margin: 0 0.65rem 1.15rem;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--auvora-color-text-muted);
+}
+
+.admin-sidebar__group {
+  margin-bottom: 0.95rem;
+}
+
+.admin-sidebar__group-label {
+  margin: 0 0.65rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--auvora-color-text-muted);
 }
@@ -681,16 +767,16 @@ code {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.15rem;
+  gap: 0.12rem;
 }
 
 .admin-sidebar__nav a {
   display: block;
-  padding: 0.45rem 0.7rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 8px;
   color: inherit;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   font-weight: 500;
 }
 
@@ -698,10 +784,15 @@ code {
   background: var(--auvora-color-hover);
 }
 
+.admin-sidebar__nav a:focus-visible {
+  outline: 2px solid var(--auvora-color-focus);
+  outline-offset: 1px;
+}
+
 .admin-sidebar__nav a[aria-current='page'] {
   background: var(--auvora-color-primary-muted);
   color: var(--auvora-color-primary);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .admin-sidebar__more {
@@ -727,16 +818,22 @@ code {
 
 .admin-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  gap: 0.9rem;
+}
+
+@media (min-width: 1440px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
 }
 
 .admin-kpi {
   border: 1px solid var(--auvora-color-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--auvora-color-surface-solid);
-  padding: 0.9rem 1rem;
-  min-height: 5.4rem;
+  padding: 1.05rem 1.15rem;
+  min-height: 6rem;
 }
 
 button.admin-kpi {
@@ -812,8 +909,8 @@ button.admin-kpi {
 
 .admin-kpi__label {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--auvora-color-text-muted);
@@ -821,17 +918,31 @@ button.admin-kpi {
 
 .admin-kpi__value {
   display: block;
-  margin-top: 0.35rem;
-  font-size: 1.45rem;
-  font-weight: 650;
+  margin-top: 0.45rem;
+  font-size: clamp(1.45rem, 1.8vw, 1.85rem);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 .admin-kpi__hint {
-  margin: 0.25rem 0 0;
-  font-size: 0.75rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
   color: var(--auvora-color-text-muted);
+}
+
+.data-table th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--auvora-color-text-muted);
+}
+
+.data-table td {
+  font-size: 0.9375rem;
 }
 
 .admin-section {
@@ -942,7 +1053,7 @@ button.admin-kpi {
   letter-spacing: -0.03em;
 }
 
-@media (max-width: 1024px) {
+  @media (max-width: 1024px) {
   .table-scroll__hint {
     display: block;
   }
@@ -953,6 +1064,12 @@ button.admin-kpi {
 
   .admin-header__menu {
     display: inline-flex;
+  }
+
+  .admin-header__ops {
+    grid-column: 1 / -1;
+    order: 3;
+    justify-content: flex-start;
   }
 
   .admin-header__meta {

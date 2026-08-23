@@ -15,7 +15,7 @@ export function AdminHeader(): ReactElement {
   const router = useRouter();
   const identity = useAdminIdentity();
   const { open, toggle } = useAdminNav();
-  const { status } = useAdminRealtimeContext();
+  const { status, reconnect } = useAdminRealtimeContext();
   const operator = identity?.operator;
   const role = primaryRole(operator);
   const envLabel = safeEnvLabel();
@@ -40,17 +40,31 @@ export function AdminHeader(): ReactElement {
           <span className="admin-header__email">{operator?.email ?? ''}</span>
         </div>
       </div>
-      <div className="admin-header__meta" aria-label="Session context">
-        <span className="admin-chip">{roleLabel(role)}</span>
-        <span className="admin-chip admin-chip--quiet">{envLabel}</span>
+
+      <div className="admin-header__ops" aria-label="Operations status">
+        <span className="admin-chip admin-chip--role">{roleLabel(role)}</span>
+        <span className="admin-chip admin-chip--env">{envLabel}</span>
         <span className="admin-chip admin-chip--quiet">
-          MFA {operator?.mfaEnrolled ? 'enrolled' : 'not enrolled'}
+          MFA {operator?.mfaEnrolled ? 'enrolled' : 'required'}
         </span>
-        <RealtimeStatusBadge status={status} />
+        <span className="admin-header__live">
+          <RealtimeStatusBadge status={status} />
+          {status !== 'connected' && status !== 'connecting' ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="admin-header__retry"
+              onClick={reconnect}
+            >
+              Retry
+            </Button>
+          ) : null}
+        </span>
         <span className="auvora-sr-only" aria-live="polite">
           Realtime {status}
         </span>
       </div>
+
       <div className="admin-header__actions">
         <Button
           type="button"

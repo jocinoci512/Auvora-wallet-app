@@ -18,49 +18,49 @@ export class AdminConnectionsController {
 
   @Get('providers')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   async providers() {
     return successResponse(await this.dashboard.providers());
   }
 
   @Get('connections')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   async connections() {
     return successResponse(await this.dashboard.connections());
   }
 
   @Get('sessions')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   async sessions() {
     return successResponse(await this.dashboard.sessions());
   }
 
   @Get('devices')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   async devices() {
     return successResponse(await this.dashboard.devices());
   }
 
   @Get('sync-status')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   async syncStatus() {
     return successResponse(await this.dashboard.syncStatus());
   }
 
   @Get('workers')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   workersHealth() {
     return successResponse(this.workers.status());
   }
 
   @Get('dapps/analytics')
   @Roles(...ADMIN_PORTAL_ROLES)
-  @Permissions(CONNECTIONS_PERMISSIONS.ADMIN)
+  @Permissions(CONNECTIONS_PERMISSIONS.READ)
   async dappAnalytics() {
     return successResponse(await this.dashboard.dappAnalytics());
   }

@@ -281,18 +281,20 @@ export default function HomePage(): ReactElement {
           <Metric
             label="Queued notifications"
             value={state.queuedNotifications}
-            href="/notifications/queue"
+            unavailable="Not deployed"
           />
-          <Metric label="Enabled flags" value={state.enabledFlags} href="/infrastructure/config" />
+          <Metric label="Enabled flags" value={state.enabledFlags} unavailable="Not configured" />
           <Metric
             label="Open alerts"
             value={state.ops?.openAlertCount ?? null}
-            href="/observability/alerts"
+            href="/observability/health"
+            unavailable="Unavailable"
           />
           <Metric
             label="Unhealthy services"
             value={state.ops?.unhealthyServiceCount ?? null}
             href="/observability/health"
+            unavailable="Unavailable"
           />
         </section>
       )}
@@ -362,18 +364,28 @@ function Metric({
   value,
   href,
   hint,
+  unavailable = 'Unavailable',
 }: {
   label: string;
   value: number | null;
-  href: string;
+  href?: string;
   hint?: string;
+  unavailable?: string;
 }): ReactElement {
-  return (
-    <Link href={href} className="admin-kpi" style={{ textDecoration: 'none', color: 'inherit' }}>
+  const body = (
+    <>
       <span className="admin-kpi__label">{label}</span>
       <span className="admin-kpi__value">{value == null ? '—' : value.toLocaleString()}</span>
       {hint ? <p className="admin-kpi__hint">{hint}</p> : null}
-      {value == null ? <p className="admin-kpi__hint">Not reported</p> : null}
+      {value == null ? <p className="admin-kpi__hint">{unavailable}</p> : null}
+    </>
+  );
+  if (!href) {
+    return <div className="admin-kpi">{body}</div>;
+  }
+  return (
+    <Link href={href} className="admin-kpi" style={{ textDecoration: 'none', color: 'inherit' }}>
+      {body}
     </Link>
   );
 }

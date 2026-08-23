@@ -49,6 +49,7 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
   const runIdRef = useRef(0);
   const lastEventIdRef = useRef<string | null>(null);
   const seenIdsRef = useRef(new Set<string>());
+  const connectRef = useRef<() => Promise<void>>(async () => undefined);
 
   const clearTimer = (): void => {
     if (reconnectTimer.current) {
@@ -56,6 +57,16 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
       reconnectTimer.current = null;
     }
   };
+
+  const scheduleReconnect = useCallback(() => {
+    if (stoppedRef.current) return;
+    clearTimer();
+    const delay = nextBackoffMs(attemptRef.current);
+    attemptRef.current += 1;
+    reconnectTimer.current = setTimeout(() => {
+      void connectRef.current();
+    }, delay);
+  }, []);
 
   const connect = useCallback(async () => {
     if (stoppedRef.current) return;
@@ -83,7 +94,10 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
       });
 
       if (!res.ok || !res.body) {
-        // 401/403 → auth problem; still back off rather than hammering.
+        if (res.status === 401 || res.status === 403) {
+          setStatus('unauthorized');
+          return;
+        }
         throw new Error(`realtime connect failed: ${res.status}`);
       }
 
@@ -126,17 +140,9 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
       setStatus('reconnecting');
       scheduleReconnect();
     }
-  }, [bufferSize]);
+  }, [bufferSize, scheduleReconnect]);
 
-  const scheduleReconnect = useCallback(() => {
-    if (stoppedRef.current) return;
-    clearTimer();
-    const delay = nextBackoffMs(attemptRef.current);
-    attemptRef.current += 1;
-    reconnectTimer.current = setTimeout(() => {
-      void connect();
-    }, delay);
-  }, [connect]);
+  connectRef.current = connect;
 
   const reconnect = useCallback(() => {
     attemptRef.current = 0;
@@ -150,8 +156,6 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
     stoppedRef.current = false;
     void connect();
 
-    // Reconnect immediately when the admin token changes (same-tab custom event
-    // and cross-tab storage event) instead of waiting out the backoff.
     const onTokenChange = (): void => {
       attemptRef.current = 0;
       abortRef.current?.abort();
@@ -161,8 +165,18 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
     const onStorage = (e: StorageEvent): void => {
       if (e.key === null || e.key === 'auvora_access_token') onTokenChange();
     };
+    const onVisibility = (): void => {
+      if (document.visibilityState !== 'visible') return;
+      if (stoppedRef.current) return;
+      // Resume promptly after background tab throttling without stacking storms.
+      attemptRef.current = 0;
+      abortRef.current?.abort();
+      clearTimer();
+      void connect();
+    };
     window.addEventListener(ACCESS_TOKEN_CHANGED_EVENT, onTokenChange);
     window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       stoppedRef.current = true;
@@ -171,6 +185,7 @@ export function useAdminRealtime(options: UseAdminRealtimeOptions = {}): UseAdmi
       abortRef.current?.abort();
       window.removeEventListener(ACCESS_TOKEN_CHANGED_EVENT, onTokenChange);
       window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
       setStatus('offline');
     };
   }, [enabled, connect]);

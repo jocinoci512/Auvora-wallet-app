@@ -6,7 +6,7 @@ import { ProviderRpcHealthService } from '../../application/services/provider-rp
 import { SyncService } from '../../application/services/sync.service';
 import { TransactionEngine } from '../../application/services/transaction-engine.service';
 import {
-  PERMISSION_BLOCKCHAIN_ADMIN,
+  PERMISSION_BLOCKCHAIN_READ,
   PERMISSION_BLOCKCHAIN_SYNC,
   ADMIN_PORTAL_ROLES,
 } from '../../domain/permission-codes';
@@ -46,14 +46,14 @@ export class AdminBlockchainController {
   ) {}
 
   @Get('providers')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listProviders() {
     const data = await this.queryService.listProviders();
     return successResponse(data);
   }
 
   @Get('health')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listHealth(@Query() query: AdminListHealthQueryDto) {
     const data = await this.queryService.listHealth({
       chain: query.chain,
@@ -65,7 +65,7 @@ export class AdminBlockchainController {
 
   /** Live RPC probe summary (Alchemy vs simulator) for every registered chain. */
   @Get('providers/rpc-health')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listLiveRpcHealth() {
     const providers = await this.providerRpcHealth.getAll();
     const sync = this.syncService.getSyncPolicy();
@@ -73,7 +73,7 @@ export class AdminBlockchainController {
   }
 
   @Get('sync-jobs')
-  @Permissions(PERMISSION_BLOCKCHAIN_SYNC)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listSyncJobs(@Query() query: AdminListSyncJobsQueryDto) {
     const data = await this.queryService.listSyncJobs({
       chain: query.chain,
@@ -94,7 +94,7 @@ export class AdminBlockchainController {
   }
 
   @Get('blocks')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listBlocks(@Query() query: AdminListBlocksQueryDto) {
     const data = await this.queryService.listBlocks({
       chain: query.chain,
@@ -105,7 +105,7 @@ export class AdminBlockchainController {
   }
 
   @Get('transactions')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listTransactions(@Query() query: AdminListTransactionsQueryDto) {
     const data = await this.transactionEngine.listTransactions({
       chain: query.chain,
@@ -118,14 +118,14 @@ export class AdminBlockchainController {
   }
 
   @Get('metrics')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async getMetrics() {
     const data = await this.metricsService.getMetrics();
     return successResponse(data);
   }
 
   @Get('events')
-  @Permissions(PERMISSION_BLOCKCHAIN_ADMIN)
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
   async listEvents(@Query() query: AdminListEventsQueryDto) {
     const data = await this.queryService.listEvents({
       chain: query.chain,

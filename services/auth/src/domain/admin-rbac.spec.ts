@@ -18,11 +18,16 @@ const has = (role: string, perm: string): boolean => caps(role).includes(perm as
 // Any permission that can change state. No read-only role may hold these.
 const MUTATING = [
   'users:write',
+  'users:delete',
   'users:suspend',
   'users:reactivate',
   'sessions:revoke',
   'devices:revoke',
   'connections:revoke',
+  'wallets:suspend',
+  'wallets:archive',
+  'blockchain:admin',
+  'blockchain:sync',
   'security:manage',
   'support:write',
   'admins:manage',
@@ -133,7 +138,49 @@ describe('admin RBAC capability matrix', () => {
     expect(filtered).not.toContain('custody:sign');
     expect(filtered).not.toContain('wallets:admin');
     expect(filtered).not.toContain('wallets:write');
-    expect(filtered).toEqual([...caps(ROLE_SUPER_ADMIN)]);
+    expect(filtered.sort()).toEqual([...caps(ROLE_SUPER_ADMIN)].sort());
+  });
+
+  it('SUPER_ADMIN receives the owner matrix even when DB grants are incomplete', () => {
+    const filtered = adminSessionPermissions([ROLE_SUPER_ADMIN], []);
+    expect(filtered).toEqual(
+      expect.arrayContaining(['users:read', 'realtime:read', 'health:read']),
+    );
+    expect(filtered).toEqual(
+      expect.arrayContaining(['wallets:read', 'audit:read', 'admins:manage']),
+    );
+    expect(filtered).toEqual(
+      expect.arrayContaining([
+        'connections:read',
+        'blockchain:read',
+        'simulation:read',
+        'transactions:review:large',
+        'infrastructure:read',
+        'observability:read',
+      ]),
+    );
+    expect(filtered).not.toContain('custody:sign');
+    expect(filtered).not.toContain('wallets:admin');
+  });
+
+  it('customer role is not in the admin capability matrix', () => {
+    expect(ADMIN_ROLE_CAPABILITIES.user).toBeUndefined();
+    expect(adminSessionPermissions(['user'], ['users:read', 'admins:manage'])).toEqual([]);
+  });
+
+  it('ADMIN still requires DB intersection (least privilege)', () => {
+    const filtered = adminSessionPermissions([ROLE_ADMIN], ['users:read', 'custody:sign']);
+    expect(filtered).toEqual(['users:read']);
+  });
+
+  it('SUPER_ADMIN includes operational wallet and blockchain controls without custody', () => {
+    expect(has(ROLE_SUPER_ADMIN, 'wallets:suspend')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'wallets:archive')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'blockchain:read')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'blockchain:admin')).toBe(true);
+    expect(has(ROLE_SUPER_ADMIN, 'users:delete')).toBe(true);
+    expect(has(ROLE_ADMIN, 'users:delete')).toBe(false);
+    expect(has(ROLE_ADMIN, 'blockchain:admin')).toBe(false);
   });
 
   it('portal membership does not grant mutation permissions the role lacks', () => {

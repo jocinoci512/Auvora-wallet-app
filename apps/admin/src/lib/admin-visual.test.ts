@@ -46,12 +46,13 @@ describe('admin rbac convenience', () => {
     expect(roleLabel('super_admin')).toBe('Super Admin');
   });
 
-  it('allows only SUPER_ADMIN into the production control plane', () => {
-    expect(canEnterAdminControlPlane(operator)).toBe(false);
-    expect(canEnterAdminControlPlane({ ...operator, roles: ['admin'] })).toBe(false);
-    expect(canEnterAdminControlPlane({ ...operator, roles: ['support'] })).toBe(false);
-    expect(canEnterAdminControlPlane({ ...operator, roles: ['security_analyst'] })).toBe(false);
+  it('allows admin portal staff roles and blocks customers', () => {
+    expect(canEnterAdminControlPlane(operator)).toBe(true);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['admin'] })).toBe(true);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['support'] })).toBe(true);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['security_analyst'] })).toBe(true);
     expect(canEnterAdminControlPlane({ ...operator, roles: ['super_admin'] })).toBe(true);
+    expect(canEnterAdminControlPlane({ ...operator, roles: ['user'] })).toBe(false);
   });
 });
 

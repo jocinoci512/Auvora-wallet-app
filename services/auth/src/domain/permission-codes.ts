@@ -55,11 +55,14 @@ export const PERMISSION_HEALTH_READ: PermissionCode = 'health:read';
 export const PERMISSION_REALTIME_READ: PermissionCode = 'realtime:read';
 export const PERMISSION_SIMULATION_READ: PermissionCode = 'simulation:read';
 export const PERMISSION_SIMULATION_MANAGE: PermissionCode = 'simulation:manage';
+export const PERMISSION_INFRASTRUCTURE_READ: PermissionCode = 'infrastructure:read';
+export const PERMISSION_OBSERVABILITY_READ: PermissionCode = 'observability:read';
 
 /** All admin control-plane permission codes introduced for the 5-role model. */
 export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_USERS_READ,
   PERMISSION_USERS_WRITE,
+  PERMISSION_USERS_DELETE,
   PERMISSION_USERS_SUSPEND,
   PERMISSION_USERS_REACTIVATE,
   PERMISSION_SESSIONS_READ,
@@ -69,6 +72,11 @@ export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_CONNECTIONS_READ,
   PERMISSION_CONNECTIONS_REVOKE,
   PERMISSION_WALLETS_READ,
+  PERMISSION_WALLETS_SUSPEND,
+  PERMISSION_WALLETS_ARCHIVE,
+  PERMISSION_BLOCKCHAIN_READ,
+  PERMISSION_BLOCKCHAIN_ADMIN,
+  PERMISSION_BLOCKCHAIN_SYNC,
   PERMISSION_SECURITY_READ,
   PERMISSION_SECURITY_MANAGE,
   PERMISSION_AUDIT_READ,
@@ -83,6 +91,8 @@ export const ADMIN_CONTROL_PLANE_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_TRANSACTIONS_REVIEW_LARGE,
   PERMISSION_SIMULATION_READ,
   PERMISSION_SIMULATION_MANAGE,
+  PERMISSION_INFRASTRUCTURE_READ,
+  PERMISSION_OBSERVABILITY_READ,
 ] as const;
 
 export const ROLE_USER = 'user';
@@ -117,6 +127,7 @@ export const READ_ONLY_ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_DEVICES_READ,
   PERMISSION_CONNECTIONS_READ,
   PERMISSION_WALLETS_READ,
+  PERMISSION_BLOCKCHAIN_READ,
   PERMISSION_SECURITY_READ,
   PERMISSION_AUDIT_READ,
   PERMISSION_SUPPORT_READ,
@@ -124,6 +135,8 @@ export const READ_ONLY_ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_ROLES_READ,
   PERMISSION_HEALTH_READ,
   PERMISSION_REALTIME_READ,
+  PERMISSION_INFRASTRUCTURE_READ,
+  PERMISSION_OBSERVABILITY_READ,
 ] as const;
 
 const SUPPORT_PERMISSIONS: readonly PermissionCode[] = [
@@ -150,6 +163,8 @@ const ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_SESSIONS_REVOKE,
   PERMISSION_DEVICES_REVOKE,
   PERMISSION_CONNECTIONS_REVOKE,
+  PERMISSION_WALLETS_SUSPEND,
+  PERMISSION_WALLETS_ARCHIVE,
   PERMISSION_SECURITY_MANAGE,
   PERMISSION_SUPPORT_WRITE,
   PERMISSION_TRANSACTIONS_REVIEW_LARGE,
@@ -157,11 +172,15 @@ const ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   PERMISSION_SIMULATION_MANAGE,
 ] as const;
 
-// SUPER_ADMIN additionally manages admins and roles (reserved elevation powers).
+// SUPER_ADMIN additionally manages admins/roles and blockchain ops (owner control plane).
+// Still never includes custody:sign, custody:approve, wallets:write, or wallets:admin.
 const SUPER_ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   ...ADMIN_PERMISSIONS,
+  PERMISSION_USERS_DELETE,
   PERMISSION_ADMINS_MANAGE,
   PERMISSION_ROLES_MANAGE,
+  PERMISSION_BLOCKCHAIN_ADMIN,
+  PERMISSION_BLOCKCHAIN_SYNC,
 ] as const;
 
 /**
@@ -185,9 +204,15 @@ export const MFA_REQUIRED_ROLES: readonly string[] = [
 ];
 
 /**
- * Admin JWT permissions are the intersection of DB grants and the capability
- * matrix. Over-granted catalog permissions (custody:sign, wallets:admin, …)
- * must never appear on an Admin-surface token.
+ * Admin JWT permissions are derived from the capability matrix.
+ *
+ * - SUPER_ADMIN (owner control plane): receives the full matrix for that role.
+ *   Incomplete `role_permissions` rows must not lock the owner out of operations.
+ *   Custody/signing codes are absent from the matrix by design.
+ * - Other admin roles: intersection of DB grants ∩ matrix (least privilege).
+ *
+ * Over-granted catalog permissions (custody:sign, wallets:admin, …) must never
+ * appear on an Admin-surface token.
  */
 export function adminSessionPermissions(
   roles: readonly string[],
@@ -200,6 +225,9 @@ export function adminSessionPermissions(
     for (const permission of caps) {
       allowed.add(permission);
     }
+  }
+  if (roles.includes(ROLE_SUPER_ADMIN)) {
+    return [...allowed];
   }
   return dbPermissions.filter((permission) => allowed.has(permission));
 }

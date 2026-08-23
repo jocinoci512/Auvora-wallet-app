@@ -8,6 +8,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'devices:read',
     'connections:read',
     'wallets:read',
+    'blockchain:read',
     'security:read',
     'audit:read',
     'support:read',
@@ -15,6 +16,8 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'infrastructure:read',
+    'observability:read',
   ],
   support: [
     'users:read',
@@ -23,6 +26,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'devices:read',
     'connections:read',
     'wallets:read',
+    'blockchain:read',
     'security:read',
     'audit:read',
     'support:read',
@@ -31,6 +35,8 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'infrastructure:read',
+    'observability:read',
     'simulation:read',
   ],
   security_analyst: [
@@ -42,6 +48,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'connections:read',
     'connections:revoke',
     'wallets:read',
+    'blockchain:read',
     'security:read',
     'security:manage',
     'audit:read',
@@ -50,6 +57,8 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'infrastructure:read',
+    'observability:read',
     'simulation:read',
   ],
   admin: [
@@ -64,6 +73,9 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'connections:read',
     'connections:revoke',
     'wallets:read',
+    'wallets:suspend',
+    'wallets:archive',
+    'blockchain:read',
     'security:read',
     'security:manage',
     'audit:read',
@@ -73,6 +85,8 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:read',
     'health:read',
     'realtime:read',
+    'infrastructure:read',
+    'observability:read',
     'transactions:review:large',
     'simulation:read',
     'simulation:manage',
@@ -80,6 +94,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
   super_admin: [
     'users:read',
     'users:write',
+    'users:delete',
     'users:suspend',
     'users:reactivate',
     'sessions:read',
@@ -89,6 +104,11 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'connections:read',
     'connections:revoke',
     'wallets:read',
+    'wallets:suspend',
+    'wallets:archive',
+    'blockchain:read',
+    'blockchain:admin',
+    'blockchain:sync',
     'security:read',
     'security:manage',
     'audit:read',
@@ -100,6 +120,8 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>>
     'roles:manage',
     'health:read',
     'realtime:read',
+    'infrastructure:read',
+    'observability:read',
     'transactions:review:large',
     'simulation:read',
     'simulation:manage',
@@ -161,6 +183,9 @@ export function canMutate(operator: AdminOperator | null | undefined): boolean {
       permission.endsWith(':revoke') ||
       permission.endsWith(':suspend') ||
       permission.endsWith(':reactivate') ||
+      permission.endsWith(':archive') ||
+      permission.endsWith(':delete') ||
+      permission.endsWith(':sync') ||
       permission === 'roles:manage' ||
       permission === 'transactions:review:large' ||
       permission === 'simulation:manage',

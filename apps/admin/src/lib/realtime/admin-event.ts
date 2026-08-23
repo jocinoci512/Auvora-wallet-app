@@ -50,7 +50,8 @@ export interface AdminEvent {
   metadata?: Record<string, string | number | boolean | null>;
 }
 
-export type RealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'offline';
+export type RealtimeStatus =
+  'connecting' | 'connected' | 'reconnecting' | 'offline' | 'unauthorized';
 
 /** Event types that should trigger a targeted refresh of the user directory. */
 export const USER_DIRECTORY_EVENT_TYPES: ReadonlySet<AdminEventType> = new Set<AdminEventType>([

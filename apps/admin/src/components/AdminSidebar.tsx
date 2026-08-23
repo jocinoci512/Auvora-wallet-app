@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, type ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { Sidebar } from '@auvora/ui';
 import { useAdminIdentity } from '../lib/admin-identity';
 import { useAdminNav } from '../lib/admin-nav';
@@ -15,27 +15,65 @@ interface NavItem {
   permission?: string;
 }
 
-const PRIMARY: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', permission: 'health:read' },
-  { href: '/users', label: 'Users', permission: 'users:read' },
-  { href: '/wallets', label: 'Wallets', permission: 'wallets:read' },
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
-    href: '/transaction-reviews',
-    label: 'Transaction Reviews',
-    permission: 'transactions:review:large',
+    label: 'Overview',
+    items: [{ href: '/dashboard', label: 'Dashboard', permission: 'health:read' }],
   },
-  { href: '/simulation', label: 'Simulation', permission: 'simulation:read' },
-  { href: '/connections', label: 'Connections', permission: 'connections:read' },
-  { href: '/security', label: 'Security', permission: 'security:read' },
-  { href: '/security/audit', label: 'Audit', permission: 'audit:read' },
-  { href: '/observability/health', label: 'System Health', permission: 'health:read' },
-  { href: '/operators', label: 'Admin Management', permission: 'admins:read' },
-  { href: '/settings', label: 'Settings' },
+  {
+    label: 'Customers',
+    items: [
+      { href: '/users', label: 'Users', permission: 'users:read' },
+      { href: '/wallets', label: 'Wallets', permission: 'wallets:read' },
+    ],
+  },
+  {
+    label: 'Transactions',
+    items: [
+      {
+        href: '/transaction-reviews',
+        label: 'Transaction Reviews',
+        permission: 'transactions:review:large',
+      },
+    ],
+  },
+  {
+    label: 'Testing',
+    items: [{ href: '/simulation', label: 'Simulation', permission: 'simulation:read' }],
+  },
+  {
+    label: 'Connectivity',
+    items: [{ href: '/connections', label: 'Connections', permission: 'connections:read' }],
+  },
+  {
+    label: 'Security',
+    items: [
+      { href: '/security', label: 'Security', permission: 'security:read' },
+      { href: '/security/audit', label: 'Audit', permission: 'audit:read' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { href: '/observability/health', label: 'System Health', permission: 'health:read' },
+      { href: '/blockchain', label: 'Blockchain', permission: 'blockchain:read' },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { href: '/operators', label: 'Admin Management', permission: 'admins:read' },
+      { href: '/settings', label: 'Settings' },
+    ],
+  },
 ];
 
-const MORE_MESH: NavItem[] = [{ href: '/blockchain', label: 'Blockchain' }];
-
-const MORE_DEFERRED: NavItem[] = [
+const DEFERRED: NavItem[] = [
   { href: '/payments', label: 'Payments' },
   { href: '/compliance', label: 'Compliance' },
   { href: '/custody', label: 'Custody' },
@@ -62,11 +100,9 @@ export function AdminSidebar(): ReactElement {
   const pathname = usePathname() || '/';
   const identity = useAdminIdentity();
   const { open, setOpen } = useAdminNav();
-  const [moreOpen, setMoreOpen] = useState(
-    [...MORE_MESH, ...MORE_DEFERRED].some((item) => isCurrent(pathname, item.href)),
-  );
-  const extra = isProductionBuild() ? [] : [{ href: '/design-system', label: 'Design system' }];
-  const moreItems = isProductionBuild() ? MORE_MESH : [...MORE_MESH, ...MORE_DEFERRED, ...extra];
+  const deferred = isProductionBuild()
+    ? []
+    : [...DEFERRED, { href: '/design-system', label: 'Design system' }];
 
   return (
     <>
@@ -84,42 +120,49 @@ export function AdminSidebar(): ReactElement {
         aria-label="Admin navigation"
       >
         <p className="admin-sidebar__brand">Auvora Control Plane</p>
-        <ul className="admin-sidebar__nav">
-          {PRIMARY.map((item) => {
-            if (item.permission && !hasPermission(identity?.operator, item.permission)) {
-              return null;
-            }
-            const current = isCurrent(pathname, item.href);
-            return (
-              <li key={item.href}>
-                <Link href={item.href} aria-current={current ? 'page' : undefined}>
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        <button
-          type="button"
-          className="admin-sidebar__more"
-          aria-expanded={moreOpen}
-          onClick={() => setMoreOpen((current) => !current)}
-        >
-          More operations
-        </button>
-        {moreOpen ? (
-          <ul className="admin-sidebar__nav admin-sidebar__nav--secondary">
-            {[...moreItems].map((item) => {
-              const current = isCurrent(pathname, item.href);
-              return (
-                <li key={item.href}>
-                  <Link href={item.href} aria-current={current ? 'page' : undefined}>
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        {NAV_GROUPS.map((group) => {
+          const visible = group.items.filter(
+            (item) => !item.permission || hasPermission(identity?.operator, item.permission),
+          );
+          if (visible.length === 0) return null;
+          return (
+            <div key={group.label} className="admin-sidebar__group">
+              <p className="admin-sidebar__group-label">{group.label}</p>
+              <ul className="admin-sidebar__nav">
+                {visible.map((item) => {
+                  const current = isCurrent(pathname, item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={current ? 'page' : undefined}
+                        onClick={() => setOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+        {deferred.length > 0 ? (
+          <div className="admin-sidebar__group">
+            <p className="admin-sidebar__group-label">Lab only</p>
+            <ul className="admin-sidebar__nav admin-sidebar__nav--secondary">
+              {deferred.map((item) => {
+                const current = isCurrent(pathname, item.href);
+                return (
+                  <li key={item.href}>
+                    <Link href={item.href} aria-current={current ? 'page' : undefined}>
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         ) : null}
       </Sidebar>
     </>

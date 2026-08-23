@@ -9,6 +9,7 @@ const STATUS_TONE: Record<RealtimeStatus, BadgeTone> = {
   connecting: 'info',
   reconnecting: 'warning',
   offline: 'error',
+  unauthorized: 'error',
 };
 
 const STATUS_LABEL: Record<RealtimeStatus, string> = {
@@ -16,6 +17,7 @@ const STATUS_LABEL: Record<RealtimeStatus, string> = {
   connecting: 'Connecting…',
   reconnecting: 'Reconnecting…',
   offline: 'Offline',
+  unauthorized: 'Auth required',
 };
 
 const SEVERITY_TONE: Record<string, BadgeTone> = {
