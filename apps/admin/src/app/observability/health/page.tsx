@@ -1,7 +1,7 @@
 'use client';
 
 import type { ProductionMeshHealth } from '@auvora/sdk';
-import { AsyncStates, PageHeader } from '@auvora/ui';
+import { Alert, AsyncStates, PageHeader } from '@auvora/ui';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Subnav } from '../../../components/Subnav';
 import { healthLabel, healthTone, formatWhen } from '../../../lib/admin-format';
@@ -69,6 +69,16 @@ export default function AdminHealthPage(): ReactElement {
         <Subnav label="Observability sections" links={OPS_LINKS} />
       </PageHeader>
       <p className="page-subtitle">Realtime {realtimeStatus}</p>
+
+      {data?.diagnostics?.length ? (
+        <Alert tone="warn" title="Mesh health probe needs configuration">
+          <ul className="stack">
+            {data.diagnostics.map((line: string) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Alert>
+      ) : null}
 
       <AsyncStates
         loading={loading}

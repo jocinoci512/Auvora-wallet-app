@@ -734,7 +734,10 @@ describe('AuthService Phase 2 — admin realtime events', () => {
     };
     const service = createAuthService({ users, adminEvents });
 
-    await service.adminUpdateStatus('admin-1', 'user-1', UserStatus.Suspended, {});
+    await service.adminUpdateStatus('admin-1', 'user-1', UserStatus.Suspended, 'qa suspension', {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
 
     const changed = published(adminEvents).find((e) => e.type === 'ACCOUNT_STATUS_CHANGED');
     expect(changed).toMatchObject({ type: 'ACCOUNT_STATUS_CHANGED', userId: 'user-1' });

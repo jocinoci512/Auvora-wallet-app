@@ -1432,6 +1432,7 @@ export interface OpsHealthOverview {
 
 export interface ProductionMeshHealth {
   generatedAt: string;
+  diagnostics?: string[];
   services: Array<{
     id: string;
     status: 'healthy' | 'degraded' | 'offline' | 'unknown';

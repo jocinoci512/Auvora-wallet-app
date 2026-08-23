@@ -13,6 +13,8 @@ export interface MeshComponentHealth {
 
 export interface ProductionSystemHealth {
   generatedAt: string;
+  /** Operator-safe hints when mesh probing is misconfigured or unavailable. */
+  diagnostics?: string[];
   services: MeshComponentHealth[];
 }
 
@@ -39,10 +41,22 @@ export class AdminSystemHealthService {
 
   async getProductionHealth(): Promise<ProductionSystemHealth> {
     const started = Date.now();
+    const diagnostics: string[] = [];
+    if (!this.env.GATEWAY_INTERNAL_URL) {
+      diagnostics.push(
+        'Mesh probe not configured: set GATEWAY_INTERNAL_URL on auth-prods to the private gateway-prod base URL.',
+      );
+    }
+    if (!this.env.INTERNAL_API_KEY) {
+      diagnostics.push(
+        'Mesh probe not configured: set INTERNAL_API_KEY on auth-prods to match gateway-prod.',
+      );
+    }
+
     const [dbHealthy, redisHealthy, mesh] = await Promise.all([
       this.prisma.isHealthy(),
       this.redis.ping(),
-      this.fetchGatewayMesh(),
+      this.fetchGatewayMesh(diagnostics),
     ]);
 
     const byId = new Map<string, MeshComponentHealth>();
@@ -74,13 +88,14 @@ export class AdminSystemHealthService {
 
     return {
       generatedAt: new Date().toISOString(),
+      diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
       services: CANONICAL_ORDER.map(
         (id) => byId.get(id) ?? { id, status: 'unknown', latencyMs: null },
       ),
     };
   }
 
-  private async fetchGatewayMesh(): Promise<MeshComponentHealth[]> {
+  private async fetchGatewayMesh(diagnostics: string[]): Promise<MeshComponentHealth[]> {
     const base = this.env.GATEWAY_INTERNAL_URL?.replace(/\/$/, '');
     const key = this.env.INTERNAL_API_KEY;
     if (!base || !key) return [];
@@ -92,15 +107,20 @@ export class AdminSystemHealthService {
         },
         signal: AbortSignal.timeout(4000),
       });
-      if (!response.ok) return [];
+      if (!response.ok) {
+        diagnostics.push(
+          `Gateway mesh probe returned HTTP ${response.status}. Verify auth-prods can reach gateway-prod privately and INTERNAL_API_KEY matches.`,
+        );
+        return [];
+      }
       const body = (await response.json()) as { services?: MeshComponentHealth[] };
       return Array.isArray(body.services)
         ? body.services.filter((row) => isCanonicalId(row.id))
         : [];
     } catch (error) {
-      this.logger.warn(
-        `Gateway mesh health unavailable: ${error instanceof Error ? error.message : 'error'}`,
-      );
+      const message = error instanceof Error ? error.message : 'error';
+      diagnostics.push(`Gateway mesh probe failed: ${message}`);
+      this.logger.warn(`Gateway mesh health unavailable: ${message}`);
       return [];
     }
   }

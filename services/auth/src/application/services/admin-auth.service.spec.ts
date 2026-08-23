@@ -179,12 +179,31 @@ const loginInput = {
 };
 
 describe('AdminAuthService', () => {
-  it('1. only SUPER_ADMIN may enter the Admin control plane', async () => {
+  it('1. admin portal staff roles may sign in; end users are denied at the portal gate', async () => {
     const { service, users } = createService();
-    for (const role of ['admin', 'support', 'security_analyst', 'read_only', 'user']) {
-      users.findByEmail.mockResolvedValue(adminUser({ roles: [role], mfaEnabled: false }));
-      await expect(service.login(loginInput, {})).rejects.toBeInstanceOf(ForbiddenError);
+    const portalCases: Array<{
+      role: string;
+      expected: 'mfa_enrollment_required' | 'authenticated';
+    }> = [
+      { role: 'super_admin', expected: 'mfa_enrollment_required' },
+      { role: 'admin', expected: 'mfa_enrollment_required' },
+      { role: 'security_analyst', expected: 'mfa_enrollment_required' },
+      { role: 'support', expected: 'authenticated' },
+      { role: 'read_only', expected: 'authenticated' },
+    ];
+
+    for (const { role, expected } of portalCases) {
+      const user = adminUser({ roles: [role], mfaEnabled: false });
+      users.findByEmail.mockResolvedValue(user);
+      users.findById.mockResolvedValue(user);
+      const result = await service.login(loginInput, { ipAddress: '127.0.0.1' });
+      expect(result.status).toBe(expected);
     }
+
+    users.findByEmail.mockResolvedValue(adminUser({ roles: ['user'] }));
+    await expect(service.login(loginInput, { ipAddress: '127.0.0.1' })).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
   });
 
   it('2. normal user is denied', async () => {
