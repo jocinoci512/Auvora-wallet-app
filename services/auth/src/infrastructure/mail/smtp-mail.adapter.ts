@@ -23,10 +23,15 @@ export class SmtpMailAdapter implements MailPort {
       secure: env.SMTP_PORT === 465,
       auth:
         env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      // Defense-in-depth: never resolve local files or remote URLs from message content.
+      disableFileAccess: true,
+      disableUrlAccess: true,
     });
   }
 
   async send(input: SendMailInput): Promise<void> {
+    // Only allow the MailPort contract fields — never raw, attachments, envelope,
+    // list headers, jsonTransport, or other attacker-influenced Nodemailer options.
     await this.transporter.sendMail({
       from: this.fromAddress,
       to: input.to,
