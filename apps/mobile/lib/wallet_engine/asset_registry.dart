@@ -1,4 +1,5 @@
 import 'models.dart';
+import '../release/network_env.dart';
 
 class AssetRegistry {
   AssetRegistry() : _assets = {
@@ -91,7 +92,8 @@ class AssetRegistry {
 
   AssetDefinition? byId(String id) => _assets[id];
 
-  String holdingId(AssetDefinition asset, ChainId chain) => '${asset.id}:${chain.key}';
+  String holdingId(AssetDefinition asset, ChainId chain) =>
+      '${asset.id}:${chain.key}:${AuvoraNetworkEnv.current.name}';
 
   List<AssetDefinition> forChain(ChainId chain) =>
       all.where((asset) => asset.networks.contains(chain)).toList(growable: false);

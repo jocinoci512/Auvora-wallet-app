@@ -32,6 +32,9 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<IntelligenceController>().noteEvent('onReceive');
+      // Soft portfolio refresh so Sepolia (and other) balances update when Receive opens.
+      final wallet = context.read<WalletController>();
+      context.read<PortfolioController>().refresh(wallet.address, soft: true);
       final p = context.read<PortfolioController>();
       if (widget.initialAssetId != null) {
         final a = p.assetById(widget.initialAssetId!);

@@ -24,6 +24,7 @@ import 'ui/app_shell.dart';
 import 'ui/connections/deep_link_listener.dart';
 import 'wallet_engine/asset_registry.dart';
 import 'wallet_engine/blockchain_adapter.dart';
+import 'wallet_engine/evm_rpc_adapter.dart';
 import 'wallet_engine/key_store.dart';
 import 'wallet_engine/network_manager.dart';
 import 'wallet_engine/price_service.dart';
@@ -125,30 +126,30 @@ class _AuvoraAppState extends State<AuvoraApp> {
                 providerCode: 'btc-sim',
                 explorerBaseUrl: 'https://mempool.space/tx/',
               ),
-              PreviewBlockchainAdapter(
+              EvmRpcBlockchainAdapter(
                 chain: ChainId.ethereum,
-                providerCode: 'eth-sim',
-                explorerBaseUrl: 'https://etherscan.io/tx/',
+                providerCode: 'eth-rpc',
+                explorerBaseUrl: 'https://sepolia.etherscan.io/tx/',
               ),
               PreviewBlockchainAdapter(
                 chain: ChainId.solana,
                 providerCode: 'sol-sim',
                 explorerBaseUrl: 'https://solscan.io/tx/',
               ),
-              PreviewBlockchainAdapter(
+              EvmRpcBlockchainAdapter(
                 chain: ChainId.bnbSmartChain,
-                providerCode: 'bsc-sim',
-                explorerBaseUrl: 'https://bscscan.com/tx/',
+                providerCode: 'bsc-rpc',
+                explorerBaseUrl: 'https://testnet.bscscan.com/tx/',
               ),
               PreviewBlockchainAdapter(
                 chain: ChainId.tron,
                 providerCode: 'tron-sim',
                 explorerBaseUrl: 'https://tronscan.org/#/transaction/',
               ),
-              PreviewBlockchainAdapter(
+              EvmRpcBlockchainAdapter(
                 chain: ChainId.polygon,
-                providerCode: 'polygon-sim',
-                explorerBaseUrl: 'https://polygonscan.com/tx/',
+                providerCode: 'polygon-rpc',
+                explorerBaseUrl: 'https://amoy.polygonscan.com/tx/',
               ),
             ],
           ),

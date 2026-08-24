@@ -107,6 +107,7 @@ class AssetHolding {
     required this.change24hPct,
     required this.color,
     this.sparkline = const [],
+    this.balanceUnavailable = false,
   });
 
   final String id;
@@ -119,9 +120,18 @@ class AssetHolding {
   final int color;
   final List<double> sparkline;
 
+  /// True when the latest RPC refresh failed — [balance] is last-known (may be 0
+  /// only if never successfully fetched). Never treat this as a confirmed zero.
+  final bool balanceUnavailable;
+
   double get fiatValue => balance * priceUsd;
 
-  AssetHolding copyWith({double? balance, double? priceUsd, double? change24hPct}) {
+  AssetHolding copyWith({
+    double? balance,
+    double? priceUsd,
+    double? change24hPct,
+    bool? balanceUnavailable,
+  }) {
     return AssetHolding(
       id: id,
       name: name,
@@ -132,6 +142,7 @@ class AssetHolding {
       change24hPct: change24hPct ?? this.change24hPct,
       color: color,
       sparkline: sparkline,
+      balanceUnavailable: balanceUnavailable ?? this.balanceUnavailable,
     );
   }
 }

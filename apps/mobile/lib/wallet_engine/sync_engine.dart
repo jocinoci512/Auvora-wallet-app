@@ -6,6 +6,7 @@ import '../portfolio/models.dart';
 import '../reliability/cache_store.dart';
 import '../reliability/retry.dart';
 import '../reliability/startup_timing.dart';
+import '../release/network_env.dart';
 import 'asset_registry.dart';
 import 'blockchain_adapter.dart';
 import 'models.dart';
@@ -57,7 +58,11 @@ class SyncEngine {
   String? _lastSyncReason;
 
   /// Legacy key kept for migration; new writes also go through [CacheStore].
-  static const _kPortfolioCache = 'auvora_portfolio_cache_v2';
+  /// Namespaced by network env so mainnet and Sepolia balances never collide.
+  static String get _kPortfolioCache =>
+      'auvora_portfolio_cache_v3_${AuvoraNetworkEnv.current.name}';
+
+  static String get _portfolioCacheId => 'active_${AuvoraNetworkEnv.current.name}';
 
   WalletDiagnostics get diagnostics => _diagnostics;
   SyncStatusSnapshot get syncStatus => _syncStatus;
@@ -284,7 +289,8 @@ class SyncEngine {
       change24hUsd: total * (changePct / 100),
       change24hPct: changePct,
       updatedAt: DateTime.now(),
-      isPreview: true,
+      // Native EVM balances come from JSON-RPC; non-EVM may still be preview adapters.
+      isPreview: !_blockchainLayer.adapters.any((a) => a.providerCode.contains('rpc')),
       offline: false,
       priceError: priceError,
       syncDelayed: syncDelayed,
@@ -319,91 +325,127 @@ class SyncEngine {
     required void Function() onRetry,
   }) async {
     final chain = address.chain;
-    try {
-      final defs = _assetRegistry.forChain(chain);
-      final adapter = _blockchainLayer.adapterFor(chain);
-      // Balances + history are independent — overlap within the chain.
-      late final List<double> balances;
-      late final List<PortfolioTx> history;
-      await Future.wait([
-        () async {
-          balances = await Future.wait([
-            for (final asset in defs)
-              withRetry(
-                () => adapter.getBalance(address: address, assetSymbol: asset.symbol),
-                maxAttempts: 2,
-                onRetry: (_, __) => onRetry(),
-              ),
-          ]);
-        }(),
-        () async {
-          history = await withRetry(
-            () => adapter.getHistory(address: address),
-            maxAttempts: 2,
-            onRetry: (_, __) => onRetry(),
+    final defs = _assetRegistry.forChain(chain);
+    final adapter = _blockchainLayer.adapterFor(chain);
+    final priorById = {
+      for (final a in prior?.assets ?? const <AssetHolding>[])
+        if (a.network == chain.assetNetwork) a.id: a,
+    };
+
+    var rpcRequests = 0;
+    var rpcFailures = 0;
+    var nativeFailed = false;
+    final chainAssets = <AssetHolding>[];
+
+    for (final asset in defs) {
+      final holdingId = _assetRegistry.holdingId(asset, chain);
+      final priorHolding = priorById[holdingId] ?? () {
+        for (final a in priorById.values) {
+          if (a.ticker == asset.symbol && a.network == chain.assetNetwork) return a;
+        }
+        return null;
+      }();
+      final quote = quotes[asset.symbol] ??
+          PricePoint(
+            symbol: asset.symbol,
+            priceUsd: 0,
+            change24hPct: 0,
+            sparkline7d: const [0, 0, 0, 0, 0, 0, 0],
+            updatedAt: DateTime.now(),
+            stale: true,
           );
-        }(),
-      ]);
-      final chainAssets = <AssetHolding>[
-        for (var i = 0; i < defs.length; i++)
+
+      try {
+        final balance = await withRetry(
+          () => adapter.getBalance(address: address, assetSymbol: asset.symbol),
+          maxAttempts: 2,
+          onRetry: (_, __) => onRetry(),
+        );
+        rpcRequests += 1;
+        chainAssets.add(
           AssetHolding(
-            id: _assetRegistry.holdingId(defs[i], chain),
-            name: defs[i].displayName,
-            ticker: defs[i].symbol,
+            id: holdingId,
+            name: asset.displayName,
+            ticker: asset.symbol,
             network: chain.assetNetwork,
-            balance: balances[i],
-            priceUsd: (quotes[defs[i].symbol] ??
-                    PricePoint(
-                      symbol: defs[i].symbol,
-                      priceUsd: 0,
-                      change24hPct: 0,
-                      sparkline7d: const [0, 0, 0, 0, 0, 0, 0],
-                      updatedAt: DateTime.now(),
-                      stale: true,
-                    ))
-                .priceUsd,
-            change24hPct: (quotes[defs[i].symbol]?.change24hPct) ?? 0,
+            balance: balance,
+            priceUsd: quote.priceUsd,
+            change24hPct: quote.change24hPct,
             color: _colorFor(chain),
-            sparkline: quotes[defs[i].symbol]?.sparkline7d ?? const [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            sparkline: quote.sparkline7d,
+            balanceUnavailable: false,
           ),
-      ];
+        );
+      } catch (_) {
+        rpcFailures += 1;
+        if (asset.symbol.toUpperCase() == chain.nativeTicker.toUpperCase()) {
+          nativeFailed = true;
+        }
+        // Preserve last known balance — never invent a confirmed zero on RPC failure.
+        if (priorHolding != null) {
+          chainAssets.add(
+            priorHolding.copyWith(
+              priceUsd: quote.priceUsd,
+              change24hPct: quote.change24hPct,
+              balanceUnavailable: true,
+            ),
+          );
+        } else if (asset.symbol.toUpperCase() == chain.nativeTicker.toUpperCase()) {
+          chainAssets.add(
+            AssetHolding(
+              id: holdingId,
+              name: asset.displayName,
+              ticker: asset.symbol,
+              network: chain.assetNetwork,
+              balance: 0,
+              priceUsd: quote.priceUsd,
+              change24hPct: quote.change24hPct,
+              color: _colorFor(chain),
+              sparkline: quote.sparkline7d,
+              balanceUnavailable: true,
+            ),
+          );
+        }
+        // Non-native tokens without prior are omitted (not shown as confirmed zero).
+      }
+    }
+
+    List<PortfolioTx> history = const [];
+    try {
+      history = await withRetry(
+        () => adapter.getHistory(address: address),
+        maxAttempts: 2,
+        onRetry: (_, __) => onRetry(),
+      );
+      rpcRequests += 1;
       await _cache.write(
         ns: CacheStore.nsTxHistory,
-        id: chain.key,
+        id: '${chain.key}_${AuvoraNetworkEnv.current.name}',
         payload: history.map(_txToJson).toList(),
         ttl: const Duration(hours: 6),
       );
-      return (
-        chainKey: chain.key,
-        failed: false,
-        rpcRequests: defs.length + 1,
-        rpcFailures: 0,
-        assets: chainAssets,
-        txs: history,
-      );
     } catch (_) {
-      final fallbackAssets = prior == null
-          ? const <AssetHolding>[]
-          : prior.assets.where((a) => a.network == chain.assetNetwork).toList();
-      final fallbackTxs = prior == null
+      rpcFailures += 1;
+      history = prior == null
           ? const <PortfolioTx>[]
           : prior.transactions.where((t) => t.network == chain.assetNetwork).toList();
-      return (
-        chainKey: chain.key,
-        failed: true,
-        rpcRequests: 0,
-        rpcFailures: 1,
-        assets: fallbackAssets,
-        txs: fallbackTxs,
-      );
     }
+
+    return (
+      chainKey: chain.key,
+      failed: nativeFailed,
+      rpcRequests: rpcRequests,
+      rpcFailures: rpcFailures,
+      assets: chainAssets,
+      txs: history,
+    );
   }
 
   Future<PortfolioSnapshot?> cachedPortfolio() async {
     _prefs ??= await SharedPreferences.getInstance();
     final namespaced = await _cache.read<Map<String, Object?>>(
       ns: CacheStore.nsPortfolio,
-      id: 'active',
+      id: _portfolioCacheId,
       decode: (raw) => Map<String, Object?>.from(raw as Map),
       allowStale: true,
     );
@@ -479,7 +521,7 @@ class SyncEngine {
     await _prefs?.setString(_kPortfolioCache, raw);
     await _cache.write(
       ns: CacheStore.nsPortfolio,
-      id: 'active',
+      id: _portfolioCacheId,
       payload: map,
       ttl: const Duration(hours: 12),
     );
@@ -548,6 +590,8 @@ class SyncEngine {
               'change24hPct': item.change24hPct,
               'color': item.color,
               'sparkline': item.sparkline,
+              'balanceUnavailable': item.balanceUnavailable,
+              'networkEnv': AuvoraNetworkEnv.current.name,
             },
         ],
         'transactions': [for (final tx in snap.transactions) _txToJson(tx)],
@@ -599,6 +643,7 @@ class SyncEngine {
             sparkline: ((json['sparkline'] as List<Object?>?) ?? const [])
                 .map((item) => (item as num).toDouble())
                 .toList(),
+            balanceUnavailable: json['balanceUnavailable'] == true,
           );
         })
         .toList();

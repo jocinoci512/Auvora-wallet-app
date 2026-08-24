@@ -663,6 +663,17 @@ class _StatusStack extends StatelessWidget {
           onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
+    } else if (snap?.assets.any((a) => a.balanceUnavailable) == true) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 8));
+      children.add(
+        SoftBanner(
+          tone: BannerTone.warn,
+          message:
+              'Unable to refresh some balances. Network unavailable — last known values stay visible (not a confirmed zero).',
+          actionLabel: 'Retry',
+          onAction: () => portfolio.refresh(address, soft: true),
+        ),
+      );
     } else if (snap?.syncDelayed == true) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
@@ -1125,7 +1136,9 @@ class HomeAssetTile extends StatelessWidget {
                       Text(
                         portfolio.hideBalances
                             ? '••••'
-                            : '${portfolio.crypto(asset.balance, asset.ticker)} · ${up ? '+' : ''}${asset.change24hPct.toStringAsFixed(1)}%',
+                            : asset.balanceUnavailable
+                                ? 'Unable to refresh'
+                                : '${portfolio.crypto(asset.balance, asset.ticker)} · ${up ? '+' : ''}${asset.change24hPct.toStringAsFixed(1)}%',
                         style: TextStyle(
                           color: up ? AetherColors.success : AetherColors.danger,
                           fontSize: 12,
