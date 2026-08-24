@@ -6,11 +6,13 @@ import 'package:share_plus/share_plus.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../intelligence/intelligence_controller.dart';
+import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../transfer/address_validation.dart';
 import 'home/home_shared.dart';
+import 'testnet_banner.dart';
 
 class ReceiveFlowScreen extends StatefulWidget {
   const ReceiveFlowScreen({super.key, this.initialAssetId});
@@ -57,6 +59,10 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
     return buildPaymentUri(network: _network, address: address);
   }
 
+  String _netLabel(AssetNetwork n) => AuvoraNetworkEnv.displayName(n);
+
+  String _laneLabel(AssetNetwork n) => AuvoraNetworkEnv.laneName(n);
+
   @override
   Widget build(BuildContext context) {
     final wallet = context.watch<WalletController>();
@@ -77,17 +83,25 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final walletLabel = wallet.wallet?.name ?? 'Primary wallet';
     final qrData = address.isEmpty ? '' : _qrPayload(address);
+    final netLabel = _netLabel(_network);
+    final laneLabel = _laneLabel(_network);
+    final chainId = AuvoraNetworkEnv.evmChainId(_network);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Receive')),
       body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: wide ? 520 : double.infinity),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-              children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (AuvoraNetworkEnv.isTestnet) const TestnetBanner(),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: wide ? 520 : double.infinity),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                    children: [
                 Text(
                   fundingUnlocked ? 'Show this to the sender' : 'Receive (locked)',
                   style: Theme.of(context).textTheme.titleLarge,
@@ -103,13 +117,16 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                 SoftBanner(
                   tone: fundingUnlocked ? BannerTone.warn : BannerTone.error,
                   message: fundingUnlocked
-                      ? 'You’re receiving on ${_network.label}. Confirm the sender uses the same network.'
+                      ? 'You’re receiving on $netLabel. Confirm the sender uses the same network.'
                       : ReleaseConfig.fundingBlockedMessage,
                 ),
                 if (wallet.vaults.length > 1) ...[
                   const SizedBox(height: 12),
                   _kv(context, 'Wallet', walletLabel),
                 ],
+                const SizedBox(height: 12),
+                _kv(context, 'Network', laneLabel),
+                if (chainId != null) _kv(context, 'Chain ID', '$chainId'),
                 const SizedBox(height: 18),
                 Text('Network', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 8),
@@ -119,7 +136,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   children: [
                     for (final n in wallet.availableNetworks)
                       ChoiceChip(
-                        label: Text(n.label),
+                        label: Text(_netLabel(n)),
                         selected: _network == n,
                         materialTapTargetSize: MaterialTapTargetSize.padded,
                         visualDensity: VisualDensity.comfortable,
@@ -172,7 +189,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                           if (address.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Text(
-                              'Derivation preview (${_network.label})',
+                              'Derivation preview ($netLabel)',
                               style: TextStyle(
                                 color: AetherColors.mutedFor(context),
                                 fontWeight: FontWeight.w600,
@@ -206,7 +223,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                   SoftBanner(
                     tone: BannerTone.error,
                     message:
-                        '${_network.label} deposit addresses aren’t ready on this device yet. Wait for full network sync before receiving here.',
+                        '$netLabel deposit addresses aren’t ready on this device yet. Wait for full network sync before receiving here.',
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -241,12 +258,12 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     SoftBanner(
                       tone: BannerTone.error,
                       message:
-                          'No ${_network.label} address is ready yet. Finish wallet setup, then try again.',
+                          'No $netLabel address is ready yet. Finish wallet setup, then try again.',
                     ),
                   ] else ...[
                     Center(
                       child: Semantics(
-                        label: 'Receiving QR code for ${_network.label}',
+                        label: 'Receiving QR code for $netLabel',
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
@@ -269,10 +286,19 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      _network.label,
+                      netLabel,
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
+                    if (AuvoraNetworkEnv.isTestnet)
+                      Text(
+                        'Network: $laneLabel',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AetherColors.mutedFor(context),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     if (asset != null)
                       Text(
                         asset.ticker,
@@ -293,8 +319,8 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                           child: SoftBanner(
                             tone: check.ok ? BannerTone.info : BannerTone.error,
                             message: check.ok
-                                ? 'Address format verified for ${_network.label}. Confirm the first and last characters match your records.'
-                                : (check.message ?? 'This address did not pass format checks for ${_network.label}.'),
+                                ? 'Address format verified for $netLabel. Confirm the first and last characters match your records.'
+                                : (check.message ?? 'This address did not pass format checks for $netLabel.'),
                           ),
                         );
                       },
@@ -303,7 +329,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     SoftBanner(
                       tone: BannerTone.warn,
                       message:
-                          'Only send ${_network.label}-compatible assets here. Sending on the wrong network can permanently lose funds.',
+                          'Only send $netLabel-compatible assets here. Sending on the wrong network can permanently lose funds.',
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
@@ -314,7 +340,7 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
                       onPressed: () => Share.share(
-                        'My Auvora ${_network.label} address ($walletLabel):\n$address',
+                        'My Auvora $netLabel address ($walletLabel):\n$address',
                         subject: 'Auvora receive address',
                       ),
                       icon: const Icon(Icons.ios_share_rounded),
@@ -322,9 +348,12 @@ class _ReceiveFlowScreenState extends State<ReceiveFlowScreen> {
                     ),
                   ],
                 ],
-              ],
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

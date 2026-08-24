@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
+import '../release/network_env.dart';
 import '../reliability/startup_timing.dart';
 import '../wallet_engine/key_store.dart';
 import '../wallet_engine/models.dart';
@@ -72,9 +73,18 @@ class WalletController extends ChangeNotifier {
     return value ?? address;
   }
 
-  List<AssetNetwork> get availableNetworks =>
-      wallet?.supportedChains.map((chain) => chain.assetNetwork).toList(growable: false) ??
-      const [AssetNetwork.ethereum];
+  /// Receive / Send network chips — catalog order, never drops testnet lanes.
+  List<AssetNetwork> get availableNetworks {
+    final fromWallet = wallet?.supportedChains.map((c) => c.assetNetwork).toSet() ??
+        <AssetNetwork>{};
+    if (fromWallet.isEmpty) {
+      return List<AssetNetwork>.unmodifiable(NetworkCatalog.receiveNetworks);
+    }
+    return [
+      for (final n in NetworkCatalog.receiveNetworks)
+        if (fromWallet.contains(n)) n,
+    ];
+  }
 
   /// 1-based step within create/import onboarding (for progress UI).
   int get onboardingStep {
