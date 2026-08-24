@@ -49,6 +49,19 @@ class ImportAddressDto {
   @IsOptional()
   @IsString()
   label?: string;
+
+  /** `mainnet` | `testnet` — safe environment marker for Admin (never secrets). */
+  @IsOptional()
+  @IsString()
+  networkEnv?: string;
+
+  @IsOptional()
+  @IsString()
+  clientPlatform?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  selfCustody?: boolean;
 }
 
 class ValidateAddressDto {
@@ -131,6 +144,9 @@ export class WalletEngineController {
         address: dto.address,
         alias: dto.alias,
         label: dto.label,
+        networkEnv: dto.networkEnv,
+        clientPlatform: dto.clientPlatform,
+        selfCustody: dto.selfCustody === true,
       },
       user,
     );

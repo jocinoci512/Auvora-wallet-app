@@ -4,7 +4,7 @@ import type { Wallet, WalletStatus } from '@auvora/sdk';
 import { AsyncStates, Button, PageHeader, Pagination, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
-import { formatWhen, shortId } from '../../lib/admin-format';
+import { formatWhen, shortId, walletNetworkEnv, walletPublicAddress } from '../../lib/admin-format';
 import { createApiClient, formatAdminError } from '../../lib/api-client';
 
 const STATUSES: Array<WalletStatus | ''> = ['', 'PENDING', 'ACTIVE', 'SUSPENDED', 'ARCHIVED'];
@@ -56,6 +56,11 @@ export default function AdminWalletsPage(): ReactElement {
         title="Wallets"
         subtitle={
           loading ? 'Searching…' : `${total.toLocaleString()} wallet${total === 1 ? '' : 's'}`
+        }
+        actions={
+          <Button type="button" onClick={() => void load()} disabled={loading}>
+            Refresh
+          </Button>
         }
       />
 
@@ -120,6 +125,8 @@ export default function AdminWalletsPage(): ReactElement {
               <tr>
                 <th scope="col">Wallet ID</th>
                 <th scope="col">Network / asset</th>
+                <th scope="col">Public address</th>
+                <th scope="col">Env</th>
                 <th scope="col">Owner</th>
                 <th scope="col">Status</th>
                 <th scope="col">Created</th>
@@ -129,20 +136,34 @@ export default function AdminWalletsPage(): ReactElement {
               </tr>
             </thead>
             <tbody>
-              {wallets.map((wallet) => (
-                <tr key={wallet.id}>
-                  <td className="mono">{shortId(wallet.id, 12)}</td>
-                  <td>{wallet.assetCode}</td>
-                  <td className="mono">{shortId(wallet.ownerUserId, 10)}</td>
-                  <td>
-                    <StatusBadge status={wallet.status} />
-                  </td>
-                  <td>{formatWhen(wallet.createdAt)}</td>
-                  <td>
-                    <Link href={`/wallets/${wallet.id}`}>Open</Link>
-                  </td>
-                </tr>
-              ))}
+              {wallets.map((wallet) => {
+                const env = walletNetworkEnv(wallet.metadata);
+                const address = walletPublicAddress(wallet.metadata);
+                return (
+                  <tr key={wallet.id}>
+                    <td className="mono">{shortId(wallet.id, 12)}</td>
+                    <td>{wallet.assetCode}</td>
+                    <td className="mono">{address ? shortId(address, 14) : '—'}</td>
+                    <td>
+                      {env === 'testnet' ? (
+                        <StatusBadge status="TESTNET" />
+                      ) : env === 'mainnet' ? (
+                        <StatusBadge status="MAINNET" />
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="mono">{shortId(wallet.ownerUserId, 10)}</td>
+                    <td>
+                      <StatusBadge status={wallet.status} />
+                    </td>
+                    <td>{formatWhen(wallet.createdAt)}</td>
+                    <td>
+                      <Link href={`/wallets/${wallet.id}`}>Open</Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

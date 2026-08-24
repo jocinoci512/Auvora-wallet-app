@@ -1,9 +1,37 @@
 /** Self-custody large-transfer review. Admin never receives keys. */
 
 export const DEFAULT_LARGE_TRANSFER_USD_CENTS = 1_000_000n; // $10,000.00
+/** Default Sepolia/QA threshold so small testnet sends exercise Admin review. */
+export const DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS = 100n; // $1.00
 export const MAX_PRICE_AGE_MS = 5 * 60 * 1000;
 export const USER_TRANSFER_SOURCE_TYPE = 'USER_TRANSFER';
 export const SIMULATION_TRANSFER_SOURCE_TYPE = 'SIMULATION_TRANSACTION';
+
+/**
+ * Resolve review threshold. Mainnet stays at $10k (or LARGE_TRANSFER_USD_CENTS).
+ * Testnet clients send `networkEnv: 'testnet'` so QA can create persisted reviews
+ * with small amounts without lowering production mainnet policy.
+ */
+export function resolveLargeTransferThresholdCents(networkEnv?: string): bigint {
+  const parseEnv = (raw: string | undefined): bigint | null => {
+    if (!raw?.trim()) return null;
+    try {
+      const value = BigInt(raw.trim());
+      return value >= 0n ? value : null;
+    } catch {
+      return null;
+    }
+  };
+
+  if (networkEnv === 'testnet') {
+    return (
+      parseEnv(process.env.TESTNET_LARGE_TRANSFER_USD_CENTS) ??
+      DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS
+    );
+  }
+
+  return parseEnv(process.env.LARGE_TRANSFER_USD_CENTS) ?? DEFAULT_LARGE_TRANSFER_USD_CENTS;
+}
 
 export type LargeTransferStatus =
   'below_threshold' | 'review_required' | 'price_unavailable' | 'stale_price';

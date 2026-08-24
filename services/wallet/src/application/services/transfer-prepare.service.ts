@@ -9,6 +9,7 @@ import {
   USER_TRANSFER_SOURCE_TYPE,
   blocksUnauditedBroadcast,
   evaluateLargeTransferUsdCents,
+  resolveLargeTransferThresholdCents,
 } from '../../domain/large-transfer-review';
 import {
   WALLET_REPOSITORY,
@@ -46,6 +47,8 @@ export interface PrepareTransferInput {
   amount: string;
   fromAddress?: string;
   idempotencyKey: string;
+  /** Safe environment marker from self-custody clients (`mainnet` | `testnet`). */
+  networkEnv?: string;
 }
 
 export interface PrepareTransferResult {
@@ -92,6 +95,7 @@ export class TransferPrepareService {
       decimals: asset.decimals,
       usdCentsPerWholeToken: price.usdCentsPerWholeToken,
       priceAt: price.timestamp,
+      thresholdCents: resolveLargeTransferThresholdCents(input.networkEnv),
     });
 
     if (!blocksUnauditedBroadcast(decision.status)) {
@@ -160,6 +164,7 @@ export class TransferPrepareService {
             assetCode: args.asset.code,
             assetSymbol: args.asset.symbol,
             amountCrypto: args.amount.toFixed(),
+            ...(args.input.networkEnv ? { networkEnv: args.input.networkEnv } : {}),
           },
         },
       });

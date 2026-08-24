@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../state/wallet_controller.dart';
 import '../account_controller.dart';
 import '../auth_api_client.dart';
+import '../wallet_backend_sync.dart';
 
 /// Auvora account (backend identity) screen: create account, sign in, view
 /// profile, sign out. Kept separate from the on-device non-custodial wallet —
@@ -54,9 +56,9 @@ class _NotConfiguredView extends StatelessWidget {
             Text('Account backend not configured', style: t.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'This build has no Auvora account API configured. Your wallet still '
-              'works fully on-device. Account sign-in becomes available in builds '
-              'configured with AUVORA_API_BASE_URL.',
+              'This build refused the configured account API host (localhost / '
+              'insecure HTTP are blocked). Your wallet still works fully on-device. '
+              'QA and release builds use https://api.auvorawallet.com.',
               textAlign: TextAlign.center,
               style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.outline),
             ),
@@ -75,6 +77,8 @@ class _ProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final AuthProfile? p = account.profile;
+    final sync = context.watch<WalletBackendSync>();
+    final wallet = context.watch<WalletController>();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -90,6 +94,17 @@ class _ProfileView extends StatelessWidget {
         _row(context, 'Email', p?.email ?? '—'),
         _row(context, 'Status', p?.status ?? '—'),
         _row(context, 'Email verified', (p?.emailVerified ?? false) ? 'Yes' : 'No'),
+        _row(
+          context,
+          'Wallet sync',
+          sync.lastError != null
+              ? 'Failed — ${sync.lastError}'
+              : sync.lastSuccessAt != null
+                  ? 'OK (${sync.registeredCount} public addresses)'
+                  : wallet.unlocked
+                      ? 'Pending'
+                      : 'Unlock wallet to sync public addresses',
+        ),
         if (account.error != null) ...[
           const SizedBox(height: 16),
           Card(
@@ -121,7 +136,8 @@ class _ProfileView extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Your wallet keys stay on this device. Signing out of your '
-                    'Auvora account never removes or uploads your wallet.',
+                    'Auvora account never removes or uploads your wallet. '
+                    'Admin only receives public addresses and review metadata.',
                     style: t.textTheme.bodySmall,
                   ),
                 ),
@@ -129,7 +145,21 @@ class _ProfileView extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        FilledButton.tonalIcon(
+          onPressed: sync.busy || !wallet.unlocked
+              ? null
+              : () => sync.syncIfPossible(account: account, wallet: wallet),
+          icon: sync.busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.cloud_upload_outlined),
+          label: Text(sync.busy ? 'Syncing…' : 'Sync public wallets'),
+        ),
+        const SizedBox(height: 12),
         FilledButton.tonalIcon(
           onPressed: account.busy ? null : () => account.signOut(),
           icon: const Icon(Icons.logout),

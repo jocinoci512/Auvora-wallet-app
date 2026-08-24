@@ -4,12 +4,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'account/account_controller.dart';
+import 'account/wallet_backend_sync.dart';
 import 'connections/connections_controller.dart';
 import 'connections/deep_link_router.dart';
 import 'connections/wallet_connect_bootstrap.dart';
 import 'connections/wallet_connect_provider.dart';
 import 'connections/wc_chain_catalog.dart';
 import 'intelligence/intelligence_controller.dart';
+import 'portfolio/models.dart';
 import 'portfolio/portfolio_controller.dart';
 import 'portfolio/portfolio_repository.dart';
 import 'preferences/models.dart';
@@ -270,6 +272,17 @@ class _AuvoraAppState extends State<AuvoraApp> {
             return c;
           },
         ),
+        ChangeNotifierProvider(create: (_) => WalletBackendSync()),
+        ChangeNotifierProxyProvider3<AccountController, WalletController, WalletBackendSync,
+            _WalletBackendSyncBinder>(
+          create: (_) => _WalletBackendSyncBinder(),
+          update: (_, account, wallet, sync, binder) => binder!
+            ..bind(
+              account: account,
+              wallet: wallet,
+              sync: sync,
+            ),
+        ),
         // Applies deferred live WC provider without rebuilding the whole tree.
         ChangeNotifierProxyProvider2<ConnectionsController, DeepLinkRouter, _WcLiveUpgrader>(
           create: (_) => _WcLiveUpgrader(),
@@ -286,6 +299,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
           // Ensure WC account registration + mnemonic binding when wallet unlocks.
           context.watch<_WcAccountBinder>();
           context.watch<_WcLiveUpgrader>();
+          context.watch<_WalletBackendSyncBinder>();
           final a11y = prefs.accessibility;
           final scale = a11y.textScale.clamp(0.85, 1.35);
           // GoogleFonts + ThemeData copy is expensive — rebuild only when inputs change.
@@ -442,5 +456,30 @@ class _WcAccountBinder extends ChangeNotifier {
     // Same ETH derivation for BSC/Polygon (m/44'/60').
     // ignore: discarded_futures
     connections.walletConnect.registerAccounts(accounts);
+  }
+}
+
+/// Syncs public wallet addresses to the backend after sign-in + unlock.
+class _WalletBackendSyncBinder extends ChangeNotifier {
+  String? _lastKey;
+  bool _scheduled = false;
+
+  void bind({
+    required AccountController account,
+    required WalletController wallet,
+    required WalletBackendSync sync,
+  }) {
+    if (!account.isSignedIn || !wallet.unlocked || wallet.wallet == null) return;
+    final eth = wallet.addressFor(AssetNetwork.ethereum) ?? wallet.address ?? '';
+    final key = '${account.profile?.id}|$eth|${wallet.unlocked}';
+    if (key == _lastKey || eth.isEmpty) return;
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _scheduled = false;
+      _lastKey = key;
+      await sync.syncIfPossible(account: account, wallet: wallet);
+      notifyListeners();
+    });
   }
 }

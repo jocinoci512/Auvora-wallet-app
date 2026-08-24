@@ -40,6 +40,9 @@ export type ImportPublicAddressInput = {
   alias?: string;
   label?: string;
   accountIndex?: number;
+  networkEnv?: string;
+  clientPlatform?: string;
+  selfCustody?: boolean;
 };
 
 export type WalletExportBundle = {
@@ -137,6 +140,7 @@ export class WalletEngineService {
 
   /**
    * Import a wallet by public address only — never accepts private keys or mnemonics.
+   * Idempotent on (owner, asset, alias): re-sync updates public metadata only.
    */
   async importPublicAddress(
     input: ImportPublicAddressInput,
@@ -155,6 +159,49 @@ export class WalletEngineService {
     }
 
     const accountIndex = input.accountIndex ?? 0;
+    const alias = input.alias?.trim() ? input.alias.trim() : '';
+    const networkEnv =
+      input.networkEnv === 'testnet' || input.networkEnv === 'mainnet'
+        ? input.networkEnv
+        : undefined;
+
+    const existing = await this.walletRepo.findByOwnerAssetAlias(
+      input.ownerUserId,
+      asset.id,
+      alias,
+    );
+
+    const publicMeta = {
+      imported: true,
+      importMode: 'public_address' as const,
+      selfCustody: input.selfCustody === true,
+      ...(networkEnv ? { networkEnv } : {}),
+      ...(input.clientPlatform ? { clientPlatform: input.clientPlatform } : {}),
+    };
+
+    if (existing) {
+      const patched = mergeChainSync(existing.metadata, {
+        address: input.address,
+        chain: asset.chain,
+        importMode: 'public_address',
+        lastSyncedAt: undefined,
+        retryCount: 0,
+      });
+      const prefs = readPreferences(existing.preferences);
+      const accounts = (prefs.accounts ?? []).map((a) =>
+        a.index === accountIndex ? { ...a, address: input.address } : a,
+      );
+      return this.walletRepo.update(existing.id, {
+        label: input.label ?? existing.label,
+        metadata: { ...patched, ...publicMeta } as Prisma.InputJsonValue,
+        preferences: {
+          ...prefs,
+          accounts,
+          activeNetwork: asset.chain,
+        } as Prisma.InputJsonValue,
+      });
+    }
+
     const created = await this.createWallet({
       ownerUserId: input.ownerUserId,
       assetCode: input.assetCode,
@@ -162,10 +209,7 @@ export class WalletEngineService {
       label: input.label,
       provisionAddress: false,
       accountIndex,
-      metadata: {
-        imported: true,
-        importMode: 'public_address',
-      },
+      metadata: publicMeta,
     });
 
     const patched = mergeChainSync(created.metadata, {
@@ -181,7 +225,7 @@ export class WalletEngineService {
     );
 
     return this.walletRepo.update(created.id, {
-      metadata: patched as Prisma.InputJsonValue,
+      metadata: { ...patched, ...publicMeta } as Prisma.InputJsonValue,
       preferences: { ...prefs, accounts, activeNetwork: asset.chain } as Prisma.InputJsonValue,
     });
   }

@@ -1,4 +1,36 @@
-import { evaluateLargeTransferUsdCents } from './large-transfer-review';
+import {
+  evaluateLargeTransferUsdCents,
+  resolveLargeTransferThresholdCents,
+  DEFAULT_LARGE_TRANSFER_USD_CENTS,
+  DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS,
+} from './large-transfer-review';
+
+describe('resolveLargeTransferThresholdCents', () => {
+  const previousLarge = process.env.LARGE_TRANSFER_USD_CENTS;
+  const previousTestnet = process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+
+  afterEach(() => {
+    if (previousLarge === undefined) delete process.env.LARGE_TRANSFER_USD_CENTS;
+    else process.env.LARGE_TRANSFER_USD_CENTS = previousLarge;
+    if (previousTestnet === undefined) delete process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+    else process.env.TESTNET_LARGE_TRANSFER_USD_CENTS = previousTestnet;
+  });
+
+  it('defaults mainnet to $10,000', () => {
+    delete process.env.LARGE_TRANSFER_USD_CENTS;
+    delete process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+    expect(resolveLargeTransferThresholdCents('mainnet')).toBe(DEFAULT_LARGE_TRANSFER_USD_CENTS);
+    expect(resolveLargeTransferThresholdCents(undefined)).toBe(DEFAULT_LARGE_TRANSFER_USD_CENTS);
+  });
+
+  it('defaults testnet to $1.00 for QA', () => {
+    delete process.env.LARGE_TRANSFER_USD_CENTS;
+    delete process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+    expect(resolveLargeTransferThresholdCents('testnet')).toBe(
+      DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS,
+    );
+  });
+});
 
 describe('evaluateLargeTransferUsdCents', () => {
   const now = new Date('2026-08-18T12:00:00.000Z');

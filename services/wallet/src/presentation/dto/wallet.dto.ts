@@ -93,6 +93,12 @@ export class PrepareTransferDto {
 
   @IsUUID()
   idempotencyKey!: string;
+
+  /** `mainnet` | `testnet` — optional environment marker from self-custody clients. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  networkEnv?: string;
 }
 
 export class CreditDebitDto {

@@ -42,6 +42,29 @@ export function reviewOrigin(
   };
 }
 
+/** Safe public address from wallet metadata / chainSync (never secrets). */
+export function walletPublicAddress(metadata?: Record<string, unknown> | null): string | null {
+  if (!metadata) return null;
+  const direct = metadata.address;
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  const chainSync = metadata.chainSync;
+  if (chainSync && typeof chainSync === 'object') {
+    const addr = (chainSync as Record<string, unknown>).address;
+    if (typeof addr === 'string' && addr.trim()) return addr.trim();
+  }
+  return null;
+}
+
+/** Environment marker stored by self-custody mobile registration. */
+export function walletNetworkEnv(
+  metadata?: Record<string, unknown> | null,
+): 'mainnet' | 'testnet' | null {
+  if (!metadata) return null;
+  const env = metadata.networkEnv;
+  if (env === 'testnet' || env === 'mainnet') return env;
+  return null;
+}
+
 export function displayName(input: {
   firstName?: string | null;
   lastName?: string | null;

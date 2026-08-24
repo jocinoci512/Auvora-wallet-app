@@ -1,7 +1,7 @@
 import { formatAdminError, isStepUpRequired } from './api-client';
 import { canEnterAdminControlPlane, hasPermission, primaryRole, roleLabel } from './admin-rbac';
 import { toSafeConnection } from './admin-control-plane';
-import { safeServiceName } from './admin-format';
+import { safeServiceName, walletNetworkEnv, walletPublicAddress } from './admin-format';
 
 describe('formatAdminError', () => {
   it('maps auth and availability failures without JWT-paste copy', () => {
@@ -62,6 +62,20 @@ describe('safe service names', () => {
     expect(safeServiceName('http://auth:4001')).toBe('Internal service');
     expect(safeServiceName('127.0.0.1')).toBe('Internal service');
     expect(safeServiceName('postgres.internal')).toBe('Internal service');
+  });
+});
+
+describe('wallet metadata helpers', () => {
+  it('reads public address and TESTNET env without secrets', () => {
+    expect(
+      walletPublicAddress({
+        chainSync: { address: '0xc3676e0177085d64324fa777325d5d782ebb48e9' },
+        networkEnv: 'testnet',
+      }),
+    ).toBe('0xc3676e0177085d64324fa777325d5d782ebb48e9');
+    expect(walletNetworkEnv({ networkEnv: 'testnet' })).toBe('testnet');
+    expect(walletNetworkEnv({ networkEnv: 'mainnet' })).toBe('mainnet');
+    expect(walletNetworkEnv({})).toBeNull();
   });
 });
 

@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../account/account_controller.dart';
+import '../account/auth_api_client.dart';
 import '../intelligence/catalog.dart';
 import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
@@ -752,10 +753,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         ),
         if (transferReview.blocksUnauditedBroadcast) ...[
           const SizedBox(height: 10),
-          SoftBanner(
+          const SoftBanner(
             tone: BannerTone.warn,
-            message: transferReview.message ??
-                'This transfer needs Auvora review before any live broadcast. Keys stay on this device. This is not a blockchain freeze.',
+            message:
+                'This amount may require Auvora administrator review. '
+                'A review request is created only after you continue and the backend confirms a Review ID. '
+                'Keys stay on this device.',
           ),
         ],
         const SizedBox(height: 16),
@@ -942,19 +945,24 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     try {
       final asset = _asset!;
       final amount = _parsedAmount(asset);
-      final review = LargeTransferPolicy.evaluateDisplayAmount(
-        amount: amount,
-        ticker: asset.ticker,
-        priceUsd: asset.priceUsd,
-        quoteAt: _portfolio.snapshot?.updatedAt,
-      );
       _prepareIdempotencyKey ??= const Uuid().v4();
-      if (account.isConfigured && account.isSignedIn) {
-        final token = await account.readAccessToken();
-        if (token == null || token.isEmpty) {
-          throw StateError('Sign in is required before this transfer can be prepared.');
-        }
-        final prepared = await _prepareClient.prepare(
+      if (!account.isConfigured) {
+        throw StateError(
+          'Review request could not be created. This build is not connected to the Auvora account API.',
+        );
+      }
+      if (!account.isSignedIn) {
+        throw StateError(
+          'Sign in to your Auvora account is required before large transfers can be reviewed. Nothing was signed.',
+        );
+      }
+      final token = await account.readAccessToken();
+      if (token == null || token.isEmpty) {
+        throw StateError('Sign in is required before this transfer can be prepared.');
+      }
+      TransferPrepareResult prepared;
+      try {
+        prepared = await _prepareClient.prepare(
           accessToken: token,
           assetCode: asset.ticker,
           destinationAddress: _toCtrl.text.trim(),
@@ -962,25 +970,34 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           idempotencyKey: _prepareIdempotencyKey!,
           fromAddress: _wallet.addressFor(asset.network) ?? _wallet.address,
         );
-        if (!prepared.allowed) {
-          if (!mounted) return;
-          setState(() {
-            _pendingReviewId = prepared.reviewId;
-            _pendingReviewStatus = prepared.reviewStatus;
-            _pendingReviewAt = prepared.requestedAt;
-            _pendingReviewMessage = prepared.message;
-            _submitting = false;
-            _doubleTapGuard = false;
-            _step = _SendStep.done;
-          });
-          return;
-        }
-      } else if (review.blocksUnauditedBroadcast) {
+      } on AuthException catch (e) {
         throw StateError(
-          review.message ??
-              'Large-transfer review is required before signing. Keys stay on this device.',
+          e.kind == AuthErrorKind.notConfigured
+              ? 'Review request could not be created. Account API is not configured.'
+              : 'Review request could not be created. ${e.message}',
         );
       }
+      if (!prepared.allowed) {
+        final reviewId = prepared.reviewId?.trim();
+        if (reviewId == null || reviewId.isEmpty) {
+          // Fail closed: never claim Admin is waiting without a persisted review.
+          throw StateError(
+            'Review request could not be created. Please try again.',
+          );
+        }
+        if (!mounted) return;
+        setState(() {
+          _pendingReviewId = reviewId;
+          _pendingReviewStatus = prepared.reviewStatus;
+          _pendingReviewAt = prepared.requestedAt;
+          _pendingReviewMessage = prepared.message;
+          _submitting = false;
+          _doubleTapGuard = false;
+          _step = _SendStep.done;
+        });
+        return;
+      }
+      // Below threshold (or already approved path) — continue to local sign/preview.
       final pause = reduce ? Duration.zero : const Duration(milliseconds: 420);
 
       await Future<void>.delayed(pause);
@@ -1163,7 +1180,10 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         children: [
           const Icon(Icons.hourglass_top_rounded, size: 48, color: AetherColors.lagoon),
           const SizedBox(height: 12),
-          Text('Transaction pending review', style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            'Waiting for administrator approval',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
           Text(
             _pendingReviewMessage ??

@@ -5,39 +5,13 @@ import 'package:http/http.dart' as http;
 
 import '../account/auvora_api_config.dart';
 import '../account/auth_api_client.dart';
+import '../portfolio/models.dart';
 import '../release/network_env.dart';
 
-/// Safe, non-custodial response from transfer preparation.
-class TransferPrepareResult {
-  const TransferPrepareResult({
-    required this.allowed,
-    required this.status,
-    required this.message,
-    this.reviewId,
-    this.reviewStatus,
-    this.requestedAt,
-  });
-
-  final bool allowed;
-  final String status;
-  final String message;
-  final String? reviewId;
-  final String? reviewStatus;
-  final String? requestedAt;
-
-  factory TransferPrepareResult.fromJson(Map<String, dynamic> json) => TransferPrepareResult(
-        allowed: json['allowed'] == true,
-        status: (json['status'] ?? '').toString(),
-        message: (json['message'] ?? 'Transaction pending review').toString(),
-        reviewId: json['reviewId']?.toString(),
-        reviewStatus: json['reviewStatus']?.toString(),
-        requestedAt: json['requestedAt']?.toString(),
-      );
-}
-
-/// Calls the authoritative wallet prepare endpoint before local signing.
-class TransferPrepareClient {
-  TransferPrepareClient({
+/// Registers **public** on-device wallet addresses with the backend so Admin can
+/// see metadata. Never sends mnemonic / seed / private key.
+class WalletRegistrationClient {
+  WalletRegistrationClient({
     http.Client? httpClient,
     String? baseUrl,
     this.timeout = const Duration(seconds: 20),
@@ -50,13 +24,24 @@ class TransferPrepareClient {
 
   bool get isConfigured => _baseUrl.isNotEmpty;
 
-  Future<TransferPrepareResult> prepare({
+  static String assetCodeFor(AssetNetwork network) => switch (network) {
+        AssetNetwork.ethereum => 'ETH',
+        AssetNetwork.bitcoin => 'BTC',
+        AssetNetwork.solana => 'SOL',
+        AssetNetwork.bnbSmartChain => 'BNB',
+        AssetNetwork.tron => 'TRX',
+        AssetNetwork.polygon => 'POL',
+      };
+
+  static String aliasFor(AssetNetwork network) =>
+      'auvora-mobile-${AuvoraNetworkEnv.current.name}-${assetCodeFor(network).toLowerCase()}';
+
+  /// Idempotent public-address import for one chain.
+  Future<Map<String, dynamic>> importPublicAddress({
     required String accessToken,
-    required String assetCode,
-    required String destinationAddress,
-    required String amount,
-    required String idempotencyKey,
-    String? fromAddress,
+    required AssetNetwork network,
+    required String address,
+    String? label,
   }) async {
     if (!isConfigured) {
       throw const AuthException(
@@ -64,25 +49,33 @@ class TransferPrepareClient {
         'Account backend is not configured for this build.',
       );
     }
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) {
+      throw const AuthException(AuthErrorKind.unknown, 'Missing public address.');
+    }
     try {
       final res = await _http
           .post(
-            Uri.parse('${_baseUrl.replaceAll(RegExp(r'/+$'), '')}/api/v1/wallets/transfers/prepare'),
+            Uri.parse(
+              '${_baseUrl.replaceAll(RegExp(r'/+$'), '')}/api/v1/wallet-engine/wallets/import',
+            ),
             headers: {
               'content-type': 'application/json',
               'accept': 'application/json',
               'authorization': 'Bearer $accessToken',
             },
             body: jsonEncode({
-              'assetCode': assetCode,
-              'destinationAddress': destinationAddress,
-              'amount': amount,
-              'idempotencyKey': idempotencyKey,
-              if (fromAddress != null && fromAddress.isNotEmpty) 'fromAddress': fromAddress,
+              'assetCode': assetCodeFor(network),
+              'address': trimmed,
+              'alias': aliasFor(network),
+              'label': label ?? AuvoraNetworkEnv.displayName(network),
               'networkEnv': AuvoraNetworkEnv.current.name,
+              'clientPlatform': AuvoraApiConfig.platform,
+              'selfCustody': true,
             }),
           )
           .timeout(timeout);
+
       Map<String, dynamic> body;
       try {
         final decoded = jsonDecode(res.body);
@@ -90,33 +83,36 @@ class TransferPrepareClient {
       } catch (_) {
         body = <String, dynamic>{};
       }
+
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = body['data'];
-        return TransferPrepareResult.fromJson(
-          data is Map<String, dynamic> ? data : body,
-        );
+        return data is Map<String, dynamic> ? data : body;
       }
       if (res.statusCode == 401 || res.statusCode == 403) {
         throw const AuthException(
           AuthErrorKind.forbidden,
-          'This transfer could not be prepared. Sign in and try again.',
+          'Could not register wallet metadata. Sign in and try again.',
         );
+      }
+      if (res.statusCode == 409) {
+        // Already registered — treat as success for sync.
+        return {'status': 'exists', 'address': trimmed};
       }
       throw const AuthException(
         AuthErrorKind.server,
-        'Transfer review could not be checked. Nothing was signed.',
+        'Wallet registration could not be completed.',
       );
     } on TimeoutException {
       throw const AuthException(
         AuthErrorKind.timeout,
-        'Transfer review timed out. Nothing was signed.',
+        'Wallet registration timed out.',
       );
     } on AuthException {
       rethrow;
     } catch (_) {
       throw const AuthException(
         AuthErrorKind.network,
-        'No internet connection. Nothing was signed.',
+        'No internet connection. Wallet registration skipped.',
       );
     }
   }

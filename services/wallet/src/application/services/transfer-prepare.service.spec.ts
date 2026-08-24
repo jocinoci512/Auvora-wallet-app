@@ -105,7 +105,7 @@ function createService(overrides?: {
   };
 }
 
-function prepareInput(amount: string) {
+function prepareInput(amount: string, networkEnv?: string) {
   return {
     ownerUserId: USER_ID,
     walletId: WALLET_ID,
@@ -114,6 +114,7 @@ function prepareInput(amount: string) {
     amount,
     fromAddress: '0xfrom',
     idempotencyKey: IDEMPOTENCY,
+    ...(networkEnv ? { networkEnv } : {}),
   };
 }
 
@@ -176,6 +177,33 @@ describe('real user transfer prepare', () => {
     expect(result.allowed).toBe(false);
     expect(result.status).toBe('review_required');
     expect(result.amountUsdCents).toBe('1000001');
+  });
+
+  it('uses the testnet QA threshold so small Sepolia amounts persist a review', async () => {
+    const { service, prisma, adminEvents } = createService();
+    const result = await service.prepare(prepareInput('1.00', 'testnet'));
+    expect(result.allowed).toBe(false);
+    expect(result.status).toBe('review_required');
+    expect(result.reviewId).toBe(REVIEW_ID);
+    expect((prisma.largeTransferReview as { create: jest.Mock }).create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'PENDING',
+          metadata: expect.objectContaining({ networkEnv: 'testnet' }),
+        }),
+      }),
+    );
+    expect(adminEvents.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'TRANSACTION_REVIEW_CREATED' }),
+    );
+  });
+
+  it('keeps mainnet threshold at $10k even for small amounts', async () => {
+    const { service, prisma } = createService();
+    const result = await service.prepare(prepareInput('1.00', 'mainnet'));
+    expect(result.allowed).toBe(true);
+    expect(result.reviewId).toBeNull();
+    expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
   });
 
   it('returns the same review for duplicate preparation and emits one event', async () => {

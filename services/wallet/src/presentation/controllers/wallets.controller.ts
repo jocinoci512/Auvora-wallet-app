@@ -67,6 +67,7 @@ export class WalletsController {
       amount: dto.amount,
       fromAddress: dto.fromAddress,
       idempotencyKey: dto.idempotencyKey,
+      networkEnv: dto.networkEnv,
     });
     return successResponse(data);
   }
