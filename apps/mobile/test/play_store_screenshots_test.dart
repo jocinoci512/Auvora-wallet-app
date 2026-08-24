@@ -57,6 +57,7 @@ ThemeData _playTheme() {
   );
 }
 
+@Tags(['golden'])
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   if (Platform.environment['AUVORA_PLAY_CAPTURE'] != '1') {

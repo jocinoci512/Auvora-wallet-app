@@ -1,0 +1,79 @@
+name: Flutter Mobile
+
+# Quality gate for apps/mobile — analyze, unit/widget tests, CI Android APK.
+# Does not deploy, does not enable mainnet broadcast, does not require release keystores.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/flutter-mobile.yml'
+      - 'packages/types/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/flutter-mobile.yml'
+      - 'packages/types/**'
+
+concurrency:
+  group: flutter-mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Matches docs/FINAL_RELEASE_VERIFICATION_REPORT.md and pubspec.lock (flutter >=3.44.0).
+  FLUTTER_VERSION: '3.44.8'
+
+jobs:
+  mobile-quality:
+    name: Analyze, test, Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        # Exclude Play Store golden capture (host/font dependent); all other suites run.
+        run: flutter test --exclude-tags golden
+
+      - name: Build Android APK (CI)
+        # Without android/key.properties, release falls back to debug signing (build.gradle.kts).
+        # Never inject fake keystore secrets.
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Upload CI APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auvora-android-ci-apk
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
