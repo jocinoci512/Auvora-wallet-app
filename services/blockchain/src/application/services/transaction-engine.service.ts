@@ -31,7 +31,7 @@ import {
   type CustodySigningPort,
 } from '../../infrastructure/custody/custody-signing-http.client';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
-import { assertLiveBroadcastAllowed } from './broadcast-policy';
+import { assertBroadcastAllowed } from './broadcast-policy';
 
 export interface RecordDepositInput {
   chain: ChainNetwork;
@@ -106,9 +106,13 @@ export class TransactionEngine {
   }
 
   async broadcastWithdrawal(input: BroadcastWithdrawalInput): Promise<ChainTransactionRecord> {
-    assertLiveBroadcastAllowed(this.env);
-    const network = await this.requireNetwork(input.chain);
     const provider = this.providerFactory.getProvider(input.chain);
+    const rpcUrl =
+      typeof (provider as { getSafeEndpoint?: () => string }).getSafeEndpoint === 'function'
+        ? (provider as { getSafeEndpoint: () => string }).getSafeEndpoint()
+        : undefined;
+    assertBroadcastAllowed(this.env, { chain: input.chain, rpcUrl });
+    const network = await this.requireNetwork(input.chain);
 
     if (!provider.validateAddress(input.toAddress)) {
       throw new ValidationError(`Invalid destination address for ${input.chain}`);
@@ -198,13 +202,17 @@ export class TransactionEngine {
   }
 
   async rebroadcast(id: string): Promise<ChainTransactionRecord> {
-    assertLiveBroadcastAllowed(this.env);
     const tx = await this.getTransaction(id);
+    const provider = this.providerFactory.getProvider(tx.chain);
+    const rpcUrl =
+      typeof (provider as { getSafeEndpoint?: () => string }).getSafeEndpoint === 'function'
+        ? (provider as { getSafeEndpoint: () => string }).getSafeEndpoint()
+        : undefined;
+    assertBroadcastAllowed(this.env, { chain: tx.chain, rpcUrl });
     if (tx.status !== ChainTxStatus.FAILED && tx.status !== ChainTxStatus.MEMPOOL) {
       throw new ValidationError(`Cannot rebroadcast a transaction in status ${tx.status}`);
     }
 
-    const provider = this.providerFactory.getProvider(tx.chain);
     const rawTxHex = Buffer.from(
       JSON.stringify({ from: tx.fromAddress, to: tx.toAddress, amount: tx.amount, retry: true }),
     ).toString('hex');

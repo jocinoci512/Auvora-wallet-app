@@ -20,11 +20,22 @@ export {
 export {
   validateAddressForChain,
   isValidBitcoinAddress,
+  isValidBitcoinTestnetAddress,
   isValidLitecoinAddress,
   isValidEvmAddress,
   isValidSolanaAddress,
   isValidTronAddress,
 } from './address-rules';
+export {
+  TESTNET_NETWORKS,
+  ENABLED_TESTNETS,
+  MAINNET_EVM_CHAIN_IDS,
+  isMainnetRpcUrl,
+  isAllowedTestnetRpcUrl,
+  isAllowlistedTestnetChain,
+  type NetworkEnvironment,
+  type TestnetChainDescriptor,
+} from './testnet-networks';
 export type { BlockchainProvider, ProviderTx, ProviderTxStatus } from './blockchain/provider.port';
 export {
   EVENT_BUS,

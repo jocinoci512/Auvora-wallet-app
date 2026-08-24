@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../portfolio/models.dart';
+import '../release/network_env.dart';
 import 'domain_resolution.dart';
 
 enum AddressIssue {
@@ -120,6 +121,35 @@ class AddressValidation {
       );
     }
 
+    // Bitcoin mainnet ↔ testnet HRP isolation (bc1 vs tb1).
+    if (expected == AssetNetwork.bitcoin) {
+      final lower = input.toLowerCase();
+      if (AuvoraNetworkEnv.isTestnet) {
+        if (lower.startsWith('bc1') || RegExp(r'^[13]').hasMatch(input)) {
+          return const AddressValidation._(
+            ok: false,
+            issue: AddressIssue.wrongNetwork,
+            message:
+                'That looks like a Bitcoin mainnet address. TESTNET mode only accepts tb1 (or testnet legacy) destinations.',
+          );
+        }
+        if (!RegExp(r'^(tb1|[mn2])[a-zA-HJ-NP-Z0-9]{25,89}$', caseSensitive: false).hasMatch(input)) {
+          return const AddressValidation._(
+            ok: false,
+            issue: AddressIssue.invalid,
+            message: 'That doesn’t look like a Bitcoin TESTNET address.',
+          );
+        }
+      } else if (lower.startsWith('tb1')) {
+        return const AddressValidation._(
+          ok: false,
+          issue: AddressIssue.wrongNetwork,
+          message:
+              'That looks like a Bitcoin TESTNET address. Mainnet only accepts bc1 (or legacy 1/3) destinations.',
+        );
+      }
+    }
+
     if (detected != expected) {
       final bothEvm = isEvm(detected) && isEvm(expected);
       if (!bothEvm) {
@@ -174,6 +204,9 @@ class AddressValidation {
       return AssetNetwork.ethereum;
     }
     if (RegExp(r'^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,89}$').hasMatch(v)) {
+      return AssetNetwork.bitcoin;
+    }
+    if (RegExp(r'^(tb1|[mn2])[a-zA-HJ-NP-Z0-9]{25,89}$', caseSensitive: false).hasMatch(v)) {
       return AssetNetwork.bitcoin;
     }
     if (RegExp(r'^[1-9A-HJ-NP-Za-km-z]{32,44}$').hasMatch(v) && !v.startsWith('0x')) {

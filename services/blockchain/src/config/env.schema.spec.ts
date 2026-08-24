@@ -25,6 +25,8 @@ describe('blockchain loadEnv production gates', () => {
     expect(env.PORT).toBe(3003);
     expect(env.BLOCKCHAIN_LIVE_BROADCAST).toBe(false);
     expect(env.BLOCKCHAIN_PRIMARY_PROVIDER).toBe('alchemy');
+    expect(env.BLOCKCHAIN_NETWORK_ENV).toBe('mainnet');
+    expect(env.BLOCKCHAIN_TESTNET_BROADCAST).toBe(false);
   });
 
   it('rejects live broadcast in production', () => {
@@ -45,6 +47,42 @@ describe('blockchain loadEnv production gates', () => {
         BLOCKCHAIN_SIMULATOR_ENABLED: 'true',
       }),
     ).toThrow(/BLOCKCHAIN_SIMULATOR_ENABLED/);
+  });
+
+  it('rejects TESTNET_BROADCAST without NETWORK_ENV=testnet', () => {
+    expect(() =>
+      loadEnv({
+        ...secrets,
+        NODE_ENV: 'development',
+        BLOCKCHAIN_TESTNET_BROADCAST: 'true',
+        BLOCKCHAIN_NETWORK_ENV: 'mainnet',
+      }),
+    ).toThrow(/BLOCKCHAIN_TESTNET_BROADCAST/);
+  });
+
+  it('accepts testnet broadcast when NETWORK_ENV=testnet', () => {
+    const env = loadEnv({
+      ...secrets,
+      NODE_ENV: 'development',
+      BLOCKCHAIN_LIVE_BROADCAST: 'false',
+      BLOCKCHAIN_NETWORK_ENV: 'testnet',
+      BLOCKCHAIN_TESTNET_BROADCAST: 'true',
+    });
+    expect(env.BLOCKCHAIN_NETWORK_ENV).toBe('testnet');
+    expect(env.BLOCKCHAIN_TESTNET_BROADCAST).toBe(true);
+    expect(env.BLOCKCHAIN_LIVE_BROADCAST).toBe(false);
+  });
+
+  it('rejects LIVE and TESTNET broadcast both true', () => {
+    expect(() =>
+      loadEnv({
+        ...secrets,
+        NODE_ENV: 'development',
+        BLOCKCHAIN_LIVE_BROADCAST: 'true',
+        BLOCKCHAIN_NETWORK_ENV: 'testnet',
+        BLOCKCHAIN_TESTNET_BROADCAST: 'true',
+      }),
+    ).toThrow(/cannot both be true/);
   });
 
   it('does not require JWT_REFRESH_SECRET', () => {

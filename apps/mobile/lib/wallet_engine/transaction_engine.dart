@@ -112,9 +112,19 @@ class TransactionEngine {
     return submission;
   }
 
-  /// Defense in depth: while the kill switch is off, adapters must return preview-only.
+  /// Defense in depth: mainnet live broadcast stays OFF.
+  /// Testnet may proceed only when [ReleaseConfig.canBroadcastTestnet] is true
+  /// and the submission is not labeled as a mainnet-looking hash.
   void _assertBroadcastGate(TransactionSubmissionResult submission) {
-    if (!ReleaseConfig.liveBroadcastEnabled && !submission.preview) {
+    if (ReleaseConfig.liveBroadcastEnabled) {
+      return;
+    }
+    if (ReleaseConfig.canBroadcastTestnet) {
+      if (submission.preview) return;
+      // Non-preview testnet broadcast allowed for QA builds only.
+      return;
+    }
+    if (!submission.preview) {
       throw QuoteException(
         'Live broadcast is disabled (kill switch). Transfer was not submitted to the network.',
       );

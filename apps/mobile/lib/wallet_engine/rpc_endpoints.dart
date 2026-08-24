@@ -1,18 +1,19 @@
 import '../release/integration_config.dart';
+import '../release/network_env.dart';
 import 'models.dart';
 
 /// Configurable RPC / tip-health URL pools for Closed Beta diagnostics.
 ///
 /// Public endpoints work without company accounts. Override via dart-define
 /// (`ETH_RPC_URL`, …) or inject Alchemy when `ALCHEMY_API_KEY` is set.
-/// Live transaction broadcast remains gated by [ReleaseConfig.liveBroadcastEnabled].
+/// Live mainnet broadcast remains gated by [ReleaseConfig.liveBroadcastEnabled].
 abstract final class RpcEndpoints {
   /// Ordered failover list per chain (primary first).
   static List<String> urlsFor(ChainId chain) {
     final overrides = _overridesFor(chain).where((u) => u.trim().isNotEmpty).toList();
     final alchemy = _alchemyUrls(chain);
-    final public = _publicDefaults[chain] ?? const <String>[];
-    // Prefer explicit overrides, then Alchemy (if keyed), then public defaults.
+    final public = (AuvoraNetworkEnv.isTestnet ? _publicTestnetDefaults : _publicMainnetDefaults)[chain] ??
+        const <String>[];
     final merged = <String>[
       ...overrides,
       ...alchemy.where((u) => !overrides.contains(u)),
@@ -51,23 +52,28 @@ abstract final class RpcEndpoints {
   static List<String> _alchemyUrls(ChainId chain) {
     final key = IntegrationConfig.alchemyApiKey.trim();
     if (key.isEmpty) return const [];
-    // Prefer Alchemy when keyed, then public defaults in [urlsFor].
-    // Alpha release APKs should leave the key empty (server-side Alchemy only).
+    // Never inject mainnet Alchemy hosts into a TESTNET build.
+    if (AuvoraNetworkEnv.isTestnet) {
+      return switch (chain) {
+        ChainId.ethereum => ['https://eth-sepolia.g.alchemy.com/v2/$key'],
+        ChainId.polygon => ['https://polygon-amoy.g.alchemy.com/v2/$key'],
+        ChainId.bnbSmartChain => ['https://bnb-testnet.g.alchemy.com/v2/$key'],
+        ChainId.solana => ['https://solana-devnet.g.alchemy.com/v2/$key'],
+        ChainId.bitcoin => ['https://bitcoin-testnet.g.alchemy.com/v2/$key'],
+        ChainId.tron => ['https://tron-nile.g.alchemy.com/v2/$key'],
+      };
+    }
     return switch (chain) {
       ChainId.ethereum => ['https://eth-mainnet.g.alchemy.com/v2/$key'],
       ChainId.polygon => ['https://polygon-mainnet.g.alchemy.com/v2/$key'],
       ChainId.bnbSmartChain => ['https://bnb-mainnet.g.alchemy.com/v2/$key'],
       ChainId.solana => ['https://solana-mainnet.g.alchemy.com/v2/$key'],
-      // Alchemy Bitcoin JSON-RPC (getblockcount) — probe handles JSON-RPC vs REST.
       ChainId.bitcoin => ['https://bitcoin-mainnet.g.alchemy.com/v2/$key'],
-      // Alchemy Tron speaks eth_blockNumber-compatible tip probes.
       ChainId.tron => ['https://tron-mainnet.g.alchemy.com/v2/$key'],
     };
   }
 
-  /// Well-known public endpoints — no API key required.
-  /// Rate limits apply; treat as best-effort for health probes and future live paths.
-  static const Map<ChainId, List<String>> _publicDefaults = {
+  static const Map<ChainId, List<String>> _publicMainnetDefaults = {
     ChainId.ethereum: [
       'https://ethereum.publicnode.com',
       'https://cloudflare-eth.com',
@@ -87,7 +93,6 @@ abstract final class RpcEndpoints {
       'https://api.mainnet-beta.solana.com',
       'https://solana-rpc.publicnode.com',
     ],
-    // REST tip endpoints (not JSON-RPC) — used for health probes only.
     ChainId.bitcoin: [
       'https://mempool.space/api/blocks/tip/height',
       'https://blockstream.info/api/blocks/tip/height',
@@ -95,6 +100,31 @@ abstract final class RpcEndpoints {
     ChainId.tron: [
       'https://api.trongrid.io',
       'https://tron-rpc.publicnode.com',
+    ],
+  };
+
+  static const Map<ChainId, List<String>> _publicTestnetDefaults = {
+    ChainId.ethereum: [
+      'https://ethereum-sepolia.publicnode.com',
+      'https://rpc.sepolia.org',
+    ],
+    ChainId.polygon: [
+      'https://rpc-amoy.polygon.technology',
+      'https://polygon-amoy.publicnode.com',
+    ],
+    ChainId.bnbSmartChain: [
+      'https://bsc-testnet.publicnode.com',
+      'https://data-seed-prebsc-1-s1.binance.org:8545',
+    ],
+    ChainId.solana: [
+      'https://api.devnet.solana.com',
+    ],
+    ChainId.bitcoin: [
+      'https://mempool.space/testnet/api/blocks/tip/height',
+      'https://blockstream.info/testnet/api/blocks/tip/height',
+    ],
+    ChainId.tron: [
+      'https://nile.trongrid.io',
     ],
   };
 
@@ -110,5 +140,25 @@ abstract final class RpcEndpoints {
     } catch (_) {
       return 'rpc';
     }
+  }
+
+  /// Fail closed: detect mainnet host markers (for QA tests / guards).
+  static bool looksLikeMainnetUrl(String url) {
+    final lower = url.toLowerCase();
+    const markers = [
+      'eth-mainnet',
+      'polygon-mainnet',
+      'bnb-mainnet',
+      'solana-mainnet',
+      'tron-mainnet',
+      'bitcoin-mainnet',
+      'mainnet-beta.solana.com',
+      'api.trongrid.io',
+      'cloudflare-eth.com',
+      'ethereum.publicnode.com',
+    ];
+    if (lower.contains('mempool.space') && !lower.contains('/testnet')) return true;
+    if (lower.contains('blockstream.info') && !lower.contains('/testnet')) return true;
+    return markers.any(lower.contains);
   }
 }

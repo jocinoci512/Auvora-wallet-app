@@ -2,22 +2,37 @@
 ///
 /// Only advertise capabilities Auvora can honor on-device. Do **not** fake
 /// Bitcoin, Tron, or Solana WalletConnect support until production-capable.
+///
+/// When [AuvoraNetworkEnv.isTestnet], advertises Sepolia / BSC Testnet / Amoy
+/// instead of mainnet EIP-155 IDs.
 library;
 
 import '../portfolio/models.dart';
+import '../release/network_env.dart';
 
 /// Supported WalletConnect namespaces for Auvora (EVM only in this sprint).
 abstract final class WcChainCatalog {
-  static const String ethereum = 'eip155:1';
-  static const String bnbSmartChain = 'eip155:56';
-  static const String polygon = 'eip155:137';
+  static const String ethereumMainnet = 'eip155:1';
+  static const String bnbMainnet = 'eip155:56';
+  static const String polygonMainnet = 'eip155:137';
+
+  static const String ethereumSepolia = 'eip155:11155111';
+  static const String bnbTestnet = 'eip155:97';
+  static const String polygonAmoy = 'eip155:80002';
+
+  static String get ethereum =>
+      AuvoraNetworkEnv.isTestnet ? ethereumSepolia : ethereumMainnet;
+  static String get bnbSmartChain =>
+      AuvoraNetworkEnv.isTestnet ? bnbTestnet : bnbMainnet;
+  static String get polygon =>
+      AuvoraNetworkEnv.isTestnet ? polygonAmoy : polygonMainnet;
 
   /// Chains we register with Reown WalletKit.
-  static const List<String> supportedEip155Chains = [
-    ethereum,
-    bnbSmartChain,
-    polygon,
-  ];
+  static List<String> get supportedEip155Chains => [
+        ethereum,
+        bnbSmartChain,
+        polygon,
+      ];
 
   /// Methods Auvora will handle. Explicitly excludes `eth_sign` (unsafe).
   static const List<String> supportedEvmMethods = [
@@ -39,9 +54,12 @@ abstract final class WcChainCatalog {
   /// Human network labels used across Connections UI.
   static String labelForCaip(String caip) {
     return switch (caip) {
-      ethereum => 'ETHEREUM',
-      bnbSmartChain => 'BNB_SMART_CHAIN',
-      polygon => 'POLYGON',
+      ethereumMainnet => 'ETHEREUM',
+      bnbMainnet => 'BNB_SMART_CHAIN',
+      polygonMainnet => 'POLYGON',
+      ethereumSepolia => 'ETHEREUM_SEPOLIA_TESTNET',
+      bnbTestnet => 'BNB_TESTNET',
+      polygonAmoy => 'POLYGON_AMOY_TESTNET',
       _ when caip.startsWith('eip155:') => 'EVM:$caip',
       _ when caip.startsWith('solana:') => 'SOLANA (unsupported WC)',
       _ when caip.startsWith('bip122:') => 'BITCOIN (unsupported WC)',
@@ -61,15 +79,18 @@ abstract final class WcChainCatalog {
 
   static AssetNetwork? assetNetworkForCaip(String caip) {
     return switch (caip) {
-      ethereum => AssetNetwork.ethereum,
-      bnbSmartChain => AssetNetwork.bnbSmartChain,
-      polygon => AssetNetwork.polygon,
+      ethereumMainnet || ethereumSepolia => AssetNetwork.ethereum,
+      bnbMainnet || bnbTestnet => AssetNetwork.bnbSmartChain,
+      polygonMainnet || polygonAmoy => AssetNetwork.polygon,
       _ => null,
     };
   }
 
   static bool isSupportedCaip(String caip) =>
       supportedEip155Chains.contains(caip);
+
+  static bool isMainnetCaip(String caip) =>
+      caip == ethereumMainnet || caip == bnbMainnet || caip == polygonMainnet;
 
   static bool isSupportedMethod(String method) =>
       supportedEvmMethods.contains(method);

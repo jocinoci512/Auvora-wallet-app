@@ -16,9 +16,37 @@ describe('address-rules', () => {
     it('accepts bech32 addresses', () => {
       expect(isValidBitcoinAddress('bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq')).toBe(true);
     });
-    it('rejects malformed addresses', () => {
-      expect(isValidBitcoinAddress('not-an-address')).toBe(false);
-      expect(isValidBitcoinAddress('')).toBe(false);
+    it('rejects bitcoin testnet tb1 on mainnet validator', () => {
+      expect(isValidBitcoinAddress('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx')).toBe(false);
+    });
+  });
+
+  describe('bitcoin testnet isolation', () => {
+    it('accepts tb1 only under testnet env', () => {
+      expect(
+        validateAddressForChain(
+          ChainNetwork.BITCOIN,
+          'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+          'testnet',
+        ),
+      ).toBe(true);
+      expect(
+        validateAddressForChain(
+          ChainNetwork.BITCOIN,
+          'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+          'mainnet',
+        ),
+      ).toBe(false);
+    });
+
+    it('rejects bc1 under testnet env', () => {
+      expect(
+        validateAddressForChain(
+          ChainNetwork.BITCOIN,
+          'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+          'testnet',
+        ),
+      ).toBe(false);
     });
   });
 

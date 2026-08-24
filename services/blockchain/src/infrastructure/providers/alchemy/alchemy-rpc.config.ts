@@ -1,5 +1,6 @@
 import { ChainNetwork } from '@auvora/database';
 import type { ServiceEnv } from '../../../config/env.schema';
+import { TESTNET_NETWORKS } from '../../../domain/testnet-networks';
 
 /** Chains wired to Alchemy (or Alchemy-compatible) RPC. */
 export const ALCHEMY_SUPPORTED_CHAINS = [
@@ -13,7 +14,7 @@ export const ALCHEMY_SUPPORTED_CHAINS = [
 
 export type AlchemySupportedChain = (typeof ALCHEMY_SUPPORTED_CHAINS)[number];
 
-const DEFAULT_HOSTS: Record<AlchemySupportedChain, string> = {
+const MAINNET_HOSTS: Record<AlchemySupportedChain, string> = {
   [ChainNetwork.ETHEREUM]: 'eth-mainnet.g.alchemy.com',
   [ChainNetwork.POLYGON]: 'polygon-mainnet.g.alchemy.com',
   [ChainNetwork.BNB_SMART_CHAIN]: 'bnb-mainnet.g.alchemy.com',
@@ -22,16 +23,29 @@ const DEFAULT_HOSTS: Record<AlchemySupportedChain, string> = {
   [ChainNetwork.BITCOIN]: 'bitcoin-mainnet.g.alchemy.com',
 };
 
-function buildFromApiKey(chain: AlchemySupportedChain, apiKey: string): string {
-  return `https://${DEFAULT_HOSTS[chain]}/v2/${apiKey}`;
+function hostFor(chain: AlchemySupportedChain, networkEnv: 'mainnet' | 'testnet'): string {
+  if (networkEnv === 'testnet') {
+    return TESTNET_NETWORKS[chain].alchemyHost;
+  }
+  return MAINNET_HOSTS[chain];
+}
+
+function buildFromApiKey(
+  chain: AlchemySupportedChain,
+  apiKey: string,
+  networkEnv: 'mainnet' | 'testnet',
+): string {
+  return `https://${hostFor(chain, networkEnv)}/v2/${apiKey}`;
 }
 
 /**
  * Resolve per-chain RPC URLs from explicit env overrides or ALCHEMY_API_KEY.
+ * When BLOCKCHAIN_NETWORK_ENV=testnet, key-built hosts use Sepolia/Amoy/etc.
  * Never logs the API key — callers must redact URLs before logging.
  */
 export function resolveAlchemyRpcUrls(env: ServiceEnv): Map<ChainNetwork, string> {
   const urls = new Map<ChainNetwork, string>();
+  const networkEnv = env.BLOCKCHAIN_NETWORK_ENV ?? 'mainnet';
   const explicit: Partial<Record<AlchemySupportedChain, string | undefined>> = {
     [ChainNetwork.ETHEREUM]: env.ALCHEMY_ETHEREUM_RPC_URL,
     [ChainNetwork.POLYGON]: env.ALCHEMY_POLYGON_RPC_URL,
@@ -48,7 +62,7 @@ export function resolveAlchemyRpcUrls(env: ServiceEnv): Map<ChainNetwork, string
       continue;
     }
     if (env.ALCHEMY_API_KEY) {
-      urls.set(chain, buildFromApiKey(chain, env.ALCHEMY_API_KEY));
+      urls.set(chain, buildFromApiKey(chain, env.ALCHEMY_API_KEY, networkEnv));
     }
   }
   return urls;

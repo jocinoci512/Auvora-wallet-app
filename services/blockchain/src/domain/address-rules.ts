@@ -1,15 +1,34 @@
 import { ChainNetwork } from '@auvora/database';
+import type { NetworkEnvironment } from './testnet-networks';
 
 const BASE58_ALPHABET = /^[1-9A-HJ-NP-Za-km-z]+$/;
 
+/** Bitcoin mainnet native SegWit / legacy. Never accepts tb1. */
 export function isValidBitcoinAddress(address: string): boolean {
   if (typeof address !== 'string' || address.length === 0) {
+    return false;
+  }
+  if (/^tb1/i.test(address)) {
     return false;
   }
   if (/^bc1[a-z0-9]{25,62}$/.test(address)) {
     return true;
   }
   return /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(address);
+}
+
+/** Bitcoin Testnet3 / Signet bech32 (tb1) and common testnet legacy (m/n/2). */
+export function isValidBitcoinTestnetAddress(address: string): boolean {
+  if (typeof address !== 'string' || address.length === 0) {
+    return false;
+  }
+  if (/^bc1/i.test(address)) {
+    return false;
+  }
+  if (/^tb1[a-z0-9]{25,62}$/i.test(address)) {
+    return true;
+  }
+  return /^[mn2][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(address);
 }
 
 export function isValidLitecoinAddress(address: string): boolean {
@@ -34,13 +53,19 @@ export function isValidTronAddress(address: string): boolean {
   return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address);
 }
 
-export function validateAddressForChain(chain: ChainNetwork, address: string): boolean {
+export function validateAddressForChain(
+  chain: ChainNetwork,
+  address: string,
+  networkEnv: NetworkEnvironment = 'mainnet',
+): boolean {
   if (typeof address !== 'string' || address.trim().length === 0) {
     return false;
   }
   switch (chain) {
     case ChainNetwork.BITCOIN:
-      return isValidBitcoinAddress(address);
+      return networkEnv === 'testnet'
+        ? isValidBitcoinTestnetAddress(address)
+        : isValidBitcoinAddress(address);
     case ChainNetwork.LITECOIN:
       return isValidLitecoinAddress(address);
     case ChainNetwork.ETHEREUM:

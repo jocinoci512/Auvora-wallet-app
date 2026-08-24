@@ -1,4 +1,5 @@
 import 'integration_config.dart';
+import 'network_env.dart';
 
 /// Version 1.0 Alpha / release gates. Flip kill switches only after security sign-off.
 ///
@@ -8,8 +9,22 @@ abstract final class ReleaseConfig {
   static const String marketingVersion = '1.0.0-alpha.1';
   static const String buildLabel = 'Version 1.0 Alpha';
 
-  /// Live chain broadcast. Keep false until adapters are audited end-to-end.
+  /// Live **mainnet** chain broadcast. Keep false — never enable for production funds.
   static const bool liveBroadcastEnabled = false;
+
+  /// Allow broadcast of locally signed **TESTNET** txs only when
+  /// `AUVORA_NETWORK_ENV=testnet` and this define is true.
+  /// Does not enable mainnet broadcast.
+  static const bool testnetBroadcastEnabled = bool.fromEnvironment(
+    'TESTNET_BROADCAST_ENABLED',
+    defaultValue: false,
+  );
+
+  static bool get networkIsTestnet => AuvoraNetworkEnv.isTestnet;
+
+  /// True only when testnet mode + testnet broadcast define are both active.
+  static bool get canBroadcastTestnet =>
+      networkIsTestnet && testnetBroadcastEnabled && !liveBroadcastEnabled;
 
   /// When false, Receive blocks QR, copy, and share for funding addresses.
   /// Addresses may be shown while live broadcast remains off — deposits cannot
@@ -28,6 +43,19 @@ abstract final class ReleaseConfig {
   static const String broadcastPreviewMessage =
       'Transfers stay on this device as a preview. Live broadcast is off '
       '(kill switch) until network signing is audited.';
+
+  static String get broadcastStatusMessage {
+    if (liveBroadcastEnabled) {
+      return 'Mainnet broadcast is ON — use only with audited adapters.';
+    }
+    if (canBroadcastTestnet) {
+      return 'TESTNET broadcast is ON for allowlisted QA networks only. Mainnet broadcast remains OFF.';
+    }
+    if (networkIsTestnet) {
+      return 'TESTNET mode is active. Broadcast stays off until TESTNET_BROADCAST_ENABLED=true.';
+    }
+    return broadcastPreviewMessage;
+  }
 
   /// Soft client diagnostics / performance flags (no secrets).
   static const bool clientDiagnosticsEnabled = true;

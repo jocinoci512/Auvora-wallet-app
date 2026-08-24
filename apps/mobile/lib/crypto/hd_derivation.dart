@@ -7,14 +7,19 @@ import 'package:pinenacl/ed25519.dart';
 import 'package:pointycastle/export.dart';
 
 import '../portfolio/models.dart';
+import '../release/network_env.dart';
 
 /// BIP32 / SLIP-0010 HD derivation for supported Auvora chains.
 ///
-/// Paths:
-/// - Bitcoin native SegWit: m/84'/0'/account'/0/0
+/// Paths (mainnet):
+/// - Bitcoin native SegWit: m/84'/0'/account'/0/0 (HRP bc)
 /// - Ethereum / BNB / Polygon: m/44'/60'/account'/0/0
 /// - Solana: m/44'/501'/account'/0'
 /// - Tron: m/44'/195'/account'/0/0
+///
+/// When [AuvoraNetworkEnv.isTestnet], Bitcoin uses coin type 1 and HRP `tb`
+/// (m/84'/1'/…). EVM / Solana / Tron derivation paths are unchanged; network
+/// selection is explicit via RPC / CAIP.
 class HdDerivation {
   HdDerivation._();
 
@@ -54,7 +59,8 @@ class HdDerivation {
         final node = _deriveSecpPath(seed, "m/44'/60'/$accountIndex'/0/0");
         return _ethereumAddress(node.privateKey);
       case AssetNetwork.bitcoin:
-        final node = _deriveSecpPath(seed, "m/84'/0'/$accountIndex'/0/0");
+        final coinType = AuvoraNetworkEnv.isTestnet ? 1 : 0;
+        final node = _deriveSecpPath(seed, "m/84'/$coinType'/$accountIndex'/0/0");
         return _bitcoinBech32Address(node.privateKey);
       case AssetNetwork.tron:
         final node = _deriveSecpPath(seed, "m/44'/195'/$accountIndex'/0/0");
@@ -66,7 +72,9 @@ class HdDerivation {
 
   static String derivationPath(AssetNetwork network, {int accountIndex = 0}) {
     return switch (network) {
-      AssetNetwork.bitcoin => "m/84'/0'/$accountIndex'/0/0",
+      AssetNetwork.bitcoin => AuvoraNetworkEnv.isTestnet
+          ? "m/84'/1'/$accountIndex'/0/0"
+          : "m/84'/0'/$accountIndex'/0/0",
       AssetNetwork.ethereum || AssetNetwork.bnbSmartChain || AssetNetwork.polygon =>
         "m/44'/60'/$accountIndex'/0/0",
       AssetNetwork.solana => "m/44'/501'/$accountIndex'/0'",
@@ -121,7 +129,11 @@ class HdDerivation {
     ripe.update(Uint8List.fromList(sha), 0, sha.length);
     final program = Uint8List(20);
     ripe.doFinal(program, 0);
-    return _segwitEncode(hrp: 'bc', witver: 0, witprog: program);
+    return _segwitEncode(
+      hrp: AuvoraNetworkEnv.isTestnet ? 'tb' : 'bc',
+      witver: 0,
+      witprog: program,
+    );
   }
 
   static Uint8List _uncompressedPublicKey(Uint8List privateKey) {

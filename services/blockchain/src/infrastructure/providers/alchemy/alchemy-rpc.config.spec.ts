@@ -20,6 +20,20 @@ describe('alchemy-rpc.config', () => {
     expect(urls.get(ChainNetwork.BITCOIN)).toContain('bitcoin-mainnet');
   });
 
+  it('builds testnet hosts when BLOCKCHAIN_NETWORK_ENV=testnet', () => {
+    const urls = resolveAlchemyRpcUrls(
+      env({ ALCHEMY_API_KEY: 'test-key-123', BLOCKCHAIN_NETWORK_ENV: 'testnet' }),
+    );
+    expect(urls.get(ChainNetwork.ETHEREUM)).toBe(
+      'https://eth-sepolia.g.alchemy.com/v2/test-key-123',
+    );
+    expect(urls.get(ChainNetwork.POLYGON)).toContain('polygon-amoy');
+    expect(urls.get(ChainNetwork.BNB_SMART_CHAIN)).toContain('bnb-testnet');
+    expect(urls.get(ChainNetwork.SOLANA)).toContain('solana-devnet');
+    expect(urls.get(ChainNetwork.BITCOIN)).toContain('bitcoin-testnet');
+    expect(urls.get(ChainNetwork.TRON)).toContain('tron-nile');
+  });
+
   it('prefers explicit RPC URLs over API key defaults', () => {
     const urls = resolveAlchemyRpcUrls(
       env({

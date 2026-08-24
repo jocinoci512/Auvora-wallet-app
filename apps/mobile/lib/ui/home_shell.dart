@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../portfolio/portfolio_controller.dart';
+import '../release/network_env.dart';
 import '../reliability/startup_timing.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
@@ -11,6 +12,7 @@ import 'home/assets_tab.dart';
 import 'home/home_tab.dart';
 import 'home/more_tab.dart';
 import 'home/search_screen.dart';
+import 'testnet_banner.dart';
 
 /// Post-unlock shell — four destinations keep thumb reach calm.
 class HomeShell extends StatefulWidget {
@@ -82,65 +84,72 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: wide ? 1120 : double.infinity),
-            child: wide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      NavigationRail(
-                        selectedIndex: _index,
-                        onDestinationSelected: openTab,
-                        labelType: NavigationRailLabelType.all,
-                        backgroundColor: Colors.transparent,
-                        leading: Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: IconButton(
-                            tooltip: 'Search',
-                            onPressed: openSearch,
-                            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                            icon: const Icon(Icons.search_rounded),
-                          ),
+        child: Column(
+          children: [
+            if (AuvoraNetworkEnv.isTestnet) const TestnetBanner(),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: wide ? 1120 : double.infinity),
+                  child: wide
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            NavigationRail(
+                              selectedIndex: _index,
+                              onDestinationSelected: openTab,
+                              labelType: NavigationRailLabelType.all,
+                              backgroundColor: Colors.transparent,
+                              leading: Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: IconButton(
+                                  tooltip: 'Search',
+                                  onPressed: openSearch,
+                                  style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                                  icon: const Icon(Icons.search_rounded),
+                                ),
+                              ),
+                              destinations: const [
+                                NavigationRailDestination(
+                                  icon: Icon(Icons.home_outlined),
+                                  selectedIcon: Icon(Icons.home_rounded),
+                                  label: Text('Home'),
+                                ),
+                                NavigationRailDestination(
+                                  icon: Icon(Icons.pie_chart_outline_rounded),
+                                  selectedIcon: Icon(Icons.pie_chart_rounded),
+                                  label: Text('Assets'),
+                                ),
+                                NavigationRailDestination(
+                                  icon: Icon(Icons.receipt_long_outlined),
+                                  selectedIcon: Icon(Icons.receipt_long_rounded),
+                                  label: Text('Activity'),
+                                ),
+                                NavigationRailDestination(
+                                  icon: Icon(Icons.person_outline_rounded),
+                                  selectedIcon: Icon(Icons.person_rounded),
+                                  label: Text('More'),
+                                ),
+                              ],
+                            ),
+                            const VerticalDivider(width: 1),
+                            Expanded(child: _pageAt(_index, desktop: true)),
+                          ],
+                        )
+                      : IndexedStack(
+                          index: _index,
+                          children: [
+                            _pageAt(0, desktop: false),
+                            const AssetsTab(),
+                            const ActivityTab(),
+                            const MoreTab(),
+                          ],
                         ),
-                        destinations: const [
-                          NavigationRailDestination(
-                            icon: Icon(Icons.home_outlined),
-                            selectedIcon: Icon(Icons.home_rounded),
-                            label: Text('Home'),
-                          ),
-                          NavigationRailDestination(
-                            icon: Icon(Icons.pie_chart_outline_rounded),
-                            selectedIcon: Icon(Icons.pie_chart_rounded),
-                            label: Text('Assets'),
-                          ),
-                          NavigationRailDestination(
-                            icon: Icon(Icons.receipt_long_outlined),
-                            selectedIcon: Icon(Icons.receipt_long_rounded),
-                            label: Text('Activity'),
-                          ),
-                          NavigationRailDestination(
-                            icon: Icon(Icons.person_outline_rounded),
-                            selectedIcon: Icon(Icons.person_rounded),
-                            label: Text('More'),
-                          ),
-                        ],
-                      ),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: _pageAt(_index, desktop: true)),
-                    ],
-                  )
-                : IndexedStack(
-                    index: _index,
-                    children: [
-                      _pageAt(0, desktop: false),
-                      const AssetsTab(),
-                      const ActivityTab(),
-                      const MoreTab(),
-                    ],
-                  ),
-          ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: wide

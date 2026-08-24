@@ -23,10 +23,24 @@ export const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   /**
-   * Live chain broadcast kill switch (eth_sendRawTransaction / sendTransaction / etc.).
-   * Closed Beta / production must keep this false — no server-side user signing + no live broadcast.
+   * Live **mainnet** chain broadcast kill switch.
+   * Closed Beta / production must keep this false — no mainnet broadcast.
    */
   BLOCKCHAIN_LIVE_BROADCAST: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
+   * Network environment. `testnet` selects Sepolia / Amoy / BSC testnet / Solana
+   * Devnet / Bitcoin Testnet3 / Tron Nile host defaults. Never confuses with mainnet.
+   */
+  BLOCKCHAIN_NETWORK_ENV: z.enum(['mainnet', 'testnet']).default('mainnet'),
+  /**
+   * Allow relay of **already locally signed** TESTNET transactions only.
+   * Requires BLOCKCHAIN_NETWORK_ENV=testnet. Never enables mainnet broadcast.
+   * Production must keep this false unless a dedicated testnet deploy is intentional.
+   */
+  BLOCKCHAIN_TESTNET_BROADCAST: z
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
@@ -77,6 +91,17 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   if (parsed.data.NODE_ENV === 'production' && parsed.data.BLOCKCHAIN_LIVE_BROADCAST) {
     throw new Error(
       'BLOCKCHAIN_LIVE_BROADCAST must be false in production Closed Beta (no live tx broadcast)',
+    );
+  }
+  if (
+    parsed.data.BLOCKCHAIN_TESTNET_BROADCAST &&
+    parsed.data.BLOCKCHAIN_NETWORK_ENV !== 'testnet'
+  ) {
+    throw new Error('BLOCKCHAIN_TESTNET_BROADCAST=true requires BLOCKCHAIN_NETWORK_ENV=testnet');
+  }
+  if (parsed.data.BLOCKCHAIN_LIVE_BROADCAST && parsed.data.BLOCKCHAIN_TESTNET_BROADCAST) {
+    throw new Error(
+      'BLOCKCHAIN_LIVE_BROADCAST and BLOCKCHAIN_TESTNET_BROADCAST cannot both be true',
     );
   }
   if (parsed.data.NODE_ENV === 'production' && !parsed.data.INTERNAL_API_KEY) {
