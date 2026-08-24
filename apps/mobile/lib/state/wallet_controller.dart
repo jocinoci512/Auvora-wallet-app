@@ -480,13 +480,13 @@ class WalletController extends ChangeNotifier {
     String? name,
     required bool backupQuizPassed,
   }) async {
-    final engine = _engine;
-    if (engine == null || !unlocked) return null;
     if (!backupQuizPassed) {
       errorMessage = 'Confirm each recovery word before continuing.';
       notifyListeners();
       return null;
     }
+    final engine = _engine;
+    if (engine == null || !unlocked) return null;
     final created = await engine.createWallet(
       mnemonic: mnemonic,
       name: name,

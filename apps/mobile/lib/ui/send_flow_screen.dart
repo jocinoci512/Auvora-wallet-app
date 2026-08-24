@@ -920,6 +920,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   Future<void> _submit() async {
     if (_doubleTapGuard || _submitting) return;
     final engine = context.read<TransactionEngine>();
+    final account = context.read<AccountController>();
     final reduce = MediaQuery.disableAnimationsOf(context) || _wallet.reduceMotion;
     await _checkConnectivity();
     if (_offline) {
@@ -948,7 +949,6 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         quoteAt: _portfolio.snapshot?.updatedAt,
       );
       _prepareIdempotencyKey ??= const Uuid().v4();
-      final account = context.read<AccountController>();
       if (account.isConfigured && account.isSignedIn) {
         final token = await account.readAccessToken();
         if (token == null || token.isEmpty) {
