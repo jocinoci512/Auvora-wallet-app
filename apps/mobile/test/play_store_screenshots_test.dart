@@ -1,3 +1,6 @@
+@Tags(['golden'])
+library;
+
 import 'dart:io';
 
 import 'package:auvora_wallet/connections/connections_controller.dart';
@@ -57,7 +60,6 @@ ThemeData _playTheme() {
   );
 }
 
-@Tags(['golden'])
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   if (Platform.environment['AUVORA_PLAY_CAPTURE'] != '1') {
