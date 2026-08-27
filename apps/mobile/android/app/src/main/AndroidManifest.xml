@@ -11,7 +11,7 @@
          or local notifications are implemented. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove"/>
     <application
-        android:label="Auvora Wallet"
+        android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"

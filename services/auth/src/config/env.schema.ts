@@ -48,6 +48,11 @@ export const envSchema = z
      * console — local/dev only (never production).
      * smtp — nodemailer SMTP (Resend SMTP / SES SMTP / SendGrid SMTP, etc.).
      * notifications — route via notifications service internal API.
+     *
+     * Production QA: prefer MAIL_DRIVER=notifications so transactional mail
+     * (verify link, password reset link) is durable via the notifications queue.
+     * Domain events (emitNotificationEvent) still fire for all drivers so IN_APP
+     * (and mapped EMAIL templates) are enqueued regardless of MAIL_DRIVER.
      */
     MAIL_DRIVER: z.enum(['console', 'smtp', 'notifications']).default('console'),
     SMTP_HOST: z.string().optional(),

@@ -11,11 +11,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('preferences bootstrap seeds inbox and alerts', () async {
+  test('preferences bootstrap leaves inbox empty without seed flag', () async {
     final c = PreferencesController();
     await c.bootstrap();
     expect(c.loading, isFalse);
-    expect(c.inbox, isNotEmpty);
+    expect(c.inbox, isEmpty);
     expect(c.priceAlerts, isNotEmpty);
     expect(c.materialThemeMode, ThemeMode.system);
   });

@@ -201,14 +201,25 @@ class _AuvoraAppState extends State<AuvoraApp> {
           create: (_) => PortfolioController(),
           update: (_, repository, controller) => controller!..attachRepository(repository),
         ),
-        ChangeNotifierProxyProvider<PortfolioController, PreferencesController>(
+        // Auvora account (backend identity) — before prefs/security so they can attach.
+        ChangeNotifierProvider(
+          create: (_) {
+            final c = AccountController();
+            // ignore: discarded_futures
+            c.bootstrap();
+            return c;
+          },
+        ),
+        ChangeNotifierProxyProvider2<PortfolioController, AccountController, PreferencesController>(
           create: (_) {
             final controller = PreferencesController();
             // ignore: discarded_futures
             controller.bootstrap();
             return controller;
           },
-          update: (_, portfolio, controller) => controller!..attachPortfolio(portfolio),
+          update: (_, portfolio, account, controller) => controller!
+            ..attachPortfolio(portfolio)
+            ..attachAccount(account),
         ),
         ChangeNotifierProxyProvider4<SyncEngine, NetworkManager, PortfolioController,
             PreferencesController, SyncCoordinator>(
@@ -257,22 +268,16 @@ class _AuvoraAppState extends State<AuvoraApp> {
             return controller;
           },
         ),
-        ChangeNotifierProxyProvider3<WalletController, WalletEngine, ConnectionsController, SecurityController>(
+        ChangeNotifierProxyProvider4<WalletController, WalletEngine, ConnectionsController,
+            AccountController, SecurityController>(
           create: (_) => SecurityController(),
-          update: (_, walletController, walletEngine, connections, controller) => controller!
-            ..attach(walletController: walletController, walletEngine: walletEngine)
-            ..attachConnections(connections),
+          update: (_, walletController, walletEngine, connections, account, controller) =>
+              controller!
+                ..attach(walletController: walletController, walletEngine: walletEngine)
+                ..attachConnections(connections)
+                ..attachAccount(account),
         ),
         ChangeNotifierProvider(create: (_) => AddressBookStore()),
-        // Auvora account (backend identity) — separate from the on-device wallet.
-        ChangeNotifierProvider(
-          create: (_) {
-            final c = AccountController();
-            // ignore: discarded_futures
-            c.bootstrap();
-            return c;
-          },
-        ),
         ChangeNotifierProvider(create: (_) => WalletBackendSync()),
         ChangeNotifierProvider(create: (_) => VaultSyncService()),
         ChangeNotifierProxyProvider3<AccountController, WalletController, WalletBackendSync,

@@ -159,5 +159,61 @@ void main() {
       expect(session.refreshToken, 'refresh-2');
       expect((jsonDecode(sent!.body) as Map<String, dynamic>)['refreshToken'], 'refresh-1');
     });
+
+    test('listDevices handles data as a list and sends bearer', () async {
+      http.Request? sent;
+      final client = clientReturning(
+        200,
+        {
+          'success': true,
+          'data': [
+            {'id': 'd1', 'fingerprint': 'fp-1', 'name': 'Phone', 'platform': 'android'},
+          ],
+        },
+        capture: (r) => sent = r,
+      );
+      final devices = await client.listDevices('access-1');
+      expect(devices, hasLength(1));
+      expect(devices.first['id'], 'd1');
+      expect(sent!.headers['authorization'], 'Bearer access-1');
+      expect(sent!.url.path, '/api/v1/me/devices');
+    });
+
+    test('listNotifications handles data.items envelope', () async {
+      final client = clientReturning(200, {
+        'success': true,
+        'data': {
+          'items': [
+            {'id': 'n1', 'subject': 'Hello', 'body': 'World', 'category': 'SECURITY'},
+          ],
+          'total': 1,
+        },
+      });
+      final items = await client.listNotifications('access-1');
+      expect(items, hasLength(1));
+      expect(items.first['id'], 'n1');
+    });
+
+    test('revokeDevice and markNotificationRead hit expected paths', () async {
+      final paths = <String>[];
+      final methods = <String>[];
+      final mock = MockClient((req) async {
+        paths.add(req.url.path);
+        methods.add(req.method);
+        return http.Response(
+          jsonEncode({'success': true, 'data': {'message': 'ok'}}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final client = AuthApiClient(httpClient: mock, baseUrl: _base);
+      await client.revokeDevice('tok', 'dev-1');
+      await client.revokeSession('tok', 'sess-1');
+      await client.markNotificationRead('tok', 'n-1');
+      expect(methods, ['DELETE', 'DELETE', 'POST']);
+      expect(paths[0], '/api/v1/me/devices/dev-1');
+      expect(paths[1], '/api/v1/me/sessions/sess-1');
+      expect(paths[2], '/api/v1/notifications/n-1/read');
+    });
   });
 }

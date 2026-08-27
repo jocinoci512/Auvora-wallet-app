@@ -190,6 +190,8 @@ export class AuthService {
 
     const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
     const content = buildVerifyEmail(verifyUrl);
+    // Critical path: one-time token link must go out via MAIL_PORT immediately.
+    // Production QA should set MAIL_DRIVER=notifications for durable EMAIL delivery.
     await this.mail.send({
       to: email,
       subject: content.subject,
@@ -216,6 +218,12 @@ export class AuthService {
       eventType: 'auth.account.created',
       aggregateId: user.id,
       payload: { ownerUserId: user.id, username },
+    });
+    // Durable IN_APP (and mapped templates) even when MAIL_DRIVER=smtp.
+    this.emitNotificationEvent({
+      eventType: 'auth.email.verification_sent',
+      aggregateId: user.id,
+      payload: { ownerUserId: user.id },
     });
 
     this.emitAdminEvent({
@@ -574,11 +582,17 @@ export class AuthService {
 
     const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
     const content = buildVerifyEmail(verifyUrl);
+    // Critical path: token link via MAIL_PORT; also enqueue durable IN_APP.
     await this.mail.send({
       to: user.email,
       subject: content.subject,
       text: content.text,
       html: content.html,
+    });
+    this.emitNotificationEvent({
+      eventType: 'auth.email.verification_sent',
+      aggregateId: user.id,
+      payload: { ownerUserId: user.id },
     });
 
     return {
@@ -598,11 +612,17 @@ export class AuthService {
 
       const resetUrl = `${this.env.APP_PUBLIC_URL}/auth/reset-password?token=${rawToken}`;
       const content = buildPasswordResetEmail(resetUrl);
+      // Critical path: one-time reset link via MAIL_PORT (use MAIL_DRIVER=notifications for durable EMAIL).
       await this.mail.send({
         to: user.email,
         subject: content.subject,
         text: content.text,
         html: content.html,
+      });
+      this.emitNotificationEvent({
+        eventType: 'auth.password_reset.requested',
+        aggregateId: user.id,
+        payload: { ownerUserId: user.id },
       });
 
       await this.audit.create({

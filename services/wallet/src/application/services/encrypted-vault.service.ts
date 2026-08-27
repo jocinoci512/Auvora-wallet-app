@@ -56,7 +56,9 @@ export class EncryptedVaultService {
       where: { ownerUserId: input.ownerUserId },
     });
     if (existing && input.epoch <= existing.epoch) {
-      throw new ValidationError('Vault epoch must increase on update');
+      throw new ValidationError(
+        `Vault epoch must increase on update (current epoch is ${existing.epoch}, received ${input.epoch})`,
+      );
     }
 
     const row = await this.prisma.encryptedVaultBlob.upsert({

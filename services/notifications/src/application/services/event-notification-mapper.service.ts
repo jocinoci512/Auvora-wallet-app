@@ -92,6 +92,16 @@ export class EventNotificationMapperService {
           dedupeKey: `auth.account.created:${id}`,
           variables: {},
         };
+      case 'auth.email.verification_sent':
+        // Token link is sent via auth MAIL_PORT (critical path). Durable queue gets IN_APP only.
+        return {
+          templateCode: 'auth.email_verification',
+          category: 'AUTH',
+          channels: ['IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.email.verification_sent:${id}`,
+          variables: {},
+        };
       case 'auth.email.verified':
         return {
           templateCode: 'auth.email_verified',
@@ -99,6 +109,16 @@ export class EventNotificationMapperService {
           channels: ['EMAIL', 'IN_APP'],
           priority: 'NORMAL',
           dedupeKey: `auth.email.verified:${id}`,
+          variables: {},
+        };
+      case 'auth.password_reset.requested':
+        // Reset token link is sent via auth MAIL_PORT. Durable queue gets IN_APP notice.
+        return {
+          templateCode: 'auth.password_reset',
+          category: 'AUTH',
+          channels: ['IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.password_reset.requested:${id}`,
           variables: {},
         };
       case 'auth.password.changed':

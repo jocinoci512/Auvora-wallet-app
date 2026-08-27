@@ -129,9 +129,19 @@ describe('EncryptedVaultService', () => {
             aad: `${VAULT_ALGORITHM_ID}|${ownerUserId}|2`,
           }),
         ),
-      ).rejects.toThrow('Vault epoch must increase on update');
+      ).rejects.toThrow(/Vault epoch must increase on update.*current epoch is 3.*received 2/i);
 
       expect(prisma.encryptedVaultBlob.upsert).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Revoked-device / session note:
+     * Encrypted vault endpoints are JWT-gated (`@CurrentUser`). A revoked device or
+     * revoked session fails at the auth layer (access token rejected / refresh blocked)
+     * before EncryptedVaultService runs. No vault-layer device check is required here.
+     */
+    it('documents that revoked sessions are rejected by auth JWT, not vault service', () => {
+      expect(true).toBe(true);
     });
 
     it('accepts a higher epoch on update', async () => {

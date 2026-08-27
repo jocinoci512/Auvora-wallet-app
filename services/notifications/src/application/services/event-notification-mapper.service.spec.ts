@@ -142,4 +142,72 @@ describe('EventNotificationMapperService', () => {
       expect(variables).not.toHaveProperty('internalNote');
     });
   });
+
+  describe('auth durable email / IN_APP mappings', () => {
+    it('maps auth.email.verification_sent to IN_APP only (token mail is critical-path MAIL_PORT)', async () => {
+      const service = createService();
+
+      await service.mapAndEnqueue({
+        eventType: 'auth.email.verification_sent',
+        aggregateId: 'user-1',
+        payload: { ownerUserId: 'user-1' },
+      });
+
+      expect(notifications.send).toHaveBeenCalledTimes(1);
+      expect(notifications.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateCode: 'auth.email_verification',
+          channel: 'IN_APP',
+          dedupeKey: 'auth.email.verification_sent:user-1:IN_APP',
+        }),
+      );
+    });
+
+    it('maps auth.password_reset.requested to IN_APP', async () => {
+      const service = createService();
+
+      await service.mapAndEnqueue({
+        eventType: 'auth.password_reset.requested',
+        aggregateId: 'user-1',
+        payload: { ownerUserId: 'user-1' },
+      });
+
+      expect(notifications.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateCode: 'auth.password_reset',
+          channel: 'IN_APP',
+          dedupeKey: 'auth.password_reset.requested:user-1:IN_APP',
+        }),
+      );
+    });
+
+    it('maps core auth security events to EMAIL + IN_APP', async () => {
+      const service = createService();
+      const events = [
+        'auth.account.created',
+        'auth.email.verified',
+        'auth.password.changed',
+        'auth.login.new_device',
+        'auth.device.revoked',
+      ] as const;
+
+      for (const eventType of events) {
+        notifications.send.mockClear();
+        await service.mapAndEnqueue({
+          eventType,
+          aggregateId: 'agg-1',
+          payload: {
+            ownerUserId: 'user-1',
+            deviceName: 'Pixel',
+            platform: 'android',
+          },
+        });
+        expect(notifications.send).toHaveBeenCalledTimes(2);
+        const channels = notifications.send.mock.calls.map(
+          (call: [{ channel: string }]) => call[0].channel,
+        );
+        expect(channels).toEqual(expect.arrayContaining(['EMAIL', 'IN_APP']));
+      }
+    });
+  });
 });

@@ -85,112 +85,116 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          Text(
-            AuvoraStrings.lookup('notifications.subtitle', languageCode: prefs.locale.languageCode),
-            style: const TextStyle(color: AetherColors.muted, height: 1.4),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: AuvoraStrings.lookup('notifications.search', languageCode: prefs.locale.languageCode),
-              border: const OutlineInputBorder(),
+      body: RefreshIndicator(
+        onRefresh: prefs.refreshInbox,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            Text(
+              AuvoraStrings.lookup('notifications.subtitle', languageCode: prefs.locale.languageCode),
+              style: const TextStyle(color: AetherColors.muted, height: 1.4),
             ),
-            onChanged: (v) => setState(() => _query = v),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<_InboxGroup>(
-            initialValue: _group,
-            decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Filter'),
-            items: [
-              for (final g in _InboxGroup.values)
-                DropdownMenuItem(value: g, child: Text(g.label)),
-            ],
-            onChanged: (v) {
-              if (v != null) setState(() => _group = v);
-            },
-          ),
-          const SizedBox(height: 16),
-          if (items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Column(
-                children: [
-                  Icon(_group.icon, size: 40, color: AetherColors.muted),
-                  const SizedBox(height: 12),
-                  Text(
-                    AuvoraStrings.lookup('notifications.empty', languageCode: prefs.locale.languageCode),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AetherColors.muted, height: 1.4),
-                  ),
-                ],
+            const SizedBox(height: 12),
+            TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: AuvoraStrings.lookup('notifications.search', languageCode: prefs.locale.languageCode),
+                border: const OutlineInputBorder(),
               ),
-            )
-          else
-            for (final n in items)
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<_InboxGroup>(
+              initialValue: _group,
+              decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Filter'),
+              items: [
+                for (final g in _InboxGroup.values)
+                  DropdownMenuItem(value: g, child: Text(g.label)),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => _group = v);
+              },
+            ),
+            const SizedBox(height: 16),
+            if (items.isEmpty)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Material(
-                  color: Theme.of(context).cardTheme.color,
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                child: Column(
+                  children: [
+                    Icon(_group.icon, size: 40, color: AetherColors.muted),
+                    const SizedBox(height: 12),
+                    Text(
+                      AuvoraStrings.lookup('notifications.empty', languageCode: prefs.locale.languageCode),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AetherColors.muted, height: 1.4),
+                    ),
+                  ],
+                ),
+              )
+            else
+              for (final n in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Material(
+                    color: Theme.of(context).cardTheme.color,
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () => prefs.markRead(n.id),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            _iconFor(n.category),
-                            color: n.read ? AetherColors.muted : AetherColors.lagoon,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        n.title,
-                                        style: TextStyle(
-                                          fontWeight: n.read ? FontWeight.w500 : FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    if (!n.read)
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: AetherColors.lagoon,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(n.body, style: const TextStyle(height: 1.35, color: AetherColors.muted)),
-                                const SizedBox(height: 6),
-                                Text(
-                                  locale.formatDateTime(n.createdAt),
-                                  style: const TextStyle(fontSize: 12, color: AetherColors.muted),
-                                ),
-                              ],
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => prefs.markRead(n.id),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              _iconFor(n.category),
+                              color: n.read ? AetherColors.muted : AetherColors.lagoon,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          n.title,
+                                          style: TextStyle(
+                                            fontWeight: n.read ? FontWeight.w500 : FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      if (!n.read)
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: AetherColors.lagoon,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(n.body, style: const TextStyle(height: 1.35, color: AetherColors.muted)),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    locale.formatDateTime(n.createdAt),
+                                    style: const TextStyle(fontSize: 12, color: AetherColors.muted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-        ],
+          ],
+        ),
       ),
     );
   }

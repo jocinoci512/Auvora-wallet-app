@@ -961,12 +961,28 @@ async function main(): Promise<void> {
       body: 'Hello {{name}}, verify your email: {{link}}',
     },
     {
+      code: 'auth.email_verification',
+      name: 'Email verification',
+      category: 'AUTH',
+      channel: 'IN_APP',
+      subject: 'Verify your email',
+      body: 'Hello {{name}}, check your inbox for a link to verify your Auvora account.',
+    },
+    {
       code: 'auth.password_reset',
       name: 'Password reset',
       category: 'AUTH',
       channel: 'EMAIL',
       subject: 'Reset your Auvora password',
       body: 'Hello {{name}}, reset your password: {{link}}',
+    },
+    {
+      code: 'auth.password_reset',
+      name: 'Password reset',
+      category: 'AUTH',
+      channel: 'IN_APP',
+      subject: 'Password reset requested',
+      body: 'Hello {{name}}, a password reset was requested for your account. Check your email if you started this.',
     },
     {
       code: 'security.login_alert',

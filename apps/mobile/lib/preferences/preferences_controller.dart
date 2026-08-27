@@ -1,17 +1,31 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../account/account_controller.dart';
+import '../account/auth_api_client.dart';
 import '../l10n/auvora_locale.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
 import 'models.dart';
 
 class PreferencesController extends ChangeNotifier {
+  PreferencesController({AuthApiClient? apiClient}) : _api = apiClient ?? AuthApiClient();
+
+  final AuthApiClient _api;
+
   SharedPreferences? _prefs;
   PortfolioController? _portfolio;
+  AccountController? _account;
   bool loading = true;
+
+  /// Demo inbox seed — off by default; enable only for local UI QA builds.
+  static const bool _seedInboxEnabled = bool.fromEnvironment(
+    'AUVORA_SEED_INBOX',
+    defaultValue: false,
+  );
 
   AppThemePreference theme = AppThemePreference.system;
   AccentColorPreference accent = AccentColorPreference.lagoon;
@@ -49,6 +63,32 @@ class PreferencesController extends ChangeNotifier {
     _portfolio = portfolio;
   }
 
+  void attachAccount(AccountController account) {
+    if (identical(_account, account)) {
+      // ignore: discarded_futures
+      refreshInbox();
+      return;
+    }
+    _account?.removeListener(_onAccountChanged);
+    _account = account;
+    _account!.addListener(_onAccountChanged);
+    // ignore: discarded_futures
+    refreshInbox();
+  }
+
+  @override
+  void dispose() {
+    _account?.removeListener(_onAccountChanged);
+    super.dispose();
+  }
+
+  void _onAccountChanged() {
+    // ignore: discarded_futures
+    refreshInbox();
+  }
+
+  bool get _signedIn => _account?.isSignedIn == true;
+
   ThemeMode get materialThemeMode => themeModeFor(theme);
 
   int get unreadCount => inbox.where((n) => !n.read).length;
@@ -73,7 +113,7 @@ class PreferencesController extends ChangeNotifier {
     if (previewWallets.isEmpty) {
       previewWallets = _seedPreviewWallets();
     }
-    if (inbox.isEmpty) {
+    if (inbox.isEmpty && _seedInboxEnabled && kDebugMode) {
       inbox = _seedInbox();
       await _persistInbox();
     }
@@ -88,6 +128,89 @@ class PreferencesController extends ChangeNotifier {
     }
     loading = false;
     notifyListeners();
+    await refreshInbox();
+  }
+
+  /// Reload inbox from the backend when signed in; empty when signed out.
+  Future<void> refreshInbox() async {
+    if (!_signedIn) {
+      if (!_seedInboxEnabled) {
+        inbox = const [];
+        await _persistInbox();
+        notifyListeners();
+      }
+      return;
+    }
+    final bearer = await _account?.readAccessToken();
+    if (bearer == null || bearer.isEmpty || !_api.isConfigured) {
+      inbox = const [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final raw = await _api.listNotifications(bearer);
+      inbox = [for (final item in raw) _mapNotification(item)];
+      await _persistInbox();
+      notifyListeners();
+    } catch (_) {
+      // Keep last successful inbox on failure.
+      notifyListeners();
+    }
+  }
+
+  AppNotificationItem _mapNotification(Map<String, dynamic> json) {
+    final metadata = json['metadata'] is Map
+        ? Map<String, dynamic>.from(json['metadata'] as Map)
+        : const <String, dynamic>{};
+    final title = (json['subject'] ?? json['title'] ?? 'Notification').toString();
+    final body = (json['body'] ?? json['message'] ?? '').toString();
+    final categoryRaw = (json['category'] ?? '').toString();
+    final read = json['read'] == true ||
+        metadata['read'] == true ||
+        (json['status']?.toString().toUpperCase() == 'READ');
+    final createdAt = DateTime.tryParse((json['createdAt'] ?? '').toString()) ?? DateTime.now();
+    return AppNotificationItem(
+      id: (json['id'] ?? '').toString(),
+      category: _mapCategory(categoryRaw),
+      title: title,
+      body: body,
+      createdAt: createdAt,
+      read: read,
+    );
+  }
+
+  NotificationCategory _mapCategory(String raw) {
+    final key = raw.trim();
+    if (key.isEmpty) return NotificationCategory.softwareUpdates;
+    for (final c in NotificationCategory.values) {
+      if (c.name.toLowerCase() == key.toLowerCase()) return c;
+    }
+    switch (key.toUpperCase()) {
+      case 'SECURITY':
+      case 'AUTH':
+      case 'RISK':
+      case 'KYC':
+      case 'COMPLIANCE':
+        return NotificationCategory.securityAlerts;
+      case 'DEPOSIT':
+        return NotificationCategory.incomingTransactions;
+      case 'WITHDRAWAL':
+        return NotificationCategory.outgoingTransactions;
+      case 'TRANSACTION':
+      case 'PAYMENT':
+        return NotificationCategory.transactionConfirmations;
+      case 'WALLET':
+      case 'CUSTODY':
+        return NotificationCategory.walletConnections;
+      case 'MARKET':
+        return NotificationCategory.priceAlerts;
+      case 'SYSTEM':
+      case 'ADMIN':
+      case 'MARKETING':
+        return NotificationCategory.softwareUpdates;
+      default:
+        return NotificationCategory.softwareUpdates;
+    }
   }
 
   // --- Account ------------------------------------------------------------
@@ -289,12 +412,34 @@ class PreferencesController extends ChangeNotifier {
   }
 
   Future<void> markRead(String id) async {
+    if (_signedIn) {
+      final bearer = await _account?.readAccessToken();
+      if (bearer != null && bearer.isNotEmpty) {
+        try {
+          await _api.markNotificationRead(bearer, id);
+        } catch (_) {
+          // Still mark locally so the UI stays responsive.
+        }
+      }
+    }
     inbox = [for (final n in inbox) n.id == id ? n.copyWith(read: true) : n];
     await _persistInbox();
     notifyListeners();
   }
 
   Future<void> markAllRead() async {
+    if (_signedIn) {
+      final bearer = await _account?.readAccessToken();
+      if (bearer != null && bearer.isNotEmpty) {
+        for (final n in inbox.where((item) => !item.read)) {
+          try {
+            await _api.markNotificationRead(bearer, n.id);
+          } catch (_) {
+            // Continue marking remaining items.
+          }
+        }
+      }
+    }
     inbox = [for (final n in inbox) n.copyWith(read: true)];
     await _persistInbox();
     notifyListeners();

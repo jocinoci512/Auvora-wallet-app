@@ -1,0 +1,57 @@
+{
+  "description": "Dummy BIP39 interop vector (abandon...about). NOT a real user mnemonic. Produced by Node encryptVaultBundle.",
+  "password": "TestPass123!",
+  "recoveryPhrase": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+  "ownerUserId": "11111111-1111-4111-8111-111111111111",
+  "epoch": 1,
+  "plaintextBundle": {
+    "version": 1,
+    "wallets": [
+      {
+        "walletId": "wallet-interop-1",
+        "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+        "label": "Interop Test Wallet"
+      }
+    ]
+  },
+  "envelope": {
+    "algorithmId": "auvora-vault-v1",
+    "version": 1,
+    "epoch": 1,
+    "kdfSalt": "pSk43L0TEO+PYGIHQyuivw==",
+    "kdfParams": {
+      "type": "argon2id",
+      "memoryCost": 65536,
+      "timeCost": 3,
+      "parallelism": 4,
+      "hashLength": 32
+    },
+    "recoveryKdfSalt": "clpiC9PiZUkZeUaLgr4gow==",
+    "recoveryKdfParams": {
+      "type": "argon2id",
+      "memoryCost": 65536,
+      "timeCost": 3,
+      "parallelism": 4,
+      "hashLength": 32
+    },
+    "wrappedVaultKey": "8s9QkFxeOcj34xFYR9IoH9pWqzKQfK7DfIJCDJHqTt5/D5ZRfeTxkawB7rEexcjguEw5WfVETsPOcbpR",
+    "wrappedVaultKeyRecovery": "aryu9oief5MP8OD4C3cL4emdGNx/+YbLCmVd/tNa9yX2V2iCnapX3LNUM+Eu/XYf3OIPH1CUwN8e43JY",
+    "ciphertext": "9JZDW47t+XfU2kl5cxdzplazLtvXTJx9/MVU/xxlvyTuxUn2kTXTGVKOyLs1Un7vxK1ppFOxDYbPfZfoOJ29me3yQcsT4NFaym+LFg4j3YuwZoBCDKrH8yAloJqUyGr9Q/ve1nVn1sNj1NWdpBBCw18kkF9DOYvdWBgtHvnR2iY1UuG3T0nZ7n1MjpagRZ6KpOcid8tu7LJm/UrLDRPjRCFWN1HBOqBujrYcTD5lZu5mC1cBEQdZ5J1SQuDzmhasHhacdJ2bXpXioePAPqAksSYuMZMVUEschKz7nDmC",
+    "aad": "auvora-vault-v1|11111111-1111-4111-8111-111111111111|1"
+  },
+  "fieldsBase64": {
+    "kdfSalt": "pSk43L0TEO+PYGIHQyuivw==",
+    "recoveryKdfSalt": "clpiC9PiZUkZeUaLgr4gow==",
+    "wrappedVaultKey": "8s9QkFxeOcj34xFYR9IoH9pWqzKQfK7DfIJCDJHqTt5/D5ZRfeTxkawB7rEexcjguEw5WfVETsPOcbpR",
+    "wrappedVaultKeyRecovery": "aryu9oief5MP8OD4C3cL4emdGNx/+YbLCmVd/tNa9yX2V2iCnapX3LNUM+Eu/XYf3OIPH1CUwN8e43JY",
+    "ciphertext": "9JZDW47t+XfU2kl5cxdzplazLtvXTJx9/MVU/xxlvyTuxUn2kTXTGVKOyLs1Un7vxK1ppFOxDYbPfZfoOJ29me3yQcsT4NFaym+LFg4j3YuwZoBCDKrH8yAloJqUyGr9Q/ve1nVn1sNj1NWdpBBCw18kkF9DOYvdWBgtHvnR2iY1UuG3T0nZ7n1MjpagRZ6KpOcid8tu7LJm/UrLDRPjRCFWN1HBOqBujrYcTD5lZu5mC1cBEQdZ5J1SQuDzmhasHhacdJ2bXpXioePAPqAksSYuMZMVUEschKz7nDmC"
+  },
+  "fieldsHex": {
+    "kdfSalt": "a52938dcbd1310ef8f606207432ba2bf",
+    "recoveryKdfSalt": "725a620bd3e265491979468b82be20a3",
+    "wrappedVaultKey": "f2cf50905c5e39c8f7e3115847d2281fda56ab32907caec37c82420c91ea4ede7f0f96517de4f191ac01eeb11ec5c8e0b84c3959f5444ec3ce71ba51",
+    "wrappedVaultKeyRecovery": "6abcaef6889e7f930ff0e0f80b770be1e99d18dc7ff986cb0a655dfed35af725f65768829daa57dcb35433e12efd761fdce20f1f5094c0df1ee37258",
+    "ciphertext": "f496435b8eedf977d4da4979731773a656b32edbd74c9c7dfcc554ff1c65bf24eec549f69135d319528ec8bb35527eefc4ad69a453b10d86cf7d97e8389dbd99edf241cb13e0d15aca6f8b160e23dd8bb06680420caac7f32025a09a94c86afd43fbded67567d6c363d4d59da41042c35f24905f43398bdd58182d1ef9d1da263552e1b74f49d9ee7d4c8e96a0459e8aa4e72277cb6eecb266fd4acb0d13e34421563751c13aa06e8eb61c4c3e6566ee660b5701110759e49d5242e0f39a16ac1e169c749d9b5e95e2a1e3c03ea024b1262e319315504b1c84acfb9c3982",
+    "aadUtf8": "6175766f72612d7661756c742d76317c31313131313131312d313131312d343131312d383131312d3131313131313131313131317c31"
+  }
+}

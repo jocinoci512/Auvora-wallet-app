@@ -10,15 +10,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('security controller boots with this-device only (no synthetic unknowns)', () async {
+  test('security controller boots with empty devices/sessions when signed out', () async {
     final controller = SecurityController();
     await controller.bootstrap();
 
     final snapshot = controller.buildSnapshot();
-    expect(snapshot.trustedDevices, isNotEmpty);
-    expect(snapshot.trustedDevices.every((d) => d.trusted), isTrue);
-    expect(snapshot.activeSessions, isNotEmpty);
-    expect(snapshot.activeSessions.every((s) => s.current), isTrue);
+    expect(snapshot.trustedDevices, isEmpty);
+    expect(snapshot.activeSessions, isEmpty);
     expect(snapshot.connectedDapps, isEmpty);
     expect(snapshot.score, inInclusiveRange(0, 100));
     expect(snapshot.checkSteps.length, greaterThanOrEqualTo(7));

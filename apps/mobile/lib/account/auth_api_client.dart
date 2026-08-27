@@ -128,19 +128,54 @@ class AuthApiClient {
     }
   }
 
-  Map<String, dynamic> _decodeData(http.Response res) {
-    Map<String, dynamic> body;
+  Map<String, dynamic> _decodeBody(http.Response res) {
     try {
       final decoded = jsonDecode(res.body);
-      body = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     } catch (_) {
-      body = <String, dynamic>{};
+      return <String, dynamic>{};
     }
+  }
+
+  Map<String, dynamic> _decodeData(http.Response res) {
+    final body = _decodeBody(res);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = body['data'];
       return data is Map<String, dynamic> ? data : body;
     }
     throw _mapError(res.statusCode);
+  }
+
+  /// Handles list payloads where `data` is a [List] or `{ items: [...] }`.
+  List<Map<String, dynamic>> _decodeList(http.Response res) {
+    final body = _decodeBody(res);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw _mapError(res.statusCode);
+    }
+    final data = body['data'];
+    if (data is List) {
+      return [
+        for (final item in data)
+          if (item is Map) Map<String, dynamic>.from(item),
+      ];
+    }
+    if (data is Map) {
+      final items = data['items'];
+      if (items is List) {
+        return [
+          for (final item in items)
+            if (item is Map) Map<String, dynamic>.from(item),
+        ];
+      }
+    }
+    final topItems = body['items'];
+    if (topItems is List) {
+      return [
+        for (final item in topItems)
+          if (item is Map) Map<String, dynamic>.from(item),
+      ];
+    }
+    return const [];
   }
 
   AuthException _mapError(int status) {
@@ -280,6 +315,61 @@ class AuthApiClient {
     } catch (_) {
       // Ignore — logout must always succeed locally.
     }
+  }
+
+  Future<List<Map<String, dynamic>>> listDevices(String bearer) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.get(
+          _endpoint('/api/v1/me/devices'),
+          headers: _headers(bearer: bearer),
+        ));
+    return _decodeList(res);
+  }
+
+  Future<void> revokeDevice(String bearer, String deviceId) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.delete(
+          _endpoint('/api/v1/me/devices/${Uri.encodeComponent(deviceId)}'),
+          headers: _headers(bearer: bearer),
+        ));
+    _decodeData(res);
+  }
+
+  Future<List<Map<String, dynamic>>> listSessions(String bearer) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.get(
+          _endpoint('/api/v1/me/sessions'),
+          headers: _headers(bearer: bearer),
+        ));
+    return _decodeList(res);
+  }
+
+  Future<void> revokeSession(String bearer, String sessionId) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.delete(
+          _endpoint('/api/v1/me/sessions/${Uri.encodeComponent(sessionId)}'),
+          headers: _headers(bearer: bearer),
+        ));
+    _decodeData(res);
+  }
+
+  Future<List<Map<String, dynamic>>> listNotifications(String bearer) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.get(
+          _endpoint('/api/v1/notifications'),
+          headers: _headers(bearer: bearer),
+        ));
+    return _decodeList(res);
+  }
+
+  Future<void> markNotificationRead(String bearer, String id) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.post(
+          _endpoint('/api/v1/notifications/${Uri.encodeComponent(id)}/read'),
+          headers: _headers(bearer: bearer),
+          body: jsonEncode(const <String, dynamic>{}),
+        ));
+    _decodeData(res);
   }
 
   void dispose() => _http.close();

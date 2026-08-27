@@ -3,14 +3,28 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../account/account_controller.dart';
+import '../account/auth_api_client.dart';
+import '../account/auth_token_store.dart';
+import '../account/auvora_api_config.dart';
 import '../connections/connections_controller.dart';
 import '../state/wallet_controller.dart';
 import '../wallet_engine/wallet_engine.dart';
 import 'security_models.dart';
 
 class SecurityController extends ChangeNotifier {
+  SecurityController({
+    AuthApiClient? apiClient,
+    AuthTokenStore? tokenStore,
+  })  : _api = apiClient ?? AuthApiClient(),
+        _tokens = tokenStore ?? AuthTokenStore();
+
+  final AuthApiClient _api;
+  final AuthTokenStore _tokens;
+
   WalletController? _walletController;
   ConnectionsController? _connections;
+  AccountController? _account;
   SharedPreferences? _prefs;
 
   SecurityPreferences preferences = const SecurityPreferences();
@@ -43,9 +57,23 @@ class SecurityController extends ChangeNotifier {
     _syncDappsFromConnections();
   }
 
+  void attachAccount(AccountController account) {
+    if (identical(_account, account)) {
+      // ignore: discarded_futures
+      _refreshDevicesAndSessions();
+      return;
+    }
+    _account?.removeListener(_onAccountChanged);
+    _account = account;
+    _account!.addListener(_onAccountChanged);
+    // ignore: discarded_futures
+    _refreshDevicesAndSessions();
+  }
+
   @override
   void dispose() {
     _connections?.removeListener(_onConnectionsChanged);
+    _account?.removeListener(_onAccountChanged);
     super.dispose();
   }
 
@@ -54,24 +82,128 @@ class SecurityController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _onAccountChanged() {
+    // ignore: discarded_futures
+    _refreshDevicesAndSessions();
+  }
+
   void _syncDappsFromConnections() {
     final connections = _connections;
     if (connections == null || connections.loading) return;
     dapps = connections.connectedDappsSummary;
   }
 
+  bool get _signedIn => _account?.isSignedIn == true;
+
   Future<void> bootstrap() async {
     if (!loading) return;
     _prefs ??= await SharedPreferences.getInstance();
     preferences = _readPrefs();
+    // Cache only — never invent demo devices/sessions when empty.
     devices = _readDevices();
     sessions = _readSessions();
     alerts = _readAlerts();
     await _connections?.bootstrap();
     _syncDappsFromConnections();
-    // Never invent connected apps — empty means none in this Alpha build.
     loading = false;
     notifyListeners();
+    await _refreshDevicesAndSessions();
+  }
+
+  Future<void> _refreshDevicesAndSessions() async {
+    if (!_signedIn) {
+      devices = const [];
+      sessions = const [];
+      await _persistDevices();
+      await _persistSessions();
+      notifyListeners();
+      return;
+    }
+    final bearer = await _account?.readAccessToken();
+    if (bearer == null || bearer.isEmpty || !_api.isConfigured) {
+      devices = const [];
+      sessions = const [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final fp = await _tokens.deviceFingerprint();
+      final currentSessionId = await _tokens.readSessionId();
+      final rawDevices = await _api.listDevices(bearer);
+      final rawSessions = await _api.listSessions(bearer);
+      devices = _mapDevices(rawDevices, fingerprint: fp);
+      sessions = _mapSessions(rawSessions, currentSessionId: currentSessionId);
+      await _persistDevices();
+      await _persistSessions();
+      notifyListeners();
+    } catch (_) {
+      // Keep last successful lists on failure; never invent fake devices.
+      notifyListeners();
+    }
+  }
+
+  List<TrustedDevice> _mapDevices(
+    List<Map<String, dynamic>> raw, {
+    required String fingerprint,
+  }) {
+    final mapped = <TrustedDevice>[];
+    var matchedFingerprint = false;
+    for (final item in raw) {
+      final itemFp = (item['fingerprint'] ?? '').toString();
+      final isCurrent = itemFp.isNotEmpty && itemFp == fingerprint;
+      if (isCurrent) matchedFingerprint = true;
+      mapped.add(
+        TrustedDevice(
+          id: (item['id'] ?? '').toString(),
+          name: (item['name'] ?? item['deviceName'] ?? 'Device').toString(),
+          platform: (item['platform'] ?? 'Unknown').toString(),
+          appVersion: (item['appVersion'] ?? '').toString(),
+          lastActiveAt: _parseDate(item['lastSeenAt'] ?? item['lastActiveAt'] ?? item['createdAt']) ??
+              DateTime.now(),
+          current: isCurrent,
+          trusted: item['trusted'] != false && item['revokedAt'] == null,
+        ),
+      );
+    }
+    if (!matchedFingerprint && mapped.isNotEmpty) {
+      final platform = AuvoraApiConfig.platform.toLowerCase();
+      final idx = mapped.indexWhere((d) => d.platform.toLowerCase() == platform);
+      if (idx >= 0) {
+        mapped[idx] = mapped[idx].copyWith(current: true);
+      } else {
+        final androidIdx = mapped.indexWhere((d) => d.platform.toLowerCase() == 'android');
+        if (androidIdx >= 0) {
+          mapped[androidIdx] = mapped[androidIdx].copyWith(current: true);
+        }
+      }
+    }
+    return mapped;
+  }
+
+  List<ActiveSession> _mapSessions(
+    List<Map<String, dynamic>> raw, {
+    String? currentSessionId,
+  }) {
+    return [
+      for (final item in raw)
+        ActiveSession(
+          id: (item['id'] ?? '').toString(),
+          deviceName: (item['deviceName'] ?? item['userAgent'] ?? 'Session').toString(),
+          platform: (item['platform'] ?? 'Auvora').toString(),
+          location: (item['location'] ?? item['ipAddress'] ?? 'Unknown').toString(),
+          loginAt: _parseDate(item['loginAt'] ?? item['createdAt']) ?? DateTime.now(),
+          lastActiveAt: _parseDate(item['lastActiveAt'] ?? item['createdAt']) ?? DateTime.now(),
+          authMethod: (item['authMethod'] ?? 'Account').toString(),
+          current: currentSessionId != null &&
+              currentSessionId.isNotEmpty &&
+              (item['id'] ?? '').toString() == currentSessionId,
+        ),
+    ];
+  }
+
+  DateTime? _parseDate(Object? value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString());
   }
 
   SecuritySnapshot buildSnapshot() {
@@ -224,32 +356,70 @@ class SecurityController extends ChangeNotifier {
   }
 
   Future<void> removeDevice(String id) async {
-    devices = devices.where((item) => item.id != id).toList();
+    if (_signedIn) {
+      final bearer = await _account?.readAccessToken();
+      if (bearer != null && bearer.isNotEmpty) {
+        try {
+          await _api.revokeDevice(bearer, id);
+        } catch (_) {
+          // Fall through to local removal + refresh attempt.
+        }
+      }
+      await _refreshDevicesAndSessions();
+    } else {
+      devices = devices.where((item) => item.id != id).toList();
+      await _persistDevices();
+    }
     await addAlert(
       title: 'Trusted device removed',
       description: 'A device was removed from the trusted list.',
       recommendedAction: 'Confirm the remaining device list still looks right.',
       severity: SecurityStatus.good,
     );
-    await _persistDevices();
-    notifyListeners();
   }
 
   Future<void> revokeSession(String id) async {
-    sessions = sessions.where((item) => item.id != id).toList();
+    if (_signedIn) {
+      final bearer = await _account?.readAccessToken();
+      if (bearer != null && bearer.isNotEmpty) {
+        try {
+          await _api.revokeSession(bearer, id);
+        } catch (_) {
+          // Fall through to refresh.
+        }
+      }
+      await _refreshDevicesAndSessions();
+    } else {
+      sessions = sessions.where((item) => item.id != id).toList();
+      await _persistSessions();
+    }
     await addAlert(
       title: 'Session signed out',
       description: 'A remote session was revoked from Security Center.',
       recommendedAction: 'If this was unexpected, change your PIN and review devices.',
       severity: SecurityStatus.good,
     );
-    await _persistSessions();
-    notifyListeners();
   }
 
   Future<void> signOutAllOtherSessions() async {
-    final removed = sessions.where((s) => !s.current).length;
-    sessions = sessions.where((s) => s.current).toList();
+    final others = sessions.where((s) => !s.current).toList();
+    final removed = others.length;
+    if (_signedIn) {
+      final bearer = await _account?.readAccessToken();
+      if (bearer != null && bearer.isNotEmpty) {
+        for (final session in others) {
+          try {
+            await _api.revokeSession(bearer, session.id);
+          } catch (_) {
+            // Continue revoking remaining sessions.
+          }
+        }
+      }
+      await _refreshDevicesAndSessions();
+    } else {
+      sessions = sessions.where((s) => s.current).toList();
+      await _persistSessions();
+    }
     await addAlert(
       title: 'Other sessions signed out',
       description: removed == 0
@@ -258,8 +428,6 @@ class SecurityController extends ChangeNotifier {
       recommendedAction: 'Change your PIN if you didn’t initiate this.',
       severity: SecurityStatus.good,
     );
-    await _persistSessions();
-    notifyListeners();
   }
 
   /// Sends always require authentication in Closed Beta — toggle cannot weaken that.
@@ -472,63 +640,45 @@ class SecurityController extends ChangeNotifier {
 
   List<TrustedDevice> _readDevices() {
     final raw = _prefs?.getString(_kDevices);
-    if (raw == null || raw.isEmpty) {
-      // This device only — never seed fake "unknown" devices that inflate risk.
-      return [
-        TrustedDevice(
-          id: 'dev-current',
-          name: 'This phone',
-          platform: 'Current device',
-          appVersion: '1.0.0-alpha',
-          lastActiveAt: DateTime.now(),
-          current: true,
-          trusted: true,
-        ),
-      ];
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .map((item) => TrustedDevice(
+                id: item['id'] as String,
+                name: item['name'] as String,
+                platform: item['platform'] as String,
+                appVersion: item['appVersion'] as String,
+                lastActiveAt: DateTime.parse(item['lastActiveAt'] as String),
+                current: item['current'] == true,
+                trusted: item['trusted'] == true,
+              ))
+          .toList();
+    } catch (_) {
+      return const [];
     }
-    final list = jsonDecode(raw) as List<dynamic>;
-    return list
-        .map((item) => TrustedDevice(
-              id: item['id'] as String,
-              name: item['name'] as String,
-              platform: item['platform'] as String,
-              appVersion: item['appVersion'] as String,
-              lastActiveAt: DateTime.parse(item['lastActiveAt'] as String),
-              current: item['current'] == true,
-              trusted: item['trusted'] == true,
-            ))
-        .toList();
   }
 
   List<ActiveSession> _readSessions() {
     final raw = _prefs?.getString(_kSessions);
-    if (raw == null || raw.isEmpty) {
-      return [
-        ActiveSession(
-          id: 'sess-current',
-          deviceName: 'This phone',
-          platform: 'Auvora mobile',
-          location: 'This device',
-          loginAt: DateTime.now().subtract(const Duration(hours: 1)),
-          lastActiveAt: DateTime.now(),
-          authMethod: 'Passcode',
-          current: true,
-        ),
-      ];
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .map((item) => ActiveSession(
+                id: item['id'] as String,
+                deviceName: item['deviceName'] as String,
+                platform: item['platform'] as String,
+                location: item['location'] as String,
+                loginAt: DateTime.parse(item['loginAt'] as String),
+                lastActiveAt: DateTime.parse(item['lastActiveAt'] as String),
+                authMethod: item['authMethod'] as String,
+                current: item['current'] == true,
+              ))
+          .toList();
+    } catch (_) {
+      return const [];
     }
-    final list = jsonDecode(raw) as List<dynamic>;
-    return list
-        .map((item) => ActiveSession(
-              id: item['id'] as String,
-              deviceName: item['deviceName'] as String,
-              platform: item['platform'] as String,
-              location: item['location'] as String,
-              loginAt: DateTime.parse(item['loginAt'] as String),
-              lastActiveAt: DateTime.parse(item['lastActiveAt'] as String),
-              authMethod: item['authMethod'] as String,
-              current: item['current'] == true,
-            ))
-        .toList();
   }
 
   List<SecurityAlertItem> _readAlerts() {
@@ -621,6 +771,4 @@ class SecurityController extends ChangeNotifier {
         },
     ]));
   }
-
-  // Demo seed data removed — Closed Beta uses this-device-only defaults via _readDevices/_readSessions.
 }
