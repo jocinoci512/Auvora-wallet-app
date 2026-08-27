@@ -11,6 +11,28 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
 
+function productKycLabel(status: string | undefined | null): string {
+  switch ((status ?? '').toUpperCase()) {
+    case 'DRAFT':
+    case '':
+    case 'NONE':
+      return 'NOT_STARTED';
+    case 'SUBMITTED':
+    case 'PENDING_PROVIDER':
+      return 'PENDING';
+    case 'IN_REVIEW':
+      return 'IN_REVIEW';
+    case 'APPROVED':
+      return 'APPROVED';
+    case 'REJECTED':
+      return 'REJECTED';
+    case 'RENEWAL_REQUIRED':
+      return 'RESUBMISSION_REQUIRED';
+    default:
+      return status ?? 'NOT_STARTED';
+  }
+}
+
 export default function CompliancePage(): ReactElement {
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [status, setStatus] = useState<VerificationRequest | null>(null);
@@ -84,10 +106,14 @@ export default function CompliancePage(): ReactElement {
       {message ? <p>{message}</p> : null}
       {profile ? (
         <section>
-          <h2>Profile</h2>
+          <h2>Identity verification</h2>
           <p>
-            Level: {profile.level} · Status: {profile.status} · Risk: {String(profile.riskScore)} (
-            {profile.riskBand})
+            Level: {profile.level} · Status: {productKycLabel(profile.status)} ({profile.status}) ·
+            Risk: {String(profile.riskScore)} ({profile.riskBand})
+          </p>
+          <p>
+            Transfers of $5,000+ require APPROVED identity verification. Transfers of $10,000+ also
+            need administrator review.
           </p>
         </section>
       ) : null}
@@ -103,8 +129,8 @@ export default function CompliancePage(): ReactElement {
         <section>
           <h2>Latest verification</h2>
           <p>
-            {status.requestedLevel} — {status.status}
-            {status.rejectionReason ? ` (${status.rejectionReason})` : ''}
+            {status.requestedLevel} — {productKycLabel(status.status)} ({status.status})
+            {status.rejectionReason ? ` — ${status.rejectionReason}` : ''}
           </p>
         </section>
       ) : null}

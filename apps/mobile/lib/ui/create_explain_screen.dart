@@ -16,7 +16,7 @@ class CreateExplainScreen extends StatelessWidget {
           'In a moment you’ll see twelve words. They’re the master key to your funds — only you should ever see them.',
       reassure:
           'By continuing you agree to Auvora’s Terms and Privacy Policy (drafts on the web companion). Nothing is generated until you tap continue.',
-      onBack: c.goWelcome,
+      onBack: c.goWalletChoice,
       showProgress: true,
       body: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,

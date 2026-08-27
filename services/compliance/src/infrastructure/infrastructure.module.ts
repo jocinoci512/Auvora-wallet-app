@@ -32,6 +32,10 @@ import {
   NotificationsPublisherAdapter,
 } from './notifications/notifications-publisher.adapter';
 import {
+  ADMIN_EVENT_PUBLISHER,
+  RedisAdminEventPublisher,
+} from './realtime/admin-event-publisher.adapter';
+import {
   AddressRiskSimulatorProvider,
   BlockchainAnalyticsSimulatorProvider,
   COMPLIANCE_SIMULATOR_PROVIDERS,
@@ -106,6 +110,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     AesFieldEncryptionAdapter,
     EventBusService,
     NotificationsPublisherAdapter,
+    RedisAdminEventPublisher,
     AiPublisherAdapter,
     AnalyticsPublisherAdapter,
     ObservabilityPublisherAdapter,
@@ -117,6 +122,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     { provide: FIELD_ENCRYPTION, useExisting: AesFieldEncryptionAdapter },
     { provide: EVENT_BUS, useExisting: EventBusService },
     { provide: NOTIFICATIONS_PUBLISHER, useExisting: NotificationsPublisherAdapter },
+    { provide: ADMIN_EVENT_PUBLISHER, useExisting: RedisAdminEventPublisher },
     { provide: AI_PUBLISHER, useExisting: AiPublisherAdapter },
     { provide: ANALYTICS_PUBLISHER, useExisting: AnalyticsPublisherAdapter },
     { provide: OBSERVABILITY_PUBLISHER, useExisting: ObservabilityPublisherAdapter },
@@ -129,6 +135,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     FIELD_ENCRYPTION,
     EVENT_BUS,
     NOTIFICATIONS_PUBLISHER,
+    ADMIN_EVENT_PUBLISHER,
     AI_PUBLISHER,
     ANALYTICS_PUBLISHER,
     OBSERVABILITY_PUBLISHER,

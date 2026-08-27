@@ -46,7 +46,7 @@ describe('evaluateLargeTransferUsdCents', () => {
     expect(decision.status).toBe('review_required');
   });
 
-  it('does not require review below the threshold', () => {
+  it('does not require policy above $2,500 (below KYC gate)', () => {
     const decision = evaluateLargeTransferUsdCents({
       amountSmallest: 1_000_000_000_000_000_000n,
       decimals: 18,
@@ -57,7 +57,33 @@ describe('evaluateLargeTransferUsdCents', () => {
     expect(decision.status).toBe('below_threshold');
   });
 
-  it('does not require review at $9,999.99 using integer cents', () => {
+  it('requires KYC at $4,999.99? no — below $5,000', () => {
+    const decision = evaluateLargeTransferUsdCents({
+      amountSmallest: 1_000_000n,
+      decimals: 6,
+      usdCentsPerWholeToken: 499_999n,
+      priceAt: now,
+      now,
+    });
+    expect(decision.status).toBe('below_threshold');
+    expect(decision.notionalUsdCents).toBe(499_999n);
+  });
+
+  it('requires KYC at exactly $5,000.00 without Admin review', () => {
+    const decision = evaluateLargeTransferUsdCents({
+      amountSmallest: 1_000_000n,
+      decimals: 6,
+      usdCentsPerWholeToken: 500_000n,
+      priceAt: now,
+      now,
+    });
+    expect(decision.status).toBe('kyc_required');
+    expect(decision.requiresKyc).toBe(true);
+    expect(decision.requiresAdminReview).toBe(false);
+    expect(decision.notionalUsdCents).toBe(500_000n);
+  });
+
+  it('requires KYC only at $9,999.99 (no Admin review)', () => {
     const decision = evaluateLargeTransferUsdCents({
       amountSmallest: 1_000_000n,
       decimals: 6,
@@ -65,7 +91,8 @@ describe('evaluateLargeTransferUsdCents', () => {
       priceAt: now,
       now,
     });
-    expect(decision.status).toBe('below_threshold');
+    expect(decision.status).toBe('kyc_required');
+    expect(decision.requiresAdminReview).toBe(false);
     expect(decision.notionalUsdCents).toBe(999_999n);
   });
 
@@ -78,6 +105,8 @@ describe('evaluateLargeTransferUsdCents', () => {
       now,
     });
     expect(decision.status).toBe('review_required');
+    expect(decision.requiresKyc).toBe(true);
+    expect(decision.requiresAdminReview).toBe(true);
     expect(decision.notionalUsdCents).toBe(1_000_000n);
   });
 

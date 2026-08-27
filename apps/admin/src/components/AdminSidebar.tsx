@@ -30,6 +30,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/users', label: 'Users', permission: 'users:read' },
       { href: '/wallets', label: 'Wallets', permission: 'wallets:read' },
+      { href: '/compliance', label: 'KYC', permission: 'compliance:review' },
     ],
   },
   {
@@ -53,14 +54,14 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Security',
     items: [
-      { href: '/security', label: 'Security', permission: 'security:read' },
+      { href: '/security', label: 'Security Events', permission: 'security:read' },
       { href: '/security/audit', label: 'Audit', permission: 'audit:read' },
     ],
   },
   {
     label: 'System',
     items: [
-      { href: '/observability/health', label: 'System Health', permission: 'health:read' },
+      { href: '/observability/health', label: 'Health', permission: 'health:read' },
       { href: '/blockchain', label: 'Blockchain', permission: 'blockchain:read' },
     ],
   },
@@ -75,7 +76,6 @@ const NAV_GROUPS: NavGroup[] = [
 
 const DEFERRED: NavItem[] = [
   { href: '/payments', label: 'Payments' },
-  { href: '/compliance', label: 'Compliance' },
   { href: '/custody', label: 'Custody' },
   { href: '/notifications', label: 'Notifications' },
   { href: '/analytics', label: 'Analytics' },

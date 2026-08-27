@@ -55,7 +55,7 @@ class _ImportScreenState extends State<ImportScreen> {
       subtitle:
           'Enter the recovery phrase from your existing wallet. Validation happens on this device.',
       reassure: 'Never enter a phrase someone else typed or sent to you.',
-      onBack: c.goWelcome,
+      onBack: c.goWalletChoice,
       showProgress: true,
       body: ListView(
         children: [

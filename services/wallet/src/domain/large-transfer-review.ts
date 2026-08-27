@@ -1,57 +1,79 @@
-/** Self-custody large-transfer review. Admin never receives keys. */
+/** Self-custody transfer policy: KYC gate + Admin large-transfer review. Admin never receives keys. */
 
-export const DEFAULT_LARGE_TRANSFER_USD_CENTS = 1_000_000n; // $10,000.00
+export const DEFAULT_LARGE_TRANSFER_USD_CENTS = 1_000_000n; // $10,000.00 Admin review
+export const DEFAULT_KYC_REQUIRED_USD_CENTS = 500_000n; // $5,000.00 KYC gate
 /** Default Sepolia/QA threshold so small testnet sends exercise Admin review. */
 export const DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS = 100n; // $1.00
 export const MAX_PRICE_AGE_MS = 5 * 60 * 1000;
 export const USER_TRANSFER_SOURCE_TYPE = 'USER_TRANSFER';
 export const SIMULATION_TRANSFER_SOURCE_TYPE = 'SIMULATION_TRANSACTION';
 
+function parseEnvCents(raw: string | undefined): bigint | null {
+  if (!raw?.trim()) return null;
+  try {
+    const value = BigInt(raw.trim());
+    return value >= 0n ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Resolve review threshold. Mainnet stays at $10k (or LARGE_TRANSFER_USD_CENTS).
+ * Admin review threshold. Mainnet stays at $10k (or LARGE_TRANSFER_USD_CENTS).
  * Testnet clients send `networkEnv: 'testnet'` so QA can create persisted reviews
  * with small amounts without lowering production mainnet policy.
  */
 export function resolveLargeTransferThresholdCents(networkEnv?: string): bigint {
-  const parseEnv = (raw: string | undefined): bigint | null => {
-    if (!raw?.trim()) return null;
-    try {
-      const value = BigInt(raw.trim());
-      return value >= 0n ? value : null;
-    } catch {
-      return null;
-    }
-  };
-
   if (networkEnv === 'testnet') {
     return (
-      parseEnv(process.env.TESTNET_LARGE_TRANSFER_USD_CENTS) ??
+      parseEnvCents(process.env.TESTNET_LARGE_TRANSFER_USD_CENTS) ??
       DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS
     );
   }
+  return parseEnvCents(process.env.LARGE_TRANSFER_USD_CENTS) ?? DEFAULT_LARGE_TRANSFER_USD_CENTS;
+}
 
-  return parseEnv(process.env.LARGE_TRANSFER_USD_CENTS) ?? DEFAULT_LARGE_TRANSFER_USD_CENTS;
+/** Product KYC gate ($5k). Optional TESTNET_KYC_REQUIRED_USD_CENTS for QA. */
+export function resolveKycRequiredThresholdCents(networkEnv?: string): bigint {
+  if (networkEnv === 'testnet') {
+    return (
+      parseEnvCents(process.env.TESTNET_KYC_REQUIRED_USD_CENTS) ??
+      parseEnvCents(process.env.KYC_REQUIRED_USD_CENTS) ??
+      DEFAULT_KYC_REQUIRED_USD_CENTS
+    );
+  }
+  return parseEnvCents(process.env.KYC_REQUIRED_USD_CENTS) ?? DEFAULT_KYC_REQUIRED_USD_CENTS;
 }
 
 export type LargeTransferStatus =
-  'below_threshold' | 'review_required' | 'price_unavailable' | 'stale_price';
+  'below_threshold' | 'kyc_required' | 'review_required' | 'price_unavailable' | 'stale_price';
 
 export interface LargeTransferDecision {
   status: LargeTransferStatus;
   notionalUsdCents?: bigint;
   message?: string;
+  requiresKyc?: boolean;
+  requiresAdminReview?: boolean;
 }
 
+/**
+ * Evaluates notional against KYC ($5k) and Admin review ($10k) thresholds.
+ * Price failures fail closed (cannot skip policy).
+ */
 export function evaluateLargeTransferUsdCents(input: {
   amountSmallest: bigint;
   decimals: number;
   usdCentsPerWholeToken: bigint | null;
   priceAt: Date | null;
   now?: Date;
+  /** Admin review threshold (default $10k / testnet QA). */
   thresholdCents?: bigint;
+  /** KYC gate threshold (default $5k). */
+  kycThresholdCents?: bigint;
 }): LargeTransferDecision {
-  const threshold = input.thresholdCents ?? DEFAULT_LARGE_TRANSFER_USD_CENTS;
-  if (threshold <= 0n) return { status: 'below_threshold' };
+  const reviewThreshold = input.thresholdCents ?? DEFAULT_LARGE_TRANSFER_USD_CENTS;
+  const kycThreshold = input.kycThresholdCents ?? DEFAULT_KYC_REQUIRED_USD_CENTS;
+
   if (input.decimals < 0 || input.decimals > 36) {
     return { status: 'price_unavailable', message: 'Invalid asset decimals.' };
   }
@@ -69,19 +91,39 @@ export function evaluateLargeTransferUsdCents(input: {
     };
   }
   if (input.amountSmallest <= 0n) return { status: 'below_threshold' };
+
   const scale = 10n ** BigInt(input.decimals);
   const notional = (input.amountSmallest * input.usdCentsPerWholeToken) / scale;
-  if (notional >= threshold) {
+
+  if (reviewThreshold > 0n && notional >= reviewThreshold) {
     return {
       status: 'review_required',
       notionalUsdCents: notional,
+      requiresKyc: kycThreshold > 0n && notional >= kycThreshold,
+      requiresAdminReview: true,
       message:
         'This transfer is at or above the Auvora review threshold. An administrator must approve before the user device may broadcast. Keys stay on the device. This is not a blockchain freeze.',
     };
   }
+
+  if (kycThreshold > 0n && notional >= kycThreshold) {
+    return {
+      status: 'kyc_required',
+      notionalUsdCents: notional,
+      requiresKyc: true,
+      requiresAdminReview: false,
+      message:
+        'Identity verification is required for transfers at or above the Auvora verification threshold. Complete verification to continue. Keys stay on the device.',
+    };
+  }
+
   return { status: 'below_threshold', notionalUsdCents: notional };
 }
 
 export function blocksUnauditedBroadcast(status: LargeTransferStatus): boolean {
   return status !== 'below_threshold';
+}
+
+export function isKycApprovedStatus(status: string | null | undefined): boolean {
+  return status === 'APPROVED';
 }

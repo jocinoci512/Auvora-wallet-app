@@ -8,6 +8,10 @@ import {
   ADMIN_EVENT_PUBLISHER,
   type AdminEventPublisherPort,
 } from '../../infrastructure/realtime/admin-event-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  type NotificationsPublisherPort,
+} from '../../infrastructure/notifications/notifications-publisher.adapter';
 import { NotFoundError, ValidationError } from '../../domain';
 import { evaluateLargeTransferUsdCents } from '../../domain/large-transfer-review';
 
@@ -72,6 +76,9 @@ export class AdminSimulationService {
     @Optional()
     @Inject(MARKET_DATA_HTTP_CLIENT)
     private readonly marketData?: MarketDataHttpClientPort,
+    @Optional()
+    @Inject(NOTIFICATIONS_PUBLISHER)
+    private readonly notifications?: NotificationsPublisherPort,
   ) {}
 
   async listActiveAssets(): Promise<Array<Record<string, string | number | null>>> {
@@ -815,23 +822,46 @@ export class AdminSimulationService {
       severity: 'info',
       metadata: { assetCode: updated.asset.code, network: updated.network },
     });
+    await this.notifications?.publishEvent({
+      eventType: 'wallet.transfer_review.approved',
+      aggregateId: reviewId,
+      payload: {
+        ownerUserId: updated.ownerUserId,
+        assetCode: updated.asset.code,
+        network: updated.network,
+      },
+    });
     return updated;
   }
 
   async rejectReview(reviewId: string, actorUserId: string, reason: string): Promise<unknown> {
+    const trimmed = reason.trim();
+    if (trimmed.length < 3) {
+      throw new ValidationError('A rejection reason is required');
+    }
     const updated = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.largeTransferReview.findUnique({ where: { id: reviewId } });
+      if (!existing) throw new NotFoundError('Transaction review not found');
+      const prevMeta =
+        existing.metadata &&
+        typeof existing.metadata === 'object' &&
+        !Array.isArray(existing.metadata)
+          ? (existing.metadata as Record<string, unknown>)
+          : {};
       const claimed = await tx.largeTransferReview.updateMany({
         where: { id: reviewId, status: LargeTransferReviewStatus.PENDING },
         data: {
           status: LargeTransferReviewStatus.REJECTED,
           decisionAt: new Date(),
           decisionByUserId: actorUserId,
-          rejectionReason: reason,
+          rejectionReason: trimmed,
+          metadata: {
+            ...prevMeta,
+            customerVisibleReason: trimmed,
+          } as Prisma.InputJsonValue,
         },
       });
       if (claimed.count !== 1) {
-        const existing = await tx.largeTransferReview.findUnique({ where: { id: reviewId } });
-        if (!existing) throw new NotFoundError('Transaction review not found');
         throw new ValidationError('Transaction review is no longer pending');
       }
       const review = await tx.largeTransferReview.findUniqueOrThrow({
@@ -850,16 +880,31 @@ export class AdminSimulationService {
       return review;
     });
     await this.recordAudit('LARGE_TRANSFER_REVIEW_REJECTED', actorUserId, updated.ownerUserId, {
-      reason,
+      reason: trimmed,
       reviewId,
       assetCode: updated.asset.code,
+      customerVisibleReason: trimmed,
     });
     await this.adminEvents.publish({
       type: 'TRANSACTION_REVIEW_REJECTED',
       userId: updated.ownerUserId,
       targetId: reviewId,
       severity: 'warning',
-      metadata: { assetCode: updated.asset.code, network: updated.network },
+      metadata: {
+        assetCode: updated.asset.code,
+        network: updated.network,
+        customerVisibleReason: trimmed.slice(0, 500),
+      },
+    });
+    await this.notifications?.publishEvent({
+      eventType: 'wallet.transfer_review.rejected',
+      aggregateId: reviewId,
+      payload: {
+        ownerUserId: updated.ownerUserId,
+        assetCode: updated.asset.code,
+        network: updated.network,
+        customerVisibleReason: trimmed.slice(0, 500),
+      },
     });
     return updated;
   }

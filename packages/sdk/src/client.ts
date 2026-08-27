@@ -2265,6 +2265,14 @@ export class AuvoraClient {
     });
   }
 
+  async adminRequestKycResubmission(id: string, reason: string): Promise<VerificationRequest> {
+    return this.request<VerificationRequest>(
+      'POST',
+      `/api/v1/admin/compliance/kyc/${id}/resubmission`,
+      { reason },
+    );
+  }
+
   async adminListComplianceAlerts(): Promise<{ items: AmlAlert[]; total: number }> {
     return this.request<{ items: AmlAlert[]; total: number }>(
       'GET',

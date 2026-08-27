@@ -1,4 +1,5 @@
 import 'package:auvora_wallet/main.dart';
+import 'package:auvora_wallet/account/account_controller.dart';
 import 'package:auvora_wallet/ui/splash_screen.dart';
 import 'package:auvora_wallet/ui/unlock_screen.dart';
 import 'package:auvora_wallet/ui/welcome_screen.dart';
@@ -71,17 +72,21 @@ void main() {
   testWidgets('welcome brand-first layout on phone canvas', (tester) async {
     await pumpPhone(
       tester,
-      ChangeNotifierProvider(
-        create: (_) => WalletController(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => WalletController()),
+          ChangeNotifierProvider(create: (_) => AccountController()),
+        ],
         child: const WelcomeScreen(),
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('Auvora'), findsOneWidget);
-    expect(find.text('Create a new wallet'), findsOneWidget);
-    expect(find.text('I already have a wallet'), findsOneWidget);
-    expect(find.textContaining('Self-custody'), findsOneWidget);
+    expect(find.text('Welcome to Auvora'), findsOneWidget);
+    expect(find.text('Create Account'), findsOneWidget);
+    expect(find.text('Sign In'), findsOneWidget);
+    expect(find.textContaining('One account'), findsOneWidget);
+    expect(find.text('A'), findsOneWidget);
   });
 
   testWidgets('unlock screen calm hierarchy', (tester) async {

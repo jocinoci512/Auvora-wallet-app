@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import '../../app/onboarding.css';
+import { isSignedIn } from '../../lib/auth/session';
 
 function OrbitIllustration(): ReactElement {
   return (
@@ -48,7 +49,11 @@ function OrbitIllustration(): ReactElement {
 }
 
 export function OnboardingExperience(): ReactElement {
-  const [phase, setPhase] = useState<'welcome' | 'account' | 'choose'>('welcome');
+  const [phase, setPhase] = useState<'welcome' | 'wallet'>('welcome');
+
+  useEffect(() => {
+    if (isSignedIn()) setPhase('wallet');
+  }, []);
 
   if (phase === 'welcome') {
     return (
@@ -57,73 +62,25 @@ export function OnboardingExperience(): ReactElement {
         <section className="ob-welcome" aria-labelledby="ob-welcome-title">
           <OrbitIllustration />
           <p className="ob-brand">Auvora</p>
-          <h1 id="ob-welcome-title">A calm start for self-custody.</h1>
+          <h1 id="ob-welcome-title">Welcome to Auvora</h1>
           <p className="ob-welcome__lede">
-            First an optional Auvora Account for identity. Then a wallet whose keys stay on your
-            devices.
+            Create one account for Web and Android. After you sign in, set up a self-custody wallet
+            on this device. Keys never leave your devices.
           </p>
           <div className="ob-welcome__cta">
-            <button
-              type="button"
-              className="ob-btn ob-btn--primary ob-btn--lg"
-              onClick={() => setPhase('account')}
-            >
-              Continue
-            </button>
-            <Link href="/dashboard" className="ob-btn ob-btn--ghost ob-btn--lg">
-              I already have a wallet
+            <Link href="/auth/register" className="ob-btn ob-btn--primary ob-btn--lg">
+              Create Account
+            </Link>
+            <Link href="/auth/login" className="ob-btn ob-btn--ghost ob-btn--lg">
+              Sign In
             </Link>
           </div>
+          <p className="ob__reassure" style={{ marginTop: '1.25rem' }}>
+            Already have a recovery phrase? Sign in first, then restore your wallet on this device.
+            Password reset restores account access only — it cannot decrypt wallet material
+            encrypted with another secret.
+          </p>
         </section>
-      </div>
-    );
-  }
-
-  if (phase === 'account') {
-    return (
-      <div className="ob ob--wide" role="main">
-        <div className="ob-atmosphere" aria-hidden />
-        <header className="ob__header">
-          <p className="ob__eyebrow">
-            <button type="button" className="ob-back" onClick={() => setPhase('welcome')}>
-              Back
-            </button>
-          </p>
-          <h1 className="ob__title">Account and wallet are different</h1>
-          <p className="ob__sub">
-            Sign in if you want preferences across devices. You can still create a wallet on this
-            device without an account.
-          </p>
-        </header>
-        <div className="ob-paths">
-          <div className="ob-path">
-            <strong>Auvora Account</strong>
-            <span>
-              Identity, sessions, and preferences. Never receives private keys or a recovery phrase.
-            </span>
-          </div>
-          <div className="ob-path">
-            <strong>Non-custodial wallet</strong>
-            <span>
-              You control the cryptographic keys on this device. Backup is your recovery phrase.
-            </span>
-          </div>
-        </div>
-        <div className="ob-welcome__cta" style={{ marginTop: '1.5rem' }}>
-          <Link href="/auth/register" className="ob-btn ob-btn--primary ob-btn--lg">
-            Create account
-          </Link>
-          <Link href="/auth/login" className="ob-btn ob-btn--ghost ob-btn--lg">
-            Sign in
-          </Link>
-          <button
-            type="button"
-            className="ob-btn ob-btn--ghost ob-btn--lg"
-            onClick={() => setPhase('choose')}
-          >
-            Continue to wallet setup
-          </button>
-        </div>
       </div>
     );
   }
@@ -133,14 +90,18 @@ export function OnboardingExperience(): ReactElement {
       <div className="ob-atmosphere" aria-hidden />
       <header className="ob__header">
         <p className="ob__eyebrow">
-          <button type="button" className="ob-back" onClick={() => setPhase('account')}>
+          <button type="button" className="ob-back" onClick={() => setPhase('welcome')}>
             Back
           </button>
         </p>
         <h1 className="ob__title">Set up a wallet</h1>
-        <p className="ob__sub">Create a new wallet or import one you already control.</p>
+        <p className="ob__sub">
+          Your Auvora account is shared across platforms. Wallet keys for signing stay on this
+          device until a vetted cross-device vault architecture ships.
+        </p>
         <p className="ob__reassure">
-          Auvora does not receive your private keys through account login.
+          Auvora does not receive your private keys through account login. No manual “link mobile
+          wallet” step is required for account identity.
         </p>
       </header>
 
@@ -151,7 +112,7 @@ export function OnboardingExperience(): ReactElement {
         </Link>
         <Link href="/wallets/import" className="ob-path">
           <strong>Import or restore</strong>
-          <span>Use a recovery phrase or private key you already have.</span>
+          <span>Emergency restore with a recovery phrase you already control.</span>
         </Link>
       </div>
 
@@ -161,7 +122,7 @@ export function OnboardingExperience(): ReactElement {
           <Link href="/wallets/restore">Restore from backup</Link>
           <Link href="/wallets/hardware">Hardware wallet</Link>
           <Link href="/wallets/watch">Watch-only</Link>
-          <Link href="/wallets/recovery">Recovery rehearsal</Link>
+          <Link href="/compliance">Identity verification (KYC)</Link>
         </div>
       </details>
     </div>

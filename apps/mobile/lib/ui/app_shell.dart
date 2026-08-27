@@ -15,6 +15,7 @@ import 'splash_screen.dart';
 import 'unlock_screen.dart';
 import 'verify_screen.dart';
 import 'welcome_screen.dart';
+import 'wallet_choice_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -90,6 +91,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         return const UnlockScreen();
       case AppStage.welcome:
         return const WelcomeScreen();
+      case AppStage.walletChoice:
+        return const WalletChoiceScreen();
       case AppStage.createExplain:
         return const CreateExplainScreen();
       case AppStage.createBackup:

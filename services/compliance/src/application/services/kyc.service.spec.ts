@@ -146,6 +146,7 @@ function makeService(options: MockOptions = {}) {
     score: jest.fn().mockResolvedValue({ score: 30, band: options.riskBand ?? 'LOW', factors: {} }),
   };
   const notifications = { publishEvent: jest.fn().mockResolvedValue(undefined) };
+  const adminEvents = { publish: jest.fn().mockResolvedValue(undefined) };
   const ai = { publishEvent: jest.fn().mockResolvedValue(undefined) };
   const analytics = { publishEvent: jest.fn().mockResolvedValue(undefined) };
 
@@ -160,11 +161,12 @@ function makeService(options: MockOptions = {}) {
     pep as never,
     riskProvider as never,
     notifications as never,
+    adminEvents as never,
     ai as never,
     analytics as never,
   );
 
-  return { service, prisma, events, identity, sanctions, pep, notifications };
+  return { service, prisma, events, identity, sanctions, pep, notifications, adminEvents };
 }
 
 describe('KycService', () => {

@@ -1,14 +1,20 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Prisma, PrismaService } from '@auvora/database';
 import {
   ADMIN_EVENT_PUBLISHER,
   type AdminEventPublisherPort,
 } from '../../infrastructure/realtime/admin-event-publisher.adapter';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  type NotificationsPublisherPort,
+} from '../../infrastructure/notifications/notifications-publisher.adapter';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../domain';
 import {
   USER_TRANSFER_SOURCE_TYPE,
   blocksUnauditedBroadcast,
   evaluateLargeTransferUsdCents,
+  isKycApprovedStatus,
+  resolveKycRequiredThresholdCents,
   resolveLargeTransferThresholdCents,
 } from '../../domain/large-transfer-review';
 import {
@@ -69,6 +75,9 @@ export class TransferPrepareService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(WALLET_REPOSITORY) private readonly wallets: WalletRepositoryPort,
     @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
+    @Optional()
+    @Inject(NOTIFICATIONS_PUBLISHER)
+    private readonly notifications?: NotificationsPublisherPort,
   ) {}
 
   async prepare(input: PrepareTransferInput): Promise<PrepareTransferResult> {
@@ -96,6 +105,7 @@ export class TransferPrepareService {
       usdCentsPerWholeToken: price.usdCentsPerWholeToken,
       priceAt: price.timestamp,
       thresholdCents: resolveLargeTransferThresholdCents(input.networkEnv),
+      kycThresholdCents: resolveKycRequiredThresholdCents(input.networkEnv),
     });
 
     if (!blocksUnauditedBroadcast(decision.status)) {
@@ -112,7 +122,55 @@ export class TransferPrepareService {
       };
     }
 
-    const created = await this.createReview({
+    // Price failures fail closed into a persisted review (existing behavior).
+    if (decision.status === 'price_unavailable' || decision.status === 'stale_price') {
+      return this.createReview({
+        input,
+        wallet,
+        asset,
+        amount,
+        decisionStatus: decision.status,
+        notionalUsdCents: decision.notionalUsdCents ?? 0n,
+        price,
+        message: decision.message ?? 'This transfer requires administrator review before signing.',
+      });
+    }
+
+    if (decision.requiresKyc) {
+      const kycOk = await this.ownerHasApprovedKyc(input.ownerUserId);
+      if (!kycOk) {
+        return {
+          allowed: false,
+          status: 'kyc_required',
+          reviewId: null,
+          reviewStatus: null,
+          requestedAt: null,
+          message:
+            decision.message ??
+            'Identity verification is required before this transfer can continue.',
+          amountUsdCents: decision.notionalUsdCents?.toString() ?? null,
+          assetCode: asset.code,
+          network: asset.chain,
+        };
+      }
+    }
+
+    // KYC-only band ($5k–$9,999.99): approved KYC, no Admin review solely for threshold.
+    if (decision.status === 'kyc_required') {
+      return {
+        allowed: true,
+        status: 'kyc_satisfied',
+        reviewId: null,
+        reviewStatus: null,
+        requestedAt: null,
+        message: 'Identity verification is complete. Transfer may continue.',
+        amountUsdCents: decision.notionalUsdCents?.toString() ?? null,
+        assetCode: asset.code,
+        network: asset.chain,
+      };
+    }
+
+    return this.createReview({
       input,
       wallet,
       asset,
@@ -122,7 +180,15 @@ export class TransferPrepareService {
       price,
       message: decision.message ?? 'This transfer requires administrator review before signing.',
     });
-    return created;
+  }
+
+  /** Soft FK: KycProfile.ownerUserId matches auth User id. No secrets. */
+  private async ownerHasApprovedKyc(ownerUserId: string): Promise<boolean> {
+    const profile = await this.prisma.kycProfile.findUnique({
+      where: { ownerUserId },
+      select: { status: true },
+    });
+    return isKycApprovedStatus(profile?.status);
   }
 
   private async createReview(args: {
@@ -192,6 +258,17 @@ export class TransferPrepareService {
           simulated: false,
           sourceType: USER_TRANSFER_SOURCE_TYPE,
           status: review.status,
+        },
+      });
+      await this.notifications?.publishEvent({
+        eventType: 'wallet.transfer_review.pending',
+        aggregateId: review.id,
+        payload: {
+          ownerUserId: args.input.ownerUserId,
+          assetCode: args.asset.code,
+          network: args.asset.chain,
+          amountUsdCents: args.notionalUsdCents.toString(),
+          decisionStatus: args.decisionStatus,
         },
       });
       return {

@@ -978,6 +978,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         );
       }
       if (!prepared.allowed) {
+        if (prepared.status == 'kyc_required') {
+          throw StateError(
+            'Identity verification required. Complete verification in Auvora Account before this transfer can continue. Nothing was signed.',
+          );
+        }
         final reviewId = prepared.reviewId?.trim();
         if (reviewId == null || reviewId.isEmpty) {
           // Fail closed: never claim Admin is waiting without a persisted review.

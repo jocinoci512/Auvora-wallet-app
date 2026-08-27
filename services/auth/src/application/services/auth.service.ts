@@ -191,6 +191,14 @@ export class AuthService {
       userAgent: ctx.userAgent,
     });
 
+    await this.analytics.publishEvent({
+      eventType: 'auth.account.created',
+      domain: 'AUTH',
+      aggregateId: user.id,
+      ownerUserId: user.id,
+      payload: { username, emailVerified: false },
+    });
+
     this.emitAdminEvent({
       type: 'USER_CREATED',
       service: 'auth',

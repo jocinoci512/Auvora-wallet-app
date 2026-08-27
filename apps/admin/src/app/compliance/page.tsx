@@ -6,10 +6,15 @@ import {
   type ComplianceProvider,
   type VerificationRequest,
 } from '@auvora/sdk';
-import { Button } from '@auvora/ui';
+import { Button, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { ConfirmReasonDialog } from '../../components/ConfirmReasonDialog';
 import { createApiClient, formatApiError } from '../../lib/api-client';
+import { useRealtimeRefetch } from '../../lib/admin-realtime-context';
+import type { AdminEvent } from '../../lib/realtime/admin-event';
+
+type PendingKyc = { id: string; kind: 'reject' | 'resubmit' };
 
 export default function AdminCompliancePage(): ReactElement {
   const [metrics, setMetrics] = useState<ComplianceDashboardMetrics | null>(null);
@@ -17,6 +22,8 @@ export default function AdminCompliancePage(): ReactElement {
   const [providers, setProviders] = useState<ComplianceProvider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingKyc | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -43,33 +50,53 @@ export default function AdminCompliancePage(): ReactElement {
     void load();
   }, [load]);
 
+  useRealtimeRefetch(
+    (event: AdminEvent) => event.type === 'COMPLIANCE_STATUS_CHANGED',
+    () => void load(),
+    800,
+  );
+
   async function approve(id: string): Promise<void> {
     setMessage(null);
     try {
       const client = createApiClient();
       await client.adminApproveKyc(id);
-      setMessage('Approved');
+      setMessage('KYC approved');
       await load();
     } catch (err) {
       setError(formatApiError(err));
     }
   }
 
-  async function reject(id: string): Promise<void> {
+  async function confirmReason(reason: string): Promise<void> {
+    if (!pending) return;
+    setBusy(true);
     setMessage(null);
     try {
       const client = createApiClient();
-      await client.adminRejectKyc(id, 'Rejected by admin review');
-      setMessage('Rejected');
+      if (pending.kind === 'reject') {
+        await client.adminRejectKyc(pending.id, reason);
+        setMessage('KYC rejected');
+      } else {
+        await client.adminRequestKycResubmission(pending.id, reason);
+        setMessage('Resubmission requested');
+      }
+      setPending(null);
       await load();
     } catch (err) {
       setError(formatApiError(err));
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <main>
-      <h1>Compliance admin</h1>
+    <main className="page">
+      <h1>KYC queue</h1>
+      <p>
+        Review identity verification submissions. Reasons shown to customers must be safe and
+        specific. Document binaries are never returned by this UI.
+      </p>
       <p>
         <Link href="/compliance/alerts">AML alerts</Link> ·{' '}
         <Link href="/compliance/cases">Cases</Link> · <Link href="/compliance/rules">Rules</Link>
@@ -78,42 +105,81 @@ export default function AdminCompliancePage(): ReactElement {
       {message ? <p>{message}</p> : null}
       {metrics ? (
         <section>
-          <h2>Dashboard</h2>
+          <p>Pending KYC: {metrics.pendingKyc}</p>
+          <p>Open alerts: {metrics.openAlerts}</p>
+        </section>
+      ) : null}
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Request</th>
+            <th>User</th>
+            <th>Status</th>
+            <th>Level</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {queue.map((row) => (
+            <tr key={row.id}>
+              <td className="mono">{row.id.slice(0, 8)}…</td>
+              <td className="mono">
+                <Link href={`/users/${row.ownerUserId}`}>{row.ownerUserId.slice(0, 8)}…</Link>
+              </td>
+              <td>
+                <StatusBadge status={row.status} />
+              </td>
+              <td>{row.requestedLevel}</td>
+              <td>
+                <Button type="button" onClick={() => void approve(row.id)}>
+                  Approve
+                </Button>{' '}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setPending({ id: row.id, kind: 'reject' })}
+                >
+                  Reject
+                </Button>{' '}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setPending({ id: row.id, kind: 'resubmit' })}
+                >
+                  Request resubmission
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {providers.length > 0 ? (
+        <section>
+          <h2>Providers</h2>
           <ul>
-            <li>Open alerts: {metrics.openAlerts}</li>
-            <li>Open cases: {metrics.openCases}</li>
-            <li>Pending KYC: {metrics.pendingKyc}</li>
-            <li>Providers: {metrics.enabledProviders}</li>
-            <li>Rules: {metrics.enabledRules}</li>
+            {providers.map((p) => (
+              <li key={p.code}>
+                {p.code} — {p.isEnabled ? 'enabled' : 'disabled'} (priority {p.priority})
+              </li>
+            ))}
           </ul>
         </section>
       ) : null}
-      <section>
-        <h2>KYC queue</h2>
-        <ul>
-          {queue.map((item) => (
-            <li key={item.id}>
-              {item.ownerUserId.slice(0, 8)}… — {item.requestedLevel} — {item.status}{' '}
-              <Button type="button" onClick={() => void approve(item.id)}>
-                Approve
-              </Button>{' '}
-              <Button type="button" onClick={() => void reject(item.id)}>
-                Reject
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h2>Providers</h2>
-        <ul>
-          {providers.map((p) => (
-            <li key={p.id}>
-              {p.code} ({p.providerType}) — {p.isEnabled ? 'enabled' : 'disabled'}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ConfirmReasonDialog
+        open={pending !== null}
+        title={pending?.kind === 'resubmit' ? 'Request resubmission' : 'Reject KYC'}
+        description={
+          pending?.kind === 'resubmit'
+            ? 'Customer-visible instructions are required.'
+            : 'A customer-visible rejection reason is required.'
+        }
+        confirmLabel={pending?.kind === 'resubmit' ? 'Request resubmission' : 'Reject'}
+        pending={busy}
+        onOpenChange={(open) => {
+          if (!open) setPending(null);
+        }}
+        onConfirm={(reason) => void confirmReason(reason)}
+      />
     </main>
   );
 }

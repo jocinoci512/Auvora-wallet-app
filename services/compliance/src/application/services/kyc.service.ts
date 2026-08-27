@@ -32,6 +32,10 @@ import {
   NOTIFICATIONS_PUBLISHER,
   type NotificationsPublisherPort,
 } from '../../infrastructure/notifications/notifications-publisher.adapter';
+import {
+  ADMIN_EVENT_PUBLISHER,
+  type AdminEventPublisherPort,
+} from '../../infrastructure/realtime/admin-event-publisher.adapter';
 import { ID_GENERATOR, type IdGeneratorPort } from '../ports/clock.port';
 import {
   DOCUMENT_VERIFICATION_PROVIDER,
@@ -72,9 +76,29 @@ export class KycService {
     @Inject(PEP_PROVIDER) private readonly pep: PEPProvider,
     @Inject(RISK_SCORING_PROVIDER) private readonly riskProvider: RiskScoringProvider,
     @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
+    @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
     @Inject(AI_PUBLISHER) private readonly ai: AiPublisherPort,
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
   ) {}
+
+  private async emitAdminKycStatus(input: {
+    ownerUserId: string;
+    targetId: string;
+    status: string;
+    reason?: string;
+  }): Promise<void> {
+    await this.adminEvents.publish({
+      type: 'COMPLIANCE_STATUS_CHANGED',
+      severity:
+        input.status === 'REJECTED' || input.status === 'RENEWAL_REQUIRED' ? 'warning' : 'info',
+      userId: input.ownerUserId,
+      targetId: input.targetId,
+      metadata: {
+        status: input.status,
+        ...(input.reason ? { customerVisibleReason: input.reason.slice(0, 500) } : {}),
+      },
+    });
+  }
 
   async getOrCreateProfile(ownerUserId: string) {
     const existing = await this.prisma.kycProfile.findUnique({ where: { ownerUserId } });
@@ -108,6 +132,16 @@ export class KycService {
 
     await this.events.publish({
       type: ComplianceEventType.KYCStarted,
+      aggregateId: request.id,
+      payload: { ownerUserId, requestedLevel: input.requestedLevel },
+    });
+    await this.emitAdminKycStatus({
+      ownerUserId,
+      targetId: request.id,
+      status: VerificationStatus.PENDING_PROVIDER,
+    });
+    await this.notifications.publishEvent({
+      eventType: 'compliance.kyc.submitted',
       aggregateId: request.id,
       payload: { ownerUserId, requestedLevel: input.requestedLevel },
     });
@@ -402,11 +436,20 @@ export class KycService {
       ownerUserId: request.ownerUserId,
       payload: { ownerUserId: request.ownerUserId, level: request.requestedLevel },
     });
+    await this.emitAdminKycStatus({
+      ownerUserId: request.ownerUserId,
+      targetId: updated.id,
+      status: VerificationStatus.APPROVED,
+    });
     return updated;
   }
 
   async reject(requestId: string, reviewer: JwtAccessClaims, reason: string) {
     this.assertReviewer(reviewer);
+    const trimmed = reason.trim();
+    if (trimmed.length < 3) {
+      throw new ValidationError('A rejection reason is required');
+    }
     const request = await this.prisma.verificationRequest.findUnique({ where: { id: requestId } });
     if (!request) throw new NotFoundError('Verification request not found');
     const updated = await this.prisma.verificationRequest.update({
@@ -414,7 +457,7 @@ export class KycService {
       data: {
         status: VerificationStatus.REJECTED,
         reviewerUserId: reviewer.sub,
-        rejectionReason: reason,
+        rejectionReason: trimmed,
         reviewedAt: new Date(),
         completedAt: new Date(),
       },
@@ -426,7 +469,72 @@ export class KycService {
     await this.events.publish({
       type: ComplianceEventType.KYCRejected,
       aggregateId: updated.id,
-      payload: { ownerUserId: request.ownerUserId, reason },
+      payload: { ownerUserId: request.ownerUserId, reason: trimmed },
+    });
+    await this.notifications.publishEvent({
+      eventType: 'compliance.kyc.rejected',
+      aggregateId: updated.id,
+      payload: {
+        ownerUserId: request.ownerUserId,
+        customerVisibleReason: trimmed,
+      },
+    });
+    await this.emitAdminKycStatus({
+      ownerUserId: request.ownerUserId,
+      targetId: updated.id,
+      status: VerificationStatus.REJECTED,
+      reason: trimmed,
+    });
+    return updated;
+  }
+
+  /** Ask the customer to resubmit — stores customer-visible instructions. */
+  async requestResubmission(requestId: string, reviewer: JwtAccessClaims, instructions: string) {
+    this.assertReviewer(reviewer);
+    const trimmed = instructions.trim();
+    if (trimmed.length < 3) {
+      throw new ValidationError('Resubmission instructions are required');
+    }
+    const request = await this.prisma.verificationRequest.findUnique({ where: { id: requestId } });
+    if (!request) throw new NotFoundError('Verification request not found');
+    const updated = await this.prisma.verificationRequest.update({
+      where: { id: requestId },
+      data: {
+        status: VerificationStatus.RENEWAL_REQUIRED,
+        reviewerUserId: reviewer.sub,
+        rejectionReason: trimmed,
+        reviewedAt: new Date(),
+      },
+    });
+    const profile = await this.prisma.kycProfile.findUnique({ where: { id: request.profileId } });
+    const prevMeta =
+      profile?.metadata && typeof profile.metadata === 'object' && !Array.isArray(profile.metadata)
+        ? (profile.metadata as Record<string, unknown>)
+        : {};
+    await this.prisma.kycProfile.update({
+      where: { id: request.profileId },
+      data: {
+        status: VerificationStatus.RENEWAL_REQUIRED,
+        metadata: {
+          ...prevMeta,
+          resubmissionRequired: true,
+          customerVisibleReason: trimmed,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    await this.notifications.publishEvent({
+      eventType: 'compliance.kyc.resubmission_required',
+      aggregateId: updated.id,
+      payload: {
+        ownerUserId: request.ownerUserId,
+        customerVisibleReason: trimmed,
+      },
+    });
+    await this.emitAdminKycStatus({
+      ownerUserId: request.ownerUserId,
+      targetId: updated.id,
+      status: VerificationStatus.RENEWAL_REQUIRED,
+      reason: trimmed,
     });
     return updated;
   }

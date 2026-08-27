@@ -178,6 +178,16 @@ export class AdminComplianceController {
     return successResponse(await this.kyc.reject(id, user, dto.reason));
   }
 
+  @Post('kyc/:id/resubmission')
+  @Permissions(PERMISSION_COMPLIANCE_REVIEW)
+  async requestResubmission(
+    @Param('id') id: string,
+    @Body() dto: RejectKycDto,
+    @CurrentUser() user: JwtAccessClaims,
+  ) {
+    return successResponse(await this.kyc.requestResubmission(id, user, dto.reason));
+  }
+
   @Get('documents')
   @Permissions(PERMISSION_COMPLIANCE_REVIEW)
   async documents() {

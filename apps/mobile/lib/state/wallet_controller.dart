@@ -17,6 +17,7 @@ enum AppStage {
   splash,
   unlock,
   welcome,
+  walletChoice,
   createExplain,
   createBackup,
   createVerify,
@@ -91,6 +92,7 @@ class WalletController extends ChangeNotifier {
     switch (stage) {
       case AppStage.createExplain:
       case AppStage.importPhrase:
+      case AppStage.walletChoice:
         return 1;
       case AppStage.createBackup:
         return 2;
@@ -243,6 +245,14 @@ class WalletController extends ChangeNotifier {
     stage = AppStage.welcome;
     draftMnemonic = null;
     draftBackupConfirmed = false;
+    errorMessage = null;
+    notifyListeners();
+  }
+
+  void goWalletChoice() {
+    draftMnemonic = null;
+    draftBackupConfirmed = false;
+    stage = AppStage.walletChoice;
     errorMessage = null;
     notifyListeners();
   }

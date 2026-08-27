@@ -20,11 +20,13 @@ import { ConfirmReasonDialog } from '../../../components/ConfirmReasonDialog';
 import { Subnav } from '../../../components/Subnav';
 import {
   adminGetSimulationAccount,
+  adminListLargeTransferReviews,
   adminListUserDevices,
   adminListUserSessions,
   type AdminUserAccount,
   type AdminUserDevice,
   type AdminUserSession,
+  type LargeTransferReviewRow,
   type SimulationAccountView,
 } from '../../../lib/admin-control-plane';
 import { displayName, formatWhen, shortId } from '../../../lib/admin-format';
@@ -34,6 +36,7 @@ import { createApiClient, formatAdminError, isStepUpRequired } from '../../../li
 import { IDENTITY_LINKS } from '../../../lib/section-nav';
 import { useRealtimeRefetch } from '../../../lib/admin-realtime-context';
 import type { AdminEvent } from '../../../lib/realtime/admin-event';
+import type { VerificationRequest } from '@auvora/sdk';
 
 const ROLE_OPTIONS = ['user', 'admin', 'super_admin'];
 const STATUS_OPTIONS = ['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'LOCKED', 'DEACTIVATED'];
@@ -68,6 +71,8 @@ export default function AdminUserDetailPage(): ReactElement {
     portfolioLedgerTotal: string;
   } | null>(null);
   const [simulation, setSimulation] = useState<SimulationAccountView | null>(null);
+  const [kycLatest, setKycLatest] = useState<VerificationRequest | null>(null);
+  const [reviews, setReviews] = useState<LargeTransferReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -92,6 +97,8 @@ export default function AdminUserDetailPage(): ReactElement {
         auditResult,
         portfolioResult,
         simulationResult,
+        kycQueue,
+        reviewResult,
       ] = await Promise.all([
         client.adminGetUser(userId),
         client.adminListWallets({ ownerUserId: userId, take: 50 }).catch(() => ({ items: [] })),
@@ -101,6 +108,12 @@ export default function AdminUserDetailPage(): ReactElement {
         client.adminListAudit({ targetUserId: userId, take: 50 }).catch(() => ({ logs: [] })),
         client.getWalletEnginePortfolio(userId).catch(() => null),
         adminGetSimulationAccount(userId).catch(() => null),
+        client.adminComplianceKycQueue().catch(() => [] as VerificationRequest[]),
+        adminListLargeTransferReviews({ ownerUserId: userId, take: 20 }).catch(() => ({
+          items: [] as LargeTransferReviewRow[],
+          total: 0,
+          counts: {},
+        })),
       ]);
       const account = profile as AdminUserAccount;
       setUser(account);
@@ -113,6 +126,11 @@ export default function AdminUserDetailPage(): ReactElement {
       setAudit(auditResult.logs);
       setPortfolio(portfolioResult as typeof portfolio);
       setSimulation(simulationResult);
+      const userKyc = (kycQueue as VerificationRequest[])
+        .filter((row) => row.ownerUserId === userId)
+        .sort((a, b) => String(b.id).localeCompare(String(a.id)));
+      setKycLatest(userKyc[0] ?? null);
+      setReviews(reviewResult.items);
     } catch (err) {
       setError(formatAdminError(err));
     } finally {
@@ -266,6 +284,52 @@ export default function AdminUserDetailPage(): ReactElement {
                   <dd>{user.username}</dd>
                   <dt>Verified</dt>
                   <dd>{user.emailVerified ? 'Yes' : 'No'}</dd>
+                  <dt>KYC</dt>
+                  <dd>
+                    {kycLatest ? (
+                      <>
+                        <StatusBadge status={kycLatest.status} />{' '}
+                        <span className="muted">
+                          level {kycLatest.requestedLevel}
+                          {kycLatest.rejectionReason
+                            ? ` — ${String(kycLatest.rejectionReason).slice(0, 160)}`
+                            : ''}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="muted">Not started</span>
+                    )}{' '}
+                    · <Link href="/compliance">KYC queue</Link>
+                  </dd>
+                  <dt>Public wallets</dt>
+                  <dd>
+                    {wallets.length === 0
+                      ? 'None registered'
+                      : `${wallets.length} wallet(s) · ${addresses.length} address(es)`}{' '}
+                    · see Wallets tab
+                  </dd>
+                  <dt>Transfer reviews</dt>
+                  <dd>
+                    {reviews.length === 0 ? (
+                      'None'
+                    ) : (
+                      <>
+                        {reviews.slice(0, 5).map((r) => (
+                          <div key={r.id}>
+                            <StatusBadge status={r.status} /> {r.assetCode} · $
+                            {(Number(r.amountUsdCents) / 100).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                            {r.rejectionReason
+                              ? ` — ${String(r.rejectionReason).slice(0, 120)}`
+                              : ''}
+                          </div>
+                        ))}
+                      </>
+                    )}{' '}
+                    · <Link href="/transaction-reviews">All reviews</Link>
+                  </dd>
                   <dt>Roles</dt>
                   <dd>{user.roles.join(', ') || '—'}</dd>
                 </dl>

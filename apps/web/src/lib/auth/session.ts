@@ -60,8 +60,16 @@ function toAuthUser(me: UserProfile): AuthUser {
 }
 
 function usernameFromEmail(email: string): string {
-  const base = email.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '_') || 'auvora';
-  return base.slice(0, 24) || 'auvora';
+  const base =
+    email
+      .split('@')[0]
+      ?.toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '') || 'auvora';
+  const suffix = Date.now().toString(36).slice(-6);
+  const combined = `${base.slice(0, 18)}_${suffix}`;
+  return combined.slice(0, 28);
 }
 
 function applyClientTokens(client: ReturnType<typeof createApiClient>, csrf?: string | null): void {

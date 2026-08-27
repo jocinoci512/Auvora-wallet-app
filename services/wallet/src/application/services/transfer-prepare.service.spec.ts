@@ -88,6 +88,9 @@ function createService(overrides?: {
     securityAuditLog: {
       create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
     },
+    kycProfile: {
+      findUnique: jest.fn().mockResolvedValue({ status: 'APPROVED' }),
+    },
     ...(overrides?.prisma ?? {}),
   };
   const wallets = {
@@ -130,15 +133,46 @@ describe('real user transfer prepare', () => {
     expect(approveSrc).not.toMatch(/signTransaction|privateKey|mnemonic|seedPhrase/);
   });
 
-  it('does not create a review below $9,999.99', async () => {
+  it('does not create a review below $4,999.99', async () => {
     const { service, prisma, adminEvents } = createService();
-    const result = await service.prepare(prepareInput('9999.99'));
+    const result = await service.prepare(prepareInput('4999.99'));
     expect(result.allowed).toBe(true);
     expect(result.status).toBe('below_threshold');
     expect(result.reviewId).toBeNull();
-    expect(result.amountUsdCents).toBe('999999');
+    expect(result.amountUsdCents).toBe('499999');
     expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
     expect(adminEvents.publish).not.toHaveBeenCalled();
+  });
+
+  it('requires KYC at $5,000.00 without creating an Admin review', async () => {
+    const { service, prisma } = createService({
+      prisma: {
+        kycProfile: { findUnique: jest.fn().mockResolvedValue({ status: 'DRAFT' }) },
+      },
+    });
+    const result = await service.prepare(prepareInput('5000.00'));
+    expect(result.allowed).toBe(false);
+    expect(result.status).toBe('kyc_required');
+    expect(result.reviewId).toBeNull();
+    expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
+  });
+
+  it('allows $5,000.00 when KYC is APPROVED without Admin review', async () => {
+    const { service, prisma } = createService();
+    const result = await service.prepare(prepareInput('5000.00'));
+    expect(result.allowed).toBe(true);
+    expect(result.status).toBe('kyc_satisfied');
+    expect(result.reviewId).toBeNull();
+    expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
+  });
+
+  it('allows $9,999.99 with KYC and without Admin review', async () => {
+    const { service, prisma } = createService();
+    const result = await service.prepare(prepareInput('9999.99'));
+    expect(result.allowed).toBe(true);
+    expect(result.status).toBe('kyc_satisfied');
+    expect(result.reviewId).toBeNull();
+    expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
   });
 
   it('creates a pending review at exactly $10,000.00', async () => {

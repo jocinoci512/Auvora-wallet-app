@@ -101,22 +101,24 @@ export type AuthEmailContent = {
 
 export function buildVerifyEmail(verifyUrl: string): AuthEmailContent {
   return {
-    subject: 'Verify your Auvora Wallet account',
+    subject: 'Welcome to Auvora — verify your email',
     text: layoutText({
       title: 'Verify your email',
       bodyLines: [
-        'Welcome to Auvora Wallet.',
-        'Confirm your email address to activate sign-in for this account.',
+        'Your Auvora account was created.',
+        'Confirm your email address to activate sign-in for Web and Android.',
         'This link expires in 24 hours and can be used once.',
+        'Account password reset restores sign-in only — it cannot decrypt self-custody keys on your devices.',
       ],
       ctaLabel: 'Verify email',
       ctaUrl: verifyUrl,
     }),
     html: layoutHtml({
       title: 'Verify your email',
-      preheader: 'Confirm your email to activate your Auvora Wallet account.',
-      bodyHtml: `<p style="margin:0 0 12px;">Welcome to Auvora Wallet.</p>
-        <p style="margin:0 0 12px;">Confirm your email address to activate sign-in for this account. This link expires in 24 hours and can be used once.</p>`,
+      preheader: 'Confirm your email to activate your Auvora account.',
+      bodyHtml: `<p style="margin:0 0 12px;">Your Auvora account was created.</p>
+        <p style="margin:0 0 12px;">Confirm your email address to activate sign-in for Web and Android. This link expires in 24 hours and can be used once.</p>
+        <p style="margin:0 0 12px;">Account password reset restores sign-in only — it cannot decrypt self-custody keys on your devices.</p>`,
       ctaLabel: 'Verify email',
       ctaUrl: verifyUrl,
     }),
@@ -130,6 +132,7 @@ export function buildPasswordResetEmail(resetUrl: string): AuthEmailContent {
       title: 'Reset your password',
       bodyLines: [
         'We received a request to reset the password for your Auvora Wallet account.',
+        'This restores account sign-in only. It does not decrypt self-custody wallet keys stored on your devices.',
         'This link expires in 1 hour and can be used once.',
         'If you did not request a reset, you can safely ignore this message.',
       ],
@@ -138,8 +141,9 @@ export function buildPasswordResetEmail(resetUrl: string): AuthEmailContent {
     }),
     html: layoutHtml({
       title: 'Reset your password',
-      preheader: 'Use this one-time link to reset your Auvora Wallet password.',
+      preheader: 'Reset account password — does not decrypt device wallet keys.',
       bodyHtml: `<p style="margin:0 0 12px;">We received a request to reset the password for your Auvora Wallet account.</p>
+        <p style="margin:0 0 12px;">This restores account sign-in only. It does not decrypt self-custody wallet keys stored on your devices.</p>
         <p style="margin:0 0 12px;">This link expires in 1 hour and can be used once. If you did not request a reset, you can safely ignore this message.</p>`,
       ctaLabel: 'Reset password',
       ctaUrl: resetUrl,

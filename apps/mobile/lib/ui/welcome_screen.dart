@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../account/account_controller.dart';
+import '../account/ui/account_screen.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 
+/// Account-first welcome: Create Account / Sign In before wallet setup.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final c = context.watch<WalletController>();
+    final account = context.watch<AccountController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    // Already signed in during onboarding — continue to wallet choice.
+    if (account.isSignedIn && !c.onboardingComplete) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) c.goWalletChoice();
+      });
+    }
 
     return Scaffold(
       body: DecoratedBox(
@@ -57,7 +68,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'Auvora',
+                  'Welcome to Auvora',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -66,32 +77,45 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'A calm wallet for digital value.\nYou hold the keys — we never ask for them.',
+                  'One account for Android and Web.\n'
+                  'Your wallet keys stay on this device — we never ask for them.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: AetherColors.mutedFor(context),
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 28),
-                Text(
-                  'Self-custody means your recovery phrase is the backup. Write it down privately. Support will never ask for it.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AetherColors.lagoonSoft,
-                    fontWeight: FontWeight.w600,
-                    height: 1.45,
-                  ),
-                ),
                 const Spacer(flex: 3),
                 FilledButton(
-                  onPressed: c.startCreate,
-                  child: const Text('Create a new wallet'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AccountScreen(onboardingMode: true),
+                      ),
+                    );
+                  },
+                  child: const Text('Create Account'),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton(
-                  onPressed: c.startImport,
-                  child: const Text('I already have a wallet'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AccountScreen(onboardingMode: true, preferSignIn: true),
+                      ),
+                    );
+                  },
+                  child: const Text('Sign In'),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: c.goWalletChoice,
+                  child: Text(
+                    'Restore or import wallet',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: AetherColors.mutedFor(context),
+                    ),
+                  ),
                 ),
               ],
             ),
