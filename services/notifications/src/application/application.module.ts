@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { BroadcastService } from './services/broadcast.service';
 import { DashboardService } from './services/dashboard.service';
+import { EventNotificationMapperService } from './services/event-notification-mapper.service';
 import { NotificationService } from './services/notification.service';
 import { PreferenceService } from './services/preference.service';
 import { QueueService } from './services/queue.service';
@@ -15,6 +16,7 @@ const SERVICES = [
   PreferenceService,
   QueueService,
   NotificationService,
+  EventNotificationMapperService,
   WebhookService,
   DashboardService,
   BroadcastService,

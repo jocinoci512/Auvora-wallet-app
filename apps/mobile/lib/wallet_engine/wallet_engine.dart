@@ -16,6 +16,8 @@ class WalletEngine {
   final BlockchainLayer _blockchainLayer;
   static const _uuid = Uuid();
 
+  SecureKeyStore get keyStore => _keyStore;
+
   WalletVaultRecord? _wallet;
   List<VaultIndexEntry> _vaults = const [];
   KeyMaterialState _keyState = KeyMaterialState.missing;

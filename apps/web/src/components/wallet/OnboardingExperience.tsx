@@ -96,17 +96,22 @@ export function OnboardingExperience(): ReactElement {
         </p>
         <h1 className="ob__title">Set up a wallet</h1>
         <p className="ob__sub">
-          Your Auvora account is shared across platforms. Wallet keys for signing stay on this
-          device until a vetted cross-device vault architecture ships.
+          Your Auvora account is shared across platforms. After sign-in, activate this device to
+          restore your encrypted vault (ciphertext only) or create a new wallet.
         </p>
         <p className="ob__reassure">
-          Auvora does not receive your private keys through account login. No manual “link mobile
-          wallet” step is required for account identity.
+          Auvora does not receive private keys through account login. Password reset restores
+          account access only — re-wrap the vault with your recovery phrase after changing your
+          password.
         </p>
       </header>
 
       <div className="ob-paths">
-        <Link href="/wallets/create" className="ob-path ob-path--primary">
+        <Link href="/wallets/activate" className="ob-path ob-path--primary">
+          <strong>Activate this device</strong>
+          <span>Restore an encrypted vault from the cloud, or upload a new one.</span>
+        </Link>
+        <Link href="/wallets/create" className="ob-path">
           <strong>Create a new wallet</strong>
           <span>Generate keys on this device, then write down the recovery phrase.</span>
         </Link>

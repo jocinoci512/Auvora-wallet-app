@@ -46,6 +46,10 @@ import {
 import { REDIS_PORT } from './redis/redis.port';
 import { RedisAdapter } from './redis/redis.adapter';
 import { ADMIN_EVENT_PUBLISHER } from '../application/ports/admin-event-publisher.port';
+import {
+  NotificationsPublisherAdapter,
+  NOTIFICATIONS_PUBLISHER,
+} from './notifications/notifications-publisher.adapter';
 import { RedisAdminEventPublisher } from './realtime/redis-admin-event-publisher.adapter';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
 
@@ -152,9 +156,14 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     NotificationsMailAdapter,
     AnalyticsPublisherAdapter,
     ObservabilityPublisherAdapter,
+    NotificationsPublisherAdapter,
     {
       provide: ANALYTICS_PUBLISHER,
       useExisting: AnalyticsPublisherAdapter,
+    },
+    {
+      provide: NOTIFICATIONS_PUBLISHER,
+      useExisting: NotificationsPublisherAdapter,
     },
     {
       provide: OBSERVABILITY_PUBLISHER,
@@ -184,6 +193,7 @@ import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adap
     FIELD_ENCRYPTION,
     MAIL_PORT,
     ANALYTICS_PUBLISHER,
+    NOTIFICATIONS_PUBLISHER,
     OBSERVABILITY_PUBLISHER,
     ADMIN_EVENT_PUBLISHER,
     LoggerInfrastructureModule,

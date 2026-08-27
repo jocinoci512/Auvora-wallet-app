@@ -5,7 +5,7 @@ import '../../state/wallet_controller.dart';
 import '../account_controller.dart';
 import '../auth_api_client.dart';
 import '../kyc_client.dart';
-import '../wallet_backend_sync.dart';
+import '../vault_sync_service.dart';
 
 /// Auvora account (backend identity) screen: create account, sign in, view
 /// profile, sign out. Kept separate from the on-device non-custodial wallet —
@@ -159,7 +159,7 @@ class _ProfileViewState extends State<_ProfileView> {
     final t = Theme.of(context);
     final account = widget.account;
     final AuthProfile? p = account.profile;
-    final sync = context.watch<WalletBackendSync>();
+    final vaultSync = context.watch<VaultSyncService>();
     final wallet = context.watch<WalletController>();
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -178,16 +178,14 @@ class _ProfileViewState extends State<_ProfileView> {
         _row(context, 'Email verified', (p?.emailVerified ?? false) ? 'Yes' : 'No'),
         _row(
           context,
-          'Wallet metadata',
-          sync.lastError != null
-              ? 'Sync failed — tap retry'
-              : sync.lastSuccessAt != null
-                  ? 'Synced (${sync.registeredCount} public addresses)'
-                  : wallet.unlocked
-                      ? 'Syncing automatically…'
-                      : 'Unlock wallet to register public addresses',
+          'Encrypted vault',
+          vaultSync.lastError != null
+              ? 'Sync issue — see below'
+              : vaultSync.lastStatus ??
+                  (wallet.unlocked
+                      ? 'Ready when you upload'
+                      : 'Unlock wallet to manage encrypted vault'),
         ),
-        const SizedBox(height: 8),
         _row(
           context,
           'Identity verification',
@@ -195,14 +193,39 @@ class _ProfileViewState extends State<_ProfileView> {
               ? 'Loading…'
               : (_kyc?.productLabel ?? (_kycError ?? 'Not started')),
         ),
-        if (sync.lastError != null) ...[
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: sync.busy || !wallet.unlocked
+        if (vaultSync.needsPasswordForRestore || vaultSync.needsPasswordForUpload) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: vaultSync.busy
                 ? null
-                : () => sync.syncIfPossible(account: account, wallet: wallet),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry wallet metadata sync'),
+                : () => _promptVaultPassword(
+                      context,
+                      restore: vaultSync.needsPasswordForRestore,
+                    ),
+            icon: Icon(
+              vaultSync.needsPasswordForRestore ? Icons.cloud_download : Icons.cloud_upload,
+            ),
+            label: Text(
+              vaultSync.needsPasswordForRestore
+                  ? 'Restore encrypted vault'
+                  : 'Upload encrypted vault',
+            ),
+          ),
+        ] else if (wallet.unlocked && wallet.vaults.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: vaultSync.busy
+                ? null
+                : () => _promptVaultPassword(context, restore: false),
+            icon: const Icon(Icons.cloud_upload_outlined),
+            label: const Text('Refresh encrypted vault'),
+          ),
+        ],
+        if (vaultSync.lastError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            vaultSync.lastError!,
+            style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.error),
           ),
         ],
         if (account.error != null) ...[
@@ -235,9 +258,10 @@ class _ProfileViewState extends State<_ProfileView> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Your wallet keys stay on this device. Signing out of your '
-                    'Auvora account never removes or uploads your wallet. '
-                    'Admin only receives public addresses and review metadata.',
+                    'Cloud vault stores ciphertext only (auvora-vault-v1). '
+                    'Password reset cannot decrypt it — after changing your account '
+                    'password, re-wrap the vault on a device that still has your '
+                    'recovery phrase, then upload again.',
                     style: t.textTheme.bodySmall,
                   ),
                 ),
@@ -264,6 +288,69 @@ class _ProfileViewState extends State<_ProfileView> {
           label: const Text('Sign out'),
         ),
       ],
+    );
+  }
+
+  Future<void> _promptVaultPassword(BuildContext context, {required bool restore}) async {
+    final passwordCtrl = TextEditingController();
+    final account = widget.account;
+    final wallet = context.read<WalletController>();
+    final vaultSync = context.read<VaultSyncService>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(restore ? 'Restore encrypted vault' : 'Upload encrypted vault'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              restore
+                  ? 'Enter your Auvora account password to decrypt the cloud vault on this device.'
+                  : 'Enter your Auvora account password to encrypt wallets for cross-device restore. '
+                      'Only ciphertext is uploaded.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordCtrl,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              decoration: const InputDecoration(labelText: 'Account password'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continue')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) {
+      passwordCtrl.dispose();
+      return;
+    }
+    final password = passwordCtrl.text;
+    passwordCtrl.dispose();
+    final success = restore
+        ? await vaultSync.restoreFromCloud(
+            account: account,
+            wallet: wallet,
+            password: password,
+          )
+        : await vaultSync.uploadLocalVault(
+            account: account,
+            wallet: wallet,
+            password: password,
+          );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? (vaultSync.lastStatus ?? (restore ? 'Vault restored' : 'Vault uploaded'))
+              : (vaultSync.lastError ?? 'Vault sync failed'),
+        ),
+      ),
     );
   }
 
@@ -331,18 +418,47 @@ class _AuthFormsState extends State<_AuthForms> {
       return;
     }
     final email = _email.text.trim();
+    final password = _password.text;
     final ok = _createMode
         ? await account.register(
             email: email,
             username: usernameFromEmail(email),
-            password: _password.text,
+            password: password,
           )
-        : await account.signIn(email: email, password: _password.text);
+        : await account.signIn(email: email, password: password);
     if (!mounted) return;
     if (!ok && account.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(account.error!)));
       return;
     }
+    if (ok) {
+      final wallet = context.read<WalletController>();
+      final vaultSync = context.read<VaultSyncService>();
+      await vaultSync.reconcileFlags(account: account, wallet: wallet);
+      if (vaultSync.needsPasswordForRestore) {
+        final restored = await vaultSync.restoreFromCloud(
+          account: account,
+          wallet: wallet,
+          password: password,
+        );
+        if (mounted && restored) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(vaultSync.lastStatus ?? 'Encrypted vault restored')),
+          );
+        } else if (mounted && vaultSync.lastError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(vaultSync.lastError!)),
+          );
+        }
+      } else if (wallet.unlocked && wallet.vaults.isNotEmpty) {
+        await vaultSync.uploadLocalVault(
+          account: account,
+          wallet: wallet,
+          password: password,
+        );
+      }
+    }
+    if (!mounted) return;
     if (ok && widget.onboardingMode) {
       context.read<WalletController>().goWalletChoice();
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -454,13 +570,13 @@ class _AuthFormsState extends State<_AuthForms> {
             child: const Text('Forgot password?'),
           ),
         const SizedBox(height: 12),
-        Text(
-          'Your Auvora account is the canonical identity across platforms. '
-          'We never receive your recovery phrase or private keys. '
-          'Password reset cannot unlock a wallet encrypted with another secret.',
-          textAlign: TextAlign.center,
-          style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.outline),
-        ),
+          Text(
+            'Password reset restores account login only. It cannot decrypt an '
+            'encrypted wallet vault — after a password change, re-wrap the vault '
+            'with your recovery phrase on a trusted device, then upload again.',
+            textAlign: TextAlign.center,
+            style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.outline),
+          ),
       ],
     );
   }

@@ -99,7 +99,7 @@ function AuthForm({ mode }: { mode: 'login' | 'register' }): ReactElement {
         return;
       }
       await signIn(email.trim(), password);
-      router.push('/dashboard');
+      router.push('/wallets/activate');
     } catch (err) {
       const message = humanizeAuthError(
         err,

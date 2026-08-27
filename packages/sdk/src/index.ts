@@ -184,4 +184,6 @@ export type {
   AdminAuditQuery,
   AdminMaintenanceNotice,
   CreateMaintenanceInput,
+  UpsertEncryptedVaultInput,
+  EncryptedVaultBlob,
 } from './client';

@@ -54,6 +54,10 @@ import {
   ADMIN_EVENT_PUBLISHER,
   type AdminEventPublisherPort,
 } from '../ports/admin-event-publisher.port';
+import {
+  NOTIFICATIONS_PUBLISHER,
+  type NotificationsPublisherPort,
+} from '../../infrastructure/notifications/notifications-publisher.adapter';
 import type { AdminEventInput } from '../../domain';
 
 export interface RequestContext {
@@ -130,8 +134,18 @@ export class AuthService {
     @Inject(CLOCK) private readonly clock: ClockPort,
     @Inject(ID_GENERATOR) private readonly ids: IdGeneratorPort,
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
+    @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
     @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
   ) {}
+
+  /** Fire-and-forget domain notification event — never blocks auth flows. */
+  private emitNotificationEvent(input: {
+    eventType: string;
+    aggregateId?: string;
+    payload: Record<string, unknown>;
+  }): void {
+    void this.notifications.publishEvent(input).catch(() => undefined);
+  }
 
   /** Fire-and-forget safe admin realtime emit; never throws into a domain flow. */
   private emitAdminEvent(input: AdminEventInput): void {
@@ -197,6 +211,11 @@ export class AuthService {
       aggregateId: user.id,
       ownerUserId: user.id,
       payload: { username, emailVerified: false },
+    });
+    this.emitNotificationEvent({
+      eventType: 'auth.account.created',
+      aggregateId: user.id,
+      payload: { ownerUserId: user.id, username },
     });
 
     this.emitAdminEvent({
@@ -370,6 +389,15 @@ export class AuthService {
           ipAddress: ctx.ipAddress,
         }),
       );
+      this.emitNotificationEvent({
+        eventType: 'auth.login.new_device',
+        aggregateId: device.id,
+        payload: {
+          ownerUserId: user.id,
+          deviceName: input.deviceName ?? 'Unknown device',
+          platform: input.devicePlatform ?? 'web',
+        },
+      });
     }
 
     return {
@@ -519,6 +547,11 @@ export class AuthService {
     const verifiedUser = await this.users.findById(userId);
     if (verifiedUser) {
       await this.sendSecurityMail(verifiedUser.email, buildEmailVerifiedNotice());
+      this.emitNotificationEvent({
+        eventType: 'auth.email.verified',
+        aggregateId: userId,
+        payload: { ownerUserId: userId },
+      });
     }
 
     return { message: 'Email verified successfully' };
@@ -614,6 +647,11 @@ export class AuthService {
     const resetUser = await this.users.findById(userId);
     if (resetUser) {
       await this.sendSecurityMail(resetUser.email, buildPasswordChangedNotice());
+      this.emitNotificationEvent({
+        eventType: 'auth.password.changed',
+        aggregateId: userId,
+        payload: { ownerUserId: userId, via: 'reset' },
+      });
     }
 
     return { message: 'Password reset successfully' };
@@ -648,6 +686,11 @@ export class AuthService {
     });
 
     await this.sendSecurityMail(user.email, buildPasswordChangedNotice());
+    this.emitNotificationEvent({
+      eventType: 'auth.password.changed',
+      aggregateId: userId,
+      payload: { ownerUserId: userId, via: 'change' },
+    });
 
     return { message: 'Password changed successfully' };
   }
@@ -757,6 +800,15 @@ export class AuthService {
       userId,
       targetId: deviceId,
       severity: 'warning',
+    });
+
+    this.emitNotificationEvent({
+      eventType: 'auth.device.revoked',
+      aggregateId: deviceId,
+      payload: {
+        ownerUserId: userId,
+        deviceName: device.name ?? device.platform ?? 'Device',
+      },
     });
 
     return { message: 'Device revoked' };

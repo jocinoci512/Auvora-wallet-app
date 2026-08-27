@@ -428,6 +428,25 @@ export interface ListBlockchainEventsQuery {
   take?: number;
 }
 
+export interface UpsertEncryptedVaultInput {
+  algorithmId: string;
+  version: number;
+  epoch: number;
+  kdfSalt: string;
+  kdfParams: Record<string, unknown>;
+  recoveryKdfSalt: string;
+  recoveryKdfParams: Record<string, unknown>;
+  wrappedVaultKey: string;
+  wrappedVaultKeyRecovery: string;
+  ciphertext: string;
+  aad: string;
+  deviceId?: string;
+}
+
+export interface EncryptedVaultBlob extends UpsertEncryptedVaultInput {
+  updatedAt?: string;
+}
+
 export type PaymentType =
   | 'FIAT_DEPOSIT'
   | 'FIAT_WITHDRAWAL'
@@ -1814,6 +1833,14 @@ export class AuvoraClient {
     label?: string;
   }): Promise<unknown> {
     return this.request('POST', '/api/v1/wallet-engine/wallets/import', input);
+  }
+
+  async getEncryptedVault(): Promise<EncryptedVaultBlob | null> {
+    return this.request<EncryptedVaultBlob | null>('GET', '/api/v1/vault');
+  }
+
+  async upsertEncryptedVault(input: UpsertEncryptedVaultInput): Promise<EncryptedVaultBlob> {
+    return this.request<EncryptedVaultBlob>('PUT', '/api/v1/vault', input);
   }
 
   async listWallets(skip = 0, take = 50): Promise<WalletListResult> {

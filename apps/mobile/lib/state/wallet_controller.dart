@@ -5,6 +5,7 @@ import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../account/vault_crypto.dart';
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
 import '../release/network_env.dart';
@@ -457,6 +458,64 @@ class WalletController extends ChangeNotifier {
     if (address != null) {
       await _secure.write(key: _kAddress, value: address!);
     }
+  }
+
+  /// Build plaintext vault entries for cloud encryption (mnemonics stay on-device
+  /// until encrypted client-side).
+  Future<List<VaultWalletEntry>> buildVaultPlaintextEntries() async {
+    final engine = _engine;
+    if (engine == null || !unlocked) return const [];
+    final entries = <VaultWalletEntry>[];
+    for (final v in engine.vaults) {
+      final mnemonic = await engine.keyStore.readMnemonic(walletId: v.walletId);
+      if (mnemonic == null || mnemonic.isEmpty) continue;
+      entries.add(
+        VaultWalletEntry(
+          walletId: v.walletId,
+          mnemonic: mnemonic,
+          label: v.name,
+          metadata: {
+            'backupConfirmed': v.backupConfirmed,
+            'createdAt': v.createdAt.toIso8601String(),
+          },
+        ),
+      );
+    }
+    return entries;
+  }
+
+  /// Import wallets from a decrypted cloud vault bundle onto this device.
+  Future<int> importEncryptedVaultBundle(VaultPlaintextBundle bundle) async {
+    final engine = _engine;
+    if (engine == null) return 0;
+    var imported = 0;
+    for (final entry in bundle.wallets) {
+      final phrase = entry.mnemonic.trim();
+      if (phrase.isEmpty) continue;
+      final issue = WalletCrypto.diagnoseMnemonic(phrase);
+      if (issue != MnemonicIssue.none) continue;
+      await engine.importWallet(
+        phrase,
+        backupConfirmed: entry.metadata?['backupConfirmed'] == true,
+        name: (entry.label?.trim().isNotEmpty ?? false) ? entry.label!.trim() : 'Restored wallet',
+      );
+      imported += 1;
+    }
+    await engine.bootstrap();
+    wallet = engine.wallet;
+    address = wallet?.primaryAddress();
+    if (address != null) await _secure.write(key: _kAddress, value: address!);
+    engine.setSessionUnlocked(false);
+    unlocked = false;
+    if (imported > 0) {
+      if (hasPin) {
+        stage = AppStage.unlock;
+      } else {
+        stage = AppStage.securityPin;
+      }
+    }
+    notifyListeners();
+    return imported;
   }
 
   List<VaultIndexEntry> get vaults => _engine?.vaults ?? const [];

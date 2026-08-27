@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { EncryptedVaultService } from './services/encrypted-vault.service';
 import { PortfolioEngineService } from './services/portfolio-engine.service';
 import { AdminSimulationService } from './services/admin-simulation.service';
 import { WalletEngineService } from './services/wallet-engine.service';
@@ -14,6 +15,7 @@ const SERVICES = [
   TransferPrepareService,
   AdminSimulationService,
   WalletEngineService,
+  EncryptedVaultService,
   PortfolioEngineService,
   WalletSyncService,
   WalletRetryQueue,

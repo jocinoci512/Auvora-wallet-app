@@ -107,6 +107,7 @@ model User {
   auditLogsAsTarget       SecurityAuditLog[]       @relation("AuditTarget")
   mfaTotpCredential       MfaTotpCredential?
   mfaRecoveryCodes        MfaRecoveryCode[]
+  encryptedVaultBlob      EncryptedVaultBlob?
 
   @@index([status])
   @@index([createdAt])
@@ -210,6 +211,31 @@ model Session {
   @@index([userId, surface, revokedAt])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+/// Opaque client-encrypted wallet vault ciphertext. Server never holds plaintext mnemonic/keys.
+model EncryptedVaultBlob {
+  id                     String   @id @default(uuid()) @db.Uuid
+  ownerUserId            String   @unique @map("owner_user_id") @db.Uuid
+  algorithmId            String   @map("algorithm_id")
+  version                Int      @default(1)
+  epoch                  Int      @default(1)
+  kdfSalt                String   @map("kdf_salt")
+  kdfParams              Json     @map("kdf_params")
+  recoveryKdfSalt        String   @map("recovery_kdf_salt")
+  recoveryKdfParams      Json     @map("recovery_kdf_params")
+  wrappedVaultKey        String   @map("wrapped_vault_key")
+  wrappedVaultKeyRecovery String  @map("wrapped_vault_key_recovery")
+  ciphertext             String
+  aad                    String
+  uploadedByDeviceId     String?  @map("uploaded_by_device_id") @db.Uuid
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+  @@map("encrypted_vault_blobs")
 }
 
 /// Encrypted TOTP secret (AES-256-GCM). Secret is never returned after enrollment.

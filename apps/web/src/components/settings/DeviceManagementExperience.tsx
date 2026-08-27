@@ -128,7 +128,7 @@ export function DeviceManagementExperience(): ReactElement {
   return (
     <PlatformShell
       title="Devices & sessions"
-      subtitle="Account sessions for the Auvora identity layer. This does not sync private keys or imply encrypted wallet-secret restore."
+      subtitle="Account sessions for the Auvora identity layer. Encrypted wallet restore uses the cloud vault (ciphertext only) via Activate device — never plaintext keys."
       reassure="Revoking a session signs that device out. This device stays signed in."
       backHref="/settings"
       backLabel="Settings"

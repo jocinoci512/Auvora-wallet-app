@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'account/account_controller.dart';
+import 'account/vault_sync_service.dart';
 import 'account/wallet_backend_sync.dart';
 import 'connections/connections_controller.dart';
 import 'connections/deep_link_router.dart';
@@ -273,6 +274,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
           },
         ),
         ChangeNotifierProvider(create: (_) => WalletBackendSync()),
+        ChangeNotifierProvider(create: (_) => VaultSyncService()),
         ChangeNotifierProxyProvider3<AccountController, WalletController, WalletBackendSync,
             _WalletBackendSyncBinder>(
           create: (_) => _WalletBackendSyncBinder(),
@@ -281,6 +283,16 @@ class _AuvoraAppState extends State<AuvoraApp> {
               account: account,
               wallet: wallet,
               sync: sync,
+            ),
+        ),
+        ChangeNotifierProxyProvider3<AccountController, WalletController, VaultSyncService,
+            _VaultSyncBinder>(
+          create: (_) => _VaultSyncBinder(),
+          update: (_, account, wallet, vaultSync, binder) => binder!
+            ..bind(
+              account: account,
+              wallet: wallet,
+              vaultSync: vaultSync,
             ),
         ),
         // Applies deferred live WC provider without rebuilding the whole tree.
@@ -300,6 +312,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
           context.watch<_WcAccountBinder>();
           context.watch<_WcLiveUpgrader>();
           context.watch<_WalletBackendSyncBinder>();
+          context.watch<_VaultSyncBinder>();
           final a11y = prefs.accessibility;
           final scale = a11y.textScale.clamp(0.85, 1.35);
           // GoogleFonts + ThemeData copy is expensive — rebuild only when inputs change.
@@ -460,6 +473,7 @@ class _WcAccountBinder extends ChangeNotifier {
 }
 
 /// Syncs public wallet addresses to the backend after sign-in + unlock.
+/// Kept as background metadata registration — encrypted vault sync is primary UX.
 class _WalletBackendSyncBinder extends ChangeNotifier {
   String? _lastKey;
   bool _scheduled = false;
@@ -479,6 +493,31 @@ class _WalletBackendSyncBinder extends ChangeNotifier {
       _scheduled = false;
       _lastKey = key;
       await sync.syncIfPossible(account: account, wallet: wallet);
+      notifyListeners();
+    });
+  }
+}
+
+/// After sign-in + unlock (or sign-in with empty local vault), flag encrypted vault work.
+class _VaultSyncBinder extends ChangeNotifier {
+  String? _lastKey;
+  bool _scheduled = false;
+
+  void bind({
+    required AccountController account,
+    required WalletController wallet,
+    required VaultSyncService vaultSync,
+  }) {
+    if (!account.isSignedIn) return;
+    final key =
+        '${account.profile?.id}|${wallet.unlocked}|${wallet.vaults.length}|${wallet.wallet?.walletId}';
+    if (key == _lastKey) return;
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _scheduled = false;
+      _lastKey = key;
+      await vaultSync.reconcileFlags(account: account, wallet: wallet);
       notifyListeners();
     });
   }

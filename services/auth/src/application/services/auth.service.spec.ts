@@ -29,6 +29,7 @@ function createAuthService(deps: {
   clock?: Record<string, jest.Mock>;
   ids?: Record<string, jest.Mock>;
   analytics?: Record<string, jest.Mock>;
+  notifications?: Record<string, jest.Mock>;
   adminEvents?: Record<string, jest.Mock>;
 }): AuthService {
   const users = {
@@ -87,6 +88,7 @@ function createAuthService(deps: {
     }) as never,
     (deps.ids ?? { uuid: jest.fn().mockReturnValue('family-uuid') }) as never,
     (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
+    (deps.notifications ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
     (deps.adminEvents ?? { publish: jest.fn().mockResolvedValue(undefined) }) as never,
   );
 }

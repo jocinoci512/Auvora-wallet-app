@@ -7,6 +7,7 @@ import { AdminSimulationController } from './controllers/admin-simulation.contro
 import { AdminWalletsController } from './controllers/admin-wallets.controller';
 import { InternalLedgerController } from './controllers/internal-ledger.controller';
 import { InternalWalletController } from './controllers/internal-wallet.controller';
+import { VaultController } from './controllers/vault.controller';
 import { WalletEngineController } from './controllers/wallet-engine.controller';
 import { WalletsController } from './controllers/wallets.controller';
 import { DomainExceptionFilter } from '@auvora/nest-common';
@@ -29,6 +30,7 @@ import { RequestContextMiddleware } from './middleware/request-context.middlewar
   controllers: [
     HealthController,
     WalletsController,
+    VaultController,
     WalletEngineController,
     AdminWalletsController,
     AdminSimulationController,

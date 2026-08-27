@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { EventNotificationMapperService } from '../../application/services/event-notification-mapper.service';
 import {
   NotificationService,
   type SendNotificationInput,
@@ -154,6 +155,8 @@ export class InternalNotificationsController {
   constructor(
     @Inject(NotificationService) private readonly notifications: NotificationService,
     @Inject(WebhookService) private readonly webhooks: WebhookService,
+    @Inject(EventNotificationMapperService)
+    private readonly eventMapper: EventNotificationMapperService,
   ) {}
 
   @Post('send')
@@ -166,10 +169,16 @@ export class InternalNotificationsController {
     return successResponse(await this.notifications.sendBatch(dto.items.map(toSendInput)));
   }
 
-  /** Fan-out ingestion point for upstream services (auth, wallet, payments, etc.) to trigger webhook delivery. */
+  /** Fan-out ingestion: durable user notifications + optional webhooks. */
   @Post('events')
   async ingestEvent(@Body() dto: InternalEventIngestDto) {
     const correlationId = dto.correlationId ?? randomUUID();
+    const notificationsCreated = await this.eventMapper.mapAndEnqueue({
+      eventType: dto.eventType,
+      aggregateId: dto.aggregateId,
+      payload: dto.payload,
+      correlationId,
+    });
     const endpoints = await this.webhooks.list();
     const deliveries = [];
     for (const endpoint of endpoints) {
@@ -184,6 +193,7 @@ export class InternalNotificationsController {
     }
     return successResponse({
       eventType: dto.eventType,
+      notificationsCreated,
       deliveries: deliveries.length,
       correlationId,
     });

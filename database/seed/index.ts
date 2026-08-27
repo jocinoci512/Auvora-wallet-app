@@ -938,7 +938,16 @@ async function main(): Promise<void> {
   const defaultTemplates: Array<{
     code: string;
     name: string;
-    category: 'AUTH' | 'SECURITY' | 'PAYMENT' | 'SYSTEM' | 'CUSTODY' | 'COMPLIANCE';
+    category:
+      | 'AUTH'
+      | 'SECURITY'
+      | 'PAYMENT'
+      | 'SYSTEM'
+      | 'CUSTODY'
+      | 'COMPLIANCE'
+      | 'KYC'
+      | 'TRANSACTION'
+      | 'DEPOSIT';
     channel: 'EMAIL' | 'IN_APP';
     subject: string;
     body: string;
@@ -983,6 +992,231 @@ async function main(): Promise<void> {
       subject: 'Scheduled maintenance',
       body: 'Auvora will undergo maintenance at {{when}}.',
     },
+    // Phase 2 — auth / security / KYC / transaction review / deposit (EMAIL + IN_APP)
+    {
+      code: 'auth.account_created',
+      name: 'Account created',
+      category: 'AUTH',
+      channel: 'EMAIL',
+      subject: 'Welcome to Auvora',
+      body: 'Hello {{name}}, your Auvora account has been created. You can sign in and start securing your assets.',
+    },
+    {
+      code: 'auth.account_created',
+      name: 'Account created',
+      category: 'AUTH',
+      channel: 'IN_APP',
+      subject: 'Welcome to Auvora',
+      body: 'Hello {{name}}, your Auvora account is ready.',
+    },
+    {
+      code: 'auth.email_verified',
+      name: 'Email verified',
+      category: 'AUTH',
+      channel: 'EMAIL',
+      subject: 'Your email is verified',
+      body: 'Hello {{name}}, your email address has been verified. Your Auvora account is now fully activated.',
+    },
+    {
+      code: 'auth.email_verified',
+      name: 'Email verified',
+      category: 'AUTH',
+      channel: 'IN_APP',
+      subject: 'Email verified',
+      body: 'Hello {{name}}, your email has been verified successfully.',
+    },
+    {
+      code: 'auth.password_changed',
+      name: 'Password changed',
+      category: 'SECURITY',
+      channel: 'EMAIL',
+      subject: 'Your Auvora password was changed',
+      body: 'Hello {{name}}, your password was changed successfully. If you did not make this change, secure your account immediately.',
+    },
+    {
+      code: 'auth.password_changed',
+      name: 'Password changed',
+      category: 'SECURITY',
+      channel: 'IN_APP',
+      subject: 'Password changed',
+      body: 'Hello {{name}}, your password was updated. Contact support if this was not you.',
+    },
+    {
+      code: 'security.new_device',
+      name: 'New device sign-in',
+      category: 'SECURITY',
+      channel: 'EMAIL',
+      subject: 'New device signed in to Auvora',
+      body: 'Hello {{name}}, a new device signed in: {{deviceName}} ({{platform}}). If this was not you, revoke the device and reset your password.',
+    },
+    {
+      code: 'security.new_device',
+      name: 'New device sign-in',
+      category: 'SECURITY',
+      channel: 'IN_APP',
+      subject: 'New device detected',
+      body: 'Hello {{name}}, {{deviceName}} on {{platform}} signed in to your account.',
+    },
+    {
+      code: 'security.device_revoked',
+      name: 'Device revoked',
+      category: 'SECURITY',
+      channel: 'EMAIL',
+      subject: 'A device was removed from your Auvora account',
+      body: 'Hello {{name}}, device {{deviceName}} was revoked and can no longer access your account.',
+    },
+    {
+      code: 'security.device_revoked',
+      name: 'Device revoked',
+      category: 'SECURITY',
+      channel: 'IN_APP',
+      subject: 'Device revoked',
+      body: 'Hello {{name}}, {{deviceName}} was removed from your trusted devices.',
+    },
+    {
+      code: 'kyc.submitted',
+      name: 'KYC submitted',
+      category: 'KYC',
+      channel: 'EMAIL',
+      subject: 'Identity verification received',
+      body: 'Hello {{name}}, we received your identity verification documents. We will notify you when the review is complete.',
+    },
+    {
+      code: 'kyc.submitted',
+      name: 'KYC submitted',
+      category: 'KYC',
+      channel: 'IN_APP',
+      subject: 'Verification submitted',
+      body: 'Hello {{name}}, your KYC submission is under review.',
+    },
+    {
+      code: 'kyc.approved',
+      name: 'KYC approved',
+      category: 'KYC',
+      channel: 'EMAIL',
+      subject: 'Identity verification approved',
+      body: 'Hello {{name}}, your identity verification was approved. Higher limits and full wallet features are now available.',
+    },
+    {
+      code: 'kyc.approved',
+      name: 'KYC approved',
+      category: 'KYC',
+      channel: 'IN_APP',
+      subject: 'Verification approved',
+      body: 'Hello {{name}}, your identity verification was approved.',
+    },
+    {
+      code: 'kyc.rejected',
+      name: 'KYC rejected',
+      category: 'KYC',
+      channel: 'EMAIL',
+      subject: 'Identity verification could not be completed',
+      body: 'Hello {{name}}, we could not complete your identity verification. Reason: {{reason}}. You may contact support if you need assistance.',
+    },
+    {
+      code: 'kyc.rejected',
+      name: 'KYC rejected',
+      category: 'KYC',
+      channel: 'IN_APP',
+      subject: 'Verification not approved',
+      body: 'Hello {{name}}, verification was not approved. Reason: {{reason}}.',
+    },
+    {
+      code: 'kyc.resubmission_required',
+      name: 'KYC resubmission required',
+      category: 'KYC',
+      channel: 'EMAIL',
+      subject: 'Additional documents needed for verification',
+      body: 'Hello {{name}}, please resubmit your documents. Instructions: {{instructions}}.',
+    },
+    {
+      code: 'kyc.resubmission_required',
+      name: 'KYC resubmission required',
+      category: 'KYC',
+      channel: 'IN_APP',
+      subject: 'Resubmission required',
+      body: 'Hello {{name}}, {{instructions}}',
+    },
+    {
+      code: 'transaction.review_pending',
+      name: 'Transfer under review',
+      category: 'TRANSACTION',
+      channel: 'EMAIL',
+      subject: 'Your transfer is under review',
+      body: 'Hello {{name}}, your {{assetCode}} transfer of ${{amountUsd}} is under review. We will notify you when a decision is made.',
+    },
+    {
+      code: 'transaction.review_pending',
+      name: 'Transfer under review',
+      category: 'TRANSACTION',
+      channel: 'IN_APP',
+      subject: 'Transfer under review',
+      body: 'Hello {{name}}, your {{assetCode}} transfer (${{amountUsd}}) is pending review.',
+    },
+    {
+      code: 'transaction.review_approved',
+      name: 'Transfer review approved',
+      category: 'TRANSACTION',
+      channel: 'EMAIL',
+      subject: 'Your transfer was approved',
+      body: 'Hello {{name}}, your {{assetCode}} transfer passed review and will continue processing.',
+    },
+    {
+      code: 'transaction.review_approved',
+      name: 'Transfer review approved',
+      category: 'TRANSACTION',
+      channel: 'IN_APP',
+      subject: 'Transfer approved',
+      body: 'Hello {{name}}, your {{assetCode}} transfer was approved.',
+    },
+    {
+      code: 'transaction.review_rejected',
+      name: 'Transfer review rejected',
+      category: 'TRANSACTION',
+      channel: 'EMAIL',
+      subject: 'Your transfer could not be approved',
+      body: 'Hello {{name}}, your {{assetCode}} transfer could not be approved. Reason: {{reason}}.',
+    },
+    {
+      code: 'transaction.review_rejected',
+      name: 'Transfer review rejected',
+      category: 'TRANSACTION',
+      channel: 'IN_APP',
+      subject: 'Transfer not approved',
+      body: 'Hello {{name}}, your {{assetCode}} transfer was not approved. Reason: {{reason}}.',
+    },
+    {
+      code: 'deposit.detected',
+      name: 'Deposit detected',
+      category: 'DEPOSIT',
+      channel: 'EMAIL',
+      subject: 'Incoming {{assetCode}} deposit detected',
+      body: 'Hello {{name}}, we detected an incoming deposit of {{amount}} {{assetCode}} on {{network}}. It will be credited after network confirmations.',
+    },
+    {
+      code: 'deposit.detected',
+      name: 'Deposit detected',
+      category: 'DEPOSIT',
+      channel: 'IN_APP',
+      subject: 'Deposit detected',
+      body: 'Hello {{name}}, {{amount}} {{assetCode}} detected on {{network}} — awaiting confirmations.',
+    },
+    {
+      code: 'deposit.confirmed',
+      name: 'Deposit confirmed',
+      category: 'DEPOSIT',
+      channel: 'EMAIL',
+      subject: 'Your {{assetCode}} deposit is confirmed',
+      body: 'Hello {{name}}, your deposit of {{amount}} {{assetCode}} on {{network}} is confirmed and available in your wallet.',
+    },
+    {
+      code: 'deposit.confirmed',
+      name: 'Deposit confirmed',
+      category: 'DEPOSIT',
+      channel: 'IN_APP',
+      subject: 'Deposit confirmed',
+      body: 'Hello {{name}}, {{amount}} {{assetCode}} on {{network}} is confirmed.',
+    },
   ];
 
   for (const tpl of defaultTemplates) {
@@ -1004,6 +1238,7 @@ async function main(): Promise<void> {
       },
       update: {
         name: tpl.name,
+        category: tpl.category,
         subject: tpl.subject,
         body: tpl.body,
         isEnabled: true,

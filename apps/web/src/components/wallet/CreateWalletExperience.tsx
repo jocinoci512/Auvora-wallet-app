@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
+import { isSignedIn, getCachedUser } from '../../lib/auth/session';
+import { uploadVaultBundle } from '../../lib/vault/vault-sync';
 import {
   generateDemoPhrase,
   pickChallengeIndexes,
@@ -54,6 +56,8 @@ export function CreateWalletExperience(): ReactElement {
   const [theme, setTheme] = useState<ThemePref>('system');
   const [notifications, setNotifications] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [vaultPassword, setVaultPassword] = useState('');
+  const [vaultStatus, setVaultStatus] = useState<string | null>(null);
 
   const network = useMemo(() => NETWORKS.find((n) => n.id === networkId)!, [networkId]);
   const nameOk = name.trim().length >= 2;
@@ -155,6 +159,40 @@ export function CreateWalletExperience(): ReactElement {
       portfolioCompact: false,
     });
     setStep('success');
+  }
+
+  async function uploadEncryptedVault(): Promise<void> {
+    if (!isSignedIn() || phrase.length < 12 || vaultPassword.length < 12) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const user = getCachedUser();
+      const stored = await uploadVaultBundle({
+        password: vaultPassword,
+        recoveryPhrase: phrase.join(' '),
+        bundle: {
+          version: 1,
+          wallets: [
+            {
+              walletId:
+                createdId && !createdId.startsWith('preview-')
+                  ? createdId
+                  : `web-${crypto.randomUUID()}`,
+              mnemonic: phrase.join(' '),
+              label: name.trim() || 'Web wallet',
+            },
+          ],
+        },
+      });
+      setVaultStatus(
+        `Encrypted vault uploaded for ${user?.email ?? 'account'} (epoch ${stored.epoch}).`,
+      );
+      setVaultPassword('');
+    } catch (err) {
+      setError(formatApiError(err));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function completeAuth(): void {
@@ -511,6 +549,40 @@ export function CreateWalletExperience(): ReactElement {
             Your wallet is ready. Take a breath — you did the hard part. Next, explore calmly or
             receive your first funds.
           </p>
+          {isSignedIn() ? (
+            <section className="ob-panel" style={{ textAlign: 'left', marginTop: '1.25rem' }}>
+              <h3>Cross-device encrypted vault</h3>
+              <p>
+                Optionally encrypt this recovery phrase with your account password and upload
+                ciphertext only. Password reset cannot decrypt it — re-wrap with the phrase after a
+                password change.
+              </p>
+              <label className="ob-field">
+                <span>Account password</span>
+                <input
+                  type="password"
+                  value={vaultPassword}
+                  onChange={(e) => setVaultPassword(e.target.value)}
+                  autoComplete="current-password"
+                  minLength={12}
+                />
+              </label>
+              {vaultStatus ? <div className="ob-alert ob-alert--info">{vaultStatus}</div> : null}
+              {error ? <div className="ob-alert ob-alert--error">{error}</div> : null}
+              <button
+                type="button"
+                className="ob-btn ob-btn--primary"
+                disabled={submitting || vaultPassword.length < 12 || Boolean(vaultStatus)}
+                onClick={() => void uploadEncryptedVault()}
+              >
+                {submitting ? 'Encrypting…' : 'Upload encrypted vault'}
+              </button>
+            </section>
+          ) : (
+            <p className="ob__reassure">
+              Sign in and open Activate device to sync an encrypted vault across platforms.
+            </p>
+          )}
           <div className="ob-success__next">
             <h3>Suggested next steps</h3>
             <ul>
