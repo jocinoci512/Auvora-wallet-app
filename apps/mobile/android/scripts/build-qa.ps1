@@ -40,7 +40,8 @@ try {
     --dart-define=AUVORA_NETWORK_ENV=testnet `
     --dart-define=AUVORA_ALLOW_LOCAL_API=true `
     --dart-define=AUVORA_API_BASE_URL=http://127.0.0.1:4000 `
-    --dart-define=AUVORA_SEED_INBOX=false
+    --dart-define=AUVORA_SEED_INBOX=false `
+    --dart-define=TESTNET_BROADCAST_ENABLED=true
 
   if ($LASTEXITCODE -ne 0) { throw "flutter build apk failed" }
 

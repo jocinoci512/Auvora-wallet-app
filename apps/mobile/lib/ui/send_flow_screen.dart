@@ -1,23 +1,30 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../account/account_controller.dart';
 import '../account/auth_api_client.dart';
+import '../account/auvora_api_config.dart';
 import '../intelligence/catalog.dart';
 import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
+import '../state/wallet_session_restore.dart';
 import '../theme/aether_theme.dart';
 import '../transfer/address_book.dart';
 import '../transfer/address_validation.dart';
 import '../transfer/domain_resolution.dart';
+import '../transfer/customer_transfer_status.dart';
 import '../transfer/large_transfer_policy.dart';
 import '../transfer/transfer_prepare_client.dart';
 import '../wallet_engine/network_manager.dart';
@@ -31,7 +38,7 @@ import 'widgets/passcode_entry.dart';
 
 enum _TxProgressPhase { broadcasting, pending, confirming, recorded }
 
-enum _SendStep { wallet, asset, recipient, amount, review, auth, status, done }
+enum _SendStep { wallet, asset, recipient, amount, review, ready, auth, status, done }
 
 /// Guided send — wallet → asset → recipient → amount → checklist → auth → status → receipt.
 class SendFlowScreen extends StatefulWidget {
@@ -44,7 +51,7 @@ class SendFlowScreen extends StatefulWidget {
   State<SendFlowScreen> createState() => _SendFlowScreenState();
 }
 
-class _SendFlowScreenState extends State<SendFlowScreen> {
+class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObserver {
   _SendStep _step = _SendStep.asset;
   AssetHolding? _asset;
   bool _fiatMode = false;
@@ -67,6 +74,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   String? _pendingReviewAt;
   String? _pendingReviewMessage;
   final _prepareClient = TransferPrepareClient();
+  Timer? _reviewPoll;
 
   final _toCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
@@ -81,9 +89,27 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
 
   bool get _showWalletStep => _wallet.vaults.length > 1;
 
+  bool get _qaValuationEnabled =>
+      AuvoraApiConfig.allowLocalApi && AuvoraNetworkEnv.isTestnet;
+
+  int? _qaNotionalUsdCents(AssetHolding asset) {
+    if (!_qaValuationEnabled) return null;
+    final raw = _amountCtrl.text.replaceAll(',', '').trim();
+    final n = double.tryParse(raw) ?? 0;
+    if (n <= 0) return null;
+    if (_fiatMode) return (n * 100).round();
+    if (asset.priceUsd > 0) return (n * asset.priceUsd * 100).round();
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (_qaValuationEnabled) {
+      _hideUnsupported = false;
+      _fiatMode = true;
+    }
     _toCtrl.addListener(() => setState(() {}));
     _amountCtrl.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -97,18 +123,83 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
       }
       if (widget.initialAssetId != null) {
         final a = _portfolio.assetById(widget.initialAssetId!);
-        if (a != null && a.balance > 0) {
+        if (a != null && (a.balance > 0 || _qaValuationEnabled)) {
           setState(() {
             _asset = a;
             _step = _SendStep.recipient;
           });
         }
       }
+      await _restoreLastReview();
+    });
+  }
+
+  Future<void> _restoreLastReview() async {
+    if (widget.initialAssetId != null || (widget.initialTo?.trim().isNotEmpty ?? false)) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('auvora_last_transfer_review_id_v1');
+    if (id == null || id.isEmpty) return;
+    await _applyReview(id);
+  }
+
+  Future<void> _refreshPendingReview() async {
+    final id = _pendingReviewId;
+    if (id == null || id.isEmpty) return;
+    await _applyReview(id);
+  }
+
+  Future<void> _applyReview(String id) async {
+    if (!mounted) return;
+    final account = context.read<AccountController>();
+    final token = await account.ensureAccessToken();
+    if (token == null || token.isEmpty) return;
+    try {
+      final review = await _prepareClient.getReview(accessToken: token, reviewId: id);
+      if (!mounted) return;
+      final status = (review.reviewStatus ?? review.customerStatus ?? '').toUpperCase();
+      if (status == 'EXPIRED') {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('auvora_last_transfer_review_id_v1');
+        if (!mounted) return;
+        return;
+      }
+      setState(() {
+        _pendingReviewId = review.reviewId ?? id;
+        _pendingReviewStatus = review.reviewStatus ?? review.customerStatus;
+        _pendingReviewAt = review.requestedAt;
+        _pendingReviewMessage = review.customerReason ?? review.message;
+        _step = _SendStep.done;
+      });
+      _startReviewPoll();
+    } catch (_) {
+      // Keep the local send flow if the review cannot be refreshed.
+    }
+  }
+
+  void _startReviewPoll() {
+    _reviewPoll?.cancel();
+    final status = (_pendingReviewStatus ?? '').toUpperCase();
+    if (_pendingReviewId == null || status == 'REJECTED' || status == 'APPROVED') {
+      return;
+    }
+    _reviewPoll = Timer.periodic(const Duration(seconds: 4), (_) {
+      unawaited(_refreshPendingReview());
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshPendingReview());
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _reviewPoll?.cancel();
     _toCtrl.dispose();
     _amountCtrl.dispose();
     super.dispose();
@@ -164,6 +255,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         _SendStep.recipient,
         _SendStep.amount,
         _SendStep.review,
+        _SendStep.ready,
         _SendStep.auth,
         _SendStep.status,
         _SendStep.done,
@@ -241,12 +333,20 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         return 'Amount';
       case _SendStep.review:
         return 'Review';
+      case _SendStep.ready:
+        return CustomerTransferStatus.ready;
       case _SendStep.auth:
         return 'Confirm';
       case _SendStep.status:
         return 'Status';
       case _SendStep.done:
-        return _pendingReviewId != null ? 'Pending review' : 'Submitted';
+        return _pendingReviewId != null
+            ? CustomerTransferStatus.fromPrepare(
+                allowed: false,
+                prepareStatus: _pendingReviewStatus,
+                reviewStatus: _pendingReviewStatus,
+              )
+            : 'Submitted';
     }
   }
 
@@ -262,6 +362,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         return _amountStep();
       case _SendStep.review:
         return _reviewStep();
+      case _SendStep.ready:
+        return _readyStep();
       case _SendStep.auth:
         return _authStep();
       case _SendStep.status:
@@ -328,9 +430,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
       children: [
-        const Text(
-          'Choose what to send. Only assets with a balance can move.',
-          style: TextStyle(color: AetherColors.muted, height: 1.4),
+        Text(
+          _qaValuationEnabled
+              ? 'Choose what to send. QA policy valuation can use a USD amount without a live testnet balance.'
+              : 'Choose what to send. Only assets with a balance can move.',
+          style: const TextStyle(color: AetherColors.muted, height: 1.4),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -364,7 +468,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  onTap: a.balance <= 0
+                  onTap: a.balance <= 0 && !_qaValuationEnabled
                       ? null
                       : () {
                           setState(() {
@@ -659,13 +763,21 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
               style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
             ),
         ],
-        if (insufficient) ...[
+        if (insufficient && !_qaValuationEnabled) ...[
           const SizedBox(height: 10),
           SoftBanner(
             tone: BannerTone.error,
             message: feeInSame
                 ? 'Amount plus network fee is more than your available balance.'
                 : 'That amount is more than your available balance.',
+          ),
+        ],
+        if (_qaValuationEnabled) ...[
+          const SizedBox(height: 10),
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message:
+                'QA policy valuation uses this USD amount. Local testnet balance is not required for review. Nothing will be signed or broadcast.',
           ),
         ],
         if (large && !insufficient) ...[
@@ -677,7 +789,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         ],
         const SizedBox(height: 20),
         FilledButton(
-          onPressed: amount > 0 && !insufficient
+          onPressed: (amount > 0 && !insufficient) ||
+                  (_qaNotionalUsdCents(asset) != null && _qaNotionalUsdCents(asset)! > 0)
               ? () {
                   setState(() => _checks.clear());
                   _go(_SendStep.review);
@@ -700,6 +813,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
   }
 
   String _amountDecimalString(AssetHolding asset) {
+    if (_qaValuationEnabled && _parsedAmount(asset) <= 0 && _qaNotionalUsdCents(asset) != null) {
+      return '0.000001';
+    }
     if (!_fiatMode) {
       final raw = _amountCtrl.text.replaceAll(',', '').trim();
       return raw.isEmpty ? '0' : raw;
@@ -721,12 +837,21 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     final short = to.length > 10 ? '…${to.substring(to.length - 6)}' : to;
     final walletLabel = _wallet.wallet?.name ?? 'Primary wallet';
     final risk = assessAddressRisk(to);
-    final transferReview = LargeTransferPolicy.evaluateDisplayAmount(
-      amount: amount,
-      ticker: asset.ticker,
-      priceUsd: asset.priceUsd,
-      quoteAt: p.snapshot?.updatedAt,
-    );
+    final qaCents = _qaNotionalUsdCents(asset);
+    final transferReview = qaCents != null
+        ? LargeTransferPolicy.evaluate(
+            amountSmallest: BigInt.from(qaCents),
+            assetDecimals: 0,
+            usdCentsPerWholeToken: 1,
+            priceAt: DateTime.now(),
+            now: DateTime.now(),
+          )
+        : LargeTransferPolicy.evaluateDisplayAmount(
+            amount: amount,
+            ticker: asset.ticker,
+            priceUsd: asset.priceUsd,
+            quoteAt: p.snapshot?.updatedAt,
+          );
 
     final items = <(String, String)>[
       ('recipient', 'I checked the full recipient address (ends $short)'),
@@ -780,7 +905,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         const SizedBox(height: 4),
         SelectableText(to, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, height: 1.4)),
         const SizedBox(height: 10),
-        _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}'),
+        _kv(
+          'Amount',
+          qaCents != null
+              ? '${amount > 0 ? amount.toStringAsFixed(6) : '0.000001'} ${asset.ticker} · ${p.money(qaCents / 100)}'
+              : '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}',
+        ),
         _kv('Fee speed', fee.speed.label),
         _kv(
           'Estimated fee',
@@ -829,27 +959,10 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           ),
         const SizedBox(height: 12),
         FilledButton(
-          onPressed: allChecked && _wallet.hasPin
-              ? () async {
-                  await _checkConnectivity();
-                  if (_offline && mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('You’re offline. Reconnect to continue this preview transfer.'),
-                      ),
-                    );
-                    return;
-                  }
-                  _go(_SendStep.auth);
-                  if (_wallet.biometricsEnabled) {
-                    final ok = await _wallet.authenticateForTransfer(
-                      reason: 'Confirm sending ${amount.toStringAsFixed(4)} ${asset.ticker}',
-                    );
-                    if (ok && mounted) await _submit();
-                  }
-                }
+          onPressed: allChecked && !_submitting
+              ? () => _prepareFromReview()
               : null,
-          child: const Text('Authenticate to send'),
+          child: Text(_submitting ? 'Checking…' : 'Continue'),
         ),
         if (!_wallet.hasPin)
           const SoftBanner(
@@ -859,6 +972,142 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
         TextButton(onPressed: () => _go(_SendStep.amount), child: const Text('Back')),
       ],
     );
+  }
+
+  Widget _readyStep() {
+    final asset = _asset!;
+    final p = context.watch<PortfolioController>();
+    final amount = _parsedAmount(asset);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      children: [
+        Text(CustomerTransferStatus.ready, style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 8),
+        const Text(
+          'This transfer can continue. Signing happens on this device. Nothing has been signed or broadcast.',
+          style: TextStyle(color: AetherColors.muted, height: 1.45),
+        ),
+        const SizedBox(height: 16),
+        _kv('Status', CustomerTransferStatus.ready),
+        _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}'),
+        _kv('Network', asset.network.label),
+        const SizedBox(height: 16),
+        SoftBanner(
+          tone: BannerTone.warn,
+          message: ReleaseConfig.canBroadcastTestnet
+              ? 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.'
+              : 'Live broadcast stays off. Do not sign unless you intend to complete a preview transfer.',
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: _wallet.hasPin ? () => _go(_SendStep.auth) : null,
+          child: const Text('Sign on this device'),
+        ),
+        TextButton(onPressed: () => _go(_SendStep.review), child: const Text('Back')),
+      ],
+    );
+  }
+
+  Future<void> _prepareFromReview() async {
+    if (_submitting) return;
+    await _checkConnectivity();
+    if (_offline) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You're offline. Reconnect, then try again.")),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    final account = context.read<AccountController>();
+    if (!account.isConfigured || !account.isSignedIn) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign in to your Auvora account is required. Nothing was signed.')),
+        );
+      }
+      return;
+    }
+    if (AuvoraApiConfig.allowLocalApi && AuvoraNetworkEnv.isTestnet) {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('auvora_qa_expire_access_once_v1') == true) {
+        await account.markAccessExpiredForQa();
+        await prefs.remove('auvora_qa_expire_access_once_v1');
+      }
+    }
+    final token = await account.ensureAccessToken();
+    if (token == null || token.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              account.isSessionExpired
+                  ? WalletSessionRestore.sessionExpiredMessage
+                  : 'Sign in to your Auvora account is required. Nothing was signed.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    _prepareIdempotencyKey ??= const Uuid().v4();
+    setState(() => _submitting = true);
+    try {
+      final asset = _asset!;
+      final prepared = await _prepareClient.prepare(
+        accessToken: token,
+        assetCode: asset.ticker,
+        destinationAddress: _toCtrl.text.trim(),
+        amount: _amountDecimalString(asset),
+        idempotencyKey: _prepareIdempotencyKey!,
+        fromAddress: _wallet.addressFor(asset.network) ?? _wallet.address,
+        qaNotionalUsdCents: _qaNotionalUsdCents(asset),
+      );
+      if (!mounted) return;
+      if (!prepared.allowed) {
+        if (prepared.status == 'kyc_required') {
+          setState(() => _submitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Identity verification required. Complete verification in Auvora Account before this transfer can continue. Nothing was signed.',
+              ),
+            ),
+          );
+          return;
+        }
+        final reviewId = prepared.reviewId?.trim();
+        if (reviewId == null || reviewId.isEmpty) {
+          setState(() => _submitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Review request could not be created. Please try again.')),
+          );
+          return;
+        }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auvora_last_transfer_review_id_v1', reviewId);
+        setState(() {
+          _pendingReviewId = reviewId;
+          _pendingReviewStatus = prepared.reviewStatus;
+          _pendingReviewAt = prepared.requestedAt;
+          _pendingReviewMessage = prepared.message;
+          _submitting = false;
+          _step = _SendStep.done;
+        });
+        _startReviewPoll();
+        return;
+      }
+      setState(() {
+        _submitting = false;
+        _pendingReviewId = null;
+        _step = _SendStep.ready;
+      });
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Widget _authStep() {
@@ -956,7 +1205,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           'Sign in to your Auvora account is required before large transfers can be reviewed. Nothing was signed.',
         );
       }
-      final token = await account.readAccessToken();
+      final token = await account.ensureAccessToken();
       if (token == null || token.isEmpty) {
         throw StateError('Sign in is required before this transfer can be prepared.');
       }
@@ -969,6 +1218,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           amount: _amountDecimalString(asset),
           idempotencyKey: _prepareIdempotencyKey!,
           fromAddress: _wallet.addressFor(asset.network) ?? _wallet.address,
+          qaNotionalUsdCents: _qaNotionalUsdCents(asset),
         );
       } on AuthException catch (e) {
         throw StateError(
@@ -1090,22 +1340,31 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
     String title;
     String body;
     IconData icon;
+    final liveTestnet = ReleaseConfig.canBroadcastTestnet;
     switch (_progress) {
       case _TxProgressPhase.broadcasting:
-        title = 'Preparing preview';
-        body = 'Building a local preview transfer for ${asset.network.label}. Nothing is sent on-chain.';
+        title = liveTestnet ? 'Sending' : 'Preparing preview';
+        body = liveTestnet
+            ? 'Submitting a locally signed TESTNET transfer on ${asset.network.label}. Mainnet stays off.'
+            : 'Building a local preview transfer for ${asset.network.label}. Nothing is sent on-chain.';
         icon = Icons.cloud_upload_outlined;
       case _TxProgressPhase.pending:
-        title = 'Recording locally';
-        body = 'Waiting for the on-device transaction engine to accept the preview request.';
+        title = liveTestnet ? 'Submitted' : 'Recording locally';
+        body = liveTestnet
+            ? 'The TESTNET network accepted the transaction hash. Waiting for confirmation.'
+            : 'Waiting for the on-device transaction engine to accept the preview request.';
         icon = Icons.hourglass_top_rounded;
       case _TxProgressPhase.confirming:
-        title = 'Finalizing preview';
-        body = 'Saving status on this device. Live network confirmation stays off until audited.';
+        title = liveTestnet ? 'Confirming' : 'Finalizing preview';
+        body = liveTestnet
+            ? 'Waiting for TESTNET confirmation. Mainnet broadcast remains off.'
+            : 'Saving status on this device. Live network confirmation stays off until audited.';
         icon = Icons.sync_rounded;
       case _TxProgressPhase.recorded:
-        title = 'Preview recorded';
-        body = 'Preview recorded. Open the receipt for the reference and next steps.';
+        title = liveTestnet ? 'Completed' : 'Preview recorded';
+        body = liveTestnet
+            ? 'TESTNET transfer recorded. Open the receipt for the hash and next steps.'
+            : 'Preview recorded. Open the receipt for the reference and next steps.';
         icon = Icons.check_circle_outline_rounded;
     }
 
@@ -1186,7 +1445,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           const Icon(Icons.hourglass_top_rounded, size: 48, color: AetherColors.lagoon),
           const SizedBox(height: 12),
           Text(
-            'Waiting for administrator approval',
+            CustomerTransferStatus.fromPrepare(
+              allowed: false,
+              prepareStatus: _pendingReviewStatus,
+              reviewStatus: _pendingReviewStatus,
+            ),
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
@@ -1197,7 +1460,14 @@ class _SendFlowScreenState extends State<SendFlowScreen> {
           ),
           const SizedBox(height: 16),
           _kv('Review ID', _pendingReviewId!),
-          if (_pendingReviewStatus != null) _kv('Status', _pendingReviewStatus!),
+          _kv(
+            'Status',
+            CustomerTransferStatus.fromPrepare(
+              allowed: false,
+              prepareStatus: _pendingReviewStatus,
+              reviewStatus: _pendingReviewStatus,
+            ),
+          ),
           if (_pendingReviewAt != null) _kv('Requested', _pendingReviewAt!),
           const SizedBox(height: 12),
           const SoftBanner(

@@ -882,7 +882,9 @@ class _PrimaryActions extends StatelessWidget {
           tone: BannerTone.warn,
           message: broadcastOn
               ? 'Live broadcast is on. Double-check network and amount before you confirm.'
-              : 'Send signs on this device. Live broadcast stays off until independent transaction safety review.',
+              : ReleaseConfig.canBroadcastTestnet
+                  ? 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.'
+                  : 'Send signs on this device. Live broadcast stays off until independent transaction safety review.',
         ),
         const SizedBox(height: 10),
         Row(

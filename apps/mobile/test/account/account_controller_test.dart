@@ -65,9 +65,14 @@ http.Response created(Map<String, dynamic> data) =>
 http.Response err(int status) =>
     http.Response(jsonEncode({'success': false}), status, headers: {'content-type': 'application/json'});
 
-AccountController controllerWith(http.Client httpClient) => AccountController(
+AccountController controllerWith(
+  http.Client httpClient, {
+  Future<bool> Function()? gatewayReachable,
+}) =>
+    AccountController(
       client: AuthApiClient(httpClient: httpClient, baseUrl: _base),
       store: AuthTokenStore(),
+      gatewayReachable: gatewayReachable ?? (() async => false),
     );
 
 void main() {
@@ -178,7 +183,7 @@ void main() {
     expect(c.profile?.email, 'a@b.com');
     expect(store['auvora_acct_access_v1'], 'acc-1');
     expect(store['auvora_acct_refresh_v1'], 'ref-1');
-    expect(c.error, contains('internet'));
+    expect(c.error, contains('offline'));
   });
 
   test('bootstrap invalid refresh signs out (no login loop)', () async {
@@ -191,7 +196,8 @@ void main() {
       }),
     );
     await c.bootstrap();
-    expect(c.status, AccountStatus.signedOut);
+    expect(c.status, AccountStatus.sessionExpired);
+    expect(c.error, contains('session has expired'));
     expect(store.containsKey('auvora_acct_access_v1'), isFalse);
   });
 
@@ -214,5 +220,131 @@ void main() {
     expect(c.isSignedIn, isTrue);
     expect(c.error, isNull);
     expect(c.profile?.username, 'alice');
+  });
+
+  test('revalidate does not show offline when the Auvora Gateway is reachable', () async {
+    store['auvora_acct_access_v1'] = 'acc-1';
+    store['auvora_acct_uid_v1'] = 'u1';
+    var calls = 0;
+    final mock = MockClient((req) async {
+      calls += 1;
+      if (calls == 1) throw http.ClientException('offline');
+      return ok(profile);
+    });
+    final c = controllerWith(mock, gatewayReachable: () async => true);
+    await c.bootstrap();
+    expect(c.isSignedIn, isTrue);
+    expect(c.hasTransportError, isFalse);
+    await c.revalidate();
+    expect(c.error, isNull);
+    expect(c.linkState.name, 'online');
+  });
+
+  test('new controller instance restores the same stored session (process restart / update)', () async {
+    store['auvora_acct_access_v1'] = 'acc-1';
+    store['auvora_acct_refresh_v1'] = 'ref-1';
+    store['auvora_acct_uid_v1'] = 'u1';
+    store['auvora_acct_email_v1'] = 'a@b.com';
+    store['auvora_acct_username_v1'] = 'alice';
+    final first = controllerWith(routed({'GET /api/v1/me': [ok(profile)]}));
+    await first.bootstrap();
+    expect(first.isSignedIn, isTrue);
+    first.dispose();
+    final second = controllerWith(routed({'GET /api/v1/me': [ok(profile)]}));
+    await second.bootstrap();
+    expect(second.isSignedIn, isTrue);
+    expect(second.profile?.id, 'u1');
+  });
+
+  test('ensureAccessToken refreshes an expired access token before API use', () async {
+    store['auvora_acct_access_v1'] = 'stale';
+    store['auvora_acct_refresh_v1'] = 'ref-1';
+    store['auvora_acct_access_exp_v1'] =
+        DateTime.now().toUtc().subtract(const Duration(minutes: 1)).toIso8601String();
+    final c = controllerWith(
+      routed({
+        'POST /api/v1/auth/refresh': [
+          ok({'accessToken': 'acc-2', 'refreshToken': 'ref-2', 'expiresIn': 900, 'sessionId': 's1'}),
+        ],
+        'GET /api/v1/me': [ok(profile)],
+      }),
+    );
+    final token = await c.ensureAccessToken();
+    expect(token, 'acc-2');
+    expect(c.isSignedIn, isTrue);
+    expect(store['auvora_acct_access_v1'], 'acc-2');
+  });
+
+  test('expired access with valid refresh restores and rotates the refresh token', () async {
+    store['auvora_acct_access_v1'] = 'stale';
+    store['auvora_acct_refresh_v1'] = 'ref-1';
+    store['auvora_acct_access_exp_v1'] = DateTime.now().toUtc().subtract(const Duration(minutes: 1)).toIso8601String();
+    final c = controllerWith(
+      routed({
+        'POST /api/v1/auth/refresh': [
+          ok({'accessToken': 'acc-2', 'refreshToken': 'ref-2', 'expiresIn': 900, 'sessionId': 's1'}),
+        ],
+        'GET /api/v1/me': [ok(profile)],
+      }),
+    );
+    await c.bootstrap();
+    expect(c.isSignedIn, isTrue);
+    expect(store['auvora_acct_access_v1'], 'acc-2');
+    expect(store['auvora_acct_refresh_v1'], 'ref-2');
+    expect(store['auvora_acct_refresh_v1'], isNot('ref-1'));
+  });
+
+  test('missing access token still refreshes when a refresh session exists', () async {
+    store['auvora_acct_refresh_v1'] = 'ref-1';
+    final c = controllerWith(
+      routed({
+        'POST /api/v1/auth/refresh': [
+          ok({'accessToken': 'acc-2', 'refreshToken': 'ref-2', 'expiresIn': 900, 'sessionId': 's1'}),
+        ],
+        'GET /api/v1/me': [ok(profile)],
+      }),
+    );
+    await c.bootstrap();
+    expect(c.isSignedIn, isTrue);
+    expect(store['auvora_acct_access_v1'], 'acc-2');
+  });
+
+  test('revoked refresh expires the session and leaves wallet keys', () async {
+    store['auvora_acct_access_v1'] = 'stale';
+    store['auvora_acct_refresh_v1'] = 'revoked';
+    store['auvora_acct_uid_v1'] = 'u1';
+    store['auvora_mnemonic_v3_wallet-1'] = 'do-not-touch';
+    store['auvora_pin_hash_v1'] = 'v2:hash';
+    final c = controllerWith(
+      routed({
+        'GET /api/v1/me': [err(401)],
+        'POST /api/v1/auth/refresh': [err(401)],
+      }),
+    );
+    await c.bootstrap();
+    expect(c.status, AccountStatus.sessionExpired);
+    expect(store['auvora_mnemonic_v3_wallet-1'], 'do-not-touch');
+    expect(store['auvora_pin_hash_v1'], 'v2:hash');
+    expect(c.error, isNot(contains('revoked')));
+    expect(c.error, isNot(contains('stale')));
+  });
+
+  test('explicit logout clears auth session and does not erase wallet keys', () async {
+    store['auvora_acct_access_v1'] = 'acc-1';
+    store['auvora_acct_refresh_v1'] = 'ref-1';
+    store['auvora_mnemonic_v3_wallet-1'] = 'do-not-touch';
+    final c = controllerWith(routed({'POST /api/v1/auth/logout': [ok({'message': 'ok'})]}));
+    await c.signOut();
+    expect(c.status, AccountStatus.signedOut);
+    expect(store.containsKey('auvora_acct_access_v1'), isFalse);
+    expect(store['auvora_mnemonic_v3_wallet-1'], 'do-not-touch');
+  });
+
+  test('status stays unknown until bootstrap resolves', () async {
+    store['auvora_acct_access_v1'] = 'acc-1';
+    final c = controllerWith(routed({'GET /api/v1/me': [ok(profile)]}));
+    expect(c.status, AccountStatus.unknown);
+    await c.bootstrap();
+    expect(c.status, AccountStatus.signedIn);
   });
 }

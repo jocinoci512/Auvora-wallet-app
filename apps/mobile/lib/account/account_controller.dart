@@ -1,35 +1,79 @@
 import 'package:flutter/foundation.dart';
 
+import '../release/network_env.dart';
+import '../state/wallet_session_restore.dart';
 import 'auth_api_client.dart';
 import 'auth_token_store.dart';
+import 'auvora_api_config.dart';
+import 'auvora_connectivity.dart';
 
-enum AccountStatus { unknown, signedOut, authenticating, signedIn }
+enum AccountStatus { unknown, signedOut, authenticating, signedIn, sessionExpired }
 
 /// Owns Auvora *account* (backend identity) state for the mobile app.
 ///
 /// Separate from the on-device non-custodial wallet: signing in or out here
 /// never uploads or deletes wallet secrets. Logout clears account tokens only.
 class AccountController extends ChangeNotifier {
-  AccountController({AuthApiClient? client, AuthTokenStore? store})
-      : _client = client ?? AuthApiClient(),
-        _store = store ?? AuthTokenStore();
+  AccountController({
+    AuthApiClient? client,
+    AuthTokenStore? store,
+    Future<bool> Function()? gatewayReachable,
+  })  : _client = client ?? AuthApiClient(),
+        _store = store ?? AuthTokenStore(),
+        _gatewayReachable = gatewayReachable ?? AuvoraConnectivity.gatewayReachable;
 
   final AuthApiClient _client;
   final AuthTokenStore _store;
+  final Future<bool> Function() _gatewayReachable;
 
   AccountStatus _status = AccountStatus.unknown;
   AuthProfile? _profile;
   String? _error;
   bool _busy = false;
+  AuvoraLinkState _linkState = AuvoraLinkState.online;
 
   AccountStatus get status => _status;
   AuthProfile? get profile => _profile;
   String? get error => _error;
   bool get busy => _busy;
+  AuvoraLinkState get linkState => _linkState;
+
+  /// True when [error] is a sticky transport failure, not a credential problem.
+  bool get hasTransportError =>
+      _error != null &&
+      (_linkState == AuvoraLinkState.offline || _linkState == AuvoraLinkState.degraded);
+
+  /// Clear a stale offline/degraded banner after another authenticated API call succeeds.
+  void noteAuthenticatedSuccess() {
+    if (_error == null && _linkState == AuvoraLinkState.online) return;
+    _error = null;
+    _linkState = AuvoraLinkState.online;
+    notifyListeners();
+  }
   bool get isConfigured => _client.isConfigured;
   bool get isSignedIn => _status == AccountStatus.signedIn;
+  bool get isSessionExpired => _status == AccountStatus.sessionExpired;
 
   Future<String?> readAccessToken() => _store.readAccessToken();
+
+  /// LOCAL QA ONLY. Expires the access token without touching the refresh session.
+  Future<void> markAccessExpiredForQa() async {
+    if (!AuvoraApiConfig.allowLocalApi || !AuvoraNetworkEnv.isTestnet) return;
+    await _store.markAccessExpiredForLocalQa();
+  }
+
+  /// Access token for API calls. Refreshes first when the stored access token
+  /// is missing or past its persisted expiry. Never prompts for a password.
+  Future<String?> ensureAccessToken() async {
+    final access = await _store.readAccessToken();
+    if (access != null && access.isNotEmpty && !await _store.accessExpired) {
+      return access;
+    }
+    if (!await _tryRefresh()) return null;
+    final next = await _store.readAccessToken();
+    if (next == null || next.isEmpty) return null;
+    return next;
+  }
 
   static bool _isTransient(AuthException e) =>
       e.kind == AuthErrorKind.network ||
@@ -48,13 +92,19 @@ class AccountController extends ChangeNotifier {
       return;
     }
     final access = await _store.readAccessToken();
-    if (access == null || access.isEmpty) {
-      _set(status: AccountStatus.signedOut);
+    final hasRefresh = await _store.hasRefreshSession;
+    if ((access == null || access.isEmpty) && !hasRefresh) {
+      await _signOutAuthOnly(expired: await _store.readUserId() != null);
+      return;
+    }
+    if (access == null || access.isEmpty || await _store.accessExpired) {
+      await _tryRefresh();
       return;
     }
     try {
       _profile = await _client.currentUser(access);
       _error = null;
+      _linkState = AuvoraLinkState.online;
       _set(status: AccountStatus.signedIn);
     } on AuthException catch (e) {
       if (e.kind == AuthErrorKind.invalidCredentials || e.kind == AuthErrorKind.forbidden) {
@@ -62,12 +112,10 @@ class AccountController extends ChangeNotifier {
         return;
       }
       if (_isTransient(e)) {
-        await _restoreCachedSignedIn(e.message);
+        await _restoreCachedSignedIn(e.message, e.kind);
         return;
       }
-      await _store.clear();
-      _profile = null;
-      _set(status: AccountStatus.signedOut);
+      await _signOutAuthOnly(expired: true);
     }
   }
 
@@ -75,11 +123,25 @@ class AccountController extends ChangeNotifier {
   /// on a transport failure.
   Future<void> revalidate() async {
     if (!isConfigured || _busy) return;
+    if (await _store.accessExpired) {
+      await _tryRefresh();
+      return;
+    }
     final access = await _store.readAccessToken();
     if (access == null || access.isEmpty) return;
     try {
+      _linkState = AuvoraLinkState.connecting;
+      notifyListeners();
+      if (await _gatewayReachable()) {
+        _profile = await _client.currentUser(access);
+        _error = null;
+        _linkState = AuvoraLinkState.online;
+        _set(status: AccountStatus.signedIn);
+        return;
+      }
       _profile = await _client.currentUser(access);
       _error = null;
+      _linkState = AuvoraLinkState.online;
       _set(status: AccountStatus.signedIn);
     } on AuthException catch (e) {
       if (e.kind == AuthErrorKind.invalidCredentials || e.kind == AuthErrorKind.forbidden) {
@@ -87,7 +149,19 @@ class AccountController extends ChangeNotifier {
         return;
       }
       if (_isTransient(e)) {
-        _error = e.message;
+        final gatewayUp = await _gatewayReachable();
+        if (gatewayUp) {
+          // Gateway is up — do not keep a false "offline" banner.
+          _error = null;
+          _linkState = AuvoraLinkState.online;
+          notifyListeners();
+          return;
+        }
+        _error = e.kind == AuthErrorKind.timeout
+            ? AuvoraConnectivity.degradedMessage
+            : AuvoraConnectivity.offlineMessage;
+        _linkState =
+            e.kind == AuthErrorKind.timeout ? AuvoraLinkState.degraded : AuvoraLinkState.offline;
         notifyListeners();
       }
     }
@@ -96,9 +170,7 @@ class AccountController extends ChangeNotifier {
   Future<bool> _tryRefresh() async {
     final refresh = await _store.readRefreshToken();
     if (refresh == null || refresh.isEmpty) {
-      await _store.clear();
-      _profile = null;
-      _set(status: AccountStatus.signedOut);
+      await _signOutAuthOnly(expired: true);
       return false;
     }
     try {
@@ -107,31 +179,53 @@ class AccountController extends ChangeNotifier {
         accessToken: session.accessToken,
         sessionId: session.sessionId,
         refreshToken: session.refreshToken,
+        expiresIn: session.expiresIn,
       );
       _profile = await _client.currentUser(session.accessToken);
       _error = null;
+      _linkState = AuvoraLinkState.online;
       _set(status: AccountStatus.signedIn);
       return true;
     } on AuthException catch (e) {
       if (_isTransient(e)) {
-        await _restoreCachedSignedIn(e.message);
+        await _restoreCachedSignedIn(e.message, e.kind);
         return true;
       }
-      await _store.clear();
-      _profile = null;
-      _set(status: AccountStatus.signedOut);
+      await _signOutAuthOnly(expired: true);
       return false;
     }
   }
 
-  Future<void> _restoreCachedSignedIn(String message) async {
+  /// Clear account tokens only. Never touches wallet / vault keys.
+  Future<void> _signOutAuthOnly({required bool expired}) async {
+    await _store.clear();
+    _profile = null;
+    if (expired) {
+      _error = WalletSessionRestore.sessionExpiredMessage;
+      _set(status: AccountStatus.sessionExpired);
+      return;
+    }
+    _set(status: AccountStatus.signedOut);
+  }
+
+  Future<void> _restoreCachedSignedIn(String message, AuthErrorKind kind) async {
     final id = await _store.readUserId();
     final email = await _store.readEmail();
     final username = await _store.readUsername();
     if (id != null && id.isNotEmpty) {
       _profile = AuthProfile(id: id, email: email ?? '', username: username ?? '');
     }
-    _error = message;
+    final gatewayUp = await _gatewayReachable();
+    if (gatewayUp) {
+      _error = null;
+      _linkState = AuvoraLinkState.online;
+      _set(status: AccountStatus.signedIn);
+      return;
+    }
+    _error = kind == AuthErrorKind.timeout
+        ? AuvoraConnectivity.degradedMessage
+        : AuvoraConnectivity.offlineMessage;
+    _linkState = kind == AuthErrorKind.timeout ? AuvoraLinkState.degraded : AuvoraLinkState.offline;
     _set(status: AccountStatus.signedIn);
   }
 
@@ -159,6 +253,38 @@ class AccountController extends ChangeNotifier {
     return _guard(() => _loginInternal(email: email, password: password));
   }
 
+  /// Confirm the account password without signing the user out on failure.
+  ///
+  /// Used by secure-backup / unlock flows. Wrong password returns false and
+  /// leaves the existing session intact.
+  Future<bool> confirmPassword(String password) async {
+    final email = _profile?.email;
+    if (!isSignedIn || email == null || email.isEmpty) return false;
+    final trimmed = password.trim();
+    if (trimmed.isEmpty) return false;
+    try {
+      final fp = await _store.deviceFingerprint();
+      final session = await _client.login(
+        email: email,
+        password: trimmed,
+        deviceFingerprint: fp,
+        deviceName: 'Android device',
+      );
+      await _store.saveSession(
+        accessToken: session.accessToken,
+        sessionId: session.sessionId,
+        refreshToken: session.refreshToken,
+        expiresIn: session.expiresIn,
+      );
+      return true;
+    } on AuthException catch (e) {
+      if (e.kind == AuthErrorKind.invalidCredentials || e.kind == AuthErrorKind.forbidden) {
+        return false;
+      }
+      rethrow;
+    }
+  }
+
   Future<bool> _loginInternal({required String email, required String password}) async {
     final fp = await _store.deviceFingerprint();
     final session = await _client.login(
@@ -171,6 +297,7 @@ class AccountController extends ChangeNotifier {
       accessToken: session.accessToken,
       sessionId: session.sessionId,
       refreshToken: session.refreshToken,
+      expiresIn: session.expiresIn,
     );
     final profile = await _client.currentUser(session.accessToken);
     await _store.saveIdentity(id: profile.id, email: profile.email, username: profile.username);
@@ -198,6 +325,7 @@ class AccountController extends ChangeNotifier {
     }
     _busy = true;
     _error = null;
+    _linkState = AuvoraLinkState.online;
     _set(status: AccountStatus.authenticating);
     try {
       final ok = await run();

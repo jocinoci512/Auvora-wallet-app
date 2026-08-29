@@ -15,6 +15,7 @@ import 'package:web3dart/web3dart.dart';
 import '../crypto/hd_derivation.dart';
 import '../portfolio/models.dart';
 import '../release/release_config.dart';
+import '../wallet_engine/evm_testnet_broadcast.dart';
 
 class EvmLocalSigner {
   const EvmLocalSigner();
@@ -97,6 +98,37 @@ class EvmLocalSigner {
       '(ReleaseConfig.liveBroadcastEnabled=${ReleaseConfig.liveBroadcastEnabled}). '
       'WalletConnect cannot bypass this kill switch.',
     );
+  }
+
+  /// Sign a native-value EVM transfer on-device. Never broadcasts.
+  ///
+  /// Refuses mainnet chain IDs. Caller must send the raw bytes only after
+  /// [EvmTestnetBroadcast.assertAllowed] succeeds.
+  Uint8List signLegacyNativeTransfer({
+    required String mnemonic,
+    required String to,
+    required BigInt valueWei,
+    required int nonce,
+    required BigInt gasPriceWei,
+    required int chainId,
+    int gasLimit = 21000,
+    int accountIndex = 0,
+  }) {
+    if (EvmTestnetBroadcast.mainnetChainIds.contains(chainId)) {
+      throw StateError('Refusing to sign a mainnet chain id.');
+    }
+    if (!EvmTestnetBroadcast.allowlistedTestnetChainIds.contains(chainId)) {
+      throw StateError('Refusing to sign an unknown chain id.');
+    }
+    final credentials = credentialsFromMnemonic(mnemonic, accountIndex: accountIndex);
+    final tx = Transaction(
+      to: EthereumAddress.fromHex(to),
+      value: EtherAmount.inWei(valueWei),
+      nonce: nonce,
+      maxGas: gasLimit,
+      gasPrice: EtherAmount.inWei(gasPriceWei),
+    );
+    return signTransactionRaw(tx, credentials, chainId: chainId);
   }
 
   /// Attempt send — always blocked while kill switch is false.

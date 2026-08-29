@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 
 import '../account/auvora_api_config.dart';
 import '../account/auth_api_client.dart';
+import '../account/auvora_connectivity.dart';
 import '../release/network_env.dart';
+import '../state/wallet_session_restore.dart';
 
 /// Safe, non-custodial response from transfer preparation.
 class TransferPrepareResult {
@@ -16,6 +18,8 @@ class TransferPrepareResult {
     this.reviewId,
     this.reviewStatus,
     this.requestedAt,
+    this.customerReason,
+    this.customerStatus,
   });
 
   final bool allowed;
@@ -24,14 +28,18 @@ class TransferPrepareResult {
   final String? reviewId;
   final String? reviewStatus;
   final String? requestedAt;
+  final String? customerReason;
+  final String? customerStatus;
 
   factory TransferPrepareResult.fromJson(Map<String, dynamic> json) => TransferPrepareResult(
         allowed: json['allowed'] == true,
-        status: (json['status'] ?? '').toString(),
+        status: (json['status'] ?? json['customerStatus'] ?? '').toString(),
         message: (json['message'] ?? 'Transaction pending review').toString(),
-        reviewId: json['reviewId']?.toString(),
-        reviewStatus: json['reviewStatus']?.toString(),
+        reviewId: (json['reviewId'] ?? json['id'])?.toString(),
+        reviewStatus: json['reviewStatus']?.toString() ?? json['status']?.toString(),
         requestedAt: json['requestedAt']?.toString(),
+        customerReason: json['customerReason']?.toString(),
+        customerStatus: json['customerStatus']?.toString(),
       );
 }
 
@@ -57,6 +65,7 @@ class TransferPrepareClient {
     required String amount,
     required String idempotencyKey,
     String? fromAddress,
+    int? qaNotionalUsdCents,
   }) async {
     if (!isConfigured) {
       throw const AuthException(
@@ -80,6 +89,8 @@ class TransferPrepareClient {
               'idempotencyKey': idempotencyKey,
               if (fromAddress != null && fromAddress.isNotEmpty) 'fromAddress': fromAddress,
               'networkEnv': AuvoraNetworkEnv.current.name,
+              if (qaNotionalUsdCents != null && qaNotionalUsdCents > 0)
+                'qaNotionalUsdCents': '$qaNotionalUsdCents',
             }),
           )
           .timeout(timeout);
@@ -96,10 +107,16 @@ class TransferPrepareClient {
           data is Map<String, dynamic> ? data : body,
         );
       }
-      if (res.statusCode == 401 || res.statusCode == 403) {
+      if (res.statusCode == 401) {
+        throw const AuthException(
+          AuthErrorKind.invalidCredentials,
+          WalletSessionRestore.sessionExpiredMessage,
+        );
+      }
+      if (res.statusCode == 403) {
         throw const AuthException(
           AuthErrorKind.forbidden,
-          'This transfer could not be prepared. Sign in and try again.',
+          'This transfer could not be prepared. Nothing was signed.',
         );
       }
       throw const AuthException(
@@ -113,11 +130,54 @@ class TransferPrepareClient {
       );
     } on AuthException {
       rethrow;
-    } catch (_) {
+    } catch (error) {
+      throw AuvoraConnectivity.fromTransportOrUnknown(error);
+    }
+  }
+
+  Future<TransferPrepareResult> getReview({
+    required String accessToken,
+    required String reviewId,
+  }) async {
+    if (!isConfigured) {
       throw const AuthException(
-        AuthErrorKind.network,
-        'No internet connection. Nothing was signed.',
+        AuthErrorKind.notConfigured,
+        'Account backend is not configured for this build.',
       );
+    }
+    try {
+      final res = await _http
+          .get(
+            Uri.parse(
+              '${_baseUrl.replaceAll(RegExp(r'/+$'), '')}/api/v1/wallets/transfers/reviews/${Uri.encodeComponent(reviewId)}',
+            ),
+            headers: {
+              'accept': 'application/json',
+              'authorization': 'Bearer $accessToken',
+            },
+          )
+          .timeout(timeout);
+      Map<String, dynamic> body;
+      try {
+        final decoded = jsonDecode(res.body);
+        body = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      } catch (_) {
+        body = <String, dynamic>{};
+      }
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = body['data'];
+        return TransferPrepareResult.fromJson(
+          data is Map<String, dynamic> ? data : body,
+        );
+      }
+      throw const AuthException(
+        AuthErrorKind.server,
+        'Transfer review could not be loaded.',
+      );
+    } on AuthException {
+      rethrow;
+    } catch (error) {
+      throw AuvoraConnectivity.fromTransportOrUnknown(error);
     }
   }
 }

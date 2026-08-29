@@ -1,10 +1,12 @@
 import 'dart:convert';
 
+import 'package:auvora_wallet/account/auth_api_client.dart';
 import 'package:auvora_wallet/account/auvora_api_config.dart';
 import 'package:auvora_wallet/account/wallet_registration_client.dart';
 import 'package:auvora_wallet/portfolio/models.dart';
 import 'package:auvora_wallet/release/network_env.dart';
 import 'package:auvora_wallet/release/release_config.dart';
+import 'package:auvora_wallet/state/wallet_session_restore.dart';
 import 'package:auvora_wallet/transfer/transfer_prepare_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -28,6 +30,7 @@ void main() {
       );
       expect(WalletRegistrationClient.assetCodeFor(AssetNetwork.ethereum), 'ETH');
       expect(WalletRegistrationClient.assetCodeFor(AssetNetwork.bitcoin), 'BTC');
+      expect(WalletRegistrationClient.aliasFor(AssetNetwork.ethereum), startsWith('auvora-public-'));
     });
 
     test('public wallet import posts address + networkEnv without secrets', () async {
@@ -132,6 +135,47 @@ void main() {
       expect(body['fromAddress'], '0xc3676e0177085d64324fa777325d5d782ebb48e9');
       expect(jsonEncode(body).toLowerCase(), isNot(contains('mnemonic')));
       expect(jsonEncode(body).toLowerCase(), isNot(contains('private')));
+    });
+
+    test('prepare 401 is session-expired, not a generic transfer failure', () async {
+      final client = TransferPrepareClient(
+        baseUrl: 'https://api.auvorawallet.com',
+        httpClient: MockClient((request) async => http.Response('{"error":{"message":"expired"}}', 401)),
+      );
+      try {
+        await client.prepare(
+          accessToken: 'stale',
+          assetCode: 'ETH',
+          destinationAddress: '0xabc',
+          amount: '0.000001',
+          idempotencyKey: 'idem-401',
+        );
+        fail('expected AuthException');
+      } on AuthException catch (e) {
+        expect(e.kind, AuthErrorKind.invalidCredentials);
+        expect(e.message, WalletSessionRestore.sessionExpiredMessage);
+        expect(e.message.toLowerCase(), isNot(contains('could not be prepared')));
+      }
+    });
+
+    test('prepare 403 stays a prepare refusal and does not look like session expiry', () async {
+      final client = TransferPrepareClient(
+        baseUrl: 'https://api.auvorawallet.com',
+        httpClient: MockClient((request) async => http.Response('{"error":{"message":"forbidden"}}', 403)),
+      );
+      try {
+        await client.prepare(
+          accessToken: 'tok',
+          assetCode: 'ETH',
+          destinationAddress: '0xabc',
+          amount: '0.000001',
+          idempotencyKey: 'idem-403',
+        );
+        fail('expected AuthException');
+      } on AuthException catch (e) {
+        expect(e.kind, AuthErrorKind.forbidden);
+        expect(e.message, contains('Nothing was signed'));
+      }
     });
 
     test('EVM live adapters are eth-rpc / bsc-rpc / polygon-rpc (not Preview)', () {

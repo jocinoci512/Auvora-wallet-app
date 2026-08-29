@@ -47,7 +47,7 @@ typedef EvmJsonRpcCaller = Future<Object?> Function(
   List<Object?> params,
 );
 
-/// Read-only EVM JSON-RPC client (eth_chainId / eth_getBalance).
+/// EVM JSON-RPC client (chainId, balance, nonce, gas, optional testnet sendRaw).
 ///
 /// Never logs full RPC URLs that may embed Alchemy path secrets.
 class EvmJsonRpcClient {
@@ -79,6 +79,85 @@ class EvmJsonRpcClient {
       throw RpcBalanceException('eth_chainId returned non-hex', endpoint: RpcEndpoints.displayLabel(rpcUrl));
     }
     return EvmAmountCodec.parseHexQuantity(result).toInt();
+  }
+
+  Future<int> ethGetTransactionCount(String rpcUrl, String address) async {
+    final normalized = address.trim();
+    if (!RegExp(r'^0x[a-fA-F0-9]{40}$').hasMatch(normalized)) {
+      throw RpcBalanceException('Invalid EVM address for eth_getTransactionCount');
+    }
+    final result = await _call(rpcUrl, 'eth_getTransactionCount', [normalized, 'pending']);
+    if (result is! String) {
+      throw RpcBalanceException(
+        'eth_getTransactionCount returned non-hex',
+        endpoint: RpcEndpoints.displayLabel(rpcUrl),
+      );
+    }
+    return EvmAmountCodec.parseHexQuantity(result).toInt();
+  }
+
+  Future<BigInt> ethGasPrice(String rpcUrl) async {
+    final result = await _call(rpcUrl, 'eth_gasPrice', const []);
+    if (result is! String) {
+      throw RpcBalanceException(
+        'eth_gasPrice returned non-hex',
+        endpoint: RpcEndpoints.displayLabel(rpcUrl),
+      );
+    }
+    return EvmAmountCodec.parseHexQuantity(result);
+  }
+
+  Future<String> ethSendRawTransaction(String rpcUrl, String signedHex) async {
+    final raw = signedHex.trim();
+    if (!RegExp(r'^0x[a-fA-F0-9]+$').hasMatch(raw) || raw.length < 10) {
+      throw RpcBalanceException('Invalid signed transaction');
+    }
+    final result = await _call(rpcUrl, 'eth_sendRawTransaction', [raw]);
+    if (result is! String || !result.startsWith('0x')) {
+      throw RpcBalanceException(
+        'eth_sendRawTransaction returned no hash',
+        endpoint: RpcEndpoints.displayLabel(rpcUrl),
+      );
+    }
+    return result;
+  }
+
+  Future<String> resolveLiveTestnetRpc({
+    required ChainId chain,
+    NetworkEnv? env,
+    List<String>? urlsOverride,
+  }) async {
+    final expected = expectedChainId(chain, env);
+    final urls = urlsOverride ?? RpcEndpoints.urlsFor(chain);
+    Object? lastError;
+    for (final url in urls) {
+      try {
+        if ((env ?? AuvoraNetworkEnv.current) == NetworkEnv.testnet &&
+            RpcEndpoints.looksLikeMainnetUrl(url)) {
+          lastError = RpcBalanceException(
+            'Refusing mainnet RPC host in testnet mode',
+            endpoint: RpcEndpoints.displayLabel(url),
+          );
+          continue;
+        }
+        final id = await ethChainId(url);
+        if (id != expected) {
+          lastError = RpcBalanceException(
+            'RPC chainId $id != expected $expected',
+            chainId: id,
+            endpoint: RpcEndpoints.displayLabel(url),
+          );
+          continue;
+        }
+        return url;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw RpcBalanceException(
+      'Unable to reach ${chain.label} RPC (${lastError ?? 'all endpoints failed'})',
+      chainId: expected,
+    );
   }
 
   Future<BigInt> ethGetBalance(String rpcUrl, String address) async {

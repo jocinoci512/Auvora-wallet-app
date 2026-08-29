@@ -158,5 +158,43 @@ void main() {
     test('mainnet broadcast remains OFF', () {
       expect(ReleaseConfig.liveBroadcastEnabled, isFalse);
     });
+
+    test('mock JSON-RPC returns nonce, gasPrice, and sendRaw hash', () async {
+      final client = EvmJsonRpcClient(
+        caller: (url, method, params) async {
+          if (method == 'eth_chainId') return '0xaa36a7';
+          if (method == 'eth_getTransactionCount') return '0x7';
+          if (method == 'eth_gasPrice') return '0x3b9aca00';
+          if (method == 'eth_sendRawTransaction') {
+            expect(params.first.toString().startsWith('0x'), isTrue);
+            return '0xabc123def4567890abc123def4567890abc123def4567890abc123def4567890';
+          }
+          fail('unexpected method $method');
+        },
+      );
+      const sepolia = 'https://ethereum-sepolia.publicnode.com';
+      expect(await client.ethGetTransactionCount(sepolia, '0xc3676e0177085d64324fa777325d5d782ebb48e9'), 7);
+      expect(await client.ethGasPrice(sepolia), BigInt.parse('1000000000'));
+      final hash = await client.ethSendRawTransaction(sepolia, '0x02f86c0180830f4240');
+      expect(hash.startsWith('0x'), isTrue);
+      expect(hash.toLowerCase(), isNot(contains('mnemonic')));
+    });
+
+    test('resolveLiveTestnetRpc refuses a mainnet host in testnet env', () async {
+      final client = EvmJsonRpcClient(
+        caller: (url, method, params) async {
+          if (method == 'eth_chainId') return '0x1';
+          fail('unexpected method $method');
+        },
+      );
+      expect(
+        () => client.resolveLiveTestnetRpc(
+          chain: ChainId.ethereum,
+          env: NetworkEnv.testnet,
+          urlsOverride: const ['https://ethereum.publicnode.com'],
+        ),
+        throwsA(isA<RpcBalanceException>()),
+      );
+    });
   });
 }

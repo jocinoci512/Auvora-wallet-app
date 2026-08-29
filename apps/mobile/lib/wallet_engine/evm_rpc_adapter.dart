@@ -1,8 +1,13 @@
+import 'package:convert/convert.dart';
+
+import '../connections/evm_local_signer.dart';
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
 import '../release/network_env.dart';
+import '../release/release_config.dart';
 import 'blockchain_adapter.dart';
 import 'evm_json_rpc.dart';
+import 'evm_testnet_broadcast.dart';
 import 'models.dart';
 import 'rpc_endpoints.dart';
 
@@ -78,6 +83,22 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
     required String assetSymbol,
     required double amount,
   }) async {
+    if (EvmTestnetBroadcast.enabledNow) {
+      try {
+        final rpcUrl = await _rpc.resolveLiveTestnetRpc(chain: chain);
+        final gasPrice = await _rpc.ethGasPrice(rpcUrl);
+        final feeEth = EvmAmountCodec.weiToEth(gasPrice * BigInt.from(21000));
+        return TransactionFeeEstimate(
+          networkFee: feeEth,
+          networkFeeAsset: chain.nativeTicker,
+          networkFeeUsd: 0,
+          arrivalLabel: 'Usually 1–3 minutes',
+          explorerBaseUrl: explorerBaseUrl,
+        );
+      } catch (_) {
+        // Fall through to the conservative static estimate.
+      }
+    }
     return switch (chain) {
       ChainId.bnbSmartChain => TransactionFeeEstimate(
           networkFee: 0.0003,
@@ -129,7 +150,30 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
     required TransactionDraft draft,
     required String mnemonic,
   }) async {
-    return 'signed:${WalletCrypto.shortHash('${draft.fromAddress}:${draft.unsignedPayload}')}:local';
+    if (!EvmTestnetBroadcast.enabledNow) {
+      return 'signed:${WalletCrypto.shortHash('${draft.fromAddress}:${draft.unsignedPayload}')}:local';
+    }
+    final expected = expectedChainId;
+    final rpcUrl = await _rpc.resolveLiveTestnetRpc(chain: chain);
+    EvmTestnetBroadcast.assertAllowed(
+      chainId: expected,
+      canBroadcastTestnet: ReleaseConfig.canBroadcastTestnet,
+      liveBroadcastEnabled: ReleaseConfig.liveBroadcastEnabled,
+      isTestnetEnv: AuvoraNetworkEnv.isTestnet,
+      rpcUrl: rpcUrl,
+    );
+    final nonce = await _rpc.ethGetTransactionCount(rpcUrl, draft.fromAddress);
+    final gasPrice = await _rpc.ethGasPrice(rpcUrl);
+    final valueWei = EvmAmountCodec.ethToWei(draft.amount);
+    final signed = const EvmLocalSigner().signLegacyNativeTransfer(
+      mnemonic: mnemonic,
+      to: draft.toAddress,
+      valueWei: valueWei,
+      nonce: nonce,
+      gasPriceWei: gasPrice,
+      chainId: expected,
+    );
+    return '0x${hex.encode(signed)}';
   }
 
   @override
@@ -137,17 +181,39 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
     required TransactionDraft draft,
     required String signedPayload,
   }) async {
-    // Broadcast remains gated by ReleaseConfig — adapter returns preview submission.
-    final hash = WalletCrypto.shortHash(
-      '${draft.unsignedPayload}:$signedPayload:${DateTime.now().microsecondsSinceEpoch}',
+    if (!EvmTestnetBroadcast.enabledNow) {
+      final hash = WalletCrypto.shortHash(
+        '${draft.unsignedPayload}:$signedPayload:${DateTime.now().microsecondsSinceEpoch}',
+      );
+      return TransactionSubmissionResult(
+        id: '${chain.key}-${DateTime.now().millisecondsSinceEpoch}',
+        hash: hash,
+        status: TxStatus.pending,
+        explorerUrl: '$explorerBaseUrl$hash',
+        submittedAt: DateTime.now(),
+        preview: true,
+      );
+    }
+    if (!signedPayload.startsWith('0x') || signedPayload.length < 20) {
+      throw RpcBalanceException('Missing locally signed payload. Nothing was broadcast.');
+    }
+    final expected = expectedChainId;
+    final rpcUrl = await _rpc.resolveLiveTestnetRpc(chain: chain);
+    EvmTestnetBroadcast.assertAllowed(
+      chainId: expected,
+      canBroadcastTestnet: ReleaseConfig.canBroadcastTestnet,
+      liveBroadcastEnabled: ReleaseConfig.liveBroadcastEnabled,
+      isTestnetEnv: AuvoraNetworkEnv.isTestnet,
+      rpcUrl: rpcUrl,
     );
+    final hash = await _rpc.ethSendRawTransaction(rpcUrl, signedPayload);
     return TransactionSubmissionResult(
-      id: '${chain.key}-${DateTime.now().millisecondsSinceEpoch}',
+      id: '${chain.key}-$hash',
       hash: hash,
       status: TxStatus.pending,
       explorerUrl: '$explorerBaseUrl$hash',
       submittedAt: DateTime.now(),
-      preview: true,
+      preview: false,
     );
   }
 
