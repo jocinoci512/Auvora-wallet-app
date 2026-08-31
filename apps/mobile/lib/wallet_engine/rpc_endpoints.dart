@@ -1,4 +1,5 @@
 import '../release/auvora_qa_local_evm.dart';
+import '../release/auvora_qa_local_solana.dart';
 import '../release/integration_config.dart';
 import '../release/network_env.dart';
 import 'models.dart';
@@ -16,9 +17,15 @@ abstract final class RpcEndpoints {
     if (AuvoraQaLocalEvm.isActive && chain == ChainId.ethereum) {
       return [AuvoraQaLocalEvm.effectiveRpcUrl];
     }
-    final overrides = _overridesFor(chain).where((u) => u.trim().isNotEmpty).toList();
+    if (AuvoraQaLocalSolana.isActive && chain == ChainId.solana) {
+      return [AuvoraQaLocalSolana.effectiveRpcUrl];
+    }
+    final overrides =
+        _overridesFor(chain).where((u) => u.trim().isNotEmpty).toList();
     final alchemy = _alchemyUrls(chain);
-    final public = (AuvoraNetworkEnv.isTestnet ? _publicTestnetDefaults : _publicMainnetDefaults)[chain] ??
+    final public = (AuvoraNetworkEnv.isTestnet
+            ? _publicTestnetDefaults
+            : _publicMainnetDefaults)[chain] ??
         const <String>[];
     final merged = <String>[
       ...overrides,
@@ -163,8 +170,10 @@ abstract final class RpcEndpoints {
       'cloudflare-eth.com',
       'ethereum.publicnode.com',
     ];
-    if (lower.contains('mempool.space') && !lower.contains('/testnet')) return true;
-    if (lower.contains('blockstream.info') && !lower.contains('/testnet')) return true;
+    if (lower.contains('mempool.space') && !lower.contains('/testnet'))
+      return true;
+    if (lower.contains('blockstream.info') && !lower.contains('/testnet'))
+      return true;
     return markers.any(lower.contains);
   }
 }

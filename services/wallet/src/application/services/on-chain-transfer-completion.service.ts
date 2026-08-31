@@ -9,7 +9,12 @@ import {
 } from '../../infrastructure/notifications/notifications-publisher.adapter';
 
 const TX_HASH_RE = /^0x[a-fA-F0-9]{64}$/;
+const SOLANA_SIG_RE = /^[1-9A-HJ-NP-Za-km-z]{80,90}$/;
+const EVM_ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
+const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const QA_LOCAL_CHAIN_ID = 31337;
+const QA_LOCAL_SOLANA_CHAIN_ID = 901001019;
+const SOLANA_DEVNET_CHAIN_ID = 901;
 const IDEMPOTENCY_PREFIX = 'wallet:onchain-completion:';
 
 export interface ReportOnChainTransferCompletionInput {
@@ -54,17 +59,26 @@ export class OnChainTransferCompletionService {
   async report(
     input: ReportOnChainTransferCompletionInput,
   ): Promise<ReportOnChainTransferCompletionResult> {
+    if (this.isSolanaChain(input.chainId)) {
+      return this.reportSolana(input);
+    }
+    return this.reportEvm(input);
+  }
+
+  private async reportEvm(
+    input: ReportOnChainTransferCompletionInput,
+  ): Promise<ReportOnChainTransferCompletionResult> {
     const txHash = input.txHash.trim().toLowerCase();
     if (!TX_HASH_RE.test(txHash)) {
       throw new ValidationError('Invalid transaction hash');
     }
-    if (!input.fromAddress || !/^0x[a-fA-F0-9]{40}$/.test(input.fromAddress)) {
+    if (!input.fromAddress || !EVM_ADDR_RE.test(input.fromAddress)) {
       throw new ValidationError('Invalid sender address');
     }
-    if (!input.toAddress || !/^0x[a-fA-F0-9]{40}$/.test(input.toAddress)) {
+    if (!input.toAddress || !EVM_ADDR_RE.test(input.toAddress)) {
       throw new ValidationError('Invalid recipient address');
     }
-    this.assertSupportedChain(input.chainId);
+    this.assertSupportedEvmChain(input.chainId);
 
     const idemKey = `${IDEMPOTENCY_PREFIX}${input.ownerUserId}:${txHash}`;
     const existing = await this.redis.getClient().get(idemKey);
@@ -90,6 +104,53 @@ export class OnChainTransferCompletionService {
       throw new ForbiddenError('On-chain sender does not match the reported address');
     }
 
+    await this.publishCompleted(input, txHash);
+    await this.redis.getClient().set(idemKey, new Date().toISOString(), 'EX', 60 * 60 * 24 * 30);
+    this.logger.log(`On-chain completion reported for ${txHash.slice(0, 10)}…`);
+    return { accepted: true, alreadyReported: false, txHash };
+  }
+
+  private async reportSolana(
+    input: ReportOnChainTransferCompletionInput,
+  ): Promise<ReportOnChainTransferCompletionResult> {
+    const signature = input.txHash.trim();
+    if (!SOLANA_SIG_RE.test(signature)) {
+      throw new ValidationError('Invalid Solana transaction signature');
+    }
+    if (!input.fromAddress || !SOLANA_ADDR_RE.test(input.fromAddress)) {
+      throw new ValidationError('Invalid Solana sender address');
+    }
+    if (!input.toAddress || !SOLANA_ADDR_RE.test(input.toAddress)) {
+      throw new ValidationError('Invalid Solana recipient address');
+    }
+    this.assertSupportedSolanaChain(input.chainId);
+
+    const idemKey = `${IDEMPOTENCY_PREFIX}${input.ownerUserId}:${signature}`;
+    const existing = await this.redis.getClient().get(idemKey);
+    if (existing) {
+      return { accepted: true, alreadyReported: true, txHash: signature };
+    }
+
+    const ownsSender = await this.userOwnsSolanaAddress(input.ownerUserId, input.fromAddress);
+    if (!ownsSender) {
+      throw new ForbiddenError('Sender address is not registered to this account');
+    }
+
+    const confirmed = await this.verifySolanaSignature(input.chainId, signature);
+    if (!confirmed) {
+      throw new ValidationError('Solana signature not confirmed on QA network');
+    }
+
+    await this.publishCompleted(input, signature);
+    await this.redis.getClient().set(idemKey, new Date().toISOString(), 'EX', 60 * 60 * 24 * 30);
+    this.logger.log(`Solana completion reported for ${signature.slice(0, 10)}…`);
+    return { accepted: true, alreadyReported: false, txHash: signature };
+  }
+
+  private async publishCompleted(
+    input: ReportOnChainTransferCompletionInput,
+    txHash: string,
+  ): Promise<void> {
     await this.notifications?.publishEvent({
       eventType: 'wallet.transfer.completed',
       aggregateId: txHash,
@@ -110,19 +171,28 @@ export class OnChainTransferCompletionService {
         chainId: input.chainId,
       },
     });
-
-    await this.redis.getClient().set(idemKey, new Date().toISOString(), 'EX', 60 * 60 * 24 * 30);
-    this.logger.log(`On-chain completion reported for ${txHash.slice(0, 10)}…`);
-    return { accepted: true, alreadyReported: false, txHash };
   }
 
-  private assertSupportedChain(chainId: number): void {
+  private isSolanaChain(chainId: number): boolean {
+    return chainId === QA_LOCAL_SOLANA_CHAIN_ID || chainId === SOLANA_DEVNET_CHAIN_ID;
+  }
+
+  private assertSupportedEvmChain(chainId: number): void {
     if (this.env.NODE_ENV === 'production' && chainId === QA_LOCAL_CHAIN_ID) {
       throw new ValidationError('Local QA chain is not enabled in production');
     }
     const allowed = new Set([QA_LOCAL_CHAIN_ID, 11155111]);
     if (!allowed.has(chainId)) {
       throw new ValidationError('Unsupported chain for on-chain completion reporting');
+    }
+  }
+
+  private assertSupportedSolanaChain(chainId: number): void {
+    if (this.env.NODE_ENV === 'production') {
+      throw new ValidationError('Solana completion reporting is not enabled in production');
+    }
+    if (!this.isSolanaChain(chainId)) {
+      throw new ValidationError('Unsupported Solana chain for on-chain completion reporting');
     }
   }
 
@@ -161,11 +231,52 @@ export class OnChainTransferCompletionService {
     return false;
   }
 
+  private async userOwnsSolanaAddress(ownerUserId: string, address: string): Promise<boolean> {
+    const watch = await this.prisma.watchAddress.findFirst({
+      where: {
+        userId: ownerUserId,
+        address,
+        network: { in: ['SOLANA'] },
+      },
+      select: { id: true },
+    });
+    if (watch) return true;
+
+    const chainAddr = await this.prisma.chainAddress.findFirst({
+      where: {
+        ownerUserId,
+        address,
+        chain: { in: ['SOLANA'] },
+      },
+      select: { id: true },
+    });
+    if (chainAddr) return true;
+
+    const wallets = await this.prisma.wallet.findMany({
+      where: { ownerUserId },
+      select: { metadata: true },
+      take: 50,
+    });
+    for (const wallet of wallets) {
+      const meta = wallet.metadata as { chainSync?: { address?: string; chain?: string } } | null;
+      const synced = meta?.chainSync?.address;
+      if (synced && synced === address) return true;
+    }
+    return false;
+  }
+
   private rpcUrlForChain(chainId: number): string {
     if (chainId === QA_LOCAL_CHAIN_ID) {
       return process.env.AUVORA_QA_LOCAL_EVM_RPC_URL ?? 'http://127.0.0.1:8545';
     }
     throw new ValidationError('RPC verification is only configured for local QA EVM');
+  }
+
+  private solanaRpcUrl(chainId: number): string {
+    if (chainId === QA_LOCAL_SOLANA_CHAIN_ID) {
+      return process.env.AUVORA_QA_SOLANA_RPC ?? 'http://127.0.0.1:8899';
+    }
+    throw new ValidationError('RPC verification is only configured for local Solana QA');
   }
 
   private async rpcCall<T>(chainId: number, method: string, params: unknown[]): Promise<T> {
@@ -184,6 +295,40 @@ export class OnChainTransferCompletionService {
       throw new ValidationError(body.error.message ?? 'RPC error');
     }
     return body.result as T;
+  }
+
+  private async solanaRpcCall<T>(chainId: number, method: string, params: unknown[]): Promise<T> {
+    const url = this.solanaRpcUrl(chainId);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) {
+      throw new ValidationError(`Solana RPC unavailable (${response.status})`);
+    }
+    const body = (await response.json()) as { result?: T; error?: { message?: string } };
+    if (body.error) {
+      throw new ValidationError(body.error.message ?? 'Solana RPC error');
+    }
+    return body.result as T;
+  }
+
+  private async verifySolanaSignature(chainId: number, signature: string): Promise<boolean> {
+    try {
+      const result = await this.solanaRpcCall<{
+        value?: Array<{ err?: unknown; confirmationStatus?: string } | null>;
+      }>(chainId, 'getSignatureStatuses', [[signature], { searchTransactionHistory: true }]);
+      const status = result?.value?.[0];
+      if (!status || status.err != null) return false;
+      return status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized';
+    } catch (error) {
+      this.logger.warn(
+        `Solana signature lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
+    }
   }
 
   private async fetchReceipt(chainId: number, txHash: string): Promise<RpcReceipt | null> {

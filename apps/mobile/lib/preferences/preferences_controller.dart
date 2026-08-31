@@ -11,6 +11,7 @@ import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
+import '../wallet_engine/solana_receipt_confirmer.dart';
 import '../transfer/transfer_completion_client.dart';
 import 'models.dart';
 
@@ -74,7 +75,9 @@ class PreferencesController extends ChangeNotifier {
     final snap = portfolio?.snapshot;
     if (snap == null) return;
     for (final tx in snap.transactions) {
-      if (tx.status == TxStatus.completed && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
+      if (tx.status == TxStatus.completed &&
+          (EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash) ||
+              SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash))) {
         await _notifyTxCompleted(tx);
       }
     }

@@ -132,7 +132,44 @@ services:
       retries: 8
       start_period: 5s
 
+  # Isolated Auvora Local Solana QA (solana-test-validator). Never mainnet / never public Devnet.
+  # Usage: docker compose --profile qa-solana up -d
+  # RPC: http://127.0.0.1:8899
+  solana-validator:
+    profiles: [qa-solana]
+    image: tchambard/solana-test-validator:latest
+    container_name: auvora-solana
+    restart: unless-stopped
+    user: root
+    working_dir: /data
+    environment:
+      RUST_LOG: warn
+      TMPDIR: /tmp
+    command:
+      - sh
+      - -c
+      - |
+        exec solana-test-validator \
+          --ledger /data/ledger \
+          --bind-address 0.0.0.0 \
+          --rpc-port 8899 \
+          --faucet-sol 1000000 \
+          --quiet
+    ports:
+      - '8899:8899'
+      - '8900:8900'
+      - '9900:9900'
+    volumes:
+      - auvora-solana-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://127.0.0.1:8899/health >/dev/null || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
 volumes:
   auvora-postgres-data:
   auvora-redis-data:
   auvora-anvil-data:
+  auvora-solana-data:

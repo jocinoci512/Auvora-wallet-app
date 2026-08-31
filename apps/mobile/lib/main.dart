@@ -17,6 +17,7 @@ import 'portfolio/portfolio_repository.dart';
 import 'preferences/models.dart';
 import 'preferences/preferences_controller.dart';
 import 'release/auvora_qa_local_evm.dart';
+import 'release/auvora_qa_local_solana.dart';
 import 'release/integration_config.dart';
 import 'reliability/startup_timing.dart';
 import 'security/security_controller.dart';
@@ -35,6 +36,7 @@ import 'wallet_engine/sync_coordinator.dart';
 import 'wallet_engine/sync_engine.dart';
 import 'wallet_engine/transaction_engine.dart';
 import 'wallet_engine/models.dart';
+import 'wallet_engine/solana_rpc_adapter.dart';
 import 'wallet_engine/wallet_engine.dart';
 
 Future<void> main() async {
@@ -136,10 +138,11 @@ class _AuvoraAppState extends State<AuvoraApp> {
                     ? 'auvora-local-evm://tx/'
                     : 'https://sepolia.etherscan.io/tx/',
               ),
-              PreviewBlockchainAdapter(
-                chain: ChainId.solana,
-                providerCode: 'sol-sim',
-                explorerBaseUrl: 'https://solscan.io/tx/',
+              SolanaRpcBlockchainAdapter(
+                providerCode: 'sol-rpc',
+                explorerBaseUrl: AuvoraQaLocalSolana.isActive
+                    ? 'auvora-local-solana://tx/'
+                    : 'https://solscan.io/tx/',
               ),
               EvmRpcBlockchainAdapter(
                 chain: ChainId.bnbSmartChain,
@@ -178,8 +181,10 @@ class _AuvoraAppState extends State<AuvoraApp> {
             blockchainLayer: blockchainLayer,
           ),
         ),
-        ProxyProvider5<WalletEngine, BlockchainLayer, AssetRegistry, PriceService, NetworkManager, SyncEngine>(
-          update: (_, walletEngine, blockchainLayer, assetRegistry, priceService, networkManager, previous) {
+        ProxyProvider5<WalletEngine, BlockchainLayer, AssetRegistry,
+            PriceService, NetworkManager, SyncEngine>(
+          update: (_, walletEngine, blockchainLayer, assetRegistry,
+              priceService, networkManager, previous) {
             // Reuse the same SyncEngine so coordinator diagnostics and portfolio
             // refreshes share one cache / status surface across rebuilds.
             return previous ??
@@ -193,15 +198,18 @@ class _AuvoraAppState extends State<AuvoraApp> {
           },
         ),
         ProxyProvider<SyncEngine, PortfolioRepository>(
-          update: (_, syncEngine, previous) => previous ?? PortfolioRepository(syncEngine: syncEngine),
+          update: (_, syncEngine, previous) =>
+              previous ?? PortfolioRepository(syncEngine: syncEngine),
         ),
         ChangeNotifierProxyProvider<WalletEngine, WalletController>(
           create: (_) => WalletController(),
-          update: (_, walletEngine, controller) => controller!..attachEngine(walletEngine),
+          update: (_, walletEngine, controller) =>
+              controller!..attachEngine(walletEngine),
         ),
         ChangeNotifierProxyProvider<PortfolioRepository, PortfolioController>(
           create: (_) => PortfolioController(),
-          update: (_, repository, controller) => controller!..attachRepository(repository),
+          update: (_, repository, controller) =>
+              controller!..attachRepository(repository),
         ),
         // Auvora account (backend identity) — before prefs/security so they can attach.
         ChangeNotifierProvider(
@@ -212,7 +220,8 @@ class _AuvoraAppState extends State<AuvoraApp> {
             return c;
           },
         ),
-        ChangeNotifierProxyProvider2<PortfolioController, AccountController, PreferencesController>(
+        ChangeNotifierProxyProvider2<PortfolioController, AccountController,
+            PreferencesController>(
           create: (_) {
             final controller = PreferencesController();
             // ignore: discarded_futures
@@ -223,15 +232,16 @@ class _AuvoraAppState extends State<AuvoraApp> {
             ..attachPortfolio(portfolio)
             ..attachAccount(account),
         ),
-        ChangeNotifierProxyProvider4<SyncEngine, NetworkManager, PortfolioController,
-            PreferencesController, SyncCoordinator>(
+        ChangeNotifierProxyProvider4<SyncEngine, NetworkManager,
+            PortfolioController, PreferencesController, SyncCoordinator>(
           create: (context) => SyncCoordinator(
             syncEngine: context.read<SyncEngine>(),
             networkManager: context.read<NetworkManager>(),
             portfolio: context.read<PortfolioController>(),
             preferences: context.read<PreferencesController>(),
           ),
-          update: (_, syncEngine, networkManager, portfolio, preferences, coordinator) {
+          update: (_, syncEngine, networkManager, portfolio, preferences,
+              coordinator) {
             coordinator ??= SyncCoordinator(
               syncEngine: syncEngine,
               networkManager: networkManager,
@@ -244,7 +254,8 @@ class _AuvoraAppState extends State<AuvoraApp> {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final c = ConnectionsController(walletConnect: _wcBootstrap.provider);
+            final c =
+                ConnectionsController(walletConnect: _wcBootstrap.provider);
             c.liveRelayStatus = _wcBootstrap.usingLiveRelay
                 ? 'Live Reown WalletKit'
                 : (_wcBootstrap.fallbackReason ?? 'Preview WalletConnect');
@@ -257,10 +268,14 @@ class _AuvoraAppState extends State<AuvoraApp> {
         ChangeNotifierProvider(
           create: (_) => DeepLinkRouter(provider: _wcBootstrap.provider),
         ),
-        ChangeNotifierProxyProvider2<WalletController, ConnectionsController, _WcAccountBinder>(
+        ChangeNotifierProxyProvider2<WalletController, ConnectionsController,
+            _WcAccountBinder>(
           create: (_) => _WcAccountBinder(_wcBootstrap),
-          update: (_, wallet, connections, binder) =>
-              binder!..bind(wallet: wallet, connections: connections, bootstrap: _wcBootstrap),
+          update: (_, wallet, connections, binder) => binder!
+            ..bind(
+                wallet: wallet,
+                connections: connections,
+                bootstrap: _wcBootstrap),
         ),
         ChangeNotifierProvider(
           create: (_) {
@@ -270,24 +285,28 @@ class _AuvoraAppState extends State<AuvoraApp> {
             return controller;
           },
         ),
-        ChangeNotifierProxyProvider4<WalletController, WalletEngine, ConnectionsController,
-            AccountController, SecurityController>(
+        ChangeNotifierProxyProvider4<WalletController, WalletEngine,
+            ConnectionsController, AccountController, SecurityController>(
           create: (_) => SecurityController(),
-          update: (_, walletController, walletEngine, connections, account, controller) =>
+          update: (_, walletController, walletEngine, connections, account,
+                  controller) =>
               controller!
-                ..attach(walletController: walletController, walletEngine: walletEngine)
+                ..attach(
+                    walletController: walletController,
+                    walletEngine: walletEngine)
                 ..attachConnections(connections)
                 ..attachAccount(account),
         ),
         ChangeNotifierProvider(create: (_) => AddressBookStore()),
-        ChangeNotifierProxyProvider2<AccountController, WalletController, WalletBackendSync>(
+        ChangeNotifierProxyProvider2<AccountController, WalletController,
+            WalletBackendSync>(
           create: (_) => WalletBackendSync(),
           update: (_, account, wallet, sync) => (sync ?? WalletBackendSync())
             ..attach(account: account, wallet: wallet),
         ),
         ChangeNotifierProvider(create: (_) => VaultSyncService()),
-        ChangeNotifierProxyProvider3<AccountController, WalletController, VaultSyncService,
-            _VaultSyncBinder>(
+        ChangeNotifierProxyProvider3<AccountController, WalletController,
+            VaultSyncService, _VaultSyncBinder>(
           create: (_) => _VaultSyncBinder(),
           update: (_, account, wallet, vaultSync, binder) => binder!
             ..bind(
@@ -297,7 +316,8 @@ class _AuvoraAppState extends State<AuvoraApp> {
             ),
         ),
         // Applies deferred live WC provider without rebuilding the whole tree.
-        ChangeNotifierProxyProvider2<ConnectionsController, DeepLinkRouter, _WcLiveUpgrader>(
+        ChangeNotifierProxyProvider2<ConnectionsController, DeepLinkRouter,
+            _WcLiveUpgrader>(
           create: (_) => _WcLiveUpgrader(),
           update: (_, connections, deepLinks, upgrader) => upgrader!
             ..apply(
@@ -322,7 +342,9 @@ class _AuvoraAppState extends State<AuvoraApp> {
             a11y.largeTouchTargets,
             prefs.accent,
           );
-          if (_themeCacheKey != themeKey || _cachedLight == null || _cachedDark == null) {
+          if (_themeCacheKey != themeKey ||
+              _cachedLight == null ||
+              _cachedDark == null) {
             _themeCacheKey = themeKey;
             final accent = accentColorFor(prefs.accent);
             _cachedLight = buildAetherTheme(
@@ -352,7 +374,8 @@ class _AuvoraAppState extends State<AuvoraApp> {
             supportedLocales: [
               for (final code in kSupportedUiLanguageCodes)
                 if (code == 'zh-Hant')
-                  const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant')
+                  const Locale.fromSubtags(
+                      languageCode: 'zh', scriptCode: 'Hant')
                 else
                   Locale(code),
             ],
@@ -373,13 +396,17 @@ class _AuvoraAppState extends State<AuvoraApp> {
                   boldText: a11y.highContrast ? true : media.boldText,
                 ),
                 child: Directionality(
-                  textDirection: const {'ar', 'he', 'fa', 'ur'}.contains(prefs.locale.languageCode)
+                  textDirection: const {'ar', 'he', 'fa', 'ur'}
+                          .contains(prefs.locale.languageCode)
                       ? TextDirection.rtl
                       : TextDirection.ltr,
                   child: AnimatedTheme(
                     data: Theme.of(context),
-                    duration: a11y.reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
-                    child: DeepLinkListener(child: child ?? const SizedBox.shrink()),
+                    duration: a11y.reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 220),
+                    child: DeepLinkListener(
+                        child: child ?? const SizedBox.shrink()),
                   ),
                 ),
               );

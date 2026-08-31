@@ -110,7 +110,7 @@ export class PrepareTransferDto {
 
 export class ReportOnChainTransferCompletionDto {
   @IsString()
-  @Matches(/^0x[a-fA-F0-9]{64}$/)
+  @Matches(/^(0x[a-fA-F0-9]{64}|[1-9A-HJ-NP-Za-km-z]{80,90})$/)
   txHash!: string;
 
   @IsInt()
@@ -133,11 +133,11 @@ export class ReportOnChainTransferCompletionDto {
   amount!: string;
 
   @IsString()
-  @Matches(/^0x[a-fA-F0-9]{40}$/)
+  @Matches(/^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$/)
   fromAddress!: string;
 
   @IsString()
-  @Matches(/^0x[a-fA-F0-9]{40}$/)
+  @Matches(/^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$/)
   toAddress!: string;
 
   @IsOptional()

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../release/release_config.dart';
 import '../search/fuzzy.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
+import '../wallet_engine/solana_receipt_confirmer.dart';
 import 'models.dart';
 import 'portfolio_repository.dart';
 
@@ -41,6 +42,7 @@ class PortfolioController extends ChangeNotifier {
   AssetNetwork? activityNetworkFilter;
 
   final EvmReceiptConfirmer _receiptConfirmer = EvmReceiptConfirmer();
+  final SolanaReceiptConfirmer _solanaReceiptConfirmer = SolanaReceiptConfirmer();
   final Set<String> _activeReceiptPolls = {};
   final Set<String> _finalizedReceiptHashes = {};
 
@@ -405,17 +407,24 @@ class PortfolioController extends ChangeNotifier {
     return tx;
   }
 
-  /// Polls chain receipts for pending live EVM transactions (resume on cold start).
+  /// Polls chain receipts for pending live EVM / Solana transactions (resume on cold start).
   Future<void> resumePendingEvmReceipts({PortfolioTxCompletedHandler? onCompleted}) async {
     final snap = snapshot;
     if (snap == null) return;
     for (final tx in snap.transactions) {
       if (!_isAwaitingReceipt(tx)) continue;
-      // ignore: discarded_futures
-      confirmLiveEvmTransaction(txId: tx.id, onCompleted: onCompleted);
+      if (SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) {
+        // ignore: discarded_futures
+        confirmLiveSolanaTransaction(txId: tx.id, onCompleted: onCompleted);
+      } else {
+        // ignore: discarded_futures
+        confirmLiveEvmTransaction(txId: tx.id, onCompleted: onCompleted);
+      }
     }
     for (final tx in snap.transactions) {
-      if (tx.status == TxStatus.completed && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
+      if (tx.status != TxStatus.completed) continue;
+      if (EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash) ||
+          SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) {
         await txCompletedHandler?.call(tx);
       }
     }
@@ -423,7 +432,8 @@ class PortfolioController extends ChangeNotifier {
 
   bool _isAwaitingReceipt(PortfolioTx tx) {
     if (tx.status != TxStatus.pending && tx.status != TxStatus.confirming) return false;
-    return EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash);
+    return EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash) ||
+        SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash);
   }
 
   /// Bounded receipt polling — never rebroadcasts.
@@ -433,6 +443,7 @@ class PortfolioController extends ChangeNotifier {
   }) async {
     final tx = txById(txId);
     if (tx == null || !_isAwaitingReceipt(tx)) return;
+    if (!EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) return;
     final hashKey = tx.hash.toLowerCase();
     if (_finalizedReceiptHashes.contains(hashKey)) return;
     if (_activeReceiptPolls.contains(txId)) return;
@@ -473,6 +484,49 @@ class PortfolioController extends ChangeNotifier {
     }
   }
 
+  /// Bounded Solana signature confirmation — never rebroadcasts.
+  Future<void> confirmLiveSolanaTransaction({
+    required String txId,
+    PortfolioTxCompletedHandler? onCompleted,
+  }) async {
+    final tx = txById(txId);
+    if (tx == null || !_isAwaitingReceipt(tx)) return;
+    if (!SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) return;
+    final hashKey = tx.hash;
+    if (_finalizedReceiptHashes.contains(hashKey)) return;
+    if (_activeReceiptPolls.contains(txId)) return;
+    _activeReceiptPolls.add(txId);
+
+    try {
+      if (tx.status == TxStatus.pending) {
+        await finalizeTxStatus(txId, TxStatus.confirming);
+      }
+      final receipt = await _solanaReceiptConfirmer.pollUntilFinal(
+        signature: tx.hash,
+        isCancelled: () {
+          final current = txById(txId);
+          return current == null ||
+              current.status == TxStatus.completed ||
+              current.status == TxStatus.failed;
+        },
+      );
+      if (receipt == null) return;
+      final status = receipt.success ? TxStatus.completed : TxStatus.failed;
+      final finalized = await finalizeTxFromSolanaReceipt(
+        txId: txId,
+        status: status,
+        receipt: receipt,
+      );
+      if (status == TxStatus.completed && finalized != null) {
+        _finalizedReceiptHashes.add(hashKey);
+        await txCompletedHandler?.call(finalized);
+        await onCompleted?.call(finalized);
+      }
+    } finally {
+      _activeReceiptPolls.remove(txId);
+    }
+  }
+
   Future<PortfolioTx?> finalizeTxFromReceipt({
     required String txId,
     required TxStatus status,
@@ -488,6 +542,46 @@ class PortfolioController extends ChangeNotifier {
         fee: receipt.feeNative,
         feeAsset: receipt.feeAssetLabel,
         blockNumber: receipt.blockNumber,
+        confirmedAt: DateTime.now(),
+        note: status == TxStatus.failed
+            ? 'This transfer could not be completed on-chain.'
+            : t.note,
+      );
+      return updated!;
+    }).toList();
+    snapshot = PortfolioSnapshot(
+      assets: snap.assets,
+      transactions: txs,
+      contacts: snap.contacts,
+      trend7d: snap.trend7d,
+      change24hUsd: snap.change24hUsd,
+      change24hPct: snap.change24hPct,
+      updatedAt: DateTime.now(),
+      isPreview: snap.isPreview,
+      offline: snap.offline,
+      priceError: snap.priceError,
+      syncDelayed: snap.syncDelayed,
+    );
+    notifyListeners();
+    await _persistSnapshot();
+    return updated;
+  }
+
+  Future<PortfolioTx?> finalizeTxFromSolanaReceipt({
+    required String txId,
+    required TxStatus status,
+    required SolanaTransactionReceipt receipt,
+  }) async {
+    final snap = snapshot;
+    if (snap == null) return null;
+    PortfolioTx? updated;
+    final txs = snap.transactions.map((t) {
+      if (t.id != txId) return t;
+      updated = t.copyWith(
+        status: status,
+        fee: receipt.feeNative,
+        feeAsset: receipt.feeAssetLabel,
+        blockNumber: receipt.slot,
         confirmedAt: DateTime.now(),
         note: status == TxStatus.failed
             ? 'This transfer could not be completed on-chain.'

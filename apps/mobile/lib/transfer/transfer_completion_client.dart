@@ -7,7 +7,9 @@ import '../account/auvora_api_config.dart';
 import '../account/auth_api_client.dart';
 import '../portfolio/models.dart';
 import '../release/auvora_qa_local_evm.dart';
+import '../release/auvora_qa_local_solana.dart';
 import '../release/network_env.dart';
+import '../wallet_engine/solana_receipt_confirmer.dart';
 
 /// Reports a device-finalized on-chain transfer to the backend for durable
 /// IN_APP + EMAIL notifications. Never sends signing material.
@@ -44,9 +46,15 @@ class TransferCompletionClient {
     if (from.isEmpty || to.isEmpty) {
       throw const AuthException(AuthErrorKind.unknown, 'Missing public transfer addresses.');
     }
-    final chainId = AuvoraQaLocalEvm.isActive && tx.network == AssetNetwork.ethereum
-        ? AuvoraQaLocalEvm.chainId
-        : 11155111;
+    final isSolana = SolanaReceiptConfirmer.isLiveSolanaSignature(hash) ||
+        tx.network == AssetNetwork.solana;
+    final chainId = isSolana
+        ? (AuvoraQaLocalSolana.isActive
+            ? AuvoraQaLocalSolana.localCompletionChainId
+            : AuvoraQaLocalSolana.devnetCompletionChainId)
+        : (AuvoraQaLocalEvm.isActive && tx.network == AssetNetwork.ethereum
+            ? AuvoraQaLocalEvm.chainId
+            : 11155111);
     final networkLabel = NetworkCatalog.displayName(tx.network, AuvoraNetworkEnv.current);
     final body = <String, dynamic>{
       'txHash': hash,

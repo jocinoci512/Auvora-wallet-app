@@ -45,7 +45,11 @@ try {
     --dart-define=AUVORA_QA_LOCAL_EVM=true `
     --dart-define=AUVORA_QA_EVM_CHAIN_ID=31337 `
     --dart-define=AUVORA_QA_EVM_RPC=http://127.0.0.1:8545 `
-    --dart-define=ETH_RPC_URL=http://127.0.0.1:8545
+    --dart-define=ETH_RPC_URL=http://127.0.0.1:8545 `
+    --dart-define=AUVORA_QA_LOCAL_SOLANA=true `
+    --dart-define=AUVORA_QA_SOLANA_RPC=http://127.0.0.1:8899 `
+    --dart-define=AUVORA_QA_SOLANA_ADDRESS=8jFiN4JabxmBwkCVVFnaNyszExbCdd7k2TDuFQHyNThQ `
+    --dart-define=AUVORA_QA_SOLANA_RECIPIENT=HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk
 
   if ($LASTEXITCODE -ne 0) { throw "flutter build apk failed" }
 

@@ -51,9 +51,11 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 if ($pgOk) { Add-Content $log 'postgres ready' } else { Add-Content $log 'postgres NOT ready' }
 
-# Local EVM + Mail
+# Local EVM + Local Solana + Mail
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'start-local-evm.ps1')
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'fund-local-wallet.ps1')
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'start-local-solana.ps1')
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'fund-local-solana-wallet.ps1')
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'start-local-mail.ps1')
 
 $bridgeUrl = 'http://127.0.0.1:3099/send'
@@ -132,7 +134,8 @@ if (Test-Path $adb) {
   if ($devs -match 'R5CW51ZMNLB\s+device') {
     & $adb -s R5CW51ZMNLB reverse tcp:4000 tcp:4000 | Out-Null
     & $adb -s R5CW51ZMNLB reverse tcp:8545 tcp:8545 | Out-Null
-    Add-Content $log 'adb reverse 4000+8545 OK'
+    & $adb -s R5CW51ZMNLB reverse tcp:8899 tcp:8899 | Out-Null
+    Add-Content $log 'adb reverse 4000+8545+8899 OK'
   }
 }
 

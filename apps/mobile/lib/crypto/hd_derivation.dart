@@ -23,7 +23,8 @@ import '../release/network_env.dart';
 class HdDerivation {
   HdDerivation._();
 
-  static const _base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  static const _base58Alphabet =
+      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   static const _bech32Charset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
   static final _curveOrder = BigInt.parse(
     'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141',
@@ -31,7 +32,8 @@ class HdDerivation {
   );
 
   static Uint8List seedFromMnemonic(String mnemonic, {String passphrase = ''}) {
-    return Uint8List.fromList(bip39.mnemonicToSeed(mnemonic, passphrase: passphrase));
+    return Uint8List.fromList(
+        bip39.mnemonicToSeed(mnemonic, passphrase: passphrase));
   }
 
   /// EVM account private key (m/44'/60'/account'/0/0). Caller must not log or export.
@@ -43,6 +45,20 @@ class HdDerivation {
     final seed = seedFromMnemonic(mnemonic, passphrase: passphrase);
     final node = _deriveSecpPath(seed, "m/44'/60'/$accountIndex'/0/0");
     return Uint8List.fromList(node.privateKey);
+  }
+
+  /// Solana SigningKey seed (m/44'/501'/account'/0'). Caller must not log or export.
+  static Uint8List deriveSolanaPrivateKey({
+    required String mnemonic,
+    int accountIndex = 0,
+    String passphrase = '',
+  }) {
+    final seed = seedFromMnemonic(mnemonic, passphrase: passphrase);
+    var node = _Slip10Node.fromSeed(seed);
+    for (final index in [44, 501, accountIndex, 0]) {
+      node = node.deriveHardened(index);
+    }
+    return Uint8List.fromList(node.key);
   }
 
   static String deriveAddress({
@@ -60,7 +76,8 @@ class HdDerivation {
         return _ethereumAddress(node.privateKey);
       case AssetNetwork.bitcoin:
         final coinType = AuvoraNetworkEnv.isTestnet ? 1 : 0;
-        final node = _deriveSecpPath(seed, "m/84'/$coinType'/$accountIndex'/0/0");
+        final node =
+            _deriveSecpPath(seed, "m/84'/$coinType'/$accountIndex'/0/0");
         return _bitcoinBech32Address(node.privateKey);
       case AssetNetwork.tron:
         final node = _deriveSecpPath(seed, "m/44'/195'/$accountIndex'/0/0");
@@ -75,7 +92,9 @@ class HdDerivation {
       AssetNetwork.bitcoin => AuvoraNetworkEnv.isTestnet
           ? "m/84'/1'/$accountIndex'/0/0"
           : "m/84'/0'/$accountIndex'/0/0",
-      AssetNetwork.ethereum || AssetNetwork.bnbSmartChain || AssetNetwork.polygon =>
+      AssetNetwork.ethereum ||
+      AssetNetwork.bnbSmartChain ||
+      AssetNetwork.polygon =>
         "m/44'/60'/$accountIndex'/0/0",
       AssetNetwork.solana => "m/44'/501'/$accountIndex'/0'",
       AssetNetwork.tron => "m/44'/195'/$accountIndex'/0/0",
@@ -87,7 +106,8 @@ class HdDerivation {
     final parts = path.replaceFirst('m/', '').split('/');
     for (final part in parts) {
       final hardened = part.endsWith("'");
-      final index = int.parse(hardened ? part.substring(0, part.length - 1) : part);
+      final index =
+          int.parse(hardened ? part.substring(0, part.length - 1) : part);
       node = node.deriveChild(hardened ? (index + 0x80000000) : index);
     }
     return node;
@@ -101,6 +121,28 @@ class HdDerivation {
     }
     final signingKey = SigningKey.fromSeed(node.key);
     return _base58Encode(Uint8List.fromList(signingKey.publicKey));
+  }
+
+  static Uint8List base58Decode(String value) {
+    if (value.isEmpty) throw const FormatException('Base58 value is empty.');
+    var decoded = BigInt.zero;
+    for (final codeUnit in value.codeUnits) {
+      final digit = _base58Alphabet.indexOf(String.fromCharCode(codeUnit));
+      if (digit < 0) throw const FormatException('Invalid base58 character.');
+      decoded = decoded * BigInt.from(58) + BigInt.from(digit);
+    }
+    final bytes = <int>[];
+    while (decoded > BigInt.zero) {
+      bytes.add((decoded & BigInt.from(0xff)).toInt());
+      decoded >>= 8;
+    }
+    final leadingZeros = value.codeUnits.takeWhile(
+      (codeUnit) => codeUnit == _base58Alphabet.codeUnitAt(0),
+    );
+    return Uint8List.fromList([
+      ...List<int>.filled(leadingZeros.length, 0),
+      ...bytes.reversed,
+    ]);
   }
 
   static String _ethereumAddress(Uint8List privateKey) {
@@ -150,7 +192,8 @@ class HdDerivation {
     return q.getEncoded(true);
   }
 
-  static BigInt _bytesToBigInt(Uint8List bytes) => BigInt.parse(hex.encode(bytes), radix: 16);
+  static BigInt _bytesToBigInt(Uint8List bytes) =>
+      BigInt.parse(hex.encode(bytes), radix: 16);
 
   static Uint8List _bigIntTo32(BigInt value) {
     final hexStr = value.toRadixString(16).padLeft(64, '0');
@@ -176,7 +219,10 @@ class HdDerivation {
   }
 
   static String _base58Check(Uint8List payload) {
-    final checksum = crypto.sha256.convert(crypto.sha256.convert(payload).bytes).bytes.take(4);
+    final checksum = crypto.sha256
+        .convert(crypto.sha256.convert(payload).bytes)
+        .bytes
+        .take(4);
     return _base58Encode(Uint8List.fromList([...payload, ...checksum]));
   }
 
@@ -212,7 +258,9 @@ class HdDerivation {
   }
 
   static List<int> _bech32CreateChecksum(String hrp, List<int> values) {
-    final polymod = _bech32Polymod([..._bech32HrpExpand(hrp), ...values, 0, 0, 0, 0, 0, 0]) ^ 1;
+    final polymod = _bech32Polymod(
+            [..._bech32HrpExpand(hrp), ...values, 0, 0, 0, 0, 0, 0]) ^
+        1;
     return [for (var i = 0; i < 6; i++) (polymod >> (5 * (5 - i))) & 31];
   }
 
@@ -270,7 +318,8 @@ class _SecpNode {
     hmac.doFinal(out, 0);
 
     final il = HdDerivation._bytesToBigInt(out.sublist(0, 32));
-    final childKey = (il + HdDerivation._bytesToBigInt(privateKey)) % HdDerivation._curveOrder;
+    final childKey = (il + HdDerivation._bytesToBigInt(privateKey)) %
+        HdDerivation._curveOrder;
     if (il >= HdDerivation._curveOrder || childKey == BigInt.zero) {
       return deriveChild(index + 1);
     }
@@ -285,7 +334,8 @@ class _Slip10Node {
   final Uint8List chainCode;
 
   factory _Slip10Node.fromSeed(Uint8List seed) {
-    final mac = crypto.Hmac(crypto.sha512, utf8.encode('ed25519 seed')).convert(seed);
+    final mac =
+        crypto.Hmac(crypto.sha512, utf8.encode('ed25519 seed')).convert(seed);
     return _Slip10Node(
       Uint8List.fromList(mac.bytes.sublist(0, 32)),
       Uint8List.fromList(mac.bytes.sublist(32)),

@@ -17,6 +17,7 @@ import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../release/auvora_qa_local_evm.dart';
+import '../release/auvora_qa_local_solana.dart';
 import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
@@ -33,6 +34,7 @@ import '../wallet_engine/blockchain_adapter.dart';
 import '../wallet_engine/evm_json_rpc.dart';
 import '../wallet_engine/evm_live_fee_quote.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
+import '../wallet_engine/solana_receipt_confirmer.dart';
 import '../wallet_engine/evm_testnet_broadcast.dart';
 import '../wallet_engine/models.dart';
 import '../wallet_engine/network_manager.dart';
@@ -314,7 +316,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
 
   String _feeDisplayLine(FeeEstimate fee, PortfolioController p) {
     final amt = EvmLiveFeeQuote.formatNativeAmount(fee.feeCrypto);
-    if (AuvoraQaLocalEvm.isActive && fee.feeAsset.contains('QA')) {
+    if ((AuvoraQaLocalEvm.isActive || AuvoraQaLocalSolana.isActive) &&
+        fee.feeAsset.contains('QA')) {
       final liveTag = fee.isLive ? '' : ' · estimate unavailable';
       return '~$amt ${fee.feeAsset}$liveTag';
     }
@@ -1544,6 +1547,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
       }
       if (ReleaseConfig.canBroadcastTestnet && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
         unawaited(_portfolio.confirmLiveEvmTransaction(txId: tx.id));
+      } else if (ReleaseConfig.canBroadcastTestnet &&
+          SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) {
+        unawaited(_portfolio.confirmLiveSolanaTransaction(txId: tx.id));
       }
       await _book.rememberRecipient(address: _toCtrl.text.trim(), network: asset.network);
       HapticFeedback.mediumImpact();

@@ -7,6 +7,7 @@ library;
 
 import '../portfolio/models.dart';
 import 'auvora_qa_local_evm.dart';
+import 'auvora_qa_local_solana.dart';
 
 enum NetworkEnv { mainnet, testnet }
 
@@ -29,6 +30,9 @@ abstract final class NetworkCatalog {
     if (AuvoraQaLocalEvm.isActive && network == AssetNetwork.ethereum) {
       return AuvoraQaLocalEvm.networkLabel;
     }
+    if (AuvoraQaLocalSolana.isActive && network == AssetNetwork.solana) {
+      return AuvoraQaLocalSolana.networkLabel;
+    }
     return switch (network) {
       AssetNetwork.ethereum => 'Ethereum · Sepolia',
       AssetNetwork.bnbSmartChain => 'BNB Smart Chain · Testnet',
@@ -44,6 +48,9 @@ abstract final class NetworkCatalog {
     if (env != NetworkEnv.testnet) return network.label;
     if (AuvoraQaLocalEvm.isActive && network == AssetNetwork.ethereum) {
       return AuvoraQaLocalEvm.laneLabel;
+    }
+    if (AuvoraQaLocalSolana.isActive && network == AssetNetwork.solana) {
+      return AuvoraQaLocalSolana.laneLabel;
     }
     return switch (network) {
       AssetNetwork.ethereum => 'Sepolia',
@@ -107,7 +114,9 @@ abstract final class AuvoraNetworkEnv {
   /// Persistent UI label — never omit when testnet / local QA.
   static String get bannerLabel {
     if (!isTestnet) return '';
-    if (AuvoraQaLocalEvm.isActive) return AuvoraQaLocalEvm.bannerLabel;
+    if (AuvoraQaLocalEvm.isActive || AuvoraQaLocalSolana.isActive) {
+      return 'LOCAL QA';
+    }
     return 'TESTNET';
   }
 
