@@ -24,6 +24,7 @@ String relativeTime(DateTime t) {
 Color statusColor(TxStatus s) {
   switch (s) {
     case TxStatus.pending:
+    case TxStatus.confirming:
       return const Color(0xFFB54708);
     case TxStatus.completed:
       return const Color(0xFF067647);

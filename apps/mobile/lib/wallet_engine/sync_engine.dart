@@ -621,6 +621,8 @@ class SyncEngine {
         'fee': tx.fee,
         'feeAsset': tx.feeAsset,
         'note': tx.note,
+        if (tx.blockNumber != null) 'blockNumber': tx.blockNumber,
+        if (tx.confirmedAt != null) 'confirmedAt': tx.confirmedAt!.toIso8601String(),
       };
 
   PortfolioSnapshot _decodePortfolio(Map<String, Object?> decoded) {
@@ -675,6 +677,8 @@ class SyncEngine {
             fee: (json['fee'] as num?)?.toDouble(),
             feeAsset: json['feeAsset'] as String?,
             note: json['note'] as String?,
+            blockNumber: (json['blockNumber'] as num?)?.toInt(),
+            confirmedAt: DateTime.tryParse((json['confirmedAt'] as String?) ?? ''),
           );
         })
         .toList();

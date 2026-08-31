@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../account/account_controller.dart';
 import '../account/auth_api_client.dart';
 import '../l10n/auvora_locale.dart';
+import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
 import 'models.dart';
@@ -61,6 +62,16 @@ class PreferencesController extends ChangeNotifier {
 
   void attachPortfolio(PortfolioController portfolio) {
     _portfolio = portfolio;
+    portfolio.txCompletedHandler = _notifyTxCompleted;
+  }
+
+  Future<void> _notifyTxCompleted(PortfolioTx tx) async {
+    await enqueueNotification(
+      category: NotificationCategory.transactionConfirmations,
+      title: 'Transaction completed',
+      body: 'Your transaction has been confirmed.',
+      dedupeId: 'tx-completed-${tx.hash.toLowerCase()}',
+    );
   }
 
   void attachAccount(AccountController account) {
@@ -157,6 +168,10 @@ class PreferencesController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  @visibleForTesting
+  AppNotificationItem mapBackendNotificationForTest(Map<String, dynamic> json) =>
+      _mapNotification(json);
 
   AppNotificationItem _mapNotification(Map<String, dynamic> json) {
     final metadata = json['metadata'] is Map
@@ -375,8 +390,10 @@ class PreferencesController extends ChangeNotifier {
     required NotificationCategory category,
     required String title,
     required String body,
+    String? dedupeId,
   }) async {
     if (!isNotificationEnabled(category)) return;
+    if (dedupeId != null && inbox.any((n) => n.id == dedupeId)) return;
     var safeBody = body;
     // Honor Security Center notification privacy when available via SharedPreferences mirror.
     final prefs = await SharedPreferences.getInstance();
@@ -399,7 +416,7 @@ class PreferencesController extends ChangeNotifier {
     }
     inbox = [
       AppNotificationItem(
-        id: 'n-${DateTime.now().microsecondsSinceEpoch}',
+        id: dedupeId ?? 'n-${DateTime.now().microsecondsSinceEpoch}',
         category: category,
         title: title,
         body: safeBody,

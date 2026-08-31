@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
+import '../../portfolio/tx_display.dart';
 import '../../release/release_config.dart';
 import '../../theme/aether_theme.dart';
 import '../transaction_detail_screen.dart';
@@ -166,7 +167,7 @@ class ActivityTab extends StatelessWidget {
                                 Text(tx.type.label, style: const TextStyle(fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${tx.status.label} · ${tx.network.label}',
+                                  '${tx.status.label} · ${tx.displayNetworkLabel}',
                                   style: TextStyle(
                                     color: statusColor(tx.status),
                                     fontSize: 12,

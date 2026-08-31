@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../account/ui/account_sync_banner.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../release/network_env.dart';
+import '../release/release_config.dart';
 import '../reliability/startup_timing.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
@@ -47,6 +49,10 @@ class _HomeShellState extends State<HomeShell> {
       sync.start(address: address, initialRefresh: false);
       try {
         await portfolio.bootstrap(address).timeout(const Duration(seconds: 22));
+        if (ReleaseConfig.canBroadcastTestnet) {
+          // ignore: discarded_futures
+          portfolio.resumePendingEvmReceipts();
+        }
       } catch (_) {
         // PortfolioController already surfaces lastSyncError + cache; never
         // leave HomeShell waiting on external provider approval.
@@ -87,6 +93,7 @@ class _HomeShellState extends State<HomeShell> {
         child: Column(
           children: [
             if (AuvoraNetworkEnv.isTestnet) const TestnetBanner(),
+            const AccountSyncBanner(),
             Expanded(
               child: Align(
                 alignment: Alignment.topCenter,

@@ -107,6 +107,26 @@ class EvmJsonRpcClient {
     return EvmAmountCodec.parseHexQuantity(result);
   }
 
+  /// Returns `null` when the receipt is not yet available.
+  Future<Map<String, dynamic>?> ethGetTransactionReceiptRaw(
+    String rpcUrl,
+    String txHash,
+  ) async {
+    final normalized = txHash.trim();
+    if (!RegExp(r'^0x[a-fA-F0-9]{64}$').hasMatch(normalized)) {
+      throw RpcBalanceException('Invalid transaction hash');
+    }
+    final result = await _call(rpcUrl, 'eth_getTransactionReceipt', [normalized]);
+    if (result == null) return null;
+    if (result is! Map) {
+      throw RpcBalanceException(
+        'eth_getTransactionReceipt returned invalid body',
+        endpoint: RpcEndpoints.displayLabel(rpcUrl),
+      );
+    }
+    return Map<String, dynamic>.from(result);
+  }
+
   Future<String> ethSendRawTransaction(String rpcUrl, String signedHex) async {
     final raw = signedHex.trim();
     if (!RegExp(r'^0x[a-fA-F0-9]+$').hasMatch(raw) || raw.length < 10) {

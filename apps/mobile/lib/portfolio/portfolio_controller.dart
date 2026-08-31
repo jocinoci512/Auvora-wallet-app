@@ -1,9 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../release/release_config.dart';
 import '../search/fuzzy.dart';
+import '../wallet_engine/evm_receipt_confirmer.dart';
 import 'models.dart';
 import 'portfolio_repository.dart';
+
+typedef PortfolioTxCompletedHandler = Future<void> Function(PortfolioTx tx);
 
 enum AssetSort { valueDesc, nameAsc, changeDesc, balanceDesc }
 
@@ -35,6 +39,13 @@ class PortfolioController extends ChangeNotifier {
   TxStatus? activityStatusFilter;
   TxType? activityTypeFilter;
   AssetNetwork? activityNetworkFilter;
+
+  final EvmReceiptConfirmer _receiptConfirmer = EvmReceiptConfirmer();
+  final Set<String> _activeReceiptPolls = {};
+  final Set<String> _finalizedReceiptHashes = {};
+
+  /// Optional hook for deduped completion notifications (wired from [PreferencesController]).
+  PortfolioTxCompletedHandler? txCompletedHandler;
 
   void attachRepository(PortfolioRepository repository) {
     if (identical(_repo, repository)) return;
@@ -206,7 +217,9 @@ class PortfolioController extends ChangeNotifier {
     final txs = [...(snapshot?.transactions ?? const <PortfolioTx>[])];
     final q = activityQuery.trim().toLowerCase();
     return txs.where((tx) {
-      if (activityStatusFilter != null && tx.status != activityStatusFilter) return false;
+      if (activityStatusFilter != null && !tx.status.matchesActivityFilter(activityStatusFilter!)) {
+        return false;
+      }
       if (activityTypeFilter != null && tx.type != activityTypeFilter) return false;
       if (activityNetworkFilter != null && tx.network != activityNetworkFilter) return false;
       if (q.isEmpty) return true;
@@ -382,12 +395,123 @@ class PortfolioController extends ChangeNotifier {
     notifyListeners();
     await _persistSnapshot();
 
-    // Settle pending → completed after a short confirmation window.
-    Future<void>.delayed(const Duration(seconds: 3), () {
-      // ignore: discarded_futures
-      finalizeTxStatus(id, TxStatus.completed);
-    });
+    // Preview-only sends auto-complete; live EVM uses receipt polling.
+    if (!ReleaseConfig.canBroadcastTestnet) {
+      Future<void>.delayed(const Duration(seconds: 3), () {
+        // ignore: discarded_futures
+        finalizeTxStatus(id, TxStatus.completed);
+      });
+    }
     return tx;
+  }
+
+  /// Polls chain receipts for pending live EVM transactions (resume on cold start).
+  Future<void> resumePendingEvmReceipts({PortfolioTxCompletedHandler? onCompleted}) async {
+    final snap = snapshot;
+    if (snap == null) return;
+    for (final tx in snap.transactions) {
+      if (!_isAwaitingReceipt(tx)) continue;
+      // ignore: discarded_futures
+      confirmLiveEvmTransaction(txId: tx.id, onCompleted: onCompleted);
+    }
+    for (final tx in snap.transactions) {
+      if (tx.status == TxStatus.completed && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
+        // ignore: discarded_futures
+        txCompletedHandler?.call(tx);
+      }
+    }
+  }
+
+  bool _isAwaitingReceipt(PortfolioTx tx) {
+    if (tx.status != TxStatus.pending && tx.status != TxStatus.confirming) return false;
+    return EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash);
+  }
+
+  /// Bounded receipt polling — never rebroadcasts.
+  Future<void> confirmLiveEvmTransaction({
+    required String txId,
+    PortfolioTxCompletedHandler? onCompleted,
+  }) async {
+    final tx = txById(txId);
+    if (tx == null || !_isAwaitingReceipt(tx)) return;
+    final hashKey = tx.hash.toLowerCase();
+    if (_finalizedReceiptHashes.contains(hashKey)) return;
+    if (_activeReceiptPolls.contains(txId)) return;
+    _activeReceiptPolls.add(txId);
+
+    try {
+      if (tx.status == TxStatus.pending) {
+        await finalizeTxStatus(txId, TxStatus.confirming);
+      }
+      final chain = EvmReceiptConfirmer.chainForNetwork(tx.network);
+      final receipt = await _receiptConfirmer.pollUntilFinal(
+        chain: chain,
+        txHash: tx.hash,
+        isCancelled: () {
+          final current = txById(txId);
+          return current == null ||
+              current.status == TxStatus.completed ||
+              current.status == TxStatus.failed;
+        },
+      );
+      if (receipt == null) {
+        // Timeout — leave pending/confirming; resume on next app open.
+        return;
+      }
+      final status = receipt.success ? TxStatus.completed : TxStatus.failed;
+      final finalized = await finalizeTxFromReceipt(
+        txId: txId,
+        status: status,
+        receipt: receipt,
+      );
+      if (status == TxStatus.completed && finalized != null) {
+        _finalizedReceiptHashes.add(hashKey);
+        await txCompletedHandler?.call(finalized);
+        await onCompleted?.call(finalized);
+      }
+    } finally {
+      _activeReceiptPolls.remove(txId);
+    }
+  }
+
+  Future<PortfolioTx?> finalizeTxFromReceipt({
+    required String txId,
+    required TxStatus status,
+    required EvmTransactionReceipt receipt,
+  }) async {
+    final snap = snapshot;
+    if (snap == null) return null;
+    PortfolioTx? updated;
+    final txs = snap.transactions.map((t) {
+      if (t.id != txId) return t;
+      updated = t.copyWith(
+        status: status,
+        fee: receipt.feeNative,
+        feeAsset: receipt.feeAssetLabel,
+        blockNumber: receipt.blockNumber,
+        confirmedAt: DateTime.now(),
+        note: status == TxStatus.failed
+            ? 'This transfer could not be completed on-chain.'
+            : t.note,
+      );
+      return updated!;
+    }).toList();
+    snapshot = PortfolioSnapshot(
+      assets: snap.assets,
+      transactions: txs,
+      contacts: snap.contacts,
+      trend7d: snap.trend7d,
+      change24hUsd: snap.change24hUsd,
+      change24hPct: snap.change24hPct,
+      updatedAt: DateTime.now(),
+      isPreview: snap.isPreview,
+      offline: snap.offline,
+      priceError: snap.priceError,
+      syncDelayed: snap.syncDelayed,
+    );
+    notifyListeners();
+    await _persistSnapshot();
+    return updated;
   }
 
   Future<void> finalizeTxStatus(String id, TxStatus status) async {
@@ -395,22 +519,7 @@ class PortfolioController extends ChangeNotifier {
     if (snap == null) return;
     final txs = snap.transactions.map((t) {
       if (t.id != id) return t;
-      return PortfolioTx(
-        id: t.id,
-        type: t.type,
-        status: status,
-        network: t.network,
-        assetTicker: t.assetTicker,
-        amount: t.amount,
-        amountUsd: t.amountUsd,
-        timestamp: t.timestamp,
-        from: t.from,
-        to: t.to,
-        hash: t.hash,
-        fee: t.fee,
-        feeAsset: t.feeAsset,
-        note: t.note,
-      );
+      return t.copyWith(status: status);
     }).toList();
     snapshot = PortfolioSnapshot(
       assets: snap.assets,

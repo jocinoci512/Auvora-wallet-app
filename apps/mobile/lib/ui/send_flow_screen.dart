@@ -16,6 +16,7 @@ import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../release/auvora_qa_local_evm.dart';
 import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
@@ -27,6 +28,13 @@ import '../transfer/domain_resolution.dart';
 import '../transfer/customer_transfer_status.dart';
 import '../transfer/large_transfer_policy.dart';
 import '../transfer/transfer_prepare_client.dart';
+import '../engine/quote_engine.dart';
+import '../wallet_engine/blockchain_adapter.dart';
+import '../wallet_engine/evm_json_rpc.dart';
+import '../wallet_engine/evm_live_fee_quote.dart';
+import '../wallet_engine/evm_receipt_confirmer.dart';
+import '../wallet_engine/evm_testnet_broadcast.dart';
+import '../wallet_engine/models.dart';
 import '../wallet_engine/network_manager.dart';
 import '../wallet_engine/transaction_engine.dart';
 import 'home/home_shared.dart';
@@ -47,6 +55,40 @@ class SendFlowScreen extends StatefulWidget {
   final String? initialAssetId;
   final String? initialTo;
 
+  /// Customer-safe send failure copy. Never surfaces keys or raw RPC dumps.
+  @visibleForTesting
+  static String customerSendFailureMessageForTest(Object error) =>
+      customerSendFailureMessage(error);
+
+  /// Customer-safe send failure copy used by the send flow UI.
+  static String customerSendFailureMessage(Object error) {
+    bool safe(String s) =>
+        s.length < 160 &&
+        !s.toLowerCase().contains('mnemonic') &&
+        !s.toLowerCase().contains('private') &&
+        !s.toLowerCase().contains('seed') &&
+        !s.toLowerCase().contains('0x');
+
+    if (error is QuoteException) {
+      final m = error.message;
+      if (m.toLowerCase().contains('keys are unavailable')) {
+        return 'Transaction could not be signed on this device. Unlock Auvora and try again. Nothing was sent.';
+      }
+      if (safe(m)) return '$m Nothing was sent.';
+      return 'Transaction could not be signed. Nothing was sent.';
+    }
+    if (error is RpcBalanceException) {
+      return 'Network temporarily unavailable. Nothing was broadcast.';
+    }
+    if (error is StateError || error is ArgumentError) {
+      final detail = error.toString().replaceFirst(RegExp(r'^(Bad state|Invalid argument):\s*'), '');
+      if (safe(detail)) {
+        return 'Could not complete send: $detail. Nothing was broadcast.';
+      }
+    }
+    return 'Something went wrong. Nothing was sent — try again.';
+  }
+
   @override
   State<SendFlowScreen> createState() => _SendFlowScreenState();
 }
@@ -65,6 +107,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
   bool _offline = false;
   String? _addrWarning;
   FeeSpeed _feeSpeed = FeeSpeed.standard;
+  /// Live EVM gas quote shared with the signer (null until fetched / non-EVM).
+  FeeEstimate? _liveEvmFee;
+  bool _feeRefreshing = false;
   String? _resolvedFromName;
   String? _domainProviderNote;
   _TxProgressPhase _progress = _TxProgressPhase.broadcasting;
@@ -92,6 +137,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
   bool get _qaValuationEnabled =>
       AuvoraApiConfig.allowLocalApi && AuvoraNetworkEnv.isTestnet;
 
+  String _networkLabelFor(AssetHolding asset) => AuvoraNetworkEnv.displayName(asset.network);
+
   int? _qaNotionalUsdCents(AssetHolding asset) {
     if (!_qaValuationEnabled) return null;
     final raw = _amountCtrl.text.replaceAll(',', '').trim();
@@ -108,7 +155,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     WidgetsBinding.instance.addObserver(this);
     if (_qaValuationEnabled) {
       _hideUnsupported = false;
-      _fiatMode = true;
+      // Local EVM QA uses real on-chain amounts; keep crypto mode for tiny QA ETH transfers.
+      _fiatMode = !AuvoraQaLocalEvm.isActive;
     }
     _toCtrl.addListener(() => setState(() {}));
     _amountCtrl.addListener(() => setState(() {}));
@@ -247,6 +295,122 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
       _pendingReviewId = null;
     }
     setState(() => _step = s);
+    if (s == _SendStep.amount || s == _SendStep.review || s == _SendStep.ready) {
+      unawaited(_refreshLiveEvmFee());
+    }
+  }
+
+  bool get _usesLiveEvmFee {
+    final asset = _asset;
+    return asset != null &&
+        asset.network == AssetNetwork.ethereum &&
+        EvmTestnetBroadcast.enabledNow;
+  }
+
+  FeeEstimate _feeFor(AssetHolding asset) {
+    if (_usesLiveEvmFee && _liveEvmFee != null) return _liveEvmFee!;
+    return estimateFee(asset: asset, amount: _parsedAmount(asset), speed: _feeSpeed);
+  }
+
+  String _feeDisplayLine(FeeEstimate fee, PortfolioController p) {
+    final amt = EvmLiveFeeQuote.formatNativeAmount(fee.feeCrypto);
+    if (AuvoraQaLocalEvm.isActive && fee.feeAsset.contains('QA')) {
+      final liveTag = fee.isLive ? '' : ' · estimate unavailable';
+      return '~$amt ${fee.feeAsset}$liveTag';
+    }
+    if (fee.isLive && fee.feeUsd <= 0) {
+      return '~$amt ${fee.feeAsset}';
+    }
+    return '${EvmLiveFeeQuote.formatNativeAmount(fee.feeCrypto)} ${fee.feeAsset} · ${p.money(fee.feeUsd)}';
+  }
+
+  Future<void> _refreshLiveEvmFee() async {
+    if (!_usesLiveEvmFee || _asset == null || !mounted) return;
+    final asset = _asset!;
+    final from = _wallet.addressFor(asset.network) ?? _wallet.address;
+    if (from == null || from.isEmpty) return;
+    setState(() => _feeRefreshing = true);
+    try {
+      final layer = context.read<BlockchainLayer>();
+      final chain = ChainIdMeta.fromAssetNetwork(asset.network);
+      final adapter = layer.adapterFor(chain);
+      final estimate = await adapter.estimateFee(
+        from: WalletAddressRecord(chain: chain, address: from, derivationPath: 'preview'),
+        assetSymbol: asset.ticker,
+        amount: _parsedAmount(asset),
+      );
+      final speedPct = switch (_feeSpeed) {
+        FeeSpeed.slow => 70,
+        FeeSpeed.standard => 100,
+        FeeSpeed.fast => 155,
+      };
+      BigInt? gasPrice = estimate.gasPriceWei;
+      if (gasPrice != null && speedPct != 100) {
+        gasPrice = EvmLiveFeeQuote.applySpeedMultiplier(gasPrice, speedPct);
+      }
+      final quote = gasPrice != null && estimate.isLive
+          ? EvmLiveFeeQuote.fromGasPrice(
+              gasPriceWei: gasPrice,
+              gasLimit: estimate.gasLimit ?? EvmLiveFeeQuote.nativeTransferGasLimit,
+            )
+          : null;
+      if (!mounted) return;
+      setState(() {
+        _feeRefreshing = false;
+        if (quote != null) {
+          _liveEvmFee = FeeEstimate(
+            feeCrypto: quote.feeNative,
+            feeUsd: AuvoraQaLocalEvm.isActive ? 0 : quote.feeNative * asset.priceUsd,
+            feeAsset: quote.feeAssetLabel,
+            arrivalLabel: estimate.arrivalLabel,
+            speed: _feeSpeed,
+            elevated: false,
+            isLive: true,
+            gasPriceWei: quote.gasPriceWei,
+            gasLimit: quote.gasLimit,
+          );
+        } else {
+          // Do not silently keep a successful live quote's look with a stale static 0.0012.
+          _liveEvmFee = FeeEstimate(
+            feeCrypto: estimate.networkFee,
+            feeUsd: estimate.networkFeeUsd,
+            feeAsset: estimate.networkFeeAsset,
+            arrivalLabel: '${estimate.arrivalLabel} · live quote unavailable',
+            speed: _feeSpeed,
+            isLive: false,
+            rpcUnavailable: true,
+          );
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _feeRefreshing = false;
+        _liveEvmFee = FeeEstimate(
+          feeCrypto: 0,
+          feeUsd: 0,
+          feeAsset: EvmLiveFeeQuote.nativeAssetLabel,
+          arrivalLabel: 'Network fee unavailable — reconnect and refresh',
+          speed: _feeSpeed,
+          isLive: false,
+          rpcUnavailable: true,
+        );
+      });
+    }
+  }
+
+  TransactionFeeEstimate? _confirmedFeeQuote() {
+    final fee = _liveEvmFee;
+    if (fee == null || !fee.isLive || fee.gasPriceWei == null) return null;
+    return TransactionFeeEstimate(
+      networkFee: fee.feeCrypto,
+      networkFeeAsset: fee.feeAsset,
+      networkFeeUsd: fee.feeUsd,
+      arrivalLabel: fee.arrivalLabel,
+      gasPriceWei: fee.gasPriceWei,
+      gasLimit: fee.gasLimit,
+      isLive: true,
+    );
   }
 
   List<_SendStep> get _visibleSteps => [
@@ -527,13 +691,13 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
       children: [
-        Text('Sending ${asset.ticker} on ${asset.network.label}', style: const TextStyle(color: AetherColors.muted)),
+        Text('Sending ${asset.ticker} on ${_networkLabelFor(asset)}', style: const TextStyle(color: AetherColors.muted)),
         const SizedBox(height: 12),
         TextField(
           controller: _toCtrl,
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
-            hintText: 'Paste ${asset.network.label} address',
+            hintText: 'Paste ${_networkLabelFor(asset)} address',
             suffixIcon: IconButton(
               tooltip: 'Paste',
               onPressed: () async {
@@ -658,8 +822,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     final asset = _asset!;
     final p = context.watch<PortfolioController>();
     final amount = _parsedAmount(asset);
-    final fee = estimateFee(asset: asset, amount: amount, speed: _feeSpeed);
-    final feeInSame = fee.feeAsset == asset.ticker;
+    final fee = _feeFor(asset);
+    final feeInSame =
+        fee.feeAsset == asset.ticker || (fee.feeAsset == 'QA ETH' && asset.ticker == 'ETH');
     final insufficient = feeInSame ? amount + fee.feeCrypto > asset.balance : amount > asset.balance;
     final large = asset.balance > 0 && amount / asset.balance >= 0.5;
     final remaining = (asset.balance - amount - (feeInSame ? fee.feeCrypto : 0)).clamp(0.0, asset.balance);
@@ -724,7 +889,10 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
               ChoiceChip(
                 label: Text(s.label),
                 selected: _feeSpeed == s,
-                onSelected: (_) => setState(() => _feeSpeed = s),
+                onSelected: (_) {
+                  setState(() => _feeSpeed = s);
+                  unawaited(_refreshLiveEvmFee());
+                },
               ),
           ],
         ),
@@ -735,7 +903,25 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
             style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.35),
           ),
         ),
-        _kv('Estimated network fee', '${fee.feeCrypto.toStringAsFixed(6)} ${fee.feeAsset} · ${p.money(fee.feeUsd)}'),
+        _kv(
+          'Estimated network fee',
+          _feeRefreshing ? 'Refreshing live fee…' : _feeDisplayLine(fee, p),
+        ),
+        if (fee.rpcUnavailable) ...[
+          const SizedBox(height: 8),
+          SoftBanner(
+            tone: BannerTone.warn,
+            message:
+                'Live network fee is unavailable. Reconnect to Auvora Local EVM QA before signing — a stale fee will not be used.',
+          ),
+        ],
+        if (AuvoraQaLocalEvm.isActive && fee.isLive) ...[
+          const SizedBox(height: 6),
+          Text(
+            'LOCAL QA fee from live gas · no real monetary value · Mainnet OFF',
+            style: TextStyle(color: AetherColors.muted, fontSize: 12, height: 1.35),
+          ),
+        ],
         if (!feeInSame)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -752,14 +938,14 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
           if (fee.elevated || fee.feeUsd >= 8)
             IntelligenceExplainPanel(
               explanation: IntelligenceCatalog.explainFeeEstimate(
-                networkLabel: asset.network.label,
+                networkLabel: _networkLabelFor(asset),
                 elevated: true,
               ),
               onLearnMore: () => openLesson(context, 'gas-fees'),
             )
           else
             Text(
-              'You’re sending on ${asset.network.label}. Network fee estimate pays the network to include your transfer. Timing is never guaranteed.',
+              'You’re sending on ${_networkLabelFor(asset)}. Network fee estimate pays the network to include your transfer. Timing is never guaranteed.',
               style: const TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
             ),
         ],
@@ -772,12 +958,20 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
                 : 'That amount is more than your available balance.',
           ),
         ],
-        if (_qaValuationEnabled) ...[
+        if (_qaValuationEnabled && !AuvoraQaLocalEvm.isActive) ...[
           const SizedBox(height: 10),
           const SoftBanner(
             tone: BannerTone.warn,
             message:
                 'QA policy valuation uses this USD amount. Local testnet balance is not required for review. Nothing will be signed or broadcast.',
+          ),
+        ],
+        if (AuvoraQaLocalEvm.isActive) ...[
+          const SizedBox(height: 10),
+          SoftBanner(
+            tone: BannerTone.info,
+            message:
+                'Auvora Local EVM QA: amount is real on the isolated QA chain only. Mainnet stays OFF. Use a tiny QA ETH amount (not USD notional).',
           ),
         ],
         if (large && !insufficient) ...[
@@ -828,7 +1022,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     final asset = _asset!;
     final p = context.watch<PortfolioController>();
     final amount = _parsedAmount(asset);
-    final fee = estimateFee(asset: asset, amount: amount, speed: _feeSpeed);
+    final fee = _feeFor(asset);
     final to = _toCtrl.text.trim();
     final self = AddressValidation.looksLikeSameWallet(
       to,
@@ -855,7 +1049,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
 
     final items = <(String, String)>[
       ('recipient', 'I checked the full recipient address (ends $short)'),
-      ('network', 'I confirmed this is ${asset.network.label}'),
+      ('network', 'I confirmed this is ${_networkLabelFor(asset)}'),
       ('amount', 'I confirmed ${amount.toStringAsFixed(6)} ${asset.ticker} is correct'),
       ('irreversible', 'I understand this transfer cannot be reversed'),
       if (self) ('self', 'I intentionally want to send to my own address'),
@@ -872,9 +1066,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
               'This transaction cannot be reversed. Double-check the recipient address before you continue.',
         ),
         const SizedBox(height: 10),
-        const SoftBanner(
-          tone: BannerTone.warn,
-          message: ReleaseConfig.broadcastPreviewMessage,
+        SoftBanner(
+          tone: ReleaseConfig.canBroadcastTestnet ? BannerTone.info : BannerTone.warn,
+          message: ReleaseConfig.broadcastStatusMessage,
         ),
         if (transferReview.blocksUnauditedBroadcast) ...[
           const SizedBox(height: 10),
@@ -889,7 +1083,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         const SizedBox(height: 16),
         _kv('Wallet used', walletLabel),
         _kv('Asset', '${asset.name} (${asset.ticker})'),
-        _kv('Network', asset.network.label),
+        _kv('Network', _networkLabelFor(asset)),
         if (_resolvedFromName != null) ...[
           _kv('Resolved from', _resolvedFromName!),
           if (_domainProviderNote != null)
@@ -913,10 +1107,25 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         ),
         _kv('Fee speed', fee.speed.label),
         _kv(
-          'Estimated fee',
-          '${fee.feeCrypto.toStringAsFixed(6)} ${fee.feeAsset} · ${p.money(fee.feeUsd)}',
+          'Network fee',
+          _feeRefreshing ? 'Refreshing live fee…' : _feeDisplayLine(fee, p),
         ),
         _kv('Estimated arrival', fee.arrivalLabel),
+        if (fee.rpcUnavailable) ...[
+          const SizedBox(height: 10),
+          const SoftBanner(
+            tone: BannerTone.warn,
+            message:
+                'Live network fee is unavailable. Do not continue until Local QA RPC recovers.',
+          ),
+        ],
+        if (AuvoraQaLocalEvm.isActive && fee.isLive) ...[
+          const SizedBox(height: 8),
+          const SoftBanner(
+            tone: BannerTone.info,
+            message: 'Network fee is from live Local QA gas. QA ETH has no monetary value. Mainnet stays OFF.',
+          ),
+        ],
         if (_addrWarning != null) ...[
           const SizedBox(height: 10),
           SoftBanner(message: _addrWarning!),
@@ -959,7 +1168,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
           ),
         const SizedBox(height: 12),
         FilledButton(
-          onPressed: allChecked && !_submitting
+          onPressed: allChecked &&
+                  !_submitting &&
+                  !(_usesLiveEvmFee && (_liveEvmFee == null || _liveEvmFee!.rpcUnavailable || !_liveEvmFee!.isLive))
               ? () => _prepareFromReview()
               : null,
           child: Text(_submitting ? 'Checking…' : 'Continue'),
@@ -978,6 +1189,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     final asset = _asset!;
     final p = context.watch<PortfolioController>();
     final amount = _parsedAmount(asset);
+    final fee = _feeFor(asset);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
@@ -990,17 +1202,48 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         const SizedBox(height: 16),
         _kv('Status', CustomerTransferStatus.ready),
         _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}'),
-        _kv('Network', asset.network.label),
+        _kv('Network', _networkLabelFor(asset)),
+        _kv(
+          'Network fee',
+          _feeRefreshing ? 'Refreshing live fee…' : _feeDisplayLine(fee, p),
+        ),
+        _kv('To', _toCtrl.text.trim()),
         const SizedBox(height: 16),
         SoftBanner(
           tone: BannerTone.warn,
           message: ReleaseConfig.canBroadcastTestnet
-              ? 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.'
+              ? (AuvoraQaLocalEvm.isActive
+                  ? 'Auvora Local EVM QA broadcast is ON. Signing submits only to the local QA chain. Mainnet stays OFF.'
+                  : 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.')
               : 'Live broadcast stays off. Do not sign unless you intend to complete a preview transfer.',
         ),
+        if (AuvoraQaLocalEvm.isActive && fee.isLive) ...[
+          const SizedBox(height: 10),
+          const SoftBanner(
+            tone: BannerTone.info,
+            message: 'LOCAL QA · fee from live gas · QA ETH has no monetary value.',
+          ),
+        ],
         const SizedBox(height: 16),
         FilledButton(
-          onPressed: _wallet.hasPin ? () => _go(_SendStep.auth) : null,
+          onPressed: _wallet.hasPin &&
+                  !(_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive))
+              ? () async {
+                  await _refreshLiveEvmFee();
+                  if (!mounted) return;
+                  if (_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Live network fee could not be refreshed. Nothing was signed.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  _go(_SendStep.auth);
+                }
+              : null,
           child: const Text('Sign on this device'),
         ),
         TextButton(onPressed: () => _go(_SendStep.review), child: const Text('Back')),
@@ -1158,6 +1401,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
               });
               return;
             }
+            // PIN success must restore the signing session (pause auto-lock may
+            // have cleared it while the auth UI was shown).
+            _wallet.unlockSessionForTransfer();
             await _submit();
           },
         ),
@@ -1174,8 +1420,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     final engine = context.read<TransactionEngine>();
     final account = context.read<AccountController>();
     final reduce = MediaQuery.disableAnimationsOf(context) || _wallet.reduceMotion;
+    // Keep signing session available through local sign + broadcast (biometric
+    // overlays and brief pauses must not auto-lock mid-submit).
+    _wallet.suppressAutoLock = true;
     await _checkConnectivity();
     if (_offline) {
+      _wallet.suppressAutoLock = false;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('You’re offline. Reconnect, then try again.')),
@@ -1259,11 +1509,19 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
       if (!mounted) return;
       setState(() => _progress = _TxProgressPhase.pending);
 
+      // Refresh live fee so signed gas matches the last confirmation screen.
+      await _refreshLiveEvmFee();
+      if (!mounted) return;
+      if (_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive)) {
+        throw StateError('Live network fee could not be refreshed. Nothing was signed.');
+      }
+
       final result = await engine.submitSend(
         asset: asset,
         to: _toCtrl.text.trim(),
         amount: amount,
         memo: 'Sent from Auvora',
+        confirmedFeeQuote: _confirmedFeeQuote(),
       );
 
       if (!mounted) return;
@@ -1283,6 +1541,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
               }).toList()
             : snap.assets;
         await _portfolio.applyLocalSnapshot(assets: nextAssets, prependTx: tx);
+      }
+      if (ReleaseConfig.canBroadcastTestnet && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
+        unawaited(_portfolio.confirmLiveEvmTransaction(txId: tx.id));
       }
       await _book.rememberRecipient(address: _toCtrl.text.trim(), network: asset.network);
       HapticFeedback.mediumImpact();
@@ -1308,25 +1569,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         _doubleTapGuard = false;
         _step = _SendStep.auth;
       });
-      final detail = error is StateError || error is ArgumentError
-          ? error.toString().replaceFirst(RegExp(r'^(Bad state|Invalid argument):\s*'), '')
-          : null;
-      final safeDetail = detail != null &&
-              detail.length < 160 &&
-              !detail.toLowerCase().contains('mnemonic') &&
-              !detail.toLowerCase().contains('private') &&
-              !detail.toLowerCase().contains('seed')
-          ? detail
-          : null;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            safeDetail == null
-                ? 'Something went wrong. Nothing was sent — try again.'
-                : 'Could not complete send: $safeDetail. Nothing was broadcast.',
-          ),
-        ),
+        SnackBar(content: Text(SendFlowScreen.customerSendFailureMessage(error))),
       );
+    } finally {
+      _wallet.suppressAutoLock = false;
     }
   }
 
@@ -1425,7 +1672,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         ],
         const SizedBox(height: 24),
         _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker}'),
-        _kv('Network', asset.network.label),
+        _kv('Network', AuvoraNetworkEnv.displayName(asset.network)),
         _kv('To', _toCtrl.text.trim()),
         if (_result != null) ...[
           const SizedBox(height: 8),
@@ -1494,7 +1741,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         const SizedBox(height: 16),
         _kv('Amount', '${tx.amount} ${asset.ticker}'),
         _kv('To', tx.to),
-        _kv('Network', asset.network.label),
+        _kv('Network', AuvoraNetworkEnv.displayName(asset.network)),
         const Text('Preview reference', style: TextStyle(color: AetherColors.muted)),
         const SizedBox(height: 4),
         SelectableText(tx.hash, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

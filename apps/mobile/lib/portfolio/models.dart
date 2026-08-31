@@ -34,6 +34,7 @@ enum TxType {
 
 enum TxStatus {
   pending,
+  confirming,
   completed,
   failed,
   cancelled;
@@ -42,6 +43,8 @@ enum TxStatus {
     switch (this) {
       case TxStatus.pending:
         return 'Pending';
+      case TxStatus.confirming:
+        return 'Confirming';
       case TxStatus.completed:
         return 'Completed';
       case TxStatus.failed:
@@ -49,6 +52,14 @@ enum TxStatus {
       case TxStatus.cancelled:
         return 'Cancelled';
     }
+  }
+
+  /// Activity filter: "Pending" includes in-flight confirmation.
+  bool matchesActivityFilter(TxStatus filter) {
+    if (filter == TxStatus.pending) {
+      return this == TxStatus.pending || this == TxStatus.confirming;
+    }
+    return this == filter;
   }
 }
 
@@ -164,6 +175,8 @@ class PortfolioTx {
     this.fee,
     this.feeAsset,
     this.note,
+    this.blockNumber,
+    this.confirmedAt,
   });
 
   final String id;
@@ -180,6 +193,43 @@ class PortfolioTx {
   final double? fee;
   final String? feeAsset;
   final String? note;
+  final int? blockNumber;
+  final DateTime? confirmedAt;
+
+  PortfolioTx copyWith({
+    TxType? type,
+    TxStatus? status,
+    double? amount,
+    double? amountUsd,
+    DateTime? timestamp,
+    String? from,
+    String? to,
+    String? hash,
+    double? fee,
+    String? feeAsset,
+    String? note,
+    int? blockNumber,
+    DateTime? confirmedAt,
+  }) {
+    return PortfolioTx(
+      id: id,
+      type: type ?? this.type,
+      status: status ?? this.status,
+      network: network,
+      assetTicker: assetTicker,
+      amount: amount ?? this.amount,
+      amountUsd: amountUsd ?? this.amountUsd,
+      timestamp: timestamp ?? this.timestamp,
+      from: from ?? this.from,
+      to: to ?? this.to,
+      hash: hash ?? this.hash,
+      fee: fee ?? this.fee,
+      feeAsset: feeAsset ?? this.feeAsset,
+      note: note ?? this.note,
+      blockNumber: blockNumber ?? this.blockNumber,
+      confirmedAt: confirmedAt ?? this.confirmedAt,
+    );
+  }
 }
 
 @immutable

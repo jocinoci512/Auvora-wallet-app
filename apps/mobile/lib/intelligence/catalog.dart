@@ -1,5 +1,6 @@
 import '../portfolio/models.dart';
 import '../search/fuzzy.dart';
+import '../release/network_env.dart';
 import 'models.dart';
 
 /// On-device Auvora Intelligence catalog — instant, educational, never advice.
@@ -166,14 +167,16 @@ class IntelligenceCatalog {
   }
 
   static IntelligenceExplanation explainTransaction(PortfolioTx tx) {
+    final network = AuvoraNetworkEnv.displayName(tx.network);
     switch (tx.status) {
       case TxStatus.pending:
+      case TxStatus.confirming:
         return IntelligenceExplanation(
           id: 'tx-pending',
           kind: IntelligenceKind.transaction,
-          title: 'Still confirming',
+          title: tx.status == TxStatus.confirming ? 'Confirming on network' : 'Still confirming',
           whatHappened:
-              'Your ${tx.type.label.toLowerCase()} was submitted on ${tx.network.label} and is waiting for the network to confirm it.',
+              'Your ${tx.type.label.toLowerCase()} was submitted on $network and is waiting for the network to confirm it.',
           whyItMatters:
               'Pending is normal. Busy networks take longer. Your funds are not “lost” while the network finishes.',
           whatYouCanDo:

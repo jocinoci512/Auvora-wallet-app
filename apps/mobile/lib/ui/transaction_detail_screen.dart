@@ -7,6 +7,8 @@ import '../intelligence/intelligence_controller.dart';
 import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../portfolio/tx_display.dart';
+import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../theme/aether_theme.dart';
 import 'home/home_shared.dart';
@@ -61,7 +63,7 @@ class TransactionDetailScreen extends StatelessWidget {
       'Auvora receipt',
       '${tx.type.label} ${tx.amount} ${tx.assetTicker}',
       'Status: ${tx.status.label}',
-      'Network: ${tx.network.label}',
+      'Network: ${tx.displayNetworkLabel}',
       'Transaction ID: ${tx.hash}',
       'When: $date $time',
     ].join('\n');
@@ -130,18 +132,19 @@ class TransactionDetailScreen extends StatelessWidget {
             const SizedBox(height: 12),
             IntelligenceExplainPanel(
               explanation: IntelligenceCatalog.explainFeeEstimate(
-                networkLabel: tx.network.label,
+                networkLabel: tx.displayNetworkLabel,
                 elevated: true,
               ),
               onLearnMore: () => openLesson(context, 'gas-fees'),
             ),
           ],
           const SizedBox(height: 24),
-          _kv('Network', tx.network.label),
+          _kv('Network', tx.displayNetworkLabel),
           _kv('Date', date),
           _kv('Time', time),
           if (tx.fee != null)
             _kv('Network fee', p.hideBalances ? '••••' : '${tx.fee} ${tx.feeAsset ?? ''}'),
+          if (tx.blockNumber != null) _kv('Block', '${tx.blockNumber}'),
           _kv('From', tx.from),
           _kv('To', tx.to),
           const SizedBox(height: 8),
@@ -216,13 +219,15 @@ class TransactionDetailScreen extends StatelessWidget {
   }
 
   String _friendlyFallback(PortfolioTx tx) {
+    final network = tx.displayNetworkLabel;
     switch (tx.status) {
       case TxStatus.pending:
-        return 'Still confirming on ${tx.network.label}. This usually finishes in a few minutes — keep this screen or check Activity later.';
+      case TxStatus.confirming:
+        return 'Still confirming on $network. This usually finishes in a few minutes — keep this screen or check Activity later.';
       case TxStatus.completed:
-        return ReleaseConfig.liveBroadcastEnabled
-            ? 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.'
-            : 'This ${tx.type.label.toLowerCase()} was recorded as a local preview on ${tx.network.label}. It was not broadcast on-chain.';
+        return ReleaseConfig.canBroadcastTestnet
+            ? 'This ${tx.type.label.toLowerCase()} finished successfully on $network.'
+            : 'This ${tx.type.label.toLowerCase()} was recorded as a local preview on $network. It was not broadcast on-chain.';
       case TxStatus.failed:
         return tx.note ??
             'This transfer did not complete. Amounts beyond any network fee already paid usually stay in your wallet. You can retry from Send.';
