@@ -1,0 +1,18 @@
+title = "Auvora gitleaks config"
+
+[extend]
+useDefault = true
+
+# gitleaks 8.24.x (gitleaks-action) only honors the singular [allowlist] table.
+# generic-api-key matches localStorage/keychain *names* and audit prose, not credentials.
+[allowlist]
+description = "False positives: preference key names, demo WalletConnect URI, and audit wording"
+paths = [
+  '''apps/mobile/lib/wallet_engine/key_store\.dart''',
+  '''apps/web/src/lib/intelligence/guidance\.ts''',
+  '''apps/web/src/lib/web3/demo\.ts''',
+  '''apps/web/src/lib/nft/prefs\.ts''',
+  '''apps/web/src/lib/web3/prefs\.ts''',
+  '''apps/web/src/lib/settings/prefs\.ts''',
+  '''docs/AUVORA_TECHNICAL_AUDIT_PERFORMANCE_ROUND2_REPORT\.md''',
+]
