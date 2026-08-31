@@ -6,6 +6,7 @@ import { AdminSimulationService } from './services/admin-simulation.service';
 import { WalletEngineService } from './services/wallet-engine.service';
 import { WalletRetryQueue } from './services/wallet-retry.queue';
 import { TransferPrepareService } from './services/transfer-prepare.service';
+import { OnChainTransferCompletionService } from './services/on-chain-transfer-completion.service';
 import { WalletService } from './services/wallet.service';
 import { WalletSyncService } from './services/wallet-sync.service';
 import { WalletWorkersService } from './services/wallet-workers.service';
@@ -13,6 +14,7 @@ import { WalletWorkersService } from './services/wallet-workers.service';
 const SERVICES = [
   WalletService,
   TransferPrepareService,
+  OnChainTransferCompletionService,
   AdminSimulationService,
   WalletEngineService,
   EncryptedVaultService,

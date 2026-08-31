@@ -416,8 +416,7 @@ class PortfolioController extends ChangeNotifier {
     }
     for (final tx in snap.transactions) {
       if (tx.status == TxStatus.completed && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
-        // ignore: discarded_futures
-        txCompletedHandler?.call(tx);
+        await txCompletedHandler?.call(tx);
       }
     }
   }

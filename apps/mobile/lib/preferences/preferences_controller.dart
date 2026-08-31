@@ -11,12 +11,15 @@ import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
 import '../release/release_config.dart';
+import '../wallet_engine/evm_receipt_confirmer.dart';
+import '../transfer/transfer_completion_client.dart';
 import 'models.dart';
 
 class PreferencesController extends ChangeNotifier {
   PreferencesController({AuthApiClient? apiClient}) : _api = apiClient ?? AuthApiClient();
 
   final AuthApiClient _api;
+  final TransferCompletionClient _transferCompletion = TransferCompletionClient();
 
   SharedPreferences? _prefs;
   PortfolioController? _portfolio;
@@ -64,18 +67,49 @@ class PreferencesController extends ChangeNotifier {
   void attachPortfolio(PortfolioController portfolio) {
     _portfolio = portfolio;
     portfolio.txCompletedHandler = _notifyTxCompleted;
-    if (ReleaseConfig.canBroadcastTestnet) {
-      // ignore: discarded_futures
-      portfolio.resumePendingEvmReceipts();
+  }
+
+  /// Backfill deduped completion notifications for cached completed EVM txs.
+  Future<void> syncCompletedTransferNotifications() async {
+    final portfolio = _portfolio;
+    final snap = portfolio?.snapshot;
+    if (snap == null) return;
+    for (final tx in snap.transactions) {
+      if (tx.status == TxStatus.completed && EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash)) {
+        await _notifyTxCompleted(tx);
+      }
     }
   }
 
   Future<void> _notifyTxCompleted(PortfolioTx tx) async {
+    final dedupeId = 'tx-completed-${tx.hash.toLowerCase()}';
+    if (_signedIn) {
+      final bearer = await _account?.readAccessToken();
+      if (bearer != null && bearer.isNotEmpty && _transferCompletion.isConfigured) {
+        try {
+          await _transferCompletion.reportCompletedTransfer(accessToken: bearer, tx: tx);
+          await refreshInbox();
+          if (_hasCompletedNotification(tx, dedupeId)) return;
+        } catch (_) {
+          // Fall back to local inbox when backend completion reporting is unavailable.
+        }
+      }
+    }
     await enqueueNotification(
       category: NotificationCategory.transactionConfirmations,
       title: 'Transaction completed',
       body: 'Your transaction has been confirmed.',
-      dedupeId: 'tx-completed-${tx.hash.toLowerCase()}',
+      dedupeId: dedupeId,
+    );
+  }
+
+  bool _hasCompletedNotification(PortfolioTx tx, String dedupeId) {
+    final hash = tx.hash.toLowerCase();
+    return inbox.any(
+      (n) =>
+          n.id == dedupeId ||
+          (n.title.trim().toLowerCase() == 'transaction completed' &&
+              n.body.toLowerCase().contains(hash.substring(0, 10))),
     );
   }
 

@@ -69,6 +69,7 @@ const report = {
   blockVisible: false,
   feeVisible: false,
   notificationCount: 0,
+  notificationCountAfterSecondReopen: 0,
   notificationDedupe: false,
 };
 
@@ -84,7 +85,7 @@ runAdb('reverse', 'tcp:8545', 'tcp:8545');
 runAdb('shell', 'am', 'force-stop', pkg);
 sleep(2000);
 runAdb('shell', 'monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1');
-sleep(8000);
+sleep(15000);
 
 const home = dumpUi('ui-verify-home.xml');
 const homeTexts = extractTexts(home).join(' | ');
@@ -118,26 +119,38 @@ report.blockVisible = detailText.includes('1234');
 report.feeVisible = /0\.000021/.test(detailText);
 report.networkLabel ||= detailText.includes('Auvora Local EVM QA');
 
-execFileSync('python', [path.join(repoRoot, 'scripts', 'qa', 'pull-flutter-prefs.py')], {
-  cwd: repoRoot,
-  stdio: 'inherit',
-});
-const prefs = fs.readFileSync(path.join(artifacts, 'qa-flutter-prefs.xml'), 'utf8');
-const notifMatch = prefs.match(/flutter\.auvora_notif_inbox_v1">(.*?)<\/string>/s);
-if (notifMatch) {
+function readCompletedCount() {
+  execFileSync('python', [path.join(repoRoot, 'scripts', 'qa', 'pull-flutter-prefs.py')], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
+  const prefs = fs.readFileSync(path.join(artifacts, 'qa-flutter-prefs.xml'), 'utf8');
+  const notifMatch = prefs.match(/flutter\.auvora_notif_inbox_v1">(.*?)<\/string>/s);
+  if (!notifMatch) return 0;
   const inbox = JSON.parse(
     notifMatch[1]
       .replace(/&quot;/g, '"')
       .replace(/&amp;/g, '&')
       .replace(/&#10;/g, '\n'),
   );
-  const completed = inbox.filter(
+  return inbox.filter(
     (n) =>
       String(n.title ?? '').toLowerCase() === 'transaction completed' ||
       String(n.id ?? '').startsWith('tx-completed-'),
-  );
-  report.notificationCount = completed.length;
-  report.notificationDedupe = completed.length <= 1;
+  ).length;
 }
+
+report.notificationCount = readCompletedCount();
+report.notificationDedupe = report.notificationCount <= 1;
+
+runAdb('shell', 'am', 'force-stop', pkg);
+sleep(2000);
+runAdb('shell', 'monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1');
+sleep(15000);
+report.notificationCountAfterSecondReopen = readCompletedCount();
+report.notificationDedupe =
+  report.notificationCount <= 1 &&
+  report.notificationCountAfterSecondReopen <= 1 &&
+  report.notificationCountAfterSecondReopen === report.notificationCount;
 
 console.log(JSON.stringify(report, null, 2));

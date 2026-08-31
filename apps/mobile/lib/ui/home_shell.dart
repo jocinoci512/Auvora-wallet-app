@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../account/ui/account_sync_banner.dart';
 import '../portfolio/portfolio_controller.dart';
+import '../preferences/preferences_controller.dart';
 import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../reliability/startup_timing.dart';
@@ -49,13 +50,12 @@ class _HomeShellState extends State<HomeShell> {
       sync.start(address: address, initialRefresh: false);
       try {
         await portfolio.bootstrap(address).timeout(const Duration(seconds: 22));
-        if (ReleaseConfig.canBroadcastTestnet) {
-          // ignore: discarded_futures
-          portfolio.resumePendingEvmReceipts();
-        }
       } catch (_) {
-        // PortfolioController already surfaces lastSyncError + cache; never
-        // leave HomeShell waiting on external provider approval.
+        // PortfolioController keeps cache on timeout; still finalize receipts.
+      }
+      if (ReleaseConfig.canBroadcastTestnet) {
+        await portfolio.resumePendingEvmReceipts();
+        await context.read<PreferencesController>().syncCompletedTransferNotifications();
       }
       StartupTiming.mark('homePortfolioBootstrapDone');
     });

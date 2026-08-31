@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestj
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import type { JwtAccessClaims } from '@auvora/types';
 import { TransferPrepareService } from '../../application/services/transfer-prepare.service';
+import { OnChainTransferCompletionService } from '../../application/services/on-chain-transfer-completion.service';
 import { WalletService } from '../../application/services/wallet.service';
 import { PERMISSION_WALLETS_READ, PERMISSION_WALLETS_WRITE } from '../../domain/permission-codes';
 import { Permissions } from '../decorators/auth.decorators';
@@ -12,6 +13,7 @@ import {
   ListUserWalletsQueryDto,
   PaginationQueryDto,
   PrepareTransferDto,
+  ReportOnChainTransferCompletionDto,
   SnapshotBalanceDto,
   StatusChangeDto,
   UpdateWalletDto,
@@ -24,6 +26,7 @@ const _walletDtoRuntime = {
   ListUserWalletsQueryDto,
   PaginationQueryDto,
   PrepareTransferDto,
+  ReportOnChainTransferCompletionDto,
   SnapshotBalanceDto,
   StatusChangeDto,
   UpdateWalletDto,
@@ -38,6 +41,8 @@ export class WalletsController {
   constructor(
     @Inject(WalletService) private readonly walletService: WalletService,
     @Inject(TransferPrepareService) private readonly transferPrepare: TransferPrepareService,
+    @Inject(OnChainTransferCompletionService)
+    private readonly onChainCompletion: OnChainTransferCompletionService,
   ) {}
 
   @Post()
@@ -69,6 +74,29 @@ export class WalletsController {
       idempotencyKey: dto.idempotencyKey,
       networkEnv: dto.networkEnv,
       qaNotionalUsdCents: dto.qaNotionalUsdCents,
+    });
+    return successResponse(data);
+  }
+
+  @Post('transfers/on-chain/complete')
+  @Permissions(PERMISSION_WALLETS_WRITE)
+  @ApiBody({ type: ReportOnChainTransferCompletionDto })
+  async reportOnChainCompletion(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: ReportOnChainTransferCompletionDto,
+  ) {
+    const data = await this.onChainCompletion.report({
+      ownerUserId: user.sub,
+      txHash: dto.txHash,
+      chainId: dto.chainId,
+      networkLabel: dto.networkLabel,
+      assetCode: dto.assetCode,
+      amount: dto.amount,
+      fromAddress: dto.fromAddress,
+      toAddress: dto.toAddress,
+      fee: dto.fee,
+      blockNumber: dto.blockNumber,
+      confirmedAt: dto.confirmedAt,
     });
     return successResponse(data);
   }

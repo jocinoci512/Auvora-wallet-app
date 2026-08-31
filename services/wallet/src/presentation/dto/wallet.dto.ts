@@ -108,6 +108,54 @@ export class PrepareTransferDto {
   qaNotionalUsdCents?: string;
 }
 
+export class ReportOnChainTransferCompletionDto {
+  @IsString()
+  @Matches(/^0x[a-fA-F0-9]{64}$/)
+  txHash!: string;
+
+  @IsInt()
+  @Min(1)
+  chainId!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  networkLabel!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  assetCode!: string;
+
+  @IsString()
+  @Matches(/^\d+(\.\d+)?$/)
+  @MaxLength(80)
+  amount!: string;
+
+  @IsString()
+  @Matches(/^0x[a-fA-F0-9]{40}$/)
+  fromAddress!: string;
+
+  @IsString()
+  @Matches(/^0x[a-fA-F0-9]{40}$/)
+  toAddress!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  fee?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  blockNumber?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  confirmedAt?: string;
+}
+
 export class CreditDebitDto {
   @IsString()
   @IsNotEmpty()

@@ -109,7 +109,9 @@ export class InternalEventIngestDto {
   eventType!: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
   aggregateId?: string;
 
   @IsObject()
