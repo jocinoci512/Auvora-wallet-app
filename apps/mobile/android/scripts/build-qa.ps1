@@ -2,6 +2,7 @@
 #
 # Usage:
 #   powershell -File apps/mobile/android/scripts/build-qa.ps1
+#   powershell -File scripts/qa/build-android-qa.ps1
 
 $ErrorActionPreference = "Stop"
 $MobileRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
@@ -20,6 +21,50 @@ foreach ($c in @(
 }
 if (-not $Flutter) { throw "flutter not found" }
 
+# Canonical Local QA dart-defines (must match AuvoraQaLocalEvm / AuvoraQaLocalSolana).
+$DartDefines = @(
+  'AUVORA_NETWORK_ENV=testnet',
+  'AUVORA_ALLOW_LOCAL_API=true',
+  'AUVORA_API_BASE_URL=http://127.0.0.1:4000',
+  'AUVORA_SEED_INBOX=false',
+  'TESTNET_BROADCAST_ENABLED=true',
+  'AUVORA_QA_LOCAL_EVM=true',
+  'AUVORA_QA_EVM_CHAIN_ID=31337',
+  'AUVORA_QA_EVM_RPC=http://127.0.0.1:8545',
+  'ETH_RPC_URL=http://127.0.0.1:8545',
+  'AUVORA_QA_LOCAL_SOLANA=true',
+  'AUVORA_QA_SOLANA_RPC=http://127.0.0.1:8899',
+  'AUVORA_QA_SOLANA_ADDRESS=8jFiN4JabxmBwkCVVFnaNyszExbCdd7k2TDuFQHyNThQ',
+  'AUVORA_QA_SOLANA_RECIPIENT=HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk'
+)
+
+function Assert-SafeQaDefines([string[]]$defines) {
+  $joined = ($defines -join ' ')
+  if ($joined -notmatch 'AUVORA_NETWORK_ENV=testnet') {
+    throw 'QA build refused: AUVORA_NETWORK_ENV must be testnet'
+  }
+  if ($joined -match 'LIVE_BROADCAST_ENABLED=true|MAINNET_BROADCAST=true') {
+    throw 'QA build refused: mainnet/live broadcast must stay OFF'
+  }
+  if ($joined -notmatch 'AUVORA_QA_LOCAL_EVM=true') {
+    throw 'QA build refused: Local EVM QA flag missing'
+  }
+  if ($joined -notmatch 'AUVORA_QA_LOCAL_SOLANA=true') {
+    throw 'QA build refused: Local Solana QA flag missing'
+  }
+  if ($joined -match 'mainnet-beta|api\.mainnet|eth-mainnet|solana-mainnet') {
+    throw 'QA build refused: production/mainnet RPC host in dart-defines'
+  }
+  if ($joined -notmatch 'AUVORA_QA_SOLANA_RPC=http://127\.0\.0\.1:8899') {
+    throw 'QA build refused: Local Solana RPC must be loopback :8899'
+  }
+  if ($joined -notmatch 'AUVORA_QA_EVM_RPC=http://127\.0\.0\.1:8545') {
+    throw 'QA build refused: Local EVM RPC must be loopback :8545'
+  }
+}
+
+Assert-SafeQaDefines $DartDefines
+
 $GradleProps = Join-Path $MobileRoot "android\gradle.properties"
 $Backup = Get-Content $GradleProps -Raw
 
@@ -33,23 +78,18 @@ try {
 
   Write-Host "Flutter: $Flutter"
   Write-Host "Building com.auvora.auvora_wallet.qa (Auvora QA)"
+  Write-Host "MAINNET: OFF"
+  Write-Host "LOCAL EVM: QA"
+  Write-Host "LOCAL SOLANA: QA"
   Write-Host "gradle.properties auvoraQa:"
   Select-String -Path $GradleProps -Pattern "auvoraQa"
 
-  & $Flutter build apk --debug `
-    --dart-define=AUVORA_NETWORK_ENV=testnet `
-    --dart-define=AUVORA_ALLOW_LOCAL_API=true `
-    --dart-define=AUVORA_API_BASE_URL=http://127.0.0.1:4000 `
-    --dart-define=AUVORA_SEED_INBOX=false `
-    --dart-define=TESTNET_BROADCAST_ENABLED=true `
-    --dart-define=AUVORA_QA_LOCAL_EVM=true `
-    --dart-define=AUVORA_QA_EVM_CHAIN_ID=31337 `
-    --dart-define=AUVORA_QA_EVM_RPC=http://127.0.0.1:8545 `
-    --dart-define=ETH_RPC_URL=http://127.0.0.1:8545 `
-    --dart-define=AUVORA_QA_LOCAL_SOLANA=true `
-    --dart-define=AUVORA_QA_SOLANA_RPC=http://127.0.0.1:8899 `
-    --dart-define=AUVORA_QA_SOLANA_ADDRESS=8jFiN4JabxmBwkCVVFnaNyszExbCdd7k2TDuFQHyNThQ `
-    --dart-define=AUVORA_QA_SOLANA_RECIPIENT=HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk
+  $defineArgs = @()
+  foreach ($d in $DartDefines) {
+    $defineArgs += "--dart-define=$d"
+  }
+
+  & $Flutter build apk --debug @defineArgs
 
   if ($LASTEXITCODE -ne 0) { throw "flutter build apk failed" }
 
@@ -67,11 +107,17 @@ try {
     $dump = & $aaptExe.FullName dump badging $Dest 2>&1 | Out-String
     Write-Host ($dump | Select-String "package: name=" | ForEach-Object { $_.Line })
     Write-Host ($dump | Select-String "application-label:'" | Select-Object -First 1 | ForEach-Object { $_.Line })
+    Write-Host ($dump | Select-String "versionCode=" | Select-Object -First 1 | ForEach-Object { $_.Line })
     if ($dump -notmatch "com\.auvora\.auvora_wallet\.qa") {
       throw "QA package id not applied - expected com.auvora.auvora_wallet.qa"
     }
+    if ($dump -match "com\.auvora\.auvora_wallet'") {
+      throw "QA build refused: production package id detected"
+    }
   }
 
+  # Soft verify defines are present in the build command log / artifact metadata path.
+  Write-Host "DART_DEFINES_LOCAL_SOLANA=PASS"
   Write-Host "QA APK: $Dest"
   Write-Host "Package: com.auvora.auvora_wallet.qa"
   Write-Host "Label: Auvora QA"

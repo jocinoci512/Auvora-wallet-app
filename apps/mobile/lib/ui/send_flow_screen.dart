@@ -969,12 +969,20 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
                 'QA policy valuation uses this USD amount. Local testnet balance is not required for review. Nothing will be signed or broadcast.',
           ),
         ],
-        if (AuvoraQaLocalEvm.isActive) ...[
+        if (AuvoraQaLocalEvm.isActive && asset.network == AssetNetwork.ethereum) ...[
           const SizedBox(height: 10),
           SoftBanner(
             tone: BannerTone.info,
             message:
                 'Auvora Local EVM QA: amount is real on the isolated QA chain only. Mainnet stays OFF. Use a tiny QA ETH amount (not USD notional).',
+          ),
+        ],
+        if (AuvoraQaLocalSolana.isActive && asset.network == AssetNetwork.solana) ...[
+          const SizedBox(height: 10),
+          SoftBanner(
+            tone: BannerTone.info,
+            message:
+                'Auvora Local Solana QA: amount is real on the isolated QA validator only. Mainnet stays OFF. Use a tiny QA SOL amount.',
           ),
         ],
         if (large && !insufficient) ...[
