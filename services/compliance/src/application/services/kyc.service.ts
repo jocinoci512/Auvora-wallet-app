@@ -266,22 +266,16 @@ export class KycService {
       payload: { ownerUserId, score: risk.score, band: risk.band },
     });
 
-    const needsReview =
-      sanctions.some((s) => s.matchStatus === 'POTENTIAL' || s.matchStatus === 'CONFIRMED') ||
-      pep.matchStatus === 'POTENTIAL' ||
-      pep.matchStatus === 'CONFIRMED' ||
-      risk.band === 'HIGH' ||
-      risk.band === 'CRITICAL';
-
-    const finalStatus = needsReview ? VerificationStatus.IN_REVIEW : VerificationStatus.APPROVED;
+    // Simulator/vendor screening is not production identity verification.
+    // Auvora Admin must approve or reject before the customer is Verified.
     const updated = await this.prisma.verificationRequest.update({
       where: { id: request.id },
       data: {
-        status: finalStatus,
+        status: VerificationStatus.IN_REVIEW,
         providerCode: identity.providerCode,
         providerRef: identity.providerRef,
-        completedAt: needsReview ? null : new Date(),
-        reviewedAt: needsReview ? null : new Date(),
+        completedAt: null,
+        reviewedAt: null,
       },
     });
 
@@ -289,8 +283,7 @@ export class KycService {
       where: { id: profile.id },
       data: {
         subjectType: input.subjectType ?? KycSubjectType.INDIVIDUAL,
-        status: finalStatus,
-        level: needsReview ? profile.level : input.requestedLevel,
+        status: VerificationStatus.IN_REVIEW,
         country: input.country,
         nationality: input.nationality,
         legalNameEncrypted: legalName ? this.crypto.encrypt(legalName) : undefined,
@@ -302,19 +295,17 @@ export class KycService {
           : undefined,
         riskBand: risk.band as RiskBand,
         riskScore: risk.score,
-        verifiedAt: needsReview ? undefined : new Date(),
-        expiresAt: needsReview ? undefined : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
         lastScreenedAt: new Date(),
+        metadata: {
+          screeningAlerts:
+            sanctions.some((s) => s.matchStatus === 'POTENTIAL' || s.matchStatus === 'CONFIRMED') ||
+            pep.matchStatus === 'POTENTIAL' ||
+            pep.matchStatus === 'CONFIRMED' ||
+            risk.band === 'HIGH' ||
+            risk.band === 'CRITICAL',
+        } as Prisma.InputJsonValue,
       },
     });
-
-    if (!needsReview) {
-      await this.events.publish({
-        type: ComplianceEventType.KYCCompleted,
-        aggregateId: updated.id,
-        payload: { ownerUserId, level: input.requestedLevel },
-      });
-    }
 
     return updated;
   }
@@ -374,6 +365,37 @@ export class KycService {
       where: { ownerUserId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** Customer snapshot: status + safe metadata only. Never includes internal Admin notes. */
+  async getCustomerSnapshot(ownerUserId: string, requester: JwtAccessClaims) {
+    const profile = await this.getProfile(ownerUserId, requester);
+    const latest = await this.getLatestVerification(ownerUserId);
+    const profileMeta =
+      profile.metadata && typeof profile.metadata === 'object' && !Array.isArray(profile.metadata)
+        ? (profile.metadata as Record<string, unknown>)
+        : {};
+    return {
+      status: profile.status,
+      level: profile.level,
+      rejectionReason: latest?.rejectionReason ?? null,
+      metadata: {
+        resubmissionRequired: profileMeta.resubmissionRequired === true,
+        ...(typeof profileMeta.customerVisibleReason === 'string'
+          ? { customerVisibleReason: profileMeta.customerVisibleReason }
+          : {}),
+      },
+    };
+  }
+
+  /** Customer GET: drop internal Admin notes from verification metadata. */
+  toCustomerVerification<T extends { metadata?: unknown }>(row: T | null): T | null {
+    if (!row) return null;
+    const metadata = row.metadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return row;
+    const { internalAdminNote: _hidden, ...safe } = metadata as Record<string, unknown>;
+    void _hidden;
+    return { ...row, metadata: safe };
   }
 
   async listQueue(status?: VerificationStatus) {
@@ -441,17 +463,79 @@ export class KycService {
       targetId: updated.id,
       status: VerificationStatus.APPROVED,
     });
+    await this.closeSupersededOpenRequests(request.ownerUserId, updated.id);
     return updated;
   }
 
-  async reject(requestId: string, reviewer: JwtAccessClaims, reason: string) {
+  /**
+   * Close leftover open verification rows after the profile is already APPROVED.
+   * Uses supported CANCELLED status. Does not change the approved profile.
+   * Does not notify the customer (these rows are superseded, not a new decision).
+   */
+  async closeSupersededOpenRequests(ownerUserId: string, exceptRequestId?: string) {
+    const profile = await this.prisma.kycProfile.findUnique({ where: { ownerUserId } });
+    if (!profile || profile.status !== VerificationStatus.APPROVED) {
+      return [];
+    }
+    const open = await this.prisma.verificationRequest.findMany({
+      where: {
+        ownerUserId,
+        status: {
+          in: [
+            VerificationStatus.IN_REVIEW,
+            VerificationStatus.SUBMITTED,
+            VerificationStatus.PENDING_PROVIDER,
+          ],
+        },
+        ...(exceptRequestId ? { id: { not: exceptRequestId } } : {}),
+      },
+    });
+    const closed = [];
+    for (const row of open) {
+      const prevMeta =
+        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : {};
+      const updated = await this.prisma.verificationRequest.update({
+        where: { id: row.id },
+        data: {
+          status: VerificationStatus.CANCELLED,
+          completedAt: new Date(),
+          metadata: {
+            ...prevMeta,
+            superseded: true,
+            closedReason: 'Superseded by an approved verification',
+          } as Prisma.InputJsonValue,
+        },
+      });
+      closed.push(updated);
+      await this.emitAdminKycStatus({
+        ownerUserId,
+        targetId: updated.id,
+        status: VerificationStatus.CANCELLED,
+      });
+    }
+    return closed;
+  }
+
+  async reject(
+    requestId: string,
+    reviewer: JwtAccessClaims,
+    reason: string,
+    internalNote?: string,
+  ) {
     this.assertReviewer(reviewer);
     const trimmed = reason.trim();
     if (trimmed.length < 3) {
       throw new ValidationError('A rejection reason is required');
     }
+    const internal = internalNote?.trim();
     const request = await this.prisma.verificationRequest.findUnique({ where: { id: requestId } });
     if (!request) throw new NotFoundError('Verification request not found');
+    const prevMeta =
+      request.metadata && typeof request.metadata === 'object' && !Array.isArray(request.metadata)
+        ? (request.metadata as Record<string, unknown>)
+        : {};
     const updated = await this.prisma.verificationRequest.update({
       where: { id: requestId },
       data: {
@@ -460,6 +544,11 @@ export class KycService {
         rejectionReason: trimmed,
         reviewedAt: new Date(),
         completedAt: new Date(),
+        metadata: {
+          ...prevMeta,
+          customerVisibleReason: trimmed,
+          ...(internal ? { internalAdminNote: internal } : {}),
+        } as Prisma.InputJsonValue,
       },
     });
     await this.prisma.kycProfile.update({

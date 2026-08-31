@@ -277,4 +277,21 @@ describe('NotificationService', () => {
       status: 'DELIVERED',
     });
   });
+
+  it('lists the customer inbox as IN_APP only', async () => {
+    const prisma = buildPrismaMock();
+    const service = new NotificationService(
+      prisma as never,
+      eventsMock as never,
+      templatesMock as never,
+      preferencesMock as never,
+      queueMock as never,
+    );
+    await service.listInbox('user-1');
+    expect(prisma.notificationMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ ownerUserId: 'user-1', channel: 'IN_APP' }),
+      }),
+    );
+  });
 });

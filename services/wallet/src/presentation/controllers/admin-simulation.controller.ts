@@ -199,7 +199,7 @@ export class AdminSimulationController {
     @CurrentUser() actor: JwtAccessClaims,
   ): Promise<unknown> {
     return successResponse(
-      await this.simulation.rejectReview(params.reviewId, actor.sub, dto.reason),
+      await this.simulation.rejectReview(params.reviewId, actor.sub, dto.reason, dto.internalNote),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../account/auvora_connectivity.dart';
 import '../reliability/retry.dart';
 import '../release/integration_config.dart';
 import 'blockchain_adapter.dart';
@@ -199,8 +200,9 @@ class NetworkManager extends ChangeNotifier {
       // Browser navigator.onLine is owned by the web shell; treat as online here.
       return false;
     }
-    // Race DNS — return as soon as either resolver proves reachability.
-    // Future.wait would wait for the slower lookup even after the first success.
+    // Auvora Gateway reachability is authoritative for account/API banners.
+    // Local QA `adb reverse tcp:4000` succeeds here even when public DNS fails.
+    if (await AuvoraConnectivity.gatewayReachable()) return false;
     if (await _anyDnsReachable()) return false;
     if (await _httpReachable()) return false;
     return true;

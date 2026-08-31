@@ -21,6 +21,7 @@ class TransactionEngine {
     required String to,
     required double amount,
     String? memo,
+    TransactionFeeEstimate? confirmedFeeQuote,
   }) async {
     final mnemonic = await _walletEngine.mnemonic();
     if (mnemonic == null) throw QuoteException('Wallet keys are unavailable on this device.');
@@ -35,13 +36,28 @@ class TransactionEngine {
       address: fromAddress,
       derivationPath: 'preview',
     );
-    final draft = await adapter.buildTransaction(
+    var draft = await adapter.buildTransaction(
       from: fromRecord,
       toAddress: to,
       assetSymbol: asset.ticker,
       amount: amount,
       memo: memo,
     );
+    // Prefer the customer-confirmed live quote so signed gas matches the Ready screen.
+    if (confirmedFeeQuote != null &&
+        confirmedFeeQuote.isLive &&
+        confirmedFeeQuote.gasPriceWei != null) {
+      draft = TransactionDraft(
+        chain: draft.chain,
+        fromAddress: draft.fromAddress,
+        toAddress: draft.toAddress,
+        assetSymbol: draft.assetSymbol,
+        amount: draft.amount,
+        memo: draft.memo,
+        estimatedFee: confirmedFeeQuote,
+        unsignedPayload: draft.unsignedPayload,
+      );
+    }
     final signed = await adapter.signTransaction(draft: draft, mnemonic: mnemonic);
     final submission = await adapter.broadcast(draft: draft, signedPayload: signed);
     _assertBroadcastGate(submission);

@@ -63,6 +63,7 @@ enum AuditAction {
   LARGE_TRANSFER_REVIEW_CREATED
   LARGE_TRANSFER_REVIEW_APPROVED
   LARGE_TRANSFER_REVIEW_REJECTED
+  VAULT_BLOB_UPSERTED
 }
 
 /// Infrastructure metadata row used to validate migrations without product models.

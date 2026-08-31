@@ -177,14 +177,16 @@ describe('KycService', () => {
     );
   });
 
-  it('auto-approves when identity, sanctions, and PEP are clear with low risk', async () => {
+  it('queues Admin review when identity, sanctions, and PEP are clear with low risk', async () => {
     const { service, events } = makeService();
     const result = await service.submitKyc('user-1', {
       requestedLevel: KycLevel.BASIC,
-      legalName: 'Jane Doe',
+      legalName: 'QA User',
     });
-    expect(result.status).toBe(VerificationStatus.APPROVED);
-    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'KYCCompleted' }));
+    expect(result.status).toBe(VerificationStatus.IN_REVIEW);
+    expect(events.publish).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'KYCCompleted' }),
+    );
   });
 
   it('sends the request to review when a sanctions hit occurs', async () => {
@@ -238,14 +240,34 @@ describe('KycService', () => {
   });
 
   it('rejects a verification request with a reason', async () => {
-    const { service, prisma, events } = makeService();
+    const { service, prisma, events, notifications } = makeService();
     prisma.verificationRequest.findUnique = jest
       .fn()
       .mockResolvedValue({ id: 'req-1', profileId: 'profile-1', ownerUserId: 'user-1' });
-    const rejected = await service.reject('req-1', REVIEWER_USER, 'Suspicious activity');
+    const rejected = await service.reject(
+      'req-1',
+      REVIEWER_USER,
+      'Please submit a clearer identity document.',
+      'QA rejection workflow test',
+    );
     expect(rejected.status).toBe(VerificationStatus.REJECTED);
-    expect(rejected.rejectionReason).toBe('Suspicious activity');
+    expect(rejected.rejectionReason).toBe('Please submit a clearer identity document.');
+    expect((rejected.metadata as { internalAdminNote?: string }).internalAdminNote).toBe(
+      'QA rejection workflow test',
+    );
     expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'KYCRejected' }));
+    expect(notifications.publishEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'compliance.kyc.rejected',
+        payload: expect.not.objectContaining({
+          internalNote: expect.anything(),
+          internalAdminNote: expect.anything(),
+        }),
+      }),
+    );
+    expect(JSON.stringify(notifications.publishEvent.mock.calls)).not.toContain(
+      'QA rejection workflow test',
+    );
   });
 
   it('uploads and verifies a document', async () => {
@@ -263,5 +285,55 @@ describe('KycService', () => {
     await expect(service.getProfile('user-1', PLAIN_USER)).resolves.toBeDefined();
     await expect(service.getProfile('someone-else', PLAIN_USER)).rejects.toThrow(ForbiddenError);
     await expect(service.getProfile('someone-else', ADMIN_USER)).resolves.toBeDefined();
+  });
+
+  it('closes leftover IN_REVIEW requests as CANCELLED without changing an APPROVED profile', async () => {
+    const { service, prisma, notifications, adminEvents } = makeService();
+    prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
+      id: 'profile-1',
+      ownerUserId: 'user-1',
+      status: VerificationStatus.APPROVED,
+    });
+    prisma.verificationRequest.findMany = jest.fn().mockResolvedValue([
+      {
+        id: 'stale-1',
+        ownerUserId: 'user-1',
+        status: VerificationStatus.IN_REVIEW,
+        metadata: { screeningAlerts: false },
+      },
+    ]);
+    const closed = await service.closeSupersededOpenRequests('user-1');
+    expect(closed).toHaveLength(1);
+    expect(closed[0]?.status).toBe(VerificationStatus.CANCELLED);
+    expect(prisma.kycProfile.update).not.toHaveBeenCalled();
+    expect(notifications.publishEvent).not.toHaveBeenCalled();
+    expect(adminEvents.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'COMPLIANCE_STATUS_CHANGED',
+        metadata: expect.objectContaining({ status: VerificationStatus.CANCELLED }),
+      }),
+    );
+  });
+
+  it('does not close open requests when the profile is not APPROVED', async () => {
+    const { service, prisma } = makeService();
+    prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
+      id: 'profile-1',
+      ownerUserId: 'user-1',
+      status: VerificationStatus.IN_REVIEW,
+    });
+    const closed = await service.closeSupersededOpenRequests('user-1');
+    expect(closed).toHaveLength(0);
+    expect(prisma.verificationRequest.findMany).not.toHaveBeenCalled();
+  });
+
+  it('omits CANCELLED requests from the Admin active queue', async () => {
+    const { service, prisma } = makeService();
+    await service.listQueue();
+    expect(prisma.verificationRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: { in: [VerificationStatus.IN_REVIEW, VerificationStatus.SUBMITTED] } },
+      }),
+    );
   });
 });

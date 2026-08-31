@@ -68,8 +68,24 @@ export class WalletsController {
       fromAddress: dto.fromAddress,
       idempotencyKey: dto.idempotencyKey,
       networkEnv: dto.networkEnv,
+      qaNotionalUsdCents: dto.qaNotionalUsdCents,
     });
     return successResponse(data);
+  }
+
+  @Get('transfers/reviews')
+  @Permissions(PERMISSION_WALLETS_READ)
+  async listMyTransferReviews(@CurrentUser() user: JwtAccessClaims) {
+    return successResponse(await this.transferPrepare.listMine(user.sub));
+  }
+
+  @Get('transfers/reviews/:reviewId')
+  @Permissions(PERMISSION_WALLETS_READ)
+  async getMyTransferReview(
+    @CurrentUser() user: JwtAccessClaims,
+    @Param('reviewId') reviewId: string,
+  ) {
+    return successResponse(await this.transferPrepare.getMine(user.sub, reviewId));
   }
 
   @Get()

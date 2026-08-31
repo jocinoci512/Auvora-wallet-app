@@ -18,6 +18,8 @@ export function ConfirmReasonDialog({
   description,
   confirmLabel = 'Confirm',
   pending = false,
+  showInternalNote = false,
+  customerReasonLabel = 'Reason',
   onOpenChange,
   onConfirm,
 }: {
@@ -26,10 +28,13 @@ export function ConfirmReasonDialog({
   description: string;
   confirmLabel?: string;
   pending?: boolean;
+  showInternalNote?: boolean;
+  customerReasonLabel?: string;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (reason: string) => Promise<void> | void;
+  onConfirm: (reason: string, internalNote?: string) => Promise<void> | void;
 }): ReactElement {
   const [reason, setReason] = useState('');
+  const [internalNote, setInternalNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const ready = reason.trim().length >= 8;
 
@@ -40,8 +45,9 @@ export function ConfirmReasonDialog({
       return;
     }
     setError(null);
-    await onConfirm(reason.trim());
+    await onConfirm(reason.trim(), internalNote.trim() || undefined);
     setReason('');
+    setInternalNote('');
   }
 
   return (
@@ -50,6 +56,7 @@ export function ConfirmReasonDialog({
       onOpenChange={(next) => {
         if (!next) {
           setReason('');
+          setInternalNote('');
           setError(null);
         }
         onOpenChange(next);
@@ -59,7 +66,10 @@ export function ConfirmReasonDialog({
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription id="confirm-reason-copy">{description}</DialogDescription>
         <form className="admin-confirm-form" onSubmit={(event) => void submit(event)}>
-          <Field label="Reason" hint="Recorded in the audit log. Minimum 8 characters.">
+          <Field
+            label={customerReasonLabel}
+            hint="Shown to the customer. Minimum 8 characters. Never include internal notes here."
+          >
             <Textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -69,6 +79,18 @@ export function ConfirmReasonDialog({
               autoFocus
             />
           </Field>
+          {showInternalNote ? (
+            <Field
+              label="Internal Admin note (optional)"
+              hint="Visible only to operators. Never sent in customer email or in-app notifications."
+            >
+              <Textarea
+                value={internalNote}
+                onChange={(event) => setInternalNote(event.target.value)}
+                rows={3}
+              />
+            </Field>
+          ) : null}
           {error ? (
             <p className="admin-inline-error" role="alert">
               {error}

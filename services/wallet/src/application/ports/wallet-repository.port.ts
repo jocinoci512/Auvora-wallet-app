@@ -76,6 +76,8 @@ export interface WalletRepositoryPort {
     assetId: string,
     alias: string | null,
   ): Promise<WalletRecord | null>;
+  /** First wallet for owner+asset (any alias) — public-import idempotency. */
+  findByOwnerAsset(ownerUserId: string, assetId: string): Promise<WalletRecord | null>;
   createWithZeroBalance(data: CreateWalletData): Promise<WalletRecord>;
   update(id: string, data: UpdateWalletData): Promise<WalletRecord>;
   transitionStatus(

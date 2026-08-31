@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/wallet_controller.dart';
+import '../../state/wallet_session_restore.dart';
 import '../account_controller.dart';
 import '../auth_api_client.dart';
+import '../account_password_session.dart';
 import '../kyc_client.dart';
 import '../vault_sync_service.dart';
 
@@ -46,12 +48,23 @@ class AccountScreen extends StatelessWidget {
         if (onboardingMode) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
-            context.read<WalletController>().goWalletChoice();
+            final wallet = context.read<WalletController>();
+            if (wallet.hasLocalWallet) {
+              wallet.resumeExistingSession();
+            } else if (wallet.restoreResolved) {
+              wallet.goWalletChoice();
+            }
             Navigator.of(context).popUntil((route) => route.isFirst);
           });
           return const Center(child: CircularProgressIndicator());
         }
         return _ProfileView(account: account);
+      case AccountStatus.sessionExpired:
+        return _AuthForms(
+          preferSignIn: true,
+          onboardingMode: onboardingMode,
+          sessionExpired: true,
+        );
       case AccountStatus.signedOut:
         return _AuthForms(preferSignIn: preferSignIn, onboardingMode: onboardingMode);
     }
@@ -104,7 +117,11 @@ class _ProfileViewState extends State<_ProfileView> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadKyc());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await widget.account.revalidate();
+      if (!mounted) return;
+      await _loadKyc();
+    });
   }
 
   Future<void> _loadKyc() async {
@@ -117,6 +134,7 @@ class _ProfileViewState extends State<_ProfileView> {
     try {
       final snap = await KycClient().fetchStatus(accessToken: token);
       if (!mounted) return;
+      widget.account.noteAuthenticatedSuccess();
       setState(() {
         _kyc = snap;
         _kycBusy = false;
@@ -178,13 +196,17 @@ class _ProfileViewState extends State<_ProfileView> {
         _row(context, 'Email verified', (p?.emailVerified ?? false) ? 'Yes' : 'No'),
         _row(
           context,
-          'Encrypted vault',
+          'Secure backup',
           vaultSync.lastError != null
-              ? 'Sync issue — see below'
-              : vaultSync.lastStatus ??
-                  (wallet.unlocked
-                      ? 'Ready when you upload'
-                      : 'Unlock wallet to manage encrypted vault'),
+              ? 'Needs attention'
+              : vaultSync.backupIncomplete
+                  ? 'Incomplete'
+                  : (vaultSync.remoteEpoch != null ||
+                          (vaultSync.lastStatus?.toLowerCase().contains('complete') ?? false))
+                      ? 'Complete'
+                      : vaultSync.needsPasswordForUpload
+                          ? 'Pending'
+                          : (wallet.unlocked ? 'Ready' : 'Unlock wallet to manage backup'),
         ),
         _row(
           context,
@@ -193,6 +215,29 @@ class _ProfileViewState extends State<_ProfileView> {
               ? 'Loading…'
               : (_kyc?.productLabel ?? (_kycError ?? 'Not started')),
         ),
+        if (_kyc?.customerReason != null &&
+            _kyc!.customerReason!.isNotEmpty &&
+            !_kyc!.isApproved) ...[
+          const SizedBox(height: 8),
+          Text(
+            _kyc!.customerReason!,
+            style: t.textTheme.bodySmall,
+          ),
+        ],
+        if (vaultSync.backupIncomplete) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: t.colorScheme.tertiaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                vaultSync.lastStatus ??
+                    'Wallet works on this device, but secure backup for other devices is incomplete.',
+                style: t.textTheme.bodyMedium,
+              ),
+            ),
+          ),
+        ],
         if (vaultSync.needsPasswordForRestore || vaultSync.needsPasswordForUpload) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
@@ -203,22 +248,24 @@ class _ProfileViewState extends State<_ProfileView> {
                       restore: vaultSync.needsPasswordForRestore,
                     ),
             icon: Icon(
-              vaultSync.needsPasswordForRestore ? Icons.cloud_download : Icons.cloud_upload,
+              vaultSync.needsPasswordForRestore ? Icons.lock_open : Icons.cloud_done_outlined,
             ),
             label: Text(
               vaultSync.needsPasswordForRestore
-                  ? 'Restore encrypted vault'
-                  : 'Upload encrypted vault',
+                  ? 'Unlock wallet from backup'
+                  : 'Finish secure backup',
             ),
           ),
-        ] else if (wallet.unlocked && wallet.vaults.isNotEmpty) ...[
+        ] else if (wallet.unlocked &&
+            wallet.vaults.isNotEmpty &&
+            vaultSync.remoteEpoch == null) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: vaultSync.busy
                 ? null
                 : () => _promptVaultPassword(context, restore: false),
-            icon: const Icon(Icons.cloud_upload_outlined),
-            label: const Text('Refresh encrypted vault'),
+            icon: const Icon(Icons.cloud_done_outlined),
+            label: const Text('Finish secure backup'),
           ),
         ],
         if (vaultSync.lastError != null) ...[
@@ -228,7 +275,7 @@ class _ProfileViewState extends State<_ProfileView> {
             style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.error),
           ),
         ],
-        if (account.error != null) ...[
+        if (account.hasTransportError) ...[
           const SizedBox(height: 16),
           Card(
             color: t.colorScheme.errorContainer,
@@ -258,10 +305,8 @@ class _ProfileViewState extends State<_ProfileView> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Cloud vault stores ciphertext only (auvora-vault-v1). '
-                    'Password reset cannot decrypt it — after changing your account '
-                    'password, re-wrap the vault on a device that still has your '
-                    'recovery phrase, then upload again.',
+                    'Auvora keeps an encrypted backup so you can unlock the same wallet '
+                    'on your other devices. Your recovery phrase is only needed for emergencies.',
                     style: t.textTheme.bodySmall,
                   ),
                 ),
@@ -292,63 +337,25 @@ class _ProfileViewState extends State<_ProfileView> {
   }
 
   Future<void> _promptVaultPassword(BuildContext context, {required bool restore}) async {
-    final passwordCtrl = TextEditingController();
     final account = widget.account;
     final wallet = context.read<WalletController>();
     final vaultSync = context.read<VaultSyncService>();
-    final ok = await showDialog<bool>(
+    final success = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(restore ? 'Restore encrypted vault' : 'Upload encrypted vault'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              restore
-                  ? 'Enter your Auvora account password to decrypt the cloud vault on this device.'
-                  : 'Enter your Auvora account password to encrypt wallets for cross-device restore. '
-                      'Only ciphertext is uploaded.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: passwordCtrl,
-              obscureText: true,
-              autofillHints: const [AutofillHints.password],
-              decoration: const InputDecoration(labelText: 'Account password'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continue')),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => _SecureBackupPasswordDialog(
+        restore: restore,
+        account: account,
+        wallet: wallet,
+        vaultSync: vaultSync,
       ),
     );
-    if (ok != true || !context.mounted) {
-      passwordCtrl.dispose();
-      return;
-    }
-    final password = passwordCtrl.text;
-    passwordCtrl.dispose();
-    final success = restore
-        ? await vaultSync.restoreFromCloud(
-            account: account,
-            wallet: wallet,
-            password: password,
-          )
-        : await vaultSync.uploadLocalVault(
-            account: account,
-            wallet: wallet,
-            password: password,
-          );
-    if (!context.mounted) return;
+    if (!context.mounted || success != true) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success
-              ? (vaultSync.lastStatus ?? (restore ? 'Vault restored' : 'Vault uploaded'))
-              : (vaultSync.lastError ?? 'Vault sync failed'),
+          vaultSync.lastStatus ??
+              (restore ? 'Wallet unlocked from secure backup' : 'Secure backup complete'),
         ),
       ),
     );
@@ -369,10 +376,175 @@ class _ProfileViewState extends State<_ProfileView> {
   }
 }
 
+/// Owns [TextEditingController] lifecycle so Continue never disposes it while
+/// the dialog [TextField] still has InheritedWidget dependents.
+class _SecureBackupPasswordDialog extends StatefulWidget {
+  const _SecureBackupPasswordDialog({
+    required this.restore,
+    required this.account,
+    required this.wallet,
+    required this.vaultSync,
+  });
+
+  final bool restore;
+  final AccountController account;
+  final WalletController wallet;
+  final VaultSyncService vaultSync;
+
+  @override
+  State<_SecureBackupPasswordDialog> createState() => _SecureBackupPasswordDialogState();
+}
+
+class _SecureBackupPasswordDialogState extends State<_SecureBackupPasswordDialog> {
+  late final TextEditingController _passwordCtrl;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onContinue() async {
+    if (_submitting) return;
+    final password = _passwordCtrl.text;
+    if (password.trim().isEmpty) {
+      setState(() => _error = 'Enter your Auvora password.');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      final confirmed = await widget.account.confirmPassword(password);
+      if (!mounted) return;
+      if (!confirmed) {
+        setState(() {
+          _submitting = false;
+          _error = 'Incorrect password. Please try again.';
+        });
+        return;
+      }
+
+      final ok = widget.restore
+          ? await widget.vaultSync.restoreFromCloud(
+              account: widget.account,
+              wallet: widget.wallet,
+              password: password,
+            )
+          : await widget.vaultSync.uploadLocalVault(
+              account: widget.account,
+              wallet: widget.wallet,
+              password: password,
+            );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _submitting = false;
+          _error = widget.vaultSync.lastError ??
+              (widget.restore
+                  ? 'Incorrect password. Please try again.'
+                  : 'Secure backup could not be completed. Please try again.');
+        });
+        return;
+      }
+      Navigator.of(context).pop(true);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = e.kind == AuthErrorKind.network ||
+                e.kind == AuthErrorKind.timeout ||
+                e.kind == AuthErrorKind.server
+            ? 'Secure backup could not be completed. Please try again.'
+            : (e.message);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Secure backup could not be completed. Please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.restore ? 'Unlock wallet from backup' : 'Finish secure backup'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.restore
+                ? 'Confirm your Auvora password to unlock your wallet on this device.'
+                : 'Confirm your Auvora password so this wallet can be unlocked on your other devices.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordCtrl,
+            obscureText: true,
+            enabled: !_submitting,
+            autofillHints: const [AutofillHints.password],
+            decoration: const InputDecoration(labelText: 'Account password'),
+            onSubmitted: (_) {
+              if (!_submitting) _onContinue();
+            },
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+          ],
+          if (_submitting) ...[
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(),
+            const SizedBox(height: 8),
+            Text(
+              widget.restore ? 'Unlocking…' : 'Creating secure backup…',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _onContinue,
+          child: Text(_submitting ? 'Please wait…' : 'Continue'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AuthForms extends StatefulWidget {
-  const _AuthForms({this.preferSignIn = false, this.onboardingMode = false});
+  const _AuthForms({
+    this.preferSignIn = false,
+    this.onboardingMode = false,
+    this.sessionExpired = false,
+  });
   final bool preferSignIn;
   final bool onboardingMode;
+  final bool sessionExpired;
 
   @override
   State<_AuthForms> createState() => _AuthFormsState();
@@ -389,7 +561,7 @@ class _AuthFormsState extends State<_AuthForms> {
   @override
   void initState() {
     super.initState();
-    _createMode = !widget.preferSignIn;
+    _createMode = widget.sessionExpired ? false : !widget.preferSignIn;
   }
 
   @override
@@ -432,6 +604,7 @@ class _AuthFormsState extends State<_AuthForms> {
       return;
     }
     if (ok) {
+      AccountPasswordSession.capture(password);
       final wallet = context.read<WalletController>();
       final vaultSync = context.read<VaultSyncService>();
       await vaultSync.reconcileFlags(account: account, wallet: wallet);
@@ -460,7 +633,12 @@ class _AuthFormsState extends State<_AuthForms> {
     }
     if (!mounted) return;
     if (ok && widget.onboardingMode) {
-      context.read<WalletController>().goWalletChoice();
+      final wallet = context.read<WalletController>();
+      if (wallet.hasLocalWallet) {
+        wallet.resumeExistingSession();
+      } else if (wallet.restoreResolved) {
+        wallet.goWalletChoice();
+      }
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
@@ -491,7 +669,18 @@ class _AuthFormsState extends State<_AuthForms> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        if (widget.onboardingMode) ...[
+        if (widget.sessionExpired) ...[
+          Text(
+            WalletSessionRestore.sessionExpiredMessage,
+            style: t.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This device wallet stays on the phone. Sign in to continue.',
+            style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.outline),
+          ),
+          const SizedBox(height: 20),
+        ] else if (widget.onboardingMode) ...[
           Text(
             _createMode ? 'Create your Auvora account' : 'Sign in to Auvora',
             style: t.textTheme.titleLarge,
@@ -504,6 +693,7 @@ class _AuthFormsState extends State<_AuthForms> {
           ),
           const SizedBox(height: 20),
         ],
+        if (!widget.sessionExpired)
         SegmentedButton<bool>(
           segments: const [
             ButtonSegment(value: false, label: Text('Sign in')),

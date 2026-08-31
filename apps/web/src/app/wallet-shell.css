@@ -37,17 +37,21 @@
   --ws-font-display: var(--font-auvora-display), system-ui, sans-serif;
   --ws-font-body: var(--font-auvora-body), 'Segoe UI', sans-serif;
   --ws-font-mono: var(--font-auvora-mono), ui-monospace, monospace;
-  --ws-sidebar: 248px;
-  --ws-topbar: 72px;
-  --ws-tabbar: 64px;
+  --ws-sidebar: 220px;
+  --ws-topbar: 56px;
+  --ws-tabbar: 60px;
+  --ws-content-max: 1320px;
 
   display: grid;
   grid-template-columns: var(--ws-sidebar) minmax(0, 1fr);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
   background: var(--ws-canvas);
   color: var(--ws-ink);
   font-family: var(--ws-font-body);
   overflow-x: clip;
+  box-sizing: border-box;
 }
 
 [data-theme='dark'] .ws {
@@ -136,12 +140,12 @@
   display: flex;
   align-items: center;
   gap: var(--ws-space-3);
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 var(--ws-space-3);
   border-radius: var(--ws-radius-sm);
   color: var(--ws-ink);
   text-decoration: none;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 550;
   transition:
     background 0.18s var(--ws-ease),
@@ -211,9 +215,11 @@
 /* —— Stage / topbar / main —— */
 .ws-stage {
   min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-x: clip;
   background:
     radial-gradient(ellipse 70% 40% at 80% -10%, rgba(14, 79, 92, 0.07), transparent 55%),
     var(--ws-canvas);
@@ -256,7 +262,7 @@
 h1.ws-topbar__title {
   margin: 0.1rem 0 0;
   font-family: var(--ws-font-display);
-  font-size: 1.25rem;
+  font-size: clamp(1.25rem, 1.6vw, 1.75rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.2;
@@ -293,6 +299,11 @@ h1.ws-topbar__title {
 }
 
 .ws-status.is-warn .ws-status__pip {
+  background: var(--ws-reserve);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-reserve) 18%, transparent);
+}
+
+.ws-status.is-degraded .ws-status__pip {
   background: var(--ws-reserve);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-reserve) 18%, transparent);
 }
@@ -339,10 +350,12 @@ h1.ws-topbar__title {
 main.ws-main {
   flex: 1;
   width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 1.15rem clamp(1rem, 3vw, 2rem) 2.5rem;
-  padding-bottom: max(2.5rem, env(safe-area-inset-bottom, 0px));
+  max-width: var(--ws-content-max);
+  margin: 0 auto;
+  padding: 0.85rem clamp(0.85rem, 2.2vw, 1.5rem) 1.75rem;
+  padding-bottom: max(1.75rem, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .ws-sidebar .token-panel {

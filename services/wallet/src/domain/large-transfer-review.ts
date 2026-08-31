@@ -60,6 +60,22 @@ export interface LargeTransferDecision {
  * Evaluates notional against KYC ($5k) and Admin review ($10k) thresholds.
  * Price failures fail closed (cannot skip policy).
  */
+/** Local QA only. Never accepted on mainnet or when the env flag is unset. */
+export function resolveQaNotionalUsdCents(input: {
+  networkEnv?: string;
+  raw?: string;
+}): bigint | null {
+  if (process.env.AUVORA_QA_TRANSFER_VALUATION !== 'true') return null;
+  if (input.networkEnv !== 'testnet') return null;
+  if (!input.raw?.trim()) return null;
+  try {
+    const value = BigInt(input.raw.trim());
+    return value >= 0n ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export function evaluateLargeTransferUsdCents(input: {
   amountSmallest: bigint;
   decimals: number;
@@ -70,30 +86,37 @@ export function evaluateLargeTransferUsdCents(input: {
   thresholdCents?: bigint;
   /** KYC gate threshold (default $5k). */
   kycThresholdCents?: bigint;
+  /** Local QA notional override. Skips market-price math only. */
+  notionalUsdCentsOverride?: bigint;
 }): LargeTransferDecision {
   const reviewThreshold = input.thresholdCents ?? DEFAULT_LARGE_TRANSFER_USD_CENTS;
   const kycThreshold = input.kycThresholdCents ?? DEFAULT_KYC_REQUIRED_USD_CENTS;
 
-  if (input.decimals < 0 || input.decimals > 36) {
-    return { status: 'price_unavailable', message: 'Invalid asset decimals.' };
-  }
-  if (input.usdCentsPerWholeToken == null || input.usdCentsPerWholeToken <= 0n) {
-    return {
-      status: 'price_unavailable',
-      message: 'A reliable USD price is unavailable. Review cannot be skipped.',
-    };
-  }
-  const now = input.now ?? new Date();
-  if (!input.priceAt || Math.abs(now.getTime() - input.priceAt.getTime()) > MAX_PRICE_AGE_MS) {
-    return {
-      status: 'stale_price',
-      message: 'USD price is stale. Review cannot be skipped.',
-    };
-  }
-  if (input.amountSmallest <= 0n) return { status: 'below_threshold' };
+  let notional: bigint;
+  if (input.notionalUsdCentsOverride != null && input.notionalUsdCentsOverride >= 0n) {
+    notional = input.notionalUsdCentsOverride;
+  } else {
+    if (input.decimals < 0 || input.decimals > 36) {
+      return { status: 'price_unavailable', message: 'Invalid asset decimals.' };
+    }
+    if (input.usdCentsPerWholeToken == null || input.usdCentsPerWholeToken <= 0n) {
+      return {
+        status: 'price_unavailable',
+        message: 'A reliable USD price is unavailable. Review cannot be skipped.',
+      };
+    }
+    const now = input.now ?? new Date();
+    if (!input.priceAt || Math.abs(now.getTime() - input.priceAt.getTime()) > MAX_PRICE_AGE_MS) {
+      return {
+        status: 'stale_price',
+        message: 'USD price is stale. Review cannot be skipped.',
+      };
+    }
+    if (input.amountSmallest <= 0n) return { status: 'below_threshold' };
 
-  const scale = 10n ** BigInt(input.decimals);
-  const notional = (input.amountSmallest * input.usdCentsPerWholeToken) / scale;
+    const scale = 10n ** BigInt(input.decimals);
+    notional = (input.amountSmallest * input.usdCentsPerWholeToken) / scale;
+  }
 
   if (reviewThreshold > 0n && notional >= reviewThreshold) {
     return {

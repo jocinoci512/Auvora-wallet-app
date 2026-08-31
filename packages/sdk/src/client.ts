@@ -1831,6 +1831,9 @@ export class AuvoraClient {
     address: string;
     alias?: string;
     label?: string;
+    networkEnv?: 'mainnet' | 'testnet';
+    clientPlatform?: string;
+    selfCustody?: boolean;
   }): Promise<unknown> {
     return this.request('POST', '/api/v1/wallet-engine/wallets/import', input);
   }
@@ -2286,9 +2289,14 @@ export class AuvoraClient {
     );
   }
 
-  async adminRejectKyc(id: string, reason: string): Promise<VerificationRequest> {
+  async adminRejectKyc(
+    id: string,
+    reason: string,
+    internalNote?: string,
+  ): Promise<VerificationRequest> {
     return this.request<VerificationRequest>('POST', `/api/v1/admin/compliance/kyc/${id}/reject`, {
       reason,
+      ...(internalNote?.trim() ? { internalNote: internalNote.trim() } : {}),
     });
   }
 

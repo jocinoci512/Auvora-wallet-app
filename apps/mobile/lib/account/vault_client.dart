@@ -74,10 +74,11 @@ class VaultClient {
       if (data is Map) return Map<String, dynamic>.from(data);
       return null;
     }
-    throw _mapError(res.statusCode);
+    throw _mapError(res.statusCode, body: res.body);
   }
 
-  AuthException _mapError(int status) {
+  AuthException _mapError(int status, {String? body}) {
+    // Prefer customer-safe copy; never surface schema/field names from the API.
     switch (status) {
       case 401:
       case 403:
@@ -90,8 +91,8 @@ class VaultClient {
       case 422:
       case 400:
         return const AuthException(
-          AuthErrorKind.invalidCredentials,
-          'Encrypted vault payload was rejected.',
+          AuthErrorKind.unknown,
+          'Secure backup could not be completed. Please try again.',
         );
       case 429:
         return const AuthException(
@@ -102,12 +103,12 @@ class VaultClient {
         if (status >= 500) {
           return const AuthException(
             AuthErrorKind.server,
-            'Auvora could not store the encrypted vault right now.',
+            'Secure backup could not be completed. Please try again.',
           );
         }
         return const AuthException(
           AuthErrorKind.unknown,
-          'Encrypted vault sync failed. Please try again.',
+          'Secure backup could not be completed. Please try again.',
         );
     }
   }

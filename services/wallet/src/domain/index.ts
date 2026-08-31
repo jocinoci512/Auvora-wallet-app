@@ -27,6 +27,7 @@ export {
   blocksUnauditedBroadcast,
   resolveLargeTransferThresholdCents,
   resolveKycRequiredThresholdCents,
+  resolveQaNotionalUsdCents,
   isKycApprovedStatus,
   DEFAULT_LARGE_TRANSFER_USD_CENTS,
   DEFAULT_KYC_REQUIRED_USD_CENTS,

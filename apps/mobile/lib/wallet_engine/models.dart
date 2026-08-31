@@ -430,6 +430,9 @@ class TransactionFeeEstimate {
     required this.arrivalLabel,
     this.serviceFeeUsd = 0,
     this.explorerBaseUrl,
+    this.gasPriceWei,
+    this.gasLimit,
+    this.isLive = false,
   });
 
   final double networkFee;
@@ -438,6 +441,11 @@ class TransactionFeeEstimate {
   final String arrivalLabel;
   final double serviceFeeUsd;
   final String? explorerBaseUrl;
+
+  /// When set, the signer must use these gas fields (same quote as UI).
+  final BigInt? gasPriceWei;
+  final int? gasLimit;
+  final bool isLive;
 }
 
 @immutable

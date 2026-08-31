@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'auvora_api_config.dart';
+import 'auvora_connectivity.dart';
 
 /// Why an auth call failed, mapped to a safe, user-facing category.
 enum AuthErrorKind {
@@ -118,13 +119,10 @@ class AuthApiClient {
   Future<http.Response> _send(Future<http.Response> Function() run) async {
     try {
       return await run().timeout(timeout);
-    } on TimeoutException {
-      throw const AuthException(AuthErrorKind.timeout, 'The request timed out. Please try again.');
-    } catch (_) {
-      throw const AuthException(
-        AuthErrorKind.network,
-        'No internet connection. Check your connection and try again.',
-      );
+    } on AuthException {
+      rethrow;
+    } catch (error) {
+      throw AuvoraConnectivity.fromTransportOrUnknown(error);
     }
   }
 

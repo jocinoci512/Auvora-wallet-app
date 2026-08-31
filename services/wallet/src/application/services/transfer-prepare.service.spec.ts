@@ -83,7 +83,9 @@ function createService(overrides?: {
     },
     largeTransferReview: {
       findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue(createdReview),
+      update: jest.fn(),
     },
     securityAuditLog: {
       create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
@@ -153,6 +155,7 @@ describe('real user transfer prepare', () => {
     const result = await service.prepare(prepareInput('5000.00'));
     expect(result.allowed).toBe(false);
     expect(result.status).toBe('kyc_required');
+    expect(result.message).toBe('Identity verification required');
     expect(result.reviewId).toBeNull();
     expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
   });
@@ -213,23 +216,44 @@ describe('real user transfer prepare', () => {
     expect(result.amountUsdCents).toBe('1000001');
   });
 
-  it('uses the testnet QA threshold so small Sepolia amounts persist a review', async () => {
-    const { service, prisma, adminEvents } = createService();
-    const result = await service.prepare(prepareInput('1.00', 'testnet'));
+  it('requires KYC before Admin review when $10,000.00 and KYC is not approved', async () => {
+    const { service, prisma } = createService({
+      prisma: {
+        kycProfile: { findUnique: jest.fn().mockResolvedValue({ status: 'DRAFT' }) },
+      },
+    });
+    const result = await service.prepare(prepareInput('10000.00'));
     expect(result.allowed).toBe(false);
-    expect(result.status).toBe('review_required');
-    expect(result.reviewId).toBe(REVIEW_ID);
-    expect((prisma.largeTransferReview as { create: jest.Mock }).create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          status: 'PENDING',
-          metadata: expect.objectContaining({ networkEnv: 'testnet' }),
+    expect(result.status).toBe('kyc_required');
+    expect(result.message).toBe('Identity verification required');
+    expect(result.reviewId).toBeNull();
+    expect((prisma.largeTransferReview as { create: jest.Mock }).create).not.toHaveBeenCalled();
+  });
+
+  it('uses the testnet QA threshold so small Sepolia amounts persist a review', async () => {
+    const previousTestnet = process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+    delete process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+    try {
+      const { service, prisma, adminEvents } = createService();
+      const result = await service.prepare(prepareInput('1.00', 'testnet'));
+      expect(result.allowed).toBe(false);
+      expect(result.status).toBe('review_required');
+      expect(result.reviewId).toBe(REVIEW_ID);
+      expect((prisma.largeTransferReview as { create: jest.Mock }).create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'PENDING',
+            metadata: expect.objectContaining({ networkEnv: 'testnet' }),
+          }),
         }),
-      }),
-    );
-    expect(adminEvents.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'TRANSACTION_REVIEW_CREATED' }),
-    );
+      );
+      expect(adminEvents.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'TRANSACTION_REVIEW_CREATED' }),
+      );
+    } finally {
+      if (previousTestnet === undefined) delete process.env.TESTNET_LARGE_TRANSFER_USD_CENTS;
+      else process.env.TESTNET_LARGE_TRANSFER_USD_CENTS = previousTestnet;
+    }
   });
 
   it('keeps mainnet threshold at $10k even for small amounts', async () => {
@@ -337,5 +361,62 @@ describe('real user transfer prepare', () => {
       wallets: { findById: jest.fn().mockResolvedValue(null) },
     });
     await expect(service.prepare(prepareInput('10000.00'))).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('applies a local QA notional override on testnet only when the flag is on', async () => {
+    const previous = process.env.AUVORA_QA_TRANSFER_VALUATION;
+    process.env.AUVORA_QA_TRANSFER_VALUATION = 'true';
+    try {
+      const ignored = await createService().service.prepare({
+        ...prepareInput('0.000001', 'mainnet'),
+        qaNotionalUsdCents: '1000000',
+      });
+      expect(ignored.reviewId).toBeNull();
+      expect(ignored.allowed).toBe(true);
+
+      const { service, prisma } = createService();
+      const result = await service.prepare({
+        ...prepareInput('0.000001', 'testnet'),
+        qaNotionalUsdCents: '1000000',
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.status).toBe('review_required');
+      expect(result.amountUsdCents).toBe('1000000');
+      expect((prisma.largeTransferReview as { create: jest.Mock }).create).toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.AUVORA_QA_TRANSFER_VALUATION;
+      else process.env.AUVORA_QA_TRANSFER_VALUATION = previous;
+    }
+  });
+
+  it('expires leftover stale-price PENDING reviews after a later valid prepare', async () => {
+    const stale = {
+      id: 'stale-1',
+      metadata: { decisionStatus: 'stale_price' },
+    };
+    const genuine = {
+      id: 'keep-1',
+      metadata: { decisionStatus: 'review_required' },
+    };
+    const { service, prisma } = createService({
+      prisma: {
+        largeTransferReview: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue([stale, genuine]),
+          create: jest.fn(),
+          update: jest.fn().mockResolvedValue({ id: 'stale-1', status: 'EXPIRED' }),
+        },
+      },
+    });
+    await service.prepare(prepareInput('4999.99'));
+    expect((prisma.largeTransferReview as { update: jest.Mock }).update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'stale-1' },
+        data: expect.objectContaining({ status: 'EXPIRED' }),
+      }),
+    );
+    expect((prisma.largeTransferReview as { update: jest.Mock }).update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'keep-1' } }),
+    );
   });
 });

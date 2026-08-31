@@ -49,8 +49,17 @@ if (!cmd) {
   process.exit(1);
 }
 
-const child = spawn(cmd, args, { stdio: 'inherit', env: merged });
+// Windows: .cmd/.bat (e.g. pnpm.cmd) require shell; bare spawn() returns EINVAL.
+const child = spawn(cmd, args, {
+  stdio: 'inherit',
+  env: merged,
+  shell: process.platform === 'win32',
+});
 child.on('exit', (code, signal) => {
   if (signal) process.kill(process.pid, signal);
   else process.exit(code ?? 0);
+});
+child.on('error', (err) => {
+  console.error(`[with-env] failed to spawn ${cmd}: ${err.message}`);
+  process.exit(1);
 });

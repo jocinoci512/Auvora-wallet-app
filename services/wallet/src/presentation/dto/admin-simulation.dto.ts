@@ -118,4 +118,9 @@ export class AdminListReviewsQueryDto {
   take?: number;
 }
 
-export class ReviewDecisionDto extends AdminReasonDto {}
+export class ReviewDecisionDto extends AdminReasonDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  internalNote?: string;
+}

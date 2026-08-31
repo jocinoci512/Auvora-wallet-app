@@ -1,5 +1,7 @@
+import type { IncomingMessage } from 'node:http';
 import type { RequestHandler } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
+import { isAllowedCorsOrigin } from '@auvora/security';
 import type { ServiceEnv } from '../../config/env.schema';
 import { AUTH_PROXY_PREFIXES } from './auth-proxy.middleware';
 import { WALLET_PROXY_PREFIXES } from './wallet-proxy.middleware';
@@ -18,6 +20,53 @@ import { CONNECTIONS_PROXY_PREFIXES } from './connections-proxy.middleware';
 import { BRIDGE_PROXY_PREFIXES } from './bridge-proxy.middleware';
 import { hardenProxyRequest } from './proxy-hardening';
 import { getProxyTimeoutMs } from './proxy-timeout';
+
+const UPSTREAM_CORS_HEADER_NAMES = [
+  'access-control-allow-origin',
+  'access-control-allow-credentials',
+  'access-control-allow-methods',
+  'access-control-allow-headers',
+  'access-control-expose-headers',
+  'access-control-max-age',
+] as const;
+
+/**
+ * Upstream Nest services often set a static ACAO (e.g. APP_PUBLIC_URL) and CORP:same-origin.
+ * Those headers overwrite Gateway CORS on the way out and can leak a fixed ACAO for wrong
+ * Origins, or block credentialed browser reads. Gateway owns browser CORS at the edge.
+ */
+function applyGatewayBrowserHeaders(
+  proxyRes: IncomingMessage,
+  req: IncomingMessage,
+  corsAllowlist: readonly string[],
+): void {
+  if (!proxyRes.headers) return;
+
+  for (const name of UPSTREAM_CORS_HEADER_NAMES) {
+    delete proxyRes.headers[name];
+  }
+
+  // Upstream Nest/helmet CORP:same-origin blocks Web (:3000) from reading Gateway (:4000).
+  proxyRes.headers['cross-origin-resource-policy'] = 'cross-origin';
+
+  const requestOriginHeader = req.headers['origin'];
+  const requestOrigin = Array.isArray(requestOriginHeader)
+    ? requestOriginHeader[0]
+    : requestOriginHeader;
+
+  if (requestOrigin && isAllowedCorsOrigin(requestOrigin, corsAllowlist)) {
+    proxyRes.headers['access-control-allow-origin'] = requestOrigin;
+    proxyRes.headers['access-control-allow-credentials'] = 'true';
+    const vary = proxyRes.headers['vary'];
+    const varyParts = (typeof vary === 'string' ? vary.split(',') : [])
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!varyParts.some((part) => part.toLowerCase() === 'origin')) {
+      varyParts.push('Origin');
+    }
+    proxyRes.headers['vary'] = varyParts.join(', ');
+  }
+}
 
 type ProxyRoute = {
   name: string;
@@ -104,6 +153,9 @@ export function createUnifiedGatewayProxyMiddleware(env: ServiceEnv): RequestHan
       proxyReq: (proxyReq, req) => {
         fixRequestBody(proxyReq, req);
         hardenProxyRequest(proxyReq, req);
+      },
+      proxyRes: (proxyRes, req) => {
+        applyGatewayBrowserHeaders(proxyRes, req, env.CORS_ORIGINS);
       },
     },
   });

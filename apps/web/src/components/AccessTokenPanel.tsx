@@ -3,7 +3,8 @@
 import { Button } from '@auvora/ui';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
-import { ACCESS_TOKEN_KEY, getStoredAccessToken, setStoredAccessToken } from '../lib/api-client';
+import { getStoredAccessToken, setStoredAccessToken } from '../lib/api-client';
+import { loadMe, notifyAuthUserUpdated } from '../lib/auth/session';
 
 export function AccessTokenPanel(): ReactElement | null {
   const pathname = usePathname() || '/';
@@ -22,6 +23,11 @@ export function AccessTokenPanel(): ReactElement | null {
     const trimmed = token.trim();
     setStoredAccessToken(trimmed || null);
     setSaved(true);
+    if (trimmed) {
+      void loadMe().then(() => notifyAuthUserUpdated());
+    } else {
+      notifyAuthUserUpdated();
+    }
     window.setTimeout(() => setSaved(false), 2000);
   }, [token]);
 
@@ -39,9 +45,7 @@ export function AccessTokenPanel(): ReactElement | null {
       <details>
         <summary>API access token</summary>
         <p className="token-panel__hint">
-          Requests use a JWT from <code>{ACCESS_TOKEN_KEY}</code> in <code>sessionStorage</code>{' '}
-          (tab-scoped). Paste an access token from <code>POST /api/v1/auth/login</code> on the
-          gateway.
+          For local testing only: paste a sign-in token to load your account in this browser tab.
         </p>
         <div className="token-panel__row">
           <input

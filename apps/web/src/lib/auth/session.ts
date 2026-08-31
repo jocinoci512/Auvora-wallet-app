@@ -7,6 +7,7 @@ import { getOrCreateDeviceId, guessDeviceName } from './device';
 export type AuthUser = {
   id: string;
   email: string;
+  username?: string | null;
   displayName?: string | null;
   emailVerified?: boolean;
 };
@@ -45,6 +46,11 @@ export function setStoredCsrfToken(token: string | null): void {
   else sessionStorage.setItem(CSRF_KEY, token);
 }
 
+export function notifyAuthUserUpdated(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event('auvora-auth-user-updated'));
+}
+
 export function isSignedIn(): boolean {
   return Boolean(getStoredAccessToken());
 }
@@ -54,7 +60,8 @@ function toAuthUser(me: UserProfile): AuthUser {
   return {
     id: me.id,
     email: me.email,
-    displayName: name || me.username || null,
+    username: me.username?.trim() || null,
+    displayName: name || null,
     emailVerified: me.emailVerified,
   };
 }
@@ -97,6 +104,7 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   const me = await client.getMe();
   const user = toAuthUser(me);
   setCachedUser(user);
+  notifyAuthUserUpdated();
   return user;
 }
 
@@ -142,6 +150,7 @@ export async function signOut(): Promise<void> {
   setStoredAccessToken(null);
   setStoredCsrfToken(null);
   setCachedUser(null);
+  notifyAuthUserUpdated();
 }
 
 export async function loadMe(): Promise<AuthUser | null> {
@@ -155,6 +164,7 @@ export async function loadMe(): Promise<AuthUser | null> {
     const me = await client.getMe();
     const user = toAuthUser(me);
     setCachedUser(user);
+    notifyAuthUserUpdated();
     return user;
   } catch {
     const refreshed = await refreshSession();

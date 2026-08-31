@@ -89,14 +89,20 @@ async function main() {
   const env = { ...fileEnv, ...process.env, PORT: String(port) };
 
   console.log(`[run-service] starting ${filter} on port ${port}`);
-  const child = spawn('pnpm', ['--filter', filter, 'dev'], {
+  const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const child = spawn(pnpmCmd, ['--filter', filter, 'dev'], {
     cwd: root,
     env,
     stdio: 'inherit',
+    shell: process.platform === 'win32',
   });
   child.on('exit', (code, signal) => {
     if (signal) process.kill(process.pid, signal);
     else process.exit(code ?? 0);
+  });
+  child.on('error', (err) => {
+    console.error(`[run-service] failed to spawn ${pnpmCmd}: ${err.message}`);
+    process.exit(1);
   });
 }
 

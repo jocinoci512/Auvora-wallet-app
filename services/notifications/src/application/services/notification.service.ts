@@ -172,13 +172,19 @@ export class NotificationService {
 
   async history(
     ownerUserId: string,
-    filters: { status?: NotificationStatus; skip?: number; take?: number } = {},
+    filters: {
+      status?: NotificationStatus;
+      channel?: NotificationChannel;
+      skip?: number;
+      take?: number;
+    } = {},
   ) {
     const skip = filters.skip ?? 0;
     const take = Math.min(filters.take ?? 50, 100);
     const where: Prisma.NotificationMessageWhereInput = {
       ownerUserId,
       ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.channel ? { channel: filters.channel } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.notificationMessage.findMany({
@@ -257,7 +263,7 @@ export class NotificationService {
   }
 
   async listInbox(ownerUserId: string, filters: { skip?: number; take?: number } = {}) {
-    return this.history(ownerUserId, { ...filters, status: undefined });
+    return this.history(ownerUserId, { ...filters, status: undefined, channel: 'IN_APP' });
   }
 
   private async getOrThrow(id: string) {

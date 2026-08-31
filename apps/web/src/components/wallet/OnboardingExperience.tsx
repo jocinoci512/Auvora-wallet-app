@@ -96,28 +96,26 @@ export function OnboardingExperience(): ReactElement {
         </p>
         <h1 className="ob__title">Set up a wallet</h1>
         <p className="ob__sub">
-          Your Auvora account is shared across platforms. After sign-in, activate this device to
-          restore your encrypted vault (ciphertext only) or create a new wallet.
+          Your Auvora account is shared across Android and Web. After sign-in, unlock your existing
+          wallet on this device with your account password.
         </p>
         <p className="ob__reassure">
-          Auvora does not receive private keys through account login. Password reset restores
-          account access only — re-wrap the vault with your recovery phrase after changing your
-          password.
+          Normal sign-in never asks for your recovery phrase. Recovery is only for emergencies.
         </p>
       </header>
 
       <div className="ob-paths">
         <Link href="/wallets/activate" className="ob-path ob-path--primary">
-          <strong>Activate this device</strong>
-          <span>Restore an encrypted vault from the cloud, or upload a new one.</span>
+          <strong>Unlock your wallet</strong>
+          <span>Use your Auvora password to activate this device.</span>
         </Link>
         <Link href="/wallets/create" className="ob-path">
           <strong>Create a new wallet</strong>
-          <span>Generate keys on this device, then write down the recovery phrase.</span>
+          <span>Only if you do not already have an Auvora wallet.</span>
         </Link>
         <Link href="/wallets/import" className="ob-path">
-          <strong>Import or restore</strong>
-          <span>Emergency restore with a recovery phrase you already control.</span>
+          <strong>Recover wallet</strong>
+          <span>Emergency only — use your recovery phrase.</span>
         </Link>
       </div>
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../account/account_controller.dart';
+import '../account/wallet_backend_sync.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'backup_screen.dart';
@@ -41,14 +42,26 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       final wallet = context.read<WalletController>();
+      // Biometric / system auth overlays pause the Activity. Locking here would
+      // clear the signing session before on-device transfer signing can run.
+      if (wallet.suppressAutoLock) return;
       if (wallet.hasPin && wallet.unlocked && wallet.stage == AppStage.dashboard) {
         wallet.lock();
       }
     } else if (state == AppLifecycleState.resumed) {
+      // Secure storage can be empty while the device is locked. Retry restore
+      // so an existing vault is not left on Welcome after unlock.
+      // ignore: discarded_futures
+      context.read<WalletController>().retryRestoreIfNeeded();
       // Re-check account session after background / network change. Transient
       // failures keep tokens; invalid refresh still returns to sign-in.
       // ignore: discarded_futures
       context.read<AccountController>().revalidate();
+      final account = context.read<AccountController>();
+      final wallet = context.read<WalletController>();
+      final sync = context.read<WalletBackendSync>();
+      // ignore: discarded_futures
+      sync.ensurePublicWalletsRegistered(account: account, wallet: wallet);
     }
   }
 

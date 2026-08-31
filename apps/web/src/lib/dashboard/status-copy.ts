@@ -109,6 +109,13 @@ export const EMPTY_COPY = {
     actionLabel: 'Set up wallet',
     actionHref: '/wallets/onboarding',
   },
+  /** Shown when vault is unlocked on this device but live balances are not loaded yet. */
+  walletReady: {
+    title: 'Wallet ready',
+    body: 'Your Auvora wallet is unlocked on this device. Balances appear when network data is available.',
+    actionLabel: 'Receive',
+    actionHref: '/receive',
+  },
   account: {
     title: 'Account unavailable',
     body: 'Sign in to sync your Auvora account. The wallet on this device stays yours.',

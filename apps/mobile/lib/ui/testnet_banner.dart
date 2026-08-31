@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../release/auvora_qa_local_evm.dart';
 import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../theme/aether_theme.dart';
@@ -11,9 +12,15 @@ class TestnetBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!AuvoraNetworkEnv.isTestnet) return const SizedBox.shrink();
-    final broadcast = ReleaseConfig.canBroadcastTestnet
-        ? 'TESTNET broadcast ON · mainnet OFF'
-        : 'TESTNET mode · mainnet broadcast OFF';
+    final local = AuvoraQaLocalEvm.isActive;
+    final chip = local ? AuvoraQaLocalEvm.bannerLabel : 'TESTNET';
+    final broadcast = local
+        ? (ReleaseConfig.canBroadcastTestnet
+            ? 'Auvora Local EVM QA · broadcast ON · mainnet OFF'
+            : 'Auvora Local EVM QA · mainnet OFF')
+        : (ReleaseConfig.canBroadcastTestnet
+            ? 'TESTNET broadcast ON · mainnet OFF'
+            : 'TESTNET mode · mainnet broadcast OFF');
     return Material(
       color: const Color(0xFF1A3A4A),
       child: Padding(
@@ -26,9 +33,9 @@ class TestnetBanner extends StatelessWidget {
                 color: AetherColors.lagoon,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
-                'TESTNET',
-                style: TextStyle(
+              child: Text(
+                chip,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 11,

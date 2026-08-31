@@ -349,6 +349,29 @@
   border: 1px solid var(--cx-line);
   background: var(--cx-solid);
   text-align: left;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.wf-empty--compact {
+  padding: 1rem 1.1rem;
+  gap: 0.35rem;
+  max-width: 32rem;
+}
+
+.wf-empty--compact h2 {
+  font-size: 1.05rem;
+}
+
+.wf-empty--compact p {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.wf-empty__note {
+  font-size: 0.8125rem !important;
+  color: var(--cx-lagoon) !important;
+  font-weight: 500;
 }
 
 .wf-empty h2 {

@@ -6,6 +6,7 @@
 library;
 
 import '../portfolio/models.dart';
+import 'auvora_qa_local_evm.dart';
 
 enum NetworkEnv { mainnet, testnet }
 
@@ -25,6 +26,9 @@ abstract final class NetworkCatalog {
   /// Professional UI label. Testnet never silently says "Mainnet".
   static String displayName(AssetNetwork network, NetworkEnv env) {
     if (env != NetworkEnv.testnet) return network.label;
+    if (AuvoraQaLocalEvm.isActive && network == AssetNetwork.ethereum) {
+      return AuvoraQaLocalEvm.networkLabel;
+    }
     return switch (network) {
       AssetNetwork.ethereum => 'Ethereum · Sepolia',
       AssetNetwork.bnbSmartChain => 'BNB Smart Chain · Testnet',
@@ -38,6 +42,9 @@ abstract final class NetworkCatalog {
   /// Short lane name for "Network: Sepolia" style copy.
   static String laneName(AssetNetwork network, NetworkEnv env) {
     if (env != NetworkEnv.testnet) return network.label;
+    if (AuvoraQaLocalEvm.isActive && network == AssetNetwork.ethereum) {
+      return AuvoraQaLocalEvm.laneLabel;
+    }
     return switch (network) {
       AssetNetwork.ethereum => 'Sepolia',
       AssetNetwork.bnbSmartChain => 'BSC Testnet',
@@ -56,6 +63,9 @@ abstract final class NetworkCatalog {
         AssetNetwork.polygon => 137,
         _ => null,
       };
+    }
+    if (AuvoraQaLocalEvm.isActive && network == AssetNetwork.ethereum) {
+      return AuvoraQaLocalEvm.chainId;
     }
     return switch (network) {
       AssetNetwork.ethereum => 11155111,
@@ -94,8 +104,12 @@ abstract final class AuvoraNetworkEnv {
   static bool get isTestnet => current == NetworkEnv.testnet;
   static bool get isMainnet => current == NetworkEnv.mainnet;
 
-  /// Persistent UI label — never omit when testnet.
-  static String get bannerLabel => isTestnet ? 'TESTNET' : '';
+  /// Persistent UI label — never omit when testnet / local QA.
+  static String get bannerLabel {
+    if (!isTestnet) return '';
+    if (AuvoraQaLocalEvm.isActive) return AuvoraQaLocalEvm.bannerLabel;
+    return 'TESTNET';
+  }
 
   static String displayName(AssetNetwork network) =>
       NetworkCatalog.displayName(network, current);

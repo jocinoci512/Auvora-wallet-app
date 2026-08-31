@@ -385,9 +385,16 @@ export async function adminApproveLargeTransferReview(reviewId: string, reason: 
   });
 }
 
-export async function adminRejectLargeTransferReview(reviewId: string, reason: string) {
+export async function adminRejectLargeTransferReview(
+  reviewId: string,
+  reason: string,
+  internalNote?: string,
+) {
   return adminRequest(`/api/v1/admin/transaction-reviews/${encodeURIComponent(reviewId)}/reject`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({
+      reason,
+      ...(internalNote?.trim() ? { internalNote: internalNote.trim() } : {}),
+    }),
   });
 }

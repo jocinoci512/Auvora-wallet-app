@@ -77,8 +77,8 @@ export function formatApiError(error: unknown): string {
     if (/csrf/i.test(msg)) {
       return 'Security check failed. Refresh the page and try again.';
     }
-    if (/failed to fetch|networkerror|econnrefused|load failed/i.test(msg)) {
-      return 'Cannot reach API. Confirm gateway is running at NEXT_PUBLIC_API_URL.';
+    if (/failed to fetch|networkerror|econnrefused|load failed|network request failed/i.test(msg)) {
+      return "We couldn't connect to Auvora. Please try again.";
     }
     return msg;
   }

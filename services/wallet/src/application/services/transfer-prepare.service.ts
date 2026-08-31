@@ -16,6 +16,7 @@ import {
   isKycApprovedStatus,
   resolveKycRequiredThresholdCents,
   resolveLargeTransferThresholdCents,
+  resolveQaNotionalUsdCents,
 } from '../../domain/large-transfer-review';
 import {
   WALLET_REPOSITORY,
@@ -55,6 +56,8 @@ export interface PrepareTransferInput {
   idempotencyKey: string;
   /** Safe environment marker from self-custody clients (`mainnet` | `testnet`). */
   networkEnv?: string;
+  /** Local QA only. Ignored unless AUVORA_QA_TRANSFER_VALUATION=true and testnet. */
+  qaNotionalUsdCents?: string;
 }
 
 export interface PrepareTransferResult {
@@ -99,6 +102,10 @@ export class TransferPrepareService {
     }
 
     const price = this.latestPrice(asset);
+    const qaNotional = resolveQaNotionalUsdCents({
+      networkEnv: input.networkEnv,
+      raw: input.qaNotionalUsdCents,
+    });
     const decision = evaluateLargeTransferUsdCents({
       amountSmallest: this.toSmallestUnit(amount, asset.decimals),
       decimals: asset.decimals,
@@ -106,9 +113,11 @@ export class TransferPrepareService {
       priceAt: price.timestamp,
       thresholdCents: resolveLargeTransferThresholdCents(input.networkEnv),
       kycThresholdCents: resolveKycRequiredThresholdCents(input.networkEnv),
+      ...(qaNotional != null ? { notionalUsdCentsOverride: qaNotional } : {}),
     });
 
     if (!blocksUnauditedBroadcast(decision.status)) {
+      await this.expirePriceFailurePendings(input.ownerUserId);
       return {
         allowed: true,
         status: decision.status,
@@ -132,7 +141,7 @@ export class TransferPrepareService {
         decisionStatus: decision.status,
         notionalUsdCents: decision.notionalUsdCents ?? 0n,
         price,
-        message: decision.message ?? 'This transfer requires administrator review before signing.',
+        message: 'This transaction is pending review.',
       });
     }
 
@@ -145,9 +154,7 @@ export class TransferPrepareService {
           reviewId: null,
           reviewStatus: null,
           requestedAt: null,
-          message:
-            decision.message ??
-            'Identity verification is required before this transfer can continue.',
+          message: 'Identity verification required',
           amountUsdCents: decision.notionalUsdCents?.toString() ?? null,
           assetCode: asset.code,
           network: asset.chain,
@@ -157,6 +164,7 @@ export class TransferPrepareService {
 
     // KYC-only band ($5k–$9,999.99): approved KYC, no Admin review solely for threshold.
     if (decision.status === 'kyc_required') {
+      await this.expirePriceFailurePendings(input.ownerUserId);
       return {
         allowed: true,
         status: 'kyc_satisfied',
@@ -178,7 +186,7 @@ export class TransferPrepareService {
       decisionStatus: decision.status,
       notionalUsdCents: decision.notionalUsdCents ?? 0n,
       price,
-      message: decision.message ?? 'This transfer requires administrator review before signing.',
+      message: 'This transaction is pending review.',
     });
   }
 
@@ -231,6 +239,12 @@ export class TransferPrepareService {
             assetSymbol: args.asset.symbol,
             amountCrypto: args.amount.toFixed(),
             ...(args.input.networkEnv ? { networkEnv: args.input.networkEnv } : {}),
+            ...(resolveQaNotionalUsdCents({
+              networkEnv: args.input.networkEnv,
+              raw: args.input.qaNotionalUsdCents,
+            }) != null
+              ? { qaValuation: true }
+              : {}),
           },
         },
       });
@@ -271,6 +285,9 @@ export class TransferPrepareService {
           decisionStatus: args.decisionStatus,
         },
       });
+      if (args.decisionStatus === 'review_required') {
+        await this.expirePriceFailurePendings(args.input.ownerUserId, review.id);
+      }
       return {
         allowed: false,
         status: args.decisionStatus,
@@ -312,17 +329,124 @@ export class TransferPrepareService {
         : {};
     const decisionStatus =
       typeof metadata.decisionStatus === 'string' ? metadata.decisionStatus : 'review_required';
+    const customerReason =
+      typeof metadata.customerVisibleReason === 'string' ? metadata.customerVisibleReason : null;
+    let message = 'This transaction is pending review.';
+    if (review.status === 'REJECTED') {
+      message = customerReason ?? 'This transaction was declined.';
+    } else if (review.status === 'APPROVED') {
+      message = 'Approved. You can continue when you are ready.';
+    }
     return {
       allowed: false,
       status: decisionStatus,
       reviewId: review.id,
       reviewStatus: review.status,
       requestedAt: review.requestedAt.toISOString(),
-      message: 'Transaction pending review',
+      message,
       amountUsdCents: review.amountUsdCents.toString(),
       assetCode,
       network,
     };
+  }
+
+  toCustomerReview(review: {
+    id: string;
+    status: string;
+    rejectionReason: string | null;
+    requestedAt: Date;
+    decisionAt: Date | null;
+    amountUsdCents: bigint;
+    network: string;
+    destinationAddress: string;
+    metadata: Prisma.JsonValue;
+  }) {
+    const meta =
+      review.metadata && typeof review.metadata === 'object' && !Array.isArray(review.metadata)
+        ? (review.metadata as Record<string, unknown>)
+        : {};
+    const customerReason =
+      review.rejectionReason ??
+      (typeof meta.customerVisibleReason === 'string' ? meta.customerVisibleReason : null);
+    let customerStatus = 'Pending review';
+    let message = 'This transaction is pending review.';
+    if (review.status === 'REJECTED') {
+      customerStatus = 'Declined';
+      message = customerReason ?? 'This transaction was declined.';
+    } else if (review.status === 'APPROVED') {
+      customerStatus = 'Approved';
+      message = 'Approved. You can continue when you are ready.';
+    } else if (review.status === 'EXPIRED') {
+      customerStatus = 'Failed';
+      message = 'This review is no longer active.';
+    }
+    return {
+      reviewId: review.id,
+      status: review.status,
+      customerStatus,
+      message,
+      customerReason,
+      requestedAt: review.requestedAt.toISOString(),
+      decidedAt: review.decisionAt?.toISOString() ?? null,
+      amountUsdCents: review.amountUsdCents.toString(),
+      network: review.network,
+    };
+  }
+
+  async listMine(ownerUserId: string) {
+    const items = await this.prisma.largeTransferReview.findMany({
+      where: { ownerUserId, sourceType: USER_TRANSFER_SOURCE_TYPE },
+      orderBy: { requestedAt: 'desc' },
+      take: 50,
+    });
+    return items.map((row) => this.toCustomerReview(row));
+  }
+
+  async getMine(ownerUserId: string, reviewId: string) {
+    const review = await this.prisma.largeTransferReview.findFirst({
+      where: { id: reviewId, ownerUserId },
+    });
+    if (!review) throw new NotFoundError('Review not found');
+    return this.toCustomerReview(review);
+  }
+
+  /**
+   * Close leftover PENDING reviews created when USD price was missing/stale.
+   * Does not expire genuine threshold reviews. Does not delete rows or audit events.
+   */
+  async expirePriceFailurePendings(ownerUserId: string, keepReviewId?: string): Promise<number> {
+    const pending = await this.prisma.largeTransferReview.findMany({
+      where: {
+        ownerUserId,
+        sourceType: USER_TRANSFER_SOURCE_TYPE,
+        status: LargeTransferReviewStatus.PENDING,
+        ...(keepReviewId ? { NOT: { id: keepReviewId } } : {}),
+      },
+    });
+    let expired = 0;
+    for (const row of pending) {
+      const meta =
+        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : {};
+      const decision = typeof meta.decisionStatus === 'string' ? meta.decisionStatus : '';
+      if (decision !== 'stale_price' && decision !== 'price_unavailable') continue;
+      await this.prisma.largeTransferReview.update({
+        where: { id: row.id },
+        data: {
+          status: LargeTransferReviewStatus.EXPIRED,
+          decisionAt: new Date(),
+          decisionReason: 'Superseded after a later valid prepare. Audit history preserved.',
+          metadata: {
+            ...meta,
+            superseded: true,
+            closedReason: 'Superseded stale-price review',
+          } as Prisma.InputJsonValue,
+        },
+      });
+      expired += 1;
+    }
+    return expired;
   }
 
   private async resolveWallet(input: PrepareTransferInput): Promise<WalletRecord | null> {

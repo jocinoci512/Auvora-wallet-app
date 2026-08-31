@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { isSignedIn } from '../../lib/auth/session';
 import { formatApiError } from '../../lib/api-client';
+import { useAccountHealth } from '../../lib/account/account-health';
 import { humanizeError } from '../transaction/TransactionShell';
 import {
   toSafeConnectionView,
@@ -42,6 +43,7 @@ function statusLabel(status: SafeConnectionView['status']): string {
 
 export function ConnectionsExperience(): ReactElement {
   const signedIn = isSignedIn();
+  const health = useAccountHealth();
   const [rows, setRows] = useState<SafeConnectionView[]>([]);
   const [sample, setSample] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -211,25 +213,28 @@ export function ConnectionsExperience(): ReactElement {
           <Link href="/dashboard">Wallet</Link>
         </p>
         <h1 className="cx__title">Connections</h1>
-        <p className="cx__sub">
-          Apps connected through WalletConnect or your local wallet. Disconnect anything you no
-          longer trust.
-        </p>
-        <p className="cx__reassure">
-          Auvora never holds your keys. Session secrets and pairing URIs are not shown here.
-        </p>
+        <p className="cx__sub">Apps you connect with WalletConnect appear here.</p>
       </header>
 
       {sample && rows.length ? (
         <div className="cx-alert cx-alert--info" role="status">
-          Sample connections — sign in to load sessions from this account. This list is labeled
-          preview data, not a live WalletConnect session.
+          Sample connections — sign in to load live sessions for this account.
         </div>
       ) : null}
       {issue ? (
         <div className="cx-alert cx-alert--warn" role="status">
           <strong>{issue.title}</strong>
           <p>{issue.body}</p>
+          <button
+            type="button"
+            className="cx-btn cx-btn--ghost"
+            onClick={() => {
+              health.refresh();
+              void load();
+            }}
+          >
+            Retry
+          </button>
         </div>
       ) : null}
       {error ? (
@@ -337,17 +342,10 @@ export function ConnectionsExperience(): ReactElement {
           )}
         </section>
       ) : rows.length === 0 ? (
-        <section className="wf-empty">
-          <p className="wf-kicker">Connections</p>
-          <h2>No connected apps</h2>
-          <p>
-            WalletConnect and dApp sessions you approve will appear here. Only connect to sites you
-            trust. Auvora never holds your keys — you approve each signature in your local wallet.
-          </p>
-          <p>
-            To connect safely, open the app in its own site, choose WalletConnect, then approve the
-            request on this device or Auvora mobile. Disconnect anything you no longer use.
-          </p>
+        <section className="wf-empty wf-empty--compact" aria-labelledby="wf-conn-empty-title">
+          <h2 id="wf-conn-empty-title">No connected apps</h2>
+          <p>Apps you connect with WalletConnect will appear here.</p>
+          <p className="wf-empty__note">You approve every connection and signature.</p>
         </section>
       ) : (
         <section className="cx-panel">

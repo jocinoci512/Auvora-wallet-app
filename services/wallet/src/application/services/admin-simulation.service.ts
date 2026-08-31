@@ -704,28 +704,7 @@ export class AdminSimulationService {
     return {
       total,
       counts: Object.fromEntries(counts.map((row) => [row.status, row._count._all])),
-      items: items.map((item) => ({
-        id: item.id,
-        ownerUserId: item.ownerUserId,
-        walletId: item.walletId,
-        sourceType: item.sourceType,
-        sourceId: item.sourceId,
-        assetCode: item.asset.code,
-        assetSymbol: item.asset.symbol,
-        network: item.network,
-        fromAddress: item.fromAddress,
-        destinationAddress: item.destinationAddress,
-        amount: item.amount.toFixed(),
-        amountUsdCents: item.amountUsdCents.toString(),
-        priceUsdCentsPerWhole: item.priceUsdCentsPerWhole?.toString() ?? null,
-        priceTimestamp: item.priceTimestamp?.toISOString() ?? null,
-        status: item.status,
-        requestedAt: item.requestedAt.toISOString(),
-        decisionAt: item.decisionAt?.toISOString() ?? null,
-        decisionReason: item.decisionReason,
-        rejectionReason: item.rejectionReason,
-        metadata: item.metadata,
-      })),
+      items: items.map((item) => this.serializeReview(item)),
     };
   }
 
@@ -735,24 +714,51 @@ export class AdminSimulationService {
       include: { asset: true },
     });
     if (!item) throw new NotFoundError('Transaction review not found');
+    return this.serializeReview(item);
+  }
+
+  private serializeReview(item: {
+    id: string;
+    ownerUserId: string;
+    walletId: string | null;
+    sourceType: string;
+    sourceId: string | null;
+    asset?: { code: string; symbol: string } | null;
+    network: string;
+    fromAddress: string | null;
+    destinationAddress: string;
+    amount?: { toFixed(): string } | null;
+    amountUsdCents?: bigint | null;
+    priceUsdCentsPerWhole: bigint | null;
+    priceTimestamp: Date | null;
+    status: string;
+    requestedAt?: Date | null;
+    decisionAt: Date | null;
+    decisionReason: string | null;
+    rejectionReason: string | null;
+    metadata: Prisma.JsonValue | null;
+  }): Record<string, unknown> {
     return {
       id: item.id,
       ownerUserId: item.ownerUserId,
       walletId: item.walletId,
       sourceType: item.sourceType,
       sourceId: item.sourceId,
-      assetCode: item.asset.code,
-      assetSymbol: item.asset.symbol,
+      assetCode: item.asset?.code,
+      assetSymbol: item.asset?.symbol,
       network: item.network,
       fromAddress: item.fromAddress,
       destinationAddress: item.destinationAddress,
-      amount: item.amount.toFixed(),
-      amountUsdCents: item.amountUsdCents.toString(),
+      amount:
+        typeof item.amount?.toFixed === 'function'
+          ? item.amount.toFixed()
+          : String(item.amount ?? ''),
+      amountUsdCents: item.amountUsdCents == null ? null : item.amountUsdCents.toString(),
       priceUsdCentsPerWhole: item.priceUsdCentsPerWhole?.toString() ?? null,
       priceTimestamp: item.priceTimestamp?.toISOString() ?? null,
       status: item.status,
-      requestedAt: item.requestedAt.toISOString(),
-      decisionAt: item.decisionAt?.toISOString() ?? null,
+      requestedAt: item.requestedAt?.toISOString?.() ?? null,
+      decisionAt: item.decisionAt?.toISOString?.() ?? null,
       decisionReason: item.decisionReason,
       rejectionReason: item.rejectionReason,
       metadata: item.metadata,
@@ -831,14 +837,20 @@ export class AdminSimulationService {
         network: updated.network,
       },
     });
-    return updated;
+    return this.serializeReview(updated);
   }
 
-  async rejectReview(reviewId: string, actorUserId: string, reason: string): Promise<unknown> {
+  async rejectReview(
+    reviewId: string,
+    actorUserId: string,
+    reason: string,
+    internalNote?: string,
+  ): Promise<unknown> {
     const trimmed = reason.trim();
     if (trimmed.length < 3) {
       throw new ValidationError('A rejection reason is required');
     }
+    const internal = internalNote?.trim();
     const updated = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.largeTransferReview.findUnique({ where: { id: reviewId } });
       if (!existing) throw new NotFoundError('Transaction review not found');
@@ -858,6 +870,7 @@ export class AdminSimulationService {
           metadata: {
             ...prevMeta,
             customerVisibleReason: trimmed,
+            ...(internal ? { internalAdminNote: internal } : {}),
           } as Prisma.InputJsonValue,
         },
       });
@@ -884,6 +897,7 @@ export class AdminSimulationService {
       reviewId,
       assetCode: updated.asset.code,
       customerVisibleReason: trimmed,
+      ...(internal ? { internalAdminNote: internal } : {}),
     });
     await this.adminEvents.publish({
       type: 'TRANSACTION_REVIEW_REJECTED',
@@ -906,7 +920,7 @@ export class AdminSimulationService {
         customerVisibleReason: trimmed.slice(0, 500),
       },
     });
-    return updated;
+    return this.serializeReview(updated);
   }
 
   async reviewSummary(): Promise<{ pending: number; approved: number; rejected: number }> {

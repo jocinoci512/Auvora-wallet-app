@@ -79,6 +79,28 @@ describe('EventNotificationMapperService', () => {
     });
   });
 
+  describe('KYC approved mapping', () => {
+    it('maps approval to the customer template without internal notes', async () => {
+      const service = createService();
+
+      await service.mapAndEnqueue({
+        eventType: 'compliance.kyc.approved',
+        aggregateId: 'kyc-approved-1',
+        payload: {
+          ownerUserId: 'user-1',
+          internalNote: 'QA analyst comment — do not disclose',
+        },
+      });
+
+      expect(notifications.send).toHaveBeenCalledTimes(2);
+      for (const call of notifications.send.mock.calls) {
+        expect(call[0].templateCode).toBe('kyc.approved');
+        expect(JSON.stringify(call[0])).not.toContain('QA analyst');
+        expect(call[0].variables).not.toHaveProperty('internalNote');
+      }
+    });
+  });
+
   describe('KYC reject reason mapping', () => {
     it('maps customerVisibleReason and never leaks internalNote', async () => {
       const service = createService();
@@ -207,6 +229,28 @@ describe('EventNotificationMapperService', () => {
           (call: [{ channel: string }]) => call[0].channel,
         );
         expect(channels).toEqual(expect.arrayContaining(['EMAIL', 'IN_APP']));
+      }
+    });
+
+    it('maps wallet.transfer.completed to transaction.completed templates', async () => {
+      const service = createService();
+
+      await service.mapAndEnqueue({
+        eventType: 'wallet.transfer.completed',
+        aggregateId: 'tx-done-1',
+        payload: {
+          ownerUserId: 'user-1',
+          assetCode: 'ETH',
+          amount: '0.0001',
+          networkLabel: 'Auvora Local EVM QA',
+          txHash: '0xb76fd4160505fa5a9f298bc312073a1278fad6d495b98b1a0fa15c381687f35f',
+        },
+      });
+
+      expect(notifications.send).toHaveBeenCalledTimes(2);
+      for (const call of notifications.send.mock.calls) {
+        expect(call[0].templateCode).toBe('transaction.completed');
+        expect(call[0].dedupeKey).toContain('tx.completed:');
       }
     });
   });

@@ -35,6 +35,7 @@ import {
 import { CxActions, humanizeError, TransactionShell } from '../transaction/TransactionShell';
 import { networkLabel } from '../../lib/product/networks';
 import { createApiClient, getStoredAccessToken } from '../../lib/api-client';
+import { customerTransferStatus } from '../../lib/customer-transfer-status';
 import '../../app/core-experience.css';
 import '../../app/wallet-flow.css';
 
@@ -89,6 +90,8 @@ type FailKind =
   | 'offline'
   | 'rate_limited'
   | 'pending_review'
+  | 'review_rejected'
+  | 'kyc_required'
   | 'review_blocked';
 
 function failCopy(kind: FailKind): { title: string; body: string } {
@@ -120,8 +123,18 @@ function failCopy(kind: FailKind): { title: string; body: string } {
       };
     case 'pending_review':
       return {
-        title: 'Transaction pending review',
-        body: 'This transfer is at or above the Auvora review threshold. An administrator must approve it before this device can sign. Keys stay on your device. Nothing was broadcast.',
+        title: 'Pending review',
+        body: 'This transfer is processing. We will update you when review is complete. Keys stay on your device. Nothing was broadcast.',
+      };
+    case 'review_rejected':
+      return {
+        title: 'Declined',
+        body: 'This transfer was declined. Nothing was broadcast.',
+      };
+    case 'kyc_required':
+      return {
+        title: 'Identity verification required',
+        body: 'Complete identity verification, then try this amount again. Nothing was signed.',
       };
     case 'review_blocked':
       return {
@@ -311,7 +324,13 @@ export function SendExperience(): ReactElement {
         });
         if (!prepared.allowed) {
           setPendingReview(prepared);
-          setFailKind('pending_review');
+          if (prepared.status === 'kyc_required') {
+            setFailKind('kyc_required');
+          } else if (prepared.reviewStatus === 'REJECTED') {
+            setFailKind('review_rejected');
+          } else {
+            setFailKind('pending_review');
+          }
           setStep('failure');
           setSigning(false);
           return;
@@ -886,14 +905,14 @@ export function SendExperience(): ReactElement {
           {failKind === 'pending_review' && pendingReview ? (
             <dl className="wf-review">
               <div>
-                <dt>Review ID</dt>
-                <dd>
-                  <code>{pendingReview.reviewId ?? '—'}</code>
-                </dd>
-              </div>
-              <div>
                 <dt>Status</dt>
-                <dd>{pendingReview.reviewStatus ?? pendingReview.status}</dd>
+                <dd>
+                  {customerTransferStatus({
+                    allowed: pendingReview.allowed,
+                    prepareStatus: pendingReview.status,
+                    reviewStatus: pendingReview.reviewStatus,
+                  })}
+                </dd>
               </div>
               <div>
                 <dt>Requested</dt>
@@ -904,6 +923,9 @@ export function SendExperience(): ReactElement {
                 </dd>
               </div>
             </dl>
+          ) : null}
+          {failKind === 'review_rejected' && pendingReview?.message ? (
+            <p>{pendingReview.message}</p>
           ) : null}
           <div className="wf-actions">
             <button

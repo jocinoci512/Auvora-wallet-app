@@ -1,6 +1,7 @@
 import {
   evaluateLargeTransferUsdCents,
   resolveLargeTransferThresholdCents,
+  resolveQaNotionalUsdCents,
   DEFAULT_LARGE_TRANSFER_USD_CENTS,
   DEFAULT_TESTNET_LARGE_TRANSFER_USD_CENTS,
 } from './large-transfer-review';
@@ -134,6 +135,19 @@ describe('evaluateLargeTransferUsdCents', () => {
     ).toBe('stale_price');
   });
 
+  it('uses a QA notional override without requiring a market price', () => {
+    const decision = evaluateLargeTransferUsdCents({
+      amountSmallest: 1n,
+      decimals: 18,
+      usdCentsPerWholeToken: null,
+      priceAt: null,
+      now,
+      notionalUsdCentsOverride: 1_000_000n,
+    });
+    expect(decision.status).toBe('review_required');
+    expect(decision.notionalUsdCents).toBe(1_000_000n);
+  });
+
   it('fails closed without a fresh price', () => {
     expect(
       evaluateLargeTransferUsdCents({
@@ -144,5 +158,22 @@ describe('evaluateLargeTransferUsdCents', () => {
         now,
       }).status,
     ).toBe('price_unavailable');
+  });
+});
+
+describe('resolveQaNotionalUsdCents', () => {
+  const previous = process.env.AUVORA_QA_TRANSFER_VALUATION;
+
+  afterEach(() => {
+    if (previous === undefined) delete process.env.AUVORA_QA_TRANSFER_VALUATION;
+    else process.env.AUVORA_QA_TRANSFER_VALUATION = previous;
+  });
+
+  it('rejects override unless the local QA flag is on and network is testnet', () => {
+    delete process.env.AUVORA_QA_TRANSFER_VALUATION;
+    expect(resolveQaNotionalUsdCents({ networkEnv: 'testnet', raw: '499999' })).toBeNull();
+    process.env.AUVORA_QA_TRANSFER_VALUATION = 'true';
+    expect(resolveQaNotionalUsdCents({ networkEnv: 'mainnet', raw: '499999' })).toBeNull();
+    expect(resolveQaNotionalUsdCents({ networkEnv: 'testnet', raw: '499999' })).toBe(499999n);
   });
 });

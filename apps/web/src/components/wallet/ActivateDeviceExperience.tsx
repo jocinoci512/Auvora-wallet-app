@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react';
 import { formatApiError } from '../../lib/api-client';
-import { getCachedUser, isSignedIn } from '../../lib/auth/session';
+import { isSignedIn } from '../../lib/auth/session';
+import { resolveActivationRoute, type ActivationRoute } from '../../lib/vault/activation-route';
 import {
   clearDeviceVault,
   getEncryptedVault,
@@ -17,20 +18,17 @@ import '../../app/onboarding.css';
 
 const STEPS = [
   { id: 'check', label: 'Check' },
-  { id: 'restore', label: 'Restore' },
-  { id: 'upload', label: 'Upload' },
+  { id: 'unlock', label: 'Unlock' },
   { id: 'done', label: 'Done' },
 ] as const;
 
-type StepId = (typeof STEPS)[number]['id'];
-
 /**
- * Device activation: restore encrypted vault from cloud after sign-in, or upload
- * a local phrase. Server stores ciphertext only (auvora-vault-v1).
+ * Normal path: discover cloud vault → unlock with account password only.
+ * Recovery phrase is an explicit exceptional path only.
  */
 export function ActivateDeviceExperience(): ReactElement {
   const router = useRouter();
-  const [step, setStep] = useState<StepId>('check');
+  const [route, setRoute] = useState<ActivationRoute>('checking');
   const [password, setPassword] = useState('');
   const [phrase, setPhrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,6 +36,7 @@ export function ActivateDeviceExperience(): ReactElement {
   const [status, setStatus] = useState<string | null>(null);
   const [hasRemote, setHasRemote] = useState(false);
   const [hasLocal, setHasLocal] = useState(false);
+  const [walletCount, setWalletCount] = useState(0);
 
   useEffect(() => {
     if (!isSignedIn()) {
@@ -51,11 +50,17 @@ export function ActivateDeviceExperience(): ReactElement {
         const remote = await getEncryptedVault();
         const local = readDeviceVault();
         if (cancelled) return;
-        setHasRemote(Boolean(remote));
-        setHasLocal(Boolean(local?.bundle.wallets.length));
-        if (remote && !local) setStep('restore');
-        else if (!remote) setStep('upload');
-        else setStep('done');
+        const remoteOk = Boolean(remote);
+        const localOk = Boolean(local?.bundle.wallets.length);
+        setHasRemote(remoteOk);
+        setHasLocal(localOk);
+        if (local?.bundle.wallets.length) setWalletCount(local.bundle.wallets.length);
+        setRoute(
+          resolveActivationRoute({
+            hasRemoteVault: remoteOk,
+            hasLocalSessionVault: localOk,
+          }),
+        );
       } catch (err) {
         if (!cancelled) setError(formatApiError(err));
       } finally {
@@ -67,15 +72,17 @@ export function ActivateDeviceExperience(): ReactElement {
     };
   }, [router]);
 
-  async function onRestore(e: FormEvent): Promise<void> {
+  async function onUnlock(e: FormEvent): Promise<void> {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
       const bundle = await restoreVaultFromCloud({ password });
-      setStatus(`Restored ${bundle.wallets.length} wallet(s) to this device session.`);
+      setWalletCount(bundle.wallets.length);
+      setStatus('Your Auvora wallet is ready on this device.');
       setHasLocal(true);
-      setStep('done');
+      setRoute('ready');
+      setPassword('');
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -83,17 +90,16 @@ export function ActivateDeviceExperience(): ReactElement {
     }
   }
 
-  async function onUpload(e: FormEvent): Promise<void> {
+  async function onRecover(e: FormEvent): Promise<void> {
     e.preventDefault();
     const words = phrase.trim().toLowerCase().replace(/\s+/g, ' ').split(' ');
     if (words.length !== 12 && words.length !== 24) {
-      setError('Enter a 12- or 24-word recovery phrase to encrypt and upload.');
+      setError('Enter a 12- or 24-word recovery phrase.');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const user = getCachedUser();
       const stored = await uploadVaultBundle({
         password,
         recoveryPhrase: words.join(' '),
@@ -103,18 +109,19 @@ export function ActivateDeviceExperience(): ReactElement {
             {
               walletId: `web-${crypto.randomUUID()}`,
               mnemonic: words.join(' '),
-              label: 'Web wallet',
-              metadata: { source: 'activate-device' },
+              label: 'Recovered wallet',
+              metadata: { source: 'explicit-recovery' },
             },
           ],
         },
       });
-      setStatus(
-        `Encrypted vault uploaded for ${user?.email ?? 'account'} (epoch ${stored.epoch}).`,
-      );
+      setWalletCount(1);
+      setStatus(`Wallet recovered and secured (revision ${stored.epoch}).`);
       setHasRemote(true);
       setHasLocal(true);
-      setStep('done');
+      setRoute('ready');
+      setPassword('');
+      setPhrase('');
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -122,30 +129,48 @@ export function ActivateDeviceExperience(): ReactElement {
     }
   }
 
+  const shellStep =
+    route === 'ready' ? 'done' : route === 'unlock' || route === 'recover' ? 'unlock' : 'check';
+
   return (
     <OnboardingShell
-      title="Activate this device"
-      subtitle="Restore your encrypted vault from the cloud, or upload a recovery phrase encrypted with your account password."
-      reassure="Auvora stores ciphertext only. Password reset cannot decrypt a vault — re-wrap with your recovery phrase after changing your password."
+      title={
+        route === 'unlock'
+          ? 'Unlock your Auvora wallet'
+          : route === 'ready'
+            ? 'Auvora Wallet'
+            : route === 'recover'
+              ? 'Recover wallet'
+              : 'Activate this device'
+      }
+      subtitle={
+        route === 'unlock'
+          ? 'For your security, confirm your Auvora password.'
+          : route === 'ready'
+            ? 'Your wallet is ready on this device.'
+            : route === 'missing'
+              ? 'We could not find a secure backup for this account yet.'
+              : route === 'recover'
+                ? 'Use your recovery phrase only if you cannot unlock from another device.'
+                : 'Checking for your encrypted wallet backup…'
+      }
+      reassure="Auvora never asks for your recovery phrase during normal sign-in."
       steps={[...STEPS]}
-      currentStepId={step}
+      currentStepId={shellStep}
     >
-      {step === 'check' ? (
+      {route === 'checking' ? (
         <section className="ob-panel">
-          <h2>Checking encrypted vault…</h2>
-          <p>{busy ? 'Contacting Auvora…' : (error ?? 'Preparing device activation.')}</p>
+          <h2>Checking your wallet…</h2>
+          <p>{busy ? 'Contacting Auvora…' : (error ?? 'Preparing this device.')}</p>
           {error ? <div className="ob-alert ob-alert--error">{error}</div> : null}
         </section>
       ) : null}
 
-      {step === 'restore' ? (
-        <section className="ob-panel" aria-labelledby="ob-restore">
-          <h2 id="ob-restore">Restore cloud vault</h2>
-          <p>
-            A vault blob exists for your account. Enter your account password to decrypt it on this
-            device. Secrets never leave the browser unencrypted.
-          </p>
-          <form onSubmit={(e) => void onRestore(e)}>
+      {route === 'unlock' ? (
+        <section className="ob-panel" aria-labelledby="ob-unlock">
+          <h2 id="ob-unlock">Unlock your Auvora wallet</h2>
+          <p>Your wallet backup is ready. Confirm your Auvora password to use it here.</p>
+          <form onSubmit={(e) => void onUnlock(e)}>
             <label className="ob-field">
               <span>Account password</span>
               <input
@@ -160,38 +185,96 @@ export function ActivateDeviceExperience(): ReactElement {
             {error ? <div className="ob-alert ob-alert--error">{error}</div> : null}
             <div className="ob-actions">
               <button
-                type="button"
-                className="ob-btn ob-btn--ghost"
-                onClick={() => router.push('/wallets/onboarding')}
-              >
-                Back
-              </button>
-              <button
                 type="submit"
                 className="ob-btn ob-btn--primary"
                 disabled={busy || password.length < 12}
               >
-                {busy ? 'Decrypting…' : 'Restore vault'}
+                {busy ? 'Unlocking…' : 'Unlock'}
               </button>
             </div>
           </form>
-          <p className="ob__reassure" style={{ marginTop: '1rem' }}>
-            Prefer a fresh phrase instead?{' '}
-            <button type="button" className="ob-back" onClick={() => setStep('upload')}>
-              Upload a new encrypted vault
+          <p className="ob__reassure" style={{ marginTop: '1.25rem' }}>
+            Trouble accessing your wallet?{' '}
+            <button
+              type="button"
+              className="ob-back"
+              onClick={() => {
+                setError(null);
+                setRoute('recover');
+              }}
+            >
+              Recover wallet
             </button>
           </p>
         </section>
       ) : null}
 
-      {step === 'upload' ? (
-        <section className="ob-panel" aria-labelledby="ob-upload">
-          <h2 id="ob-upload">{hasRemote ? 'Replace encrypted vault' : 'Create encrypted vault'}</h2>
+      {route === 'missing' ? (
+        <section className="ob-panel" aria-labelledby="ob-missing">
+          <h2 id="ob-missing">Secure backup not found yet</h2>
           <p>
-            Encrypt a recovery phrase with your account password and upload ciphertext only. Use the
-            same password on mobile to restore.
+            Sign in on the device where you created your wallet (for example Auvora QA on Android)
+            so it can finish secure backup. Then unlock here with your Auvora password — no recovery
+            phrase required.
           </p>
-          <form onSubmit={(e) => void onUpload(e)}>
+          {error ? <div className="ob-alert ob-alert--error">{error}</div> : null}
+          <div className="ob-actions">
+            <button
+              type="button"
+              className="ob-btn ob-btn--primary"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                setError(null);
+                void (async () => {
+                  try {
+                    const remote = await getEncryptedVault();
+                    const local = readDeviceVault();
+                    const remoteOk = Boolean(remote);
+                    const localOk = Boolean(local?.bundle.wallets.length);
+                    setHasRemote(remoteOk);
+                    setHasLocal(localOk);
+                    setRoute(
+                      resolveActivationRoute({
+                        hasRemoteVault: remoteOk,
+                        hasLocalSessionVault: localOk,
+                      }),
+                    );
+                  } catch (err) {
+                    setError(formatApiError(err));
+                  } finally {
+                    setBusy(false);
+                  }
+                })();
+              }}
+            >
+              {busy ? 'Checking…' : 'Check again'}
+            </button>
+          </div>
+          <p className="ob__reassure" style={{ marginTop: '1.25rem' }}>
+            Trouble accessing your wallet?{' '}
+            <button
+              type="button"
+              className="ob-back"
+              onClick={() => {
+                setError(null);
+                setRoute('recover');
+              }}
+            >
+              Recover wallet
+            </button>
+          </p>
+        </section>
+      ) : null}
+
+      {route === 'recover' ? (
+        <section className="ob-panel" aria-labelledby="ob-recover">
+          <h2 id="ob-recover">Recover wallet</h2>
+          <p>
+            Only use this if you cannot unlock from a device that already has your wallet. Anyone
+            with this phrase can move your funds.
+          </p>
+          <form onSubmit={(e) => void onRecover(e)}>
             <label className="ob-field">
               <span>Account password</span>
               <input
@@ -220,7 +303,12 @@ export function ActivateDeviceExperience(): ReactElement {
                 type="button"
                 className="ob-btn ob-btn--ghost"
                 onClick={() =>
-                  hasRemote ? setStep('restore') : router.push('/wallets/onboarding')
+                  setRoute(
+                    resolveActivationRoute({
+                      hasRemoteVault: hasRemote,
+                      hasLocalSessionVault: hasLocal,
+                    }),
+                  )
                 }
               >
                 Back
@@ -230,31 +318,28 @@ export function ActivateDeviceExperience(): ReactElement {
                 className="ob-btn ob-btn--primary"
                 disabled={busy || password.length < 12 || phrase.trim().length < 20}
               >
-                {busy ? 'Encrypting…' : 'Encrypt & upload'}
+                {busy ? 'Recovering…' : 'Recover'}
               </button>
             </div>
           </form>
         </section>
       ) : null}
 
-      {step === 'done' ? (
+      {route === 'ready' ? (
         <div className="ob-success">
           <div className="ob-success-burst" aria-hidden>
             ✓
           </div>
-          <h2>Device ready</h2>
+          <h2>Your wallet is ready on this device.</h2>
           <p>
             {status ??
-              (hasLocal
-                ? 'This browser session has your vault material.'
-                : 'You can create or import a wallet next.')}
+              (walletCount > 0
+                ? `${walletCount} wallet${walletCount === 1 ? '' : 's'} available.`
+                : 'Continue to your dashboard.')}
           </p>
           <div className="ob-success__cta">
             <Link href="/dashboard" className="ob-btn ob-btn--primary ob-btn--lg">
-              Continue to dashboard
-            </Link>
-            <Link href="/wallets/create" className="ob-btn ob-btn--ghost ob-btn--lg">
-              Create another wallet
+              Continue
             </Link>
             {hasLocal ? (
               <button
@@ -263,10 +348,15 @@ export function ActivateDeviceExperience(): ReactElement {
                 onClick={() => {
                   clearDeviceVault();
                   setHasLocal(false);
-                  setStep(hasRemote ? 'restore' : 'upload');
+                  setRoute(
+                    resolveActivationRoute({
+                      hasRemoteVault: hasRemote,
+                      hasLocalSessionVault: false,
+                    }),
+                  );
                 }}
               >
-                Clear session vault
+                Lock wallet on this browser
               </button>
             ) : null}
           </div>

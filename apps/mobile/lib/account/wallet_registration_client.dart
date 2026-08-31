@@ -34,7 +34,7 @@ class WalletRegistrationClient {
       };
 
   static String aliasFor(AssetNetwork network) =>
-      'auvora-mobile-${AuvoraNetworkEnv.current.name}-${assetCodeFor(network).toLowerCase()}';
+      'auvora-public-${AuvoraNetworkEnv.current.name}-${assetCodeFor(network).toLowerCase()}';
 
   /// Idempotent public-address import for one chain.
   Future<Map<String, dynamic>> importPublicAddress({

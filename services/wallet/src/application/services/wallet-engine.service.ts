@@ -7,6 +7,7 @@ import {
   BLOCKCHAIN_HTTP_CLIENT,
   type BlockchainHttpClientPort,
 } from '../../infrastructure/blockchain/blockchain-client.port';
+import { localFormatValidateAddress } from '../../infrastructure/blockchain/blockchain-http-client.adapter';
 import { WalletService, type CreateWalletInput } from './wallet.service';
 import {
   defaultDerivationPath,
@@ -140,7 +141,8 @@ export class WalletEngineService {
 
   /**
    * Import a wallet by public address only — never accepts private keys or mnemonics.
-   * Idempotent on (owner, asset, alias): re-sync updates public metadata only.
+   * Idempotent on (owner, asset): re-sync updates public metadata only.
+   * POL is accepted as an alias for the seeded MATIC Polygon native asset.
    */
   async importPublicAddress(
     input: ImportPublicAddressInput,
@@ -149,27 +151,43 @@ export class WalletEngineService {
     if (input.ownerUserId !== requester.sub && !this.hasAdmin(requester)) {
       throw new ForbiddenError('Access denied');
     }
-    const asset = await this.walletRepo.findAssetByCode(input.assetCode);
+    const address = input.address.trim();
+    if (
+      looksLikeSecretMaterial(address) ||
+      looksLikeSecretMaterial(input.alias) ||
+      looksLikeSecretMaterial(input.label)
+    ) {
+      throw new ValidationError('Private material is not accepted');
+    }
+    const assetCode = resolvePublicAssetCode(input.assetCode);
+    const asset = await this.walletRepo.findAssetByCode(assetCode);
     if (!asset) {
       throw new NotFoundError(`Asset not found: ${input.assetCode}`);
     }
-    const valid = await this.blockchain.validateAddress(asset.chain, input.address);
-    if (!valid) {
+    // Self-custody public metadata: local format is sufficient. Do not fail closed
+    // when the blockchain service is down (isolated QA / wallet-only mesh).
+    const locallyValid = localFormatValidateAddress(asset.chain, address);
+    if (!locallyValid) {
       throw new ValidationError(`Invalid ${asset.chain} address`);
     }
 
     const accountIndex = input.accountIndex ?? 0;
-    const alias = input.alias?.trim() ? input.alias.trim() : '';
     const networkEnv =
       input.networkEnv === 'testnet' || input.networkEnv === 'mainnet'
         ? input.networkEnv
-        : undefined;
+        : 'testnet';
+    const canonicalAlias = `auvora-public-${networkEnv}-${asset.code.toLowerCase()}`;
 
-    const existing = await this.walletRepo.findByOwnerAssetAlias(
-      input.ownerUserId,
-      asset.id,
-      alias,
-    );
+    const existing =
+      (await this.walletRepo.findByOwnerAssetAlias(input.ownerUserId, asset.id, canonicalAlias)) ??
+      (input.alias?.trim()
+        ? await this.walletRepo.findByOwnerAssetAlias(
+            input.ownerUserId,
+            asset.id,
+            input.alias.trim(),
+          )
+        : null) ??
+      (await this.walletRepo.findByOwnerAsset(input.ownerUserId, asset.id));
 
     const publicMeta = {
       imported: true,
@@ -181,7 +199,7 @@ export class WalletEngineService {
 
     if (existing) {
       const patched = mergeChainSync(existing.metadata, {
-        address: input.address,
+        address,
         chain: asset.chain,
         importMode: 'public_address',
         lastSyncedAt: undefined,
@@ -189,7 +207,7 @@ export class WalletEngineService {
       });
       const prefs = readPreferences(existing.preferences);
       const accounts = (prefs.accounts ?? []).map((a) =>
-        a.index === accountIndex ? { ...a, address: input.address } : a,
+        a.index === accountIndex ? { ...a, address } : a,
       );
       return this.walletRepo.update(existing.id, {
         label: input.label ?? existing.label,
@@ -204,8 +222,8 @@ export class WalletEngineService {
 
     const created = await this.createWallet({
       ownerUserId: input.ownerUserId,
-      assetCode: input.assetCode,
-      alias: input.alias,
+      assetCode,
+      alias: canonicalAlias,
       label: input.label,
       provisionAddress: false,
       accountIndex,
@@ -213,7 +231,7 @@ export class WalletEngineService {
     });
 
     const patched = mergeChainSync(created.metadata, {
-      address: input.address,
+      address,
       chain: asset.chain,
       importMode: 'public_address',
       lastSyncedAt: undefined,
@@ -221,7 +239,7 @@ export class WalletEngineService {
     });
     const prefs = readPreferences(created.preferences);
     const accounts = (prefs.accounts ?? []).map((a) =>
-      a.index === accountIndex ? { ...a, address: input.address } : a,
+      a.index === accountIndex ? { ...a, address } : a,
     );
 
     return this.walletRepo.update(created.id, {
@@ -430,4 +448,19 @@ export class WalletEngineService {
   private hasAdmin(requester: JwtAccessClaims): boolean {
     return requester.permissions.includes(PERMISSION_WALLETS_ADMIN as PermissionCode);
   }
+}
+
+/** Polygon native is seeded as MATIC; clients may send POL. */
+export function resolvePublicAssetCode(code: string): string {
+  const c = code.trim().toUpperCase();
+  if (c === 'POL') return 'MATIC';
+  return c;
+}
+
+function looksLikeSecretMaterial(value: string | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (trimmed.split(/\s+/).length >= 12) return true;
+  if (/mnemonic|private.?key|seed.?phrase|wallet.?password/i.test(trimmed)) return true;
+  return false;
 }

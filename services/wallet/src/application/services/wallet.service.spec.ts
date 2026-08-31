@@ -175,6 +175,18 @@ describe('WalletService', () => {
     expect(result.id).toBe(walletId);
   });
 
+  it('adminList returns public registrations without private material', async () => {
+    const wallets = {
+      search: jest.fn().mockResolvedValue({ items: [baseWallet], total: 1 }),
+    };
+    const service = createWalletService({ wallets });
+    const result = await service.adminList({ ownerUserId: userId, skip: 0, take: 50 });
+    expect(result.total).toBe(1);
+    expect(result.items[0]?.ownerUserId).toBe(userId);
+    expect(JSON.stringify(result)).not.toMatch(/mnemonic|privateKey|seed/i);
+    expect(wallets.search).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: userId }));
+  });
+
   it('throws NotFound when wallet does not exist', async () => {
     const wallets = {
       findById: jest.fn().mockResolvedValue(null),

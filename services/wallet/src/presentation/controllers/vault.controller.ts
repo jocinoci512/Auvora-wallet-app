@@ -7,6 +7,11 @@ import { EncryptedVaultService } from '../../application/services/encrypted-vaul
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { IsInt, IsObject, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
 
+/**
+ * Canonical auvora-vault-v1 wire envelope (camelCase JSON).
+ * Do not send password/mnemonic. See packages/vault-crypto/WIRE_CONTRACT.md.
+ * `deviceId` must be devices.id UUID — never a fingerprint (`and-…`).
+ */
 class UpsertVaultDto {
   @IsString()
   @MinLength(4)
@@ -16,6 +21,7 @@ class UpsertVaultDto {
   @Min(1)
   version!: number;
 
+  /** First upload >= 1; updates must strictly increase. */
   @IsInt()
   @Min(1)
   epoch!: number;

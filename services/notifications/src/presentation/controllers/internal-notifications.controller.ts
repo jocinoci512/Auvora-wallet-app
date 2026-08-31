@@ -6,6 +6,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsObject,
   IsOptional,
   IsString,
@@ -19,10 +20,13 @@ import {
   NotificationService,
   type SendNotificationInput,
 } from '../../application/services/notification.service';
+import { QueueService } from '../../application/services/queue.service';
 import { WebhookService } from '../../application/services/webhook.service';
+import { ENV, type ServiceEnv } from '../../config/env.schema';
 import { successResponse } from '@auvora/nest-common';
 import { Public, SkipCsrf } from '../decorators/auth.decorators';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
+import { assertQaEmailReplayAllowed } from '../guards/qa-replay.guard';
 
 export class InternalSendNotificationDto {
   @IsOptional()
@@ -116,10 +120,17 @@ export class InternalEventIngestDto {
   correlationId?: string;
 }
 
+export class InternalDrainQueueDto {
+  @IsOptional()
+  @IsInt()
+  maxItems?: number;
+}
+
 const _internalDtoRuntime = {
   InternalSendNotificationDto,
   InternalSendBatchDto,
   InternalEventIngestDto,
+  InternalDrainQueueDto,
 };
 void _internalDtoRuntime;
 
@@ -155,6 +166,8 @@ export class InternalNotificationsController {
   constructor(
     @Inject(NotificationService) private readonly notifications: NotificationService,
     @Inject(WebhookService) private readonly webhooks: WebhookService,
+    @Inject(QueueService) private readonly queue: QueueService,
+    @Inject(ENV) private readonly env: ServiceEnv,
     @Inject(EventNotificationMapperService)
     private readonly eventMapper: EventNotificationMapperService,
   ) {}
@@ -197,5 +210,21 @@ export class InternalNotificationsController {
       deliveries: deliveries.length,
       correlationId,
     });
+  }
+
+  /** LOCAL QA ONLY — drain queued notifications via canonical QueueService (internal API key). */
+  @Post('qa/drain-queue')
+  async drainQueue(@Body() dto: InternalDrainQueueDto) {
+    assertQaEmailReplayAllowed(this.env);
+    const maxItems = Math.min(Math.max(dto.maxItems ?? 100, 1), 500);
+    let drained = 0;
+    let succeeded = 0;
+    for (let i = 0; i < maxItems; i++) {
+      const result = await this.queue.processNext('qa-replay-cli');
+      if (!result.processed) break;
+      drained += 1;
+      if (result.success) succeeded += 1;
+    }
+    return successResponse({ drained, succeeded });
   }
 }

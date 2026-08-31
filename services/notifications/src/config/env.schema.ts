@@ -66,6 +66,8 @@ export const envSchema = z.object({
   NOTIFICATIONS_TEAMS_PROVIDER_TOKEN: z.string().optional(),
 
   NOTIFICATIONS_WEBHOOK_WORKER_ENABLED: boolFlag('true'),
+  /** LOCAL QA ONLY — enables internal queue drain/replay helpers (never true in production). */
+  AUVORA_QA_ALLOW_EMAIL_REPLAY: boolFlag('false'),
 });
 
 export type ServiceEnv = z.infer<typeof envSchema>;

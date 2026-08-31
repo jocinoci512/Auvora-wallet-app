@@ -86,7 +86,7 @@ function writeJson(key: string, value: unknown): void {
 }
 
 const ACCOUNT_DEFAULTS: AccountPrefs = {
-  displayName: 'Auvora user',
+  displayName: '',
   walletNickname: 'Primary',
   defaultWalletId: 'wallet-primary',
   language: 'en',

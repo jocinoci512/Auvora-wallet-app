@@ -13,5 +13,7 @@ describe('dashboard status copy', () => {
   it('guides empty states toward a real next action', () => {
     expect(EMPTY_COPY.assets.actionHref).toBe('/wallets/onboarding');
     expect(EMPTY_COPY.wallet.body).toMatch(/never custody/i);
+    expect(EMPTY_COPY.walletReady.title).toBe('Wallet ready');
+    expect(EMPTY_COPY.walletReady.actionLabel).not.toMatch(/set up/i);
   });
 });

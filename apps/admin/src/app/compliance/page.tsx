@@ -68,14 +68,14 @@ export default function AdminCompliancePage(): ReactElement {
     }
   }
 
-  async function confirmReason(reason: string): Promise<void> {
+  async function confirmReason(reason: string, internalNote?: string): Promise<void> {
     if (!pending) return;
     setBusy(true);
     setMessage(null);
     try {
       const client = createApiClient();
       if (pending.kind === 'reject') {
-        await client.adminRejectKyc(pending.id, reason);
+        await client.adminRejectKyc(pending.id, reason, internalNote);
         setMessage('KYC rejected');
       } else {
         await client.adminRequestKycResubmission(pending.id, reason);
@@ -116,6 +116,7 @@ export default function AdminCompliancePage(): ReactElement {
             <th>User</th>
             <th>Status</th>
             <th>Level</th>
+            <th>Submitted</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -130,6 +131,7 @@ export default function AdminCompliancePage(): ReactElement {
                 <StatusBadge status={row.status} />
               </td>
               <td>{row.requestedLevel}</td>
+              <td>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '—'}</td>
               <td>
                 <Button type="button" onClick={() => void approve(row.id)}>
                   Approve
@@ -170,15 +172,17 @@ export default function AdminCompliancePage(): ReactElement {
         title={pending?.kind === 'resubmit' ? 'Request resubmission' : 'Reject KYC'}
         description={
           pending?.kind === 'resubmit'
-            ? 'Customer-visible instructions are required.'
-            : 'A customer-visible rejection reason is required.'
+            ? 'Customer-visible instructions are required. Internal notes stay in Admin only.'
+            : 'A customer-visible rejection reason is required. Internal notes stay in Admin only.'
         }
         confirmLabel={pending?.kind === 'resubmit' ? 'Request resubmission' : 'Reject'}
         pending={busy}
+        showInternalNote={pending?.kind === 'reject'}
+        customerReasonLabel="Customer-visible reason"
         onOpenChange={(open) => {
           if (!open) setPending(null);
         }}
-        onConfirm={(reason) => void confirmReason(reason)}
+        onConfirm={(reason, internalNote) => void confirmReason(reason, internalNote)}
       />
     </main>
   );

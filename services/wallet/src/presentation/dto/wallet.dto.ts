@@ -99,6 +99,13 @@ export class PrepareTransferDto {
   @IsString()
   @MaxLength(32)
   networkEnv?: string;
+
+  /** Local QA notional in integer USD cents. Ignored unless the wallet QA flag is on. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+$/)
+  @MaxLength(20)
+  qaNotionalUsdCents?: string;
 }
 
 export class CreditDebitDto {

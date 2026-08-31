@@ -8,7 +8,6 @@ import '../intelligence/models.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../portfolio/tx_display.dart';
-import '../release/network_env.dart';
 import '../release/release_config.dart';
 import '../theme/aether_theme.dart';
 import 'home/home_shared.dart';

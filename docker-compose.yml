@@ -93,6 +93,44 @@ services:
       - '1025:1025'
       - '8025:8025'
 
+  # Isolated Auvora Local EVM QA (Anvil). Never mainnet / never public Sepolia.
+  # Usage: docker compose --profile qa-evm up -d
+  # RPC: http://127.0.0.1:8545  chainId 31337
+  anvil:
+    profiles: [qa-evm]
+    image: ghcr.io/foundry-rs/foundry:stable
+    container_name: auvora-anvil
+    restart: unless-stopped
+    entrypoint: ['anvil']
+    command:
+      [
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8545',
+        '--chain-id',
+        '31337',
+        '--block-time',
+        '1',
+        '--accounts',
+        '10',
+        '--balance',
+        '10000',
+        '--state',
+        '/data/anvil-state.json',
+      ]
+    ports:
+      - '8545:8545'
+    volumes:
+      - auvora-anvil-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 5s
+
 volumes:
   auvora-postgres-data:
   auvora-redis-data:
+  auvora-anvil-data:

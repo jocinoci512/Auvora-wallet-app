@@ -104,4 +104,38 @@ describe('AuvoraClient', () => {
     expect(calls[1]?.method).toBe('PUT');
     expect(calls[1]?.url).toContain('/api/v1/vault');
   });
+
+  it('importPublicWalletAddress posts public metadata only to wallet-engine import', async () => {
+    const calls: Array<{ url: string; body: string }> = [];
+    const client = new AuvoraClient({
+      baseUrl: 'http://localhost:4000',
+      fetchImpl: async (input, init) => {
+        const body = String(init?.body ?? '');
+        calls.push({ url: String(input), body });
+        expect(body.toLowerCase()).not.toMatch(/mnemonic|privatekey|seed|password/);
+        return new Response(JSON.stringify({ success: true, data: { id: 'w-1' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    await expect(
+      client.importPublicWalletAddress({
+        assetCode: 'ETH',
+        address: `0x${'a'.repeat(40)}`,
+        networkEnv: 'testnet',
+        selfCustody: true,
+        clientPlatform: 'web',
+      }),
+    ).resolves.toMatchObject({ id: 'w-1' });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toContain('/api/v1/wallet-engine/wallets/import');
+    expect(JSON.parse(calls[0]!.body)).toMatchObject({
+      assetCode: 'ETH',
+      networkEnv: 'testnet',
+      selfCustody: true,
+    });
+  });
 });

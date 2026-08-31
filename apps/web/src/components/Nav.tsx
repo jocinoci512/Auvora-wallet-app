@@ -21,6 +21,8 @@ import {
   pageTitleForPath,
 } from '../lib/product/app-nav';
 import { getCachedUser, isSignedIn, loadMe, signOut, type AuthUser } from '../lib/auth/session';
+import { formatAccountLabel, profileLoadingLabel } from '../lib/auth/profile-display';
+import { useAccountHealth } from '../lib/account/account-health';
 import { AccessTokenPanel } from './AccessTokenPanel';
 import '../app/wallet-shell.css';
 import '../app/consumer.css';
@@ -131,7 +133,7 @@ function AppSidebar({
         <p className="ws-sidebar__cue">Non-custodial · keys on this device</p>
         {user ? (
           <>
-            <p className="ws-sidebar__user">{user.displayName || user.email}</p>
+            <p className="ws-sidebar__user">{formatAccountLabel(user)}</p>
             <button type="button" className="ws-sidebar__signout" onClick={onSignOut}>
               Sign out
             </button>
@@ -150,12 +152,17 @@ function AppSidebar({
 function AppTopbar({
   pathname,
   user,
-  online,
+  profileLoading,
 }: {
   pathname: string;
   user: AuthUser | null;
-  online: boolean;
+  profileLoading: boolean;
 }): ReactElement {
+  const health = useAccountHealth();
+  const statusLabel =
+    health.level === 'online' ? 'Online' : health.level === 'degraded' ? 'Degraded' : 'Offline';
+  const statusClass =
+    health.level === 'online' ? '' : health.level === 'degraded' ? ' is-degraded' : ' is-off';
   return (
     <header className="ws-topbar">
       <div className="ws-topbar__identity">
@@ -163,17 +170,14 @@ function AppTopbar({
         <h1 className="ws-topbar__title">{pageTitleForPath(pathname)}</h1>
       </div>
       <div className="ws-topbar__tools">
-        <span
-          className={`ws-status${online ? '' : ' is-off'}`}
-          title={online ? 'This device is online' : 'This device is offline'}
-        >
+        <span className={`ws-status${statusClass}`} title={health.message}>
           <span className="ws-status__pip" aria-hidden />
-          <span>{online ? 'Online' : 'Offline'}</span>
+          <span>{statusLabel}</span>
         </span>
         {user ? (
           <Link href="/settings/account" className="ws-account">
             <span className="ws-account__kind">Auvora account</span>
-            <span className="ws-account__name">{user.displayName || user.email}</span>
+            <span className="ws-account__name">{profileLoadingLabel(user, profileLoading)}</span>
           </Link>
         ) : (
           <Link href="/auth/login" className="ws-account">
@@ -263,8 +267,8 @@ export function Nav(): ReactElement {
 export function AppChrome({ children }: { children: ReactNode }): ReactElement {
   const pathname = usePathname() || '/';
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [online, setOnline] = useState(true);
 
   useEffect(() => {
     setMoreOpen(false);
@@ -274,20 +278,24 @@ export function AppChrome({ children }: { children: ReactNode }): ReactElement {
     if (isMarketingPath(pathname)) return;
     setUser(getCachedUser());
     if (isSignedIn()) {
-      void loadMe().then(setUser);
+      setProfileLoading(true);
+      void loadMe()
+        .then(setUser)
+        .finally(() => setProfileLoading(false));
     }
-  }, [pathname]);
-
-  useEffect(() => {
-    const sync = () => setOnline(typeof navigator === 'undefined' ? true : navigator.onLine);
-    sync();
-    window.addEventListener('online', sync);
-    window.addEventListener('offline', sync);
-    return () => {
-      window.removeEventListener('online', sync);
-      window.removeEventListener('offline', sync);
+    const onAuthRefresh = () => {
+      if (!isSignedIn()) {
+        setUser(null);
+        return;
+      }
+      setProfileLoading(true);
+      void loadMe()
+        .then(setUser)
+        .finally(() => setProfileLoading(false));
     };
-  }, []);
+    window.addEventListener('auvora-auth-user-updated', onAuthRefresh);
+    return () => window.removeEventListener('auvora-auth-user-updated', onAuthRefresh);
+  }, [pathname]);
 
   if (pathname.startsWith('/auth')) {
     return (
@@ -321,7 +329,7 @@ export function AppChrome({ children }: { children: ReactNode }): ReactElement {
         }}
       />
       <div className="ws-stage">
-        <AppTopbar pathname={pathname} user={user} online={online} />
+        <AppTopbar pathname={pathname} user={user} profileLoading={profileLoading} />
         <main id="main-content" className="ws-main">
           {children}
         </main>

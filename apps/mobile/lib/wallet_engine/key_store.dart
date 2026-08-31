@@ -12,7 +12,11 @@ class SecureKeyStore {
   SecureKeyStore({FlutterSecureStorage? secureStorage})
       : _secure = secureStorage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              aOptions: AndroidOptions(
+                encryptedSharedPreferences: true,
+                sharedPreferencesName: 'FlutterSecureStorage',
+                resetOnError: false,
+              ),
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
             );
 

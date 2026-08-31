@@ -50,6 +50,7 @@ try { Invoke-WebRequest 'http://127.0.0.1:3006/health' -UseBasicParsing -Timeout
     NOTIFICATIONS_SIMULATOR_ENABLED = 'false'
     NOTIFICATIONS_EMAIL_PROVIDER_URL = $bridgeUrl
     NOTIFICATIONS_CHANNEL_EMAIL_ENABLED = 'true'
+    AUVORA_QA_ALLOW_EMAIL_REPLAY = 'true'
   }
   if (Wait-HttpOk 'http://127.0.0.1:3006/health' 90) { Add-Content $log 'notifications UP' } else { Add-Content $log 'notifications FAIL' }
 }

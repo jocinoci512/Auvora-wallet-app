@@ -110,6 +110,19 @@ export class PrismaWalletRepository implements WalletRepositoryPort {
     return wallet ? mapWallet(wallet) : null;
   }
 
+  async findByOwnerAsset(ownerUserId: string, assetId: string): Promise<WalletRecord | null> {
+    const wallet = await this.prisma.wallet.findFirst({
+      where: {
+        ownerUserId,
+        assetId,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: 'asc' },
+      include: walletInclude,
+    });
+    return wallet ? mapWallet(wallet) : null;
+  }
+
   async createWithZeroBalance(data: CreateWalletData): Promise<WalletRecord> {
     return this.prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.create({

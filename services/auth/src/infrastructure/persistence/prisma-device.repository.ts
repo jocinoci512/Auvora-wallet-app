@@ -26,6 +26,8 @@ export class PrismaDeviceRepository implements DeviceRepositoryPort {
         platform: input.platform,
         appVersion: input.appVersion,
         userAgent: input.userAgent,
+        // Successful authenticated session = trusted device (no manual link step).
+        trusted: true,
       },
       update: {
         name: input.name,
@@ -34,6 +36,7 @@ export class PrismaDeviceRepository implements DeviceRepositoryPort {
         userAgent: input.userAgent,
         lastSeenAt: new Date(),
         revokedAt: null,
+        trusted: true,
       },
     });
   }

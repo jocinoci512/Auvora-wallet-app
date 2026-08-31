@@ -235,7 +235,8 @@ class IntelligenceCatalog {
           id: 'tx-done',
           kind: IntelligenceKind.transaction,
           title: 'Transfer finished',
-          whatHappened: 'This ${tx.type.label.toLowerCase()} finished successfully on ${tx.network.label}.',
+          whatHappened:
+              'This ${tx.type.label.toLowerCase()} finished successfully on $network.',
           whyItMatters: 'Confirmed activity shows here so you can track history without opening every explorer.',
           whatYouCanDo: 'Save or share the receipt if you need a record. Explorer links stay available on this screen.',
           learnTopicId: 'confirmations',

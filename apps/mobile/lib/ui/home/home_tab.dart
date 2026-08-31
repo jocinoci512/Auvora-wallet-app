@@ -6,6 +6,7 @@ import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
+import '../../release/auvora_qa_local_evm.dart';
 import '../../release/integration_config.dart';
 import '../../release/release_config.dart';
 import '../../state/wallet_controller.dart';
@@ -883,7 +884,9 @@ class _PrimaryActions extends StatelessWidget {
           message: broadcastOn
               ? 'Live broadcast is on. Double-check network and amount before you confirm.'
               : ReleaseConfig.canBroadcastTestnet
-                  ? 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.'
+                  ? (AuvoraQaLocalEvm.isActive
+                      ? 'Auvora Local EVM QA broadcast is ON. Signing submits only to the local QA chain. Mainnet stays OFF.'
+                      : 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.')
                   : 'Send signs on this device. Live broadcast stays off until independent transaction safety review.',
         ),
         const SizedBox(height: 10),

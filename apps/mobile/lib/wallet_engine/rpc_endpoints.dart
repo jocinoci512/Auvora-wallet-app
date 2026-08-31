@@ -1,3 +1,4 @@
+import '../release/auvora_qa_local_evm.dart';
 import '../release/integration_config.dart';
 import '../release/network_env.dart';
 import 'models.dart';
@@ -10,6 +11,11 @@ import 'models.dart';
 abstract final class RpcEndpoints {
   /// Ordered failover list per chain (primary first).
   static List<String> urlsFor(ChainId chain) {
+    // Isolated QA: Ethereum traffic goes ONLY to Auvora Local EVM QA (Anvil).
+    // Never silently fall through to public Sepolia / mainnet hosts.
+    if (AuvoraQaLocalEvm.isActive && chain == ChainId.ethereum) {
+      return [AuvoraQaLocalEvm.effectiveRpcUrl];
+    }
     final overrides = _overridesFor(chain).where((u) => u.trim().isNotEmpty).toList();
     final alchemy = _alchemyUrls(chain);
     final public = (AuvoraNetworkEnv.isTestnet ? _publicTestnetDefaults : _publicMainnetDefaults)[chain] ??

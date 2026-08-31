@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../account/ui/account_sync_banner.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import 'widgets/passcode_entry.dart';
@@ -106,6 +107,7 @@ class _UnlockScreenState extends State<UnlockScreen> with WidgetsBindingObserver
                     icon: const Icon(Icons.fingerprint_rounded),
                     label: const Text('Use biometrics'),
                   ),
+                const AccountSyncBanner(),
               ],
             ),
           ),

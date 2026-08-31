@@ -19,7 +19,11 @@ export function localFormatValidateAddress(chain: string, address: string): bool
   switch (c) {
     case 'BITCOIN':
     case 'BTC':
-      return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(address);
+      // Mainnet bc1/1/3 plus Testnet3 tb1 / m / n / 2 (QA uses Testnet3).
+      return (
+        /^(bc1|tb1)[a-zA-HJ-NP-Z0-9]{20,80}$/.test(address) ||
+        /^[13mn2][a-zA-HJ-NP-Z0-9]{24,34}$/.test(address)
+      );
     case 'ETHEREUM':
     case 'ETH':
     case 'POLYGON':

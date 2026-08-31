@@ -187,4 +187,31 @@ describe('QueueService', () => {
 
     await expect(service.requeue('queue-1')).rejects.toThrow(ConflictError);
   });
+
+  it('requeues a DEAD_LETTER item without marking it SENT', async () => {
+    const notification = buildNotification();
+    const queueItem = buildQueueItem(notification, { status: 'DEAD_LETTER' });
+    const prisma = buildPrismaMock(queueItem);
+    const providers = { resolve: jest.fn(), listAll: jest.fn() };
+    const service = new QueueService(
+      prisma as never,
+      providers as never,
+      eventsMock as never,
+      aiMock as never,
+      analyticsMock as never,
+    );
+
+    const updated = await service.requeue('queue-1');
+    expect(updated.status).toBe('QUEUED');
+    expect(prisma.notificationMessage.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'QUEUED' }),
+      }),
+    );
+    expect(prisma.notificationMessage.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'SENT' }),
+      }),
+    );
+  });
 });

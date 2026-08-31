@@ -3,10 +3,12 @@ import 'package:convert/convert.dart';
 import '../connections/evm_local_signer.dart';
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
+import '../release/auvora_qa_local_evm.dart';
 import '../release/network_env.dart';
 import '../release/release_config.dart';
 import 'blockchain_adapter.dart';
 import 'evm_json_rpc.dart';
+import 'evm_live_fee_quote.dart';
 import 'evm_testnet_broadcast.dart';
 import 'models.dart';
 import 'rpc_endpoints.dart';
@@ -87,16 +89,20 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
       try {
         final rpcUrl = await _rpc.resolveLiveTestnetRpc(chain: chain);
         final gasPrice = await _rpc.ethGasPrice(rpcUrl);
-        final feeEth = EvmAmountCodec.weiToEth(gasPrice * BigInt.from(21000));
+        final quote = EvmLiveFeeQuote.fromGasPrice(gasPriceWei: gasPrice);
         return TransactionFeeEstimate(
-          networkFee: feeEth,
-          networkFeeAsset: chain.nativeTicker,
-          networkFeeUsd: 0,
+          networkFee: quote.feeNative,
+          networkFeeAsset: quote.feeAssetLabel,
+          // Local QA fee has no monetary value — do not invent a USD sticker.
+          networkFeeUsd: AuvoraQaLocalEvm.isActive ? 0 : quote.feeNative * 0,
           arrivalLabel: 'Usually 1–3 minutes',
           explorerBaseUrl: explorerBaseUrl,
+          gasPriceWei: quote.gasPriceWei,
+          gasLimit: quote.gasLimit,
+          isLive: true,
         );
       } catch (_) {
-        // Fall through to the conservative static estimate.
+        // Fall through — caller must treat static fallback as non-live.
       }
     }
     return switch (chain) {
@@ -116,10 +122,11 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
         ),
       _ => TransactionFeeEstimate(
           networkFee: 0.0012,
-          networkFeeAsset: 'ETH',
-          networkFeeUsd: 0.5,
+          networkFeeAsset: AuvoraQaLocalEvm.isActive ? 'QA ETH' : 'ETH',
+          networkFeeUsd: AuvoraQaLocalEvm.isActive ? 0 : 0.5,
           arrivalLabel: 'Usually 1–3 minutes',
           explorerBaseUrl: explorerBaseUrl,
+          isLive: false,
         ),
     };
   }
@@ -163,7 +170,9 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
       rpcUrl: rpcUrl,
     );
     final nonce = await _rpc.ethGetTransactionCount(rpcUrl, draft.fromAddress);
-    final gasPrice = await _rpc.ethGasPrice(rpcUrl);
+    // Prefer the same gas quote the customer confirmed; refresh only if missing.
+    final gasPrice = draft.estimatedFee.gasPriceWei ?? await _rpc.ethGasPrice(rpcUrl);
+    final gasLimit = draft.estimatedFee.gasLimit ?? EvmLiveFeeQuote.nativeTransferGasLimit;
     final valueWei = EvmAmountCodec.ethToWei(draft.amount);
     final signed = const EvmLocalSigner().signLegacyNativeTransfer(
       mnemonic: mnemonic,
@@ -172,6 +181,7 @@ class EvmRpcBlockchainAdapter implements BlockchainAdapter {
       nonce: nonce,
       gasPriceWei: gasPrice,
       chainId: expected,
+      gasLimit: gasLimit,
     );
     return '0x${hex.encode(signed)}';
   }

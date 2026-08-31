@@ -12,11 +12,11 @@ import 'connections/wallet_connect_bootstrap.dart';
 import 'connections/wallet_connect_provider.dart';
 import 'connections/wc_chain_catalog.dart';
 import 'intelligence/intelligence_controller.dart';
-import 'portfolio/models.dart';
 import 'portfolio/portfolio_controller.dart';
 import 'portfolio/portfolio_repository.dart';
 import 'preferences/models.dart';
 import 'preferences/preferences_controller.dart';
+import 'release/auvora_qa_local_evm.dart';
 import 'release/integration_config.dart';
 import 'reliability/startup_timing.dart';
 import 'security/security_controller.dart';
@@ -132,7 +132,9 @@ class _AuvoraAppState extends State<AuvoraApp> {
               EvmRpcBlockchainAdapter(
                 chain: ChainId.ethereum,
                 providerCode: 'eth-rpc',
-                explorerBaseUrl: 'https://sepolia.etherscan.io/tx/',
+                explorerBaseUrl: AuvoraQaLocalEvm.isActive
+                    ? 'auvora-local-evm://tx/'
+                    : 'https://sepolia.etherscan.io/tx/',
               ),
               PreviewBlockchainAdapter(
                 chain: ChainId.solana,
@@ -278,18 +280,12 @@ class _AuvoraAppState extends State<AuvoraApp> {
                 ..attachAccount(account),
         ),
         ChangeNotifierProvider(create: (_) => AddressBookStore()),
-        ChangeNotifierProvider(create: (_) => WalletBackendSync()),
-        ChangeNotifierProvider(create: (_) => VaultSyncService()),
-        ChangeNotifierProxyProvider3<AccountController, WalletController, WalletBackendSync,
-            _WalletBackendSyncBinder>(
-          create: (_) => _WalletBackendSyncBinder(),
-          update: (_, account, wallet, sync, binder) => binder!
-            ..bind(
-              account: account,
-              wallet: wallet,
-              sync: sync,
-            ),
+        ChangeNotifierProxyProvider2<AccountController, WalletController, WalletBackendSync>(
+          create: (_) => WalletBackendSync(),
+          update: (_, account, wallet, sync) => (sync ?? WalletBackendSync())
+            ..attach(account: account, wallet: wallet),
         ),
+        ChangeNotifierProvider(create: (_) => VaultSyncService()),
         ChangeNotifierProxyProvider3<AccountController, WalletController, VaultSyncService,
             _VaultSyncBinder>(
           create: (_) => _VaultSyncBinder(),
@@ -316,7 +312,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
           // Ensure WC account registration + mnemonic binding when wallet unlocks.
           context.watch<_WcAccountBinder>();
           context.watch<_WcLiveUpgrader>();
-          context.watch<_WalletBackendSyncBinder>();
+          context.watch<WalletBackendSync>();
           context.watch<_VaultSyncBinder>();
           final a11y = prefs.accessibility;
           final scale = a11y.textScale.clamp(0.85, 1.35);
@@ -477,33 +473,8 @@ class _WcAccountBinder extends ChangeNotifier {
   }
 }
 
-/// Syncs public wallet addresses to the backend after sign-in + unlock.
-/// Kept as background metadata registration — encrypted vault sync is primary UX.
-class _WalletBackendSyncBinder extends ChangeNotifier {
-  String? _lastKey;
-  bool _scheduled = false;
-
-  void bind({
-    required AccountController account,
-    required WalletController wallet,
-    required WalletBackendSync sync,
-  }) {
-    if (!account.isSignedIn || !wallet.unlocked || wallet.wallet == null) return;
-    final eth = wallet.addressFor(AssetNetwork.ethereum) ?? wallet.address ?? '';
-    final key = '${account.profile?.id}|$eth|${wallet.unlocked}';
-    if (key == _lastKey || eth.isEmpty) return;
-    if (_scheduled) return;
-    _scheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _scheduled = false;
-      _lastKey = key;
-      await sync.syncIfPossible(account: account, wallet: wallet);
-      notifyListeners();
-    });
-  }
-}
-
-/// After sign-in + unlock (or sign-in with empty local vault), flag encrypted vault work.
+/// After sign-in + unlock (or sign-in with empty local vault), sync encrypted vault.
+/// Auto-uploads after first-device wallet create when [AccountPasswordSession] is fresh.
 class _VaultSyncBinder extends ChangeNotifier {
   String? _lastKey;
   bool _scheduled = false;
@@ -515,7 +486,7 @@ class _VaultSyncBinder extends ChangeNotifier {
   }) {
     if (!account.isSignedIn) return;
     final key =
-        '${account.profile?.id}|${wallet.unlocked}|${wallet.vaults.length}|${wallet.wallet?.walletId}';
+        '${account.profile?.id}|${wallet.unlocked}|${wallet.vaults.length}|${wallet.wallet?.walletId}|${vaultSync.remoteEpoch}';
     if (key == _lastKey) return;
     if (_scheduled) return;
     _scheduled = true;

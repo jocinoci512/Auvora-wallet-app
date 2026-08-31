@@ -41,6 +41,12 @@ export function writeDeviceVault(snapshot: DeviceVaultSnapshot): void {
 export function clearDeviceVault(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(DEVICE_VAULT_KEY);
+  try {
+    // Lazy import avoids circular deps with wallet-public-session.
+    sessionStorage.removeItem('auvora_wallet_public_session_v1');
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function getEncryptedVault(client?: AuvoraClient): Promise<EncryptedVaultBlob | null> {
@@ -124,5 +130,16 @@ export async function restoreVaultFromCloud(args: {
     restoredAt: new Date().toISOString(),
     bundle,
   });
+
+  // Initialize public Web wallet state from the unlocked vault (addresses only).
+  const { initializePublicSessionFromVault, ensurePublicWalletsRegistered } =
+    await import('./wallet-public-session');
+  const session = initializePublicSessionFromVault({
+    ownerUserId: user.id,
+    restoredAt: new Date().toISOString(),
+    bundle,
+  });
+  void ensurePublicWalletsRegistered(session);
+
   return bundle;
 }

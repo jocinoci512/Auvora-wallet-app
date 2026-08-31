@@ -236,6 +236,10 @@ class FeeEstimate {
     required this.arrivalLabel,
     this.speed = FeeSpeed.standard,
     this.elevated = false,
+    this.isLive = false,
+    this.gasPriceWei,
+    this.gasLimit,
+    this.rpcUnavailable = false,
   });
 
   final double feeCrypto;
@@ -244,6 +248,10 @@ class FeeEstimate {
   final String arrivalLabel;
   final FeeSpeed speed;
   final bool elevated;
+  final bool isLive;
+  final BigInt? gasPriceWei;
+  final int? gasLimit;
+  final bool rpcUnavailable;
 }
 
 enum FeeSpeed { slow, standard, fast }

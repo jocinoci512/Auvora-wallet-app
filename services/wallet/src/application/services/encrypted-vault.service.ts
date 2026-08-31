@@ -94,18 +94,27 @@ export class EncryptedVaultService {
       },
     });
 
-    await this.prisma.securityAuditLog.create({
-      data: {
-        action: 'VAULT_BLOB_UPSERTED' as never,
-        actorUserId: input.ownerUserId,
-        targetUserId: input.ownerUserId,
-        metadata: {
-          epoch: row.epoch,
-          algorithmId: row.algorithmId,
-          deviceId: input.deviceId ?? null,
-        } as Prisma.InputJsonValue,
-      },
-    });
+    try {
+      await this.prisma.securityAuditLog.create({
+        data: {
+          action: 'VAULT_BLOB_UPSERTED' as never,
+          actorUserId: input.ownerUserId,
+          targetUserId: input.ownerUserId,
+          metadata: {
+            epoch: row.epoch,
+            algorithmId: row.algorithmId,
+            deviceId: input.deviceId ?? null,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    } catch (err) {
+      // Vault ciphertext persistence must not fail if audit enum/migration lags.
+      this.logger.warn(
+        `Vault audit log skipped for user ${input.ownerUserId}: ${
+          err instanceof Error ? err.message : 'unknown'
+        }`,
+      );
+    }
 
     this.logger.log(`Vault blob upserted for user ${input.ownerUserId} epoch ${row.epoch}`);
     return this.toDto(row);

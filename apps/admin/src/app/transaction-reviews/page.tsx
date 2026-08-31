@@ -63,14 +63,14 @@ export default function TransactionReviewsPage(): ReactElement {
     800,
   );
 
-  async function confirm(reason: string): Promise<void> {
+  async function confirm(reason: string, internalNote?: string): Promise<void> {
     if (!pendingAction) return;
     setBusy(true);
     try {
       if (pendingAction.kind === 'approve') {
         await adminApproveLargeTransferReview(pendingAction.id, reason);
       } else {
-        await adminRejectLargeTransferReview(pendingAction.id, reason);
+        await adminRejectLargeTransferReview(pendingAction.id, reason, internalNote);
       }
       setPendingAction(null);
       await load();
@@ -212,9 +212,17 @@ export default function TransactionReviewsPage(): ReactElement {
       <ConfirmReasonDialog
         open={pendingAction !== null}
         title={pendingAction?.kind === 'approve' ? 'Approve review' : 'Reject review'}
-        description="This decision is audited. Simulated reviews only move TEST balances. Real reviews never sign or broadcast — the user still signs on their device after approval."
+        description={
+          pendingAction?.kind === 'reject'
+            ? 'The customer-visible reason is emailed and shown in-app. Internal notes stay in Admin only. Approval never signs or broadcasts.'
+            : 'This decision is audited. Approval never signs or broadcasts — the user still signs on their device after approval.'
+        }
         confirmLabel={pendingAction?.kind === 'approve' ? 'Approve' : 'Reject'}
         pending={busy}
+        showInternalNote={pendingAction?.kind === 'reject'}
+        customerReasonLabel={
+          pendingAction?.kind === 'reject' ? 'Customer-visible reason' : 'Audit reason'
+        }
         onOpenChange={(open) => {
           if (!open) setPendingAction(null);
         }}

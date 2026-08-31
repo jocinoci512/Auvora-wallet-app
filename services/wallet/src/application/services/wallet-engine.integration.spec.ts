@@ -111,6 +111,8 @@ describe('WalletEngineService', () => {
         chain: 'ETHEREUM',
         standard: 'NATIVE',
       }),
+      findByOwnerAssetAlias: jest.fn(),
+      findByOwnerAsset: jest.fn(),
       update: jest.fn().mockResolvedValue(baseWallet),
     };
     const blockchain = {
@@ -129,6 +131,303 @@ describe('WalletEngineService', () => {
         requester(),
       ),
     ).rejects.toBeInstanceOf(ValidationError);
+    expect(blockchain.validateAddress).not.toHaveBeenCalled();
+  });
+
+  it('imports public ETH metadata without calling blockchain when format is valid', async () => {
+    const created = { ...baseWallet, metadata: {}, preferences: {} };
+    const walletService = {
+      createWallet: jest.fn().mockResolvedValue(created),
+      getWallet: jest.fn(),
+      restore: jest.fn(),
+    };
+    const repo = {
+      findAssetByCode: jest.fn().mockResolvedValue({
+        id: 'asset-eth',
+        code: 'ETH',
+        symbol: 'ETH',
+        decimals: 18,
+        chain: 'ETHEREUM',
+        standard: 'NATIVE',
+      }),
+      findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
+      findByOwnerAsset: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockImplementation(async (_id, data) => ({
+        ...created,
+        ...data,
+        assetCode: 'ETH',
+        assetChain: 'ETHEREUM',
+      })),
+    };
+    const blockchain = {
+      validateAddress: jest.fn().mockResolvedValue(false),
+      createAddress: jest.fn(),
+      listChains: jest.fn(),
+    };
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      blockchain as never,
+    );
+    const addr = '0x' + 'c'.repeat(40);
+    const saved = await engine.importPublicAddress(
+      {
+        ownerUserId: userId,
+        assetCode: 'ETH',
+        address: addr,
+        networkEnv: 'testnet',
+        selfCustody: true,
+      },
+      requester(),
+    );
+    expect(blockchain.validateAddress).not.toHaveBeenCalled();
+    expect(walletService.createWallet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetCode: 'ETH',
+        alias: 'auvora-public-testnet-eth',
+        provisionAddress: false,
+      }),
+    );
+    expect(JSON.stringify(saved)).not.toMatch(/mnemonic|privateKey|seed/i);
+  });
+
+  it('keeps ETH and BNB as separate rows for the same EVM address', async () => {
+    const ethExisting = { ...baseWallet };
+    const bnbCreated = {
+      ...baseWallet,
+      id: 'wallet-bnb',
+      assetId: 'asset-bnb',
+      assetCode: 'BNB',
+      assetChain: 'BNB_SMART_CHAIN',
+      metadata: {},
+      preferences: {},
+    };
+    const walletService = {
+      createWallet: jest.fn().mockResolvedValue(bnbCreated),
+      getWallet: jest.fn(),
+      restore: jest.fn(),
+    };
+    const repo = {
+      findAssetByCode: jest.fn(async (code: string) => {
+        if (code === 'ETH') {
+          return {
+            id: 'asset-eth',
+            code: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+            chain: 'ETHEREUM',
+            standard: 'NATIVE',
+          };
+        }
+        return {
+          id: 'asset-bnb',
+          code: 'BNB',
+          symbol: 'BNB',
+          decimals: 18,
+          chain: 'BNB_SMART_CHAIN',
+          standard: 'NATIVE',
+        };
+      }),
+      findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
+      findByOwnerAsset: jest.fn(async (_owner: string, assetId: string) =>
+        assetId === 'asset-eth' ? ethExisting : null,
+      ),
+      update: jest.fn().mockImplementation(async (id, data) => ({
+        ...(id === walletId ? ethExisting : bnbCreated),
+        ...data,
+      })),
+    };
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      { validateAddress: jest.fn(), createAddress: jest.fn(), listChains: jest.fn() } as never,
+    );
+    const addr = '0x' + 'd'.repeat(40);
+    const eth = await engine.importPublicAddress(
+      { ownerUserId: userId, assetCode: 'ETH', address: addr, selfCustody: true },
+      requester(),
+    );
+    await engine.importPublicAddress(
+      { ownerUserId: userId, assetCode: 'BNB', address: addr, selfCustody: true },
+      requester(),
+    );
+    expect(eth.id).toBe(walletId);
+    expect(walletService.createWallet).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a different user before looking up assets', async () => {
+    const repo = {
+      findAssetByCode: jest.fn(),
+      findByOwnerAssetAlias: jest.fn(),
+      findByOwnerAsset: jest.fn(),
+    };
+    const engine = new WalletEngineService(
+      { createWallet: jest.fn(), getWallet: jest.fn(), restore: jest.fn() } as never,
+      repo as never,
+      { validateAddress: jest.fn(), listChains: jest.fn() } as never,
+    );
+    await expect(
+      engine.importPublicAddress(
+        { ownerUserId: userId, assetCode: 'ETH', address: '0x' + 'e'.repeat(40) },
+        { ...requester(), sub: 'other-user' },
+      ),
+    ).rejects.toBeTruthy();
+    expect(repo.findAssetByCode).not.toHaveBeenCalled();
+  });
+
+  it('rejects mnemonic-shaped payloads', async () => {
+    const engine = new WalletEngineService(
+      { createWallet: jest.fn(), getWallet: jest.fn(), restore: jest.fn() } as never,
+      {
+        findAssetByCode: jest.fn(),
+        findByOwnerAssetAlias: jest.fn(),
+        findByOwnerAsset: jest.fn(),
+      } as never,
+      { listChains: jest.fn() } as never,
+    );
+    await expect(
+      engine.importPublicAddress(
+        {
+          ownerUserId: userId,
+          assetCode: 'ETH',
+          address:
+            'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+        },
+        requester(),
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('maps POL to MATIC and stores testnet environment on a Polygon row', async () => {
+    const created = {
+      ...baseWallet,
+      id: 'wallet-matic',
+      assetId: 'asset-matic',
+      assetCode: 'MATIC',
+      assetChain: 'POLYGON',
+      metadata: {},
+      preferences: {},
+    };
+    const walletService = {
+      createWallet: jest.fn().mockResolvedValue(created),
+      getWallet: jest.fn(),
+      restore: jest.fn(),
+    };
+    const repo = {
+      findAssetByCode: jest.fn().mockResolvedValue({
+        id: 'asset-matic',
+        code: 'MATIC',
+        symbol: 'MATIC',
+        decimals: 18,
+        chain: 'POLYGON',
+        standard: 'NATIVE',
+      }),
+      findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
+      findByOwnerAsset: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockImplementation(async (_id, data) => ({ ...created, ...data })),
+    };
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      { validateAddress: jest.fn(), createAddress: jest.fn(), listChains: jest.fn() } as never,
+    );
+    await engine.importPublicAddress(
+      {
+        ownerUserId: userId,
+        assetCode: 'POL',
+        address: '0x' + 'f'.repeat(40),
+        networkEnv: 'testnet',
+        selfCustody: true,
+      },
+      requester(),
+    );
+    expect(repo.findAssetByCode).toHaveBeenCalledWith('MATIC');
+    expect(walletService.createWallet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetCode: 'MATIC',
+        alias: 'auvora-public-testnet-matic',
+      }),
+    );
+  });
+
+  it('imports bitcoin testnet tb1, solana, and tron public metadata without secrets', async () => {
+    const created = { ...baseWallet, metadata: {}, preferences: {} };
+    const walletService = {
+      createWallet: jest.fn().mockResolvedValue(created),
+      getWallet: jest.fn(),
+      restore: jest.fn(),
+    };
+    const repo = {
+      findAssetByCode: jest.fn(async (code: string) => ({
+        id: `asset-${code.toLowerCase()}`,
+        code,
+        symbol: code,
+        decimals: code === 'BTC' ? 8 : 18,
+        chain: code === 'BTC' ? 'BITCOIN' : code === 'SOL' ? 'SOLANA' : 'TRON',
+        standard: 'NATIVE',
+      })),
+      findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
+      findByOwnerAsset: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockImplementation(async (_id, data) => ({ ...created, ...data })),
+    };
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      { validateAddress: jest.fn(), createAddress: jest.fn(), listChains: jest.fn() } as never,
+    );
+    const payloads = [
+      { assetCode: 'BTC', address: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx' },
+      { assetCode: 'SOL', address: '7EqQdEULxWcraVx1VfyQW9XbnAHKKfwdERJXNqTUHxN' },
+      { assetCode: 'TRX', address: 'TXYZrestoredTronAddress11111111111' },
+    ];
+    for (const payload of payloads) {
+      const saved = await engine.importPublicAddress(
+        { ownerUserId: userId, ...payload, networkEnv: 'testnet', selfCustody: true },
+        requester(),
+      );
+      expect(JSON.stringify(saved)).not.toMatch(/mnemonic|privateKey|seed/i);
+    }
+    expect(walletService.createWallet).toHaveBeenCalledTimes(3);
+  });
+
+  it('re-import of the same owner and asset updates metadata instead of creating a duplicate', async () => {
+    const existing = { ...baseWallet, metadata: { imported: true }, preferences: { accounts: [] } };
+    const walletService = {
+      createWallet: jest.fn(),
+      getWallet: jest.fn(),
+      restore: jest.fn(),
+    };
+    const repo = {
+      findAssetByCode: jest.fn().mockResolvedValue({
+        id: 'asset-eth',
+        code: 'ETH',
+        symbol: 'ETH',
+        decimals: 18,
+        chain: 'ETHEREUM',
+        standard: 'NATIVE',
+      }),
+      findByOwnerAssetAlias: jest.fn().mockResolvedValue(null),
+      findByOwnerAsset: jest.fn().mockResolvedValue(existing),
+      update: jest.fn().mockImplementation(async (_id, data) => ({ ...existing, ...data })),
+    };
+    const engine = new WalletEngineService(
+      walletService as never,
+      repo as never,
+      { validateAddress: jest.fn(), createAddress: jest.fn(), listChains: jest.fn() } as never,
+    );
+    const addr = '0x' + 'c'.repeat(40);
+    await engine.importPublicAddress(
+      {
+        ownerUserId: userId,
+        assetCode: 'ETH',
+        address: addr,
+        networkEnv: 'testnet',
+        selfCustody: true,
+      },
+      requester(),
+    );
+    expect(walletService.createWallet).not.toHaveBeenCalled();
+    expect(repo.update).toHaveBeenCalledTimes(1);
   });
 
   it('exports public metadata without private keys', async () => {

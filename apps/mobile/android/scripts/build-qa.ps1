@@ -41,7 +41,11 @@ try {
     --dart-define=AUVORA_ALLOW_LOCAL_API=true `
     --dart-define=AUVORA_API_BASE_URL=http://127.0.0.1:4000 `
     --dart-define=AUVORA_SEED_INBOX=false `
-    --dart-define=TESTNET_BROADCAST_ENABLED=true
+    --dart-define=TESTNET_BROADCAST_ENABLED=true `
+    --dart-define=AUVORA_QA_LOCAL_EVM=true `
+    --dart-define=AUVORA_QA_EVM_CHAIN_ID=31337 `
+    --dart-define=AUVORA_QA_EVM_RPC=http://127.0.0.1:8545 `
+    --dart-define=ETH_RPC_URL=http://127.0.0.1:8545
 
   if ($LASTEXITCODE -ne 0) { throw "flutter build apk failed" }
 

@@ -97,8 +97,17 @@ export async function loadLivePortfolio(options?: {
 
   const client = createApiClient({ timeoutMs: 20_000 });
   try {
-    const watchRaw = (await client.listWatchAddresses()) as WatchRow[];
-    const watches = Array.isArray(watchRaw) ? watchRaw : [];
+    // Prefer registered watches / engine; fall back to session public addresses after vault unlock.
+    const { ensurePublicSessionFromDeviceVault } = await import('../vault/wallet-public-session');
+    const publicSession = ensurePublicSessionFromDeviceVault();
+
+    let watches: WatchRow[] = [];
+    try {
+      const watchRaw = (await client.listWatchAddresses()) as WatchRow[];
+      watches = Array.isArray(watchRaw) ? watchRaw : [];
+    } catch {
+      watches = [];
+    }
 
     if (!watches.length) {
       // Also try wallet-engine portfolio for imported public wallets.
@@ -150,6 +159,28 @@ export async function loadLivePortfolio(options?: {
         }
       } catch {
         /* fall through */
+      }
+
+      if (publicSession?.accounts?.length) {
+        const holdings = publicSession.accounts.map((a, i) =>
+          toHolding(
+            {
+              id: `session-${a.assetCode}`,
+              network: a.network,
+              address: a.address,
+              label: `${a.network} · ${a.address.slice(0, 6)}…`,
+            },
+            0,
+            i,
+          ),
+        );
+        return {
+          state: 'live',
+          holdings,
+          performance: DEMO_PERFORMANCE,
+          message: 'Wallet unlocked on this device. Balances refresh when chain data is available.',
+          generatedAt: publicSession.initializedAt,
+        };
       }
 
       if (preferDemoWhenEmpty) {
@@ -216,6 +247,32 @@ export async function loadLivePortfolio(options?: {
       generatedAt: new Date().toISOString(),
     };
   } catch {
+    try {
+      const { ensurePublicSessionFromDeviceVault } = await import('../vault/wallet-public-session');
+      const publicSession = ensurePublicSessionFromDeviceVault();
+      if (publicSession?.accounts?.length) {
+        return {
+          state: 'live',
+          holdings: publicSession.accounts.map((a, i) =>
+            toHolding(
+              {
+                id: `session-${a.assetCode}`,
+                network: a.network,
+                address: a.address,
+                label: `${a.network} · ${a.address.slice(0, 6)}…`,
+              },
+              0,
+              i,
+            ),
+          ),
+          performance: DEMO_PERFORMANCE,
+          message: 'Wallet unlocked on this device. Live network data is temporarily unavailable.',
+          generatedAt: publicSession.initializedAt,
+        };
+      }
+    } catch {
+      /* ignore */
+    }
     return {
       state: 'unavailable',
       holdings: [],

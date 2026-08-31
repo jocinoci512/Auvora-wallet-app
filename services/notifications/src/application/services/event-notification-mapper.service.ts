@@ -234,6 +234,20 @@ export class EventNotificationMapperService {
             ),
           },
         };
+      case 'wallet.transfer.completed':
+        return {
+          templateCode: 'transaction.completed',
+          category: 'TRANSACTION',
+          channels: ['EMAIL', 'IN_APP'],
+          priority: 'NORMAL',
+          dedupeKey: `tx.completed:${id}`,
+          variables: {
+            assetCode: String(p.assetCode ?? p.assetTicker ?? ''),
+            amount: String(p.amount ?? ''),
+            network: String(p.networkLabel ?? p.network ?? ''),
+            txHash: String(p.txHash ?? p.hash ?? ''),
+          },
+        };
       case 'blockchain.deposit.detected':
         return {
           templateCode: 'deposit.detected',

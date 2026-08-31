@@ -10,6 +10,7 @@ import '../l10n/auvora_locale.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
+import '../release/release_config.dart';
 import 'models.dart';
 
 class PreferencesController extends ChangeNotifier {
@@ -63,6 +64,10 @@ class PreferencesController extends ChangeNotifier {
   void attachPortfolio(PortfolioController portfolio) {
     _portfolio = portfolio;
     portfolio.txCompletedHandler = _notifyTxCompleted;
+    if (ReleaseConfig.canBroadcastTestnet) {
+      // ignore: discarded_futures
+      portfolio.resumePendingEvmReceipts();
+    }
   }
 
   Future<void> _notifyTxCompleted(PortfolioTx tx) async {

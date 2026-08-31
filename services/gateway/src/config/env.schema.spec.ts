@@ -13,7 +13,12 @@ describe('gateway env schema — CORS production config', () => {
     const env = loadEnv({
       NODE_ENV: 'development',
     });
-    expect(env.CORS_ORIGINS).toEqual(['http://localhost:3000', 'http://localhost:3001']);
+    expect(env.CORS_ORIGINS).toEqual([
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+    ]);
   });
 
   it('accepts production apex + www allowlist', () => {
@@ -76,7 +81,12 @@ describe('gateway env schema — CORS production config', () => {
       NODE_ENV: 'development',
       CORS_ORIGINS: '',
     });
-    expect(env.CORS_ORIGINS).toEqual(['http://localhost:3000', 'http://localhost:3001']);
+    expect(env.CORS_ORIGINS).toEqual([
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+    ]);
   });
 
   it('explains unresolved Railway templates for required AUTH upstream', () => {

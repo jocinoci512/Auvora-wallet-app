@@ -69,6 +69,22 @@ void main() {
     );
   });
 
+  test('assertAllowed accepts Auvora Local EVM QA chain id 31337', () {
+    EvmTestnetBroadcast.assertAllowed(
+      chainId: 31337,
+      canBroadcastTestnet: true,
+      liveBroadcastEnabled: false,
+      isTestnetEnv: true,
+      rpcUrl: 'http://127.0.0.1:8545',
+    );
+  });
+
+  test('allowlist includes local QA chain and excludes mainnet', () {
+    expect(EvmTestnetBroadcast.allowlistedTestnetChainIds, contains(31337));
+    expect(EvmTestnetBroadcast.mainnetChainIds, contains(1));
+    expect(EvmTestnetBroadcast.allowlistedTestnetChainIds, isNot(contains(1)));
+  });
+
   test('assertAllowed refuses a mainnet RPC host', () {
     expect(
       () => EvmTestnetBroadcast.assertAllowed(

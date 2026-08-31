@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,6 +15,7 @@ import '../reliability/startup_timing.dart';
 import '../wallet_engine/key_store.dart';
 import '../wallet_engine/models.dart';
 import '../wallet_engine/wallet_engine.dart';
+import 'wallet_session_restore.dart';
 
 enum AppStage {
   splash,
@@ -35,7 +38,11 @@ class WalletController extends ChangeNotifier {
     LocalAuthentication? localAuth,
   })  : _secure = secureStorage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              aOptions: AndroidOptions(
+                encryptedSharedPreferences: true,
+                sharedPreferencesName: 'FlutterSecureStorage',
+                resetOnError: false,
+              ),
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
             ),
         _localAuth = localAuth ?? LocalAuthentication();
@@ -63,11 +70,56 @@ class WalletController extends ChangeNotifier {
   bool unlocked = false;
   String? errorMessage;
   bool busy = false;
+  bool restoreResolved = false;
+  bool _bootstrapInFlight = false;
+  int _bootstrapAttempts = 0;
+  Completer<void>? _engineReady;
+
+  /// While true, [AppShell] must not auto-lock on pause (biometric / transfer auth
+  /// overlays pause the activity and would otherwise wipe the signing session).
+  bool suppressAutoLock = false;
+
+  /// Local vault/PIN/address exists on this device — not a new-user Welcome.
+  bool get hasLocalWallet =>
+      wallet != null || (address != null && address!.isNotEmpty) || hasPin;
 
   void attachEngine(WalletEngine engine) {
     if (identical(_engine, engine)) return;
     _engine = engine;
     _engine?.setSessionUnlocked(unlocked);
+    final ready = _engineReady;
+    if (ready != null && !ready.isCompleted) ready.complete();
+    if (!restoreResolved && (stage == AppStage.splash || stage == AppStage.welcome)) {
+      // ignore: discarded_futures
+      bootstrap();
+    }
+  }
+
+  /// Re-run restore after the device unlocks or Keystore becomes readable.
+  /// A first pass that ran while locked can look empty and must not stick on Welcome.
+  Future<void> retryRestoreIfNeeded() async {
+    if (stage == AppStage.dashboard || stage == AppStage.unlock || stage == AppStage.securityPin) {
+      return;
+    }
+    if (hasLocalWallet && (stage == AppStage.welcome || stage == AppStage.walletChoice)) {
+      resumeExistingSession();
+      return;
+    }
+    if (stage != AppStage.welcome && stage != AppStage.splash) {
+      return;
+    }
+    restoreResolved = false;
+    _bootstrapAttempts = 0;
+    await bootstrap();
+  }
+
+  /// Existing vault after account sign-in — unlock, never start a second wallet.
+  void resumeExistingSession() {
+    if (!hasLocalWallet) return;
+    errorMessage = null;
+    unlocked = false;
+    stage = hasPin ? AppStage.unlock : AppStage.securityPin;
+    notifyListeners();
   }
 
   String? addressFor(AssetNetwork network) {
@@ -116,19 +168,68 @@ class WalletController extends ChangeNotifier {
   int? coldStartMs;
 
   Future<void> bootstrap({bool systemReduceMotion = false}) async {
+    if (_bootstrapInFlight) return;
+    _bootstrapInFlight = true;
     final started = DateTime.now();
     try {
+      await _waitForEngine(const Duration(milliseconds: 300));
       await _bootstrapBody(systemReduceMotion: systemReduceMotion)
-          .timeout(const Duration(seconds: 12));
+          .timeout(const Duration(seconds: 25));
+      restoreResolved = _engine != null || stage != AppStage.welcome;
     } catch (_) {
-      // Secure storage / engine hiccup must never leave splash forever.
-      if (stage == AppStage.splash) {
-        stage = AppStage.welcome;
-        errorMessage =
-            'Couldn’t finish wallet restore quickly. You can continue — your keys stay on device.';
-      }
+      _applyTimeoutFallback();
       coldStartMs ??= DateTime.now().difference(started).inMilliseconds;
       notifyListeners();
+      if (stage == AppStage.splash && _bootstrapAttempts < 1) {
+        _bootstrapAttempts += 1;
+        _bootstrapInFlight = false;
+        await bootstrap(systemReduceMotion: systemReduceMotion);
+        return;
+      }
+    } finally {
+      _bootstrapInFlight = false;
+    }
+  }
+
+  Future<void> _waitForEngine(Duration maxWait) async {
+    if (_engine != null) return;
+    _engineReady ??= Completer<void>();
+    try {
+      await _engineReady!.future.timeout(maxWait);
+    } on TimeoutException {
+      // Splash still proceeds with secure-storage + prefs evidence.
+    }
+  }
+
+  void _applyTimeoutFallback() {
+    if (stage != AppStage.splash) return;
+    final target = WalletSessionRestore.decide(
+      hasVault: wallet != null,
+      hasAddress: address != null && address!.isNotEmpty,
+      hasPin: hasPin,
+      onboardingFlag: onboardingComplete,
+      timedOut: true,
+      bootstrapCompleted: false,
+    );
+    switch (target) {
+      case WalletRestoreTarget.unlock:
+        unlocked = false;
+        stage = AppStage.unlock;
+        restoreResolved = true;
+        errorMessage = 'Still unlocking this device. Your keys stay on device.';
+      case WalletRestoreTarget.securityPin:
+        unlocked = false;
+        stage = AppStage.securityPin;
+        restoreResolved = true;
+      case WalletRestoreTarget.welcome:
+        if (_bootstrapAttempts >= 1) {
+          stage = AppStage.welcome;
+          restoreResolved = _engine != null;
+          errorMessage =
+              'Couldn’t finish wallet restore quickly. You can continue — your keys stay on device.';
+        }
+      case WalletRestoreTarget.splash:
+        break;
     }
   }
 
@@ -181,16 +282,39 @@ class WalletController extends ChangeNotifier {
     coldStartMs = DateTime.now().difference(started).inMilliseconds;
     StartupTiming.mark('walletRestoreDone');
 
-    if (onboardingComplete && address != null && hasPin) {
-      unlocked = false;
-      stage = AppStage.unlock;
-    } else if (onboardingComplete && address != null && !hasPin) {
-      // Never auto-unlock without a device passcode — Closed Beta gate.
-      unlocked = false;
-      stage = AppStage.securityPin;
-      errorMessage = 'Set a 6-digit passcode to protect this wallet.';
-    } else {
-      stage = AppStage.welcome;
+    final hasAddress = address != null && address!.isNotEmpty;
+    final hasVault = wallet != null;
+    if (WalletSessionRestore.shouldHealOnboarded(
+      hasVault: hasVault,
+      hasAddress: hasAddress,
+      hasPin: hasPin,
+    )) {
+      if (!onboardingComplete) {
+        onboardingComplete = true;
+        await prefs.setBool(_kOnboarded, true);
+      }
+    }
+
+    final target = WalletSessionRestore.decide(
+      hasVault: hasVault,
+      hasAddress: hasAddress,
+      hasPin: hasPin,
+      onboardingFlag: onboardingComplete,
+      timedOut: false,
+      bootstrapCompleted: true,
+    );
+    switch (target) {
+      case WalletRestoreTarget.unlock:
+        unlocked = false;
+        stage = AppStage.unlock;
+      case WalletRestoreTarget.securityPin:
+        unlocked = false;
+        stage = AppStage.securityPin;
+        errorMessage = 'Set a 6-digit passcode to protect this wallet.';
+      case WalletRestoreTarget.welcome:
+        stage = AppStage.welcome;
+      case WalletRestoreTarget.splash:
+        break;
     }
     _engine?.setSessionUnlocked(unlocked);
     notifyListeners();
@@ -712,10 +836,11 @@ class WalletController extends ChangeNotifier {
 
   Future<bool> authenticateForTransfer({String reason = 'Confirm this transfer'}) async {
     if (!biometricsEnabled) return false;
+    suppressAutoLock = true;
     try {
       final available = await canCheckBiometrics();
       if (!available) return false;
-      return await _localAuth.authenticate(
+      final ok = await _localAuth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           biometricOnly: false,
@@ -723,16 +848,36 @@ class WalletController extends ChangeNotifier {
           useErrorDialogs: true,
         ),
       );
+      if (ok) {
+        // Biometric prompt pauses the Activity; restore signing session that
+        // auto-lock would otherwise clear mid-transfer.
+        unlockSessionForTransfer();
+      }
+      return ok;
     } on PlatformException {
       // Caller falls through to PIN when biometrics fail/cancel/unavailable.
       return false;
     } catch (_) {
       return false;
+    } finally {
+      suppressAutoLock = false;
     }
+  }
+
+  /// Re-open the on-device signing session after transfer biometric/PIN success.
+  /// Does not reveal keys off-device; only allows [WalletEngine.mnemonic] locally.
+  void unlockSessionForTransfer() {
+    unlocked = true;
+    if (stage == AppStage.unlock) {
+      stage = AppStage.dashboard;
+    }
+    _engine?.setSessionUnlocked(true);
+    notifyListeners();
   }
 
   Future<void> lock() async {
     if (!hasPin) return;
+    if (suppressAutoLock) return;
     unlocked = false;
     stage = AppStage.unlock;
     errorMessage = null;

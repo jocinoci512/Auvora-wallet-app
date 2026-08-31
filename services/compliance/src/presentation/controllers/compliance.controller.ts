@@ -82,18 +82,25 @@ export class ComplianceController {
     return successResponse(data);
   }
 
+  @Get('kyc')
+  @Permissions(PERMISSION_COMPLIANCE_READ)
+  async kycSnapshot(@CurrentUser() user: JwtAccessClaims) {
+    const data = await this.kyc.getCustomerSnapshot(user.sub, user);
+    return successResponse(data);
+  }
+
   @Post('kyc')
   @Permissions(PERMISSION_COMPLIANCE_WRITE)
   async submitKyc(@CurrentUser() user: JwtAccessClaims, @Body() dto: SubmitKycDto) {
     const data = await this.kyc.submitKyc(user.sub, dto);
-    return successResponse(data);
+    return successResponse(this.kyc.toCustomerVerification(data));
   }
 
   @Get('kyc/status')
   @Permissions(PERMISSION_COMPLIANCE_READ)
   async kycStatus(@CurrentUser() user: JwtAccessClaims) {
     const data = await this.kyc.getLatestVerification(user.sub);
-    return successResponse(data);
+    return successResponse(this.kyc.toCustomerVerification(data));
   }
 
   @Get('documents')

@@ -121,12 +121,14 @@ class EvmLocalSigner {
       throw StateError('Refusing to sign an unknown chain id.');
     }
     final credentials = credentialsFromMnemonic(mnemonic, accountIndex: accountIndex);
+    // web3dart RLP encoding rejects null `data`; native transfers must use empty bytes.
     final tx = Transaction(
       to: EthereumAddress.fromHex(to),
       value: EtherAmount.inWei(valueWei),
       nonce: nonce,
       maxGas: gasLimit,
       gasPrice: EtherAmount.inWei(gasPriceWei),
+      data: Uint8List(0),
     );
     return signTransactionRaw(tx, credentials, chainId: chainId);
   }

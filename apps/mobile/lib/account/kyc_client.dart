@@ -5,15 +5,17 @@ import 'package:http/http.dart' as http;
 
 import 'auvora_api_config.dart';
 import 'auth_api_client.dart';
+import 'auvora_connectivity.dart';
 
 /// Safe KYC status snapshot for customer UI (no document payloads).
 class KycStatusSnapshot {
   const KycStatusSnapshot({
     required this.status,
     required this.level,
-    this.productLabel = 'Not started',
+    this.productLabel = 'Not verified',
     this.needsResubmission = false,
     this.isApproved = false,
+    this.customerReason,
   });
 
   final String status;
@@ -21,15 +23,19 @@ class KycStatusSnapshot {
   final String productLabel;
   final bool needsResubmission;
   final bool isApproved;
+  final String? customerReason;
 
   factory KycStatusSnapshot.fromJson(Map<String, dynamic> json) {
     final status = (json['status'] ?? 'DRAFT').toString().toUpperCase();
     final level = (json['level'] ?? 'NONE').toString();
     final meta = json['metadata'];
     final resubmit = meta is Map && meta['resubmissionRequired'] == true;
+    final reason = (json['rejectionReason'] ??
+            (meta is Map ? meta['customerVisibleReason'] : null))
+        ?.toString();
     final label = switch (status) {
       'APPROVED' => 'Verified',
-      'IN_REVIEW' || 'PENDING_PROVIDER' || 'SUBMITTED' => 'Pending review',
+      'IN_REVIEW' || 'PENDING_PROVIDER' || 'SUBMITTED' => 'In review',
       'REJECTED' => resubmit || status == 'RENEWAL_REQUIRED'
           ? 'Action required'
           : 'Rejected',
@@ -42,6 +48,7 @@ class KycStatusSnapshot {
       productLabel: label,
       needsResubmission: resubmit || status == 'RENEWAL_REQUIRED',
       isApproved: status == 'APPROVED',
+      customerReason: reason == null || reason.isEmpty ? null : reason,
     );
   }
 }
@@ -74,7 +81,7 @@ class KycClient {
     return _post(
       '/api/v1/compliance/kyc',
       accessToken,
-      {'requestedLevel': 'BASIC'},
+      {'requestedLevel': 'BASIC', 'legalName': 'QA User', 'country': 'US'},
     );
   }
 
@@ -100,8 +107,8 @@ class KycClient {
       throw const AuthException(AuthErrorKind.timeout, 'KYC status timed out.');
     } on AuthException {
       rethrow;
-    } catch (_) {
-      throw const AuthException(AuthErrorKind.network, 'No internet connection.');
+    } catch (error) {
+      throw AuvoraConnectivity.fromTransportOrUnknown(error);
     }
   }
 
@@ -133,8 +140,8 @@ class KycClient {
       throw const AuthException(AuthErrorKind.timeout, 'KYC submission timed out.');
     } on AuthException {
       rethrow;
-    } catch (_) {
-      throw const AuthException(AuthErrorKind.network, 'No internet connection.');
+    } catch (error) {
+      throw AuvoraConnectivity.fromTransportOrUnknown(error);
     }
   }
 

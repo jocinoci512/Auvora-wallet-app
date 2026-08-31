@@ -6,4 +6,6 @@ module.exports = {
   displayName: '@auvora/web',
   rootDir: __dirname,
   testEnvironment: 'node',
+  // pnpm nests ESM packages under .pnpm/@scope+pkg@version/… — allow transform.
+  transformIgnorePatterns: ['/node_modules/(?!(?:\\.pnpm/)?(?:@noble|@scure|.*@noble|.*@scure)/)'],
 };

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../account/account_controller.dart';
 import '../account/ui/account_screen.dart';
 import '../state/wallet_controller.dart';
+import '../state/wallet_session_restore.dart';
 import '../theme/aether_theme.dart';
 
 /// Account-first welcome: Create Account / Sign In before wallet setup.
@@ -17,10 +18,18 @@ class WelcomeScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Already signed in during onboarding — continue to wallet choice.
-    if (account.isSignedIn && !c.onboardingComplete) {
+    // Signed-in routing waits for wallet restore. A late vault read must not
+    // be overwritten by Create Wallet.
+    if (account.isSignedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) c.goWalletChoice();
+        if (!context.mounted) return;
+        final wallet = context.read<WalletController>();
+        if (wallet.hasLocalWallet) {
+          wallet.resumeExistingSession();
+          return;
+        }
+        if (!wallet.restoreResolved || wallet.stage == AppStage.splash) return;
+        if (!wallet.onboardingComplete) wallet.goWalletChoice();
       });
     }
 
@@ -86,26 +95,48 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ),
                 const Spacer(flex: 3),
-                FilledButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AccountScreen(onboardingMode: true),
-                      ),
-                    );
+                if (account.isSessionExpired) ...[
+                  Text(
+                    WalletSessionRestore.sessionExpiredMessage,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AetherColors.mutedFor(context),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (!c.hasLocalWallet && !account.isSessionExpired)
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AccountScreen(onboardingMode: true),
+                        ),
+                      );
+                    },
+                    child: const Text('Create Account'),
+                  ),
+                if (!c.hasLocalWallet && !account.isSessionExpired) const SizedBox(height: 12),
+                Builder(
+                  builder: (context) {
+                    void openSignIn() {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AccountScreen(
+                            onboardingMode: true,
+                            preferSignIn: true,
+                          ),
+                        ),
+                      );
+                    }
+
+                    final label = account.isSessionExpired ? 'Sign in again' : 'Sign In';
+                    if (c.hasLocalWallet || account.isSessionExpired) {
+                      return FilledButton(onPressed: openSignIn, child: Text(label));
+                    }
+                    return OutlinedButton(onPressed: openSignIn, child: Text(label));
                   },
-                  child: const Text('Create Account'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AccountScreen(onboardingMode: true, preferSignIn: true),
-                      ),
-                    );
-                  },
-                  child: const Text('Sign In'),
                 ),
                 const SizedBox(height: 16),
                 TextButton(

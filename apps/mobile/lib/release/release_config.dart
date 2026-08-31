@@ -49,7 +49,7 @@ abstract final class ReleaseConfig {
       return 'Mainnet broadcast is ON — use only with audited adapters.';
     }
     if (canBroadcastTestnet) {
-      return 'TESTNET broadcast is ON for allowlisted QA networks only. Mainnet broadcast remains OFF.';
+      return 'TESTNET / Local EVM QA broadcast is ON for allowlisted networks only. Mainnet broadcast remains OFF.';
     }
     if (networkIsTestnet) {
       return 'TESTNET mode is active. Broadcast stays off until TESTNET_BROADCAST_ENABLED=true.';

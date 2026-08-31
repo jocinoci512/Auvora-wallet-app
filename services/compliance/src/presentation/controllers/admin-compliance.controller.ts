@@ -32,6 +32,10 @@ export class RejectKycDto {
   @IsString()
   @MinLength(3)
   reason!: string;
+
+  @IsOptional()
+  @IsString()
+  internalNote?: string;
 }
 
 export class OpenCaseDto {
@@ -175,7 +179,7 @@ export class AdminComplianceController {
     @Body() dto: RejectKycDto,
     @CurrentUser() user: JwtAccessClaims,
   ) {
-    return successResponse(await this.kyc.reject(id, user, dto.reason));
+    return successResponse(await this.kyc.reject(id, user, dto.reason, dto.internalNote));
   }
 
   @Post('kyc/:id/resubmission')

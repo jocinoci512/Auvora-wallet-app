@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { AuvoraClientError } from '@auvora/sdk';
 import { isSignedIn } from '../../lib/auth/session';
+import { useAccountHealth } from '../../lib/account/account-health';
 import {
   applyQuotes,
   DEMO_TXS,
@@ -20,9 +21,15 @@ import {
   issueCopy,
   type DashboardIssue,
 } from '../../lib/dashboard/status-copy';
+import { dashboardWalletEmptyCopy } from '../../lib/dashboard/wallet-empty-copy';
 import { fetchPricesWithFailover } from '../../lib/portfolio/price-failover';
 import { loadLivePortfolio } from '../../lib/portfolio/live-portfolio';
 import { networkLabel, resolveNetwork } from '../../lib/product/networks';
+import {
+  ensurePublicSessionFromDeviceVault,
+  ensurePublicWalletsRegistered,
+  hasInitializedWebWallet,
+} from '../../lib/vault/wallet-public-session';
 import { getUserPrefs } from '../../lib/wallet-experience/user-prefs';
 import { web3Fetch } from '../../lib/web3/api';
 import '../../app/wallet-dashboard.css';
@@ -80,6 +87,7 @@ function EmptyBlock({
 }
 
 export function DashboardExperience(): ReactElement {
+  const health = useAccountHealth();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [txs, setTxs] = useState<TxPreview[]>([]);
   const [mode, setMode] = useState<'demo' | 'live' | 'empty'>('empty');
@@ -95,6 +103,7 @@ export function DashboardExperience(): ReactElement {
     live: false,
   });
   const [signedIn, setSignedIn] = useState(false);
+  const [walletReady, setWalletReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -104,6 +113,17 @@ export function DashboardExperience(): ReactElement {
     }
     setCurrency(getUserPrefs().currency);
     setSignedIn(isSignedIn());
+    try {
+      const session = ensurePublicSessionFromDeviceVault();
+      setWalletReady(Boolean(session?.ethereumAddress) || hasInitializedWebWallet());
+      if (session && !session.registered) {
+        void ensurePublicWalletsRegistered(session).then((next) => {
+          setWalletReady(Boolean(next?.ethereumAddress) || hasInitializedWebWallet());
+        });
+      }
+    } catch {
+      setWalletReady(hasInitializedWebWallet());
+    }
   }, []);
 
   useEffect(() => {
@@ -135,7 +155,14 @@ export function DashboardExperience(): ReactElement {
       if (cancelled) return;
 
       let rows = portfolio.holdings;
-      if (portfolio.state === 'unavailable' && isSignedIn()) {
+      // Chain RPC delay is informational — do not treat empty registration as outage
+      // when the local vault is already unlocked on this device.
+      if (
+        portfolio.state === 'unavailable' &&
+        isSignedIn() &&
+        !hasInitializedWebWallet() &&
+        rows.length === 0
+      ) {
         nextIssues.push('rpc');
       }
 
@@ -145,6 +172,7 @@ export function DashboardExperience(): ReactElement {
       setUpdatedAt(portfolio.generatedAt ?? (rows.length ? new Date().toISOString() : null));
       setHint(portfolio.message);
       setIssues([...nextIssues]);
+      setWalletReady(hasInitializedWebWallet());
       setReady(true);
 
       try {
@@ -236,13 +264,32 @@ export function DashboardExperience(): ReactElement {
         ) : null}
         {issues.map((kind) => {
           const copy = issueCopy(kind);
+          const soft = kind === 'rpc' || kind === 'market';
           return (
-            <div key={kind} className="wd-banner wd-banner--error" role="status">
+            <div
+              key={kind}
+              className={`wd-banner${soft ? ' wd-banner--info' : ' wd-banner--error'}`}
+              role="status"
+            >
               <strong>{copy.title}</strong>
               <p>{copy.body}</p>
+              {kind === 'backend' ? (
+                <button type="button" className="wd-card__link" onClick={() => health.refresh()}>
+                  Retry
+                </button>
+              ) : null}
             </div>
           );
         })}
+        {health.level === 'degraded' && !issues.includes('backend') ? (
+          <div className="wd-banner wd-banner--info" role="status">
+            <strong>Some services are delayed</strong>
+            <p>{health.message}</p>
+            <button type="button" className="wd-card__link" onClick={() => health.refresh()}>
+              Retry
+            </button>
+          </div>
+        ) : null}
 
         <section className="wd-hero" aria-labelledby="wd-portfolio-label">
           <div>
@@ -422,7 +469,7 @@ export function DashboardExperience(): ReactElement {
                 </ul>
               </>
             ) : (
-              <EmptyBlock copy={signedIn ? EMPTY_COPY.wallet : EMPTY_COPY.assets} />
+              <EmptyBlock copy={dashboardWalletEmptyCopy({ signedIn, walletReady })} />
             )}
           </section>
 
