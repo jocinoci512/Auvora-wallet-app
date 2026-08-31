@@ -119,25 +119,38 @@ report.blockVisible = detailText.includes('1234');
 report.feeVisible = /0\.000021/.test(detailText);
 report.networkLabel ||= detailText.includes('Auvora Local EVM QA');
 
-function readCompletedCount() {
-  execFileSync('python', [path.join(repoRoot, 'scripts', 'qa', 'pull-flutter-prefs.py')], {
-    cwd: repoRoot,
-    stdio: 'pipe',
-  });
-  const prefs = fs.readFileSync(path.join(artifacts, 'qa-flutter-prefs.xml'), 'utf8');
-  const notifMatch = prefs.match(/flutter\.auvora_notif_inbox_v1">(.*?)<\/string>/s);
-  if (!notifMatch) return 0;
-  const inbox = JSON.parse(
-    notifMatch[1]
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&#10;/g, '\n'),
-  );
-  return inbox.filter(
-    (n) =>
-      String(n.title ?? '').toLowerCase() === 'transaction completed' ||
-      String(n.id ?? '').startsWith('tx-completed-'),
-  ).length;
+function readCompletedCount(minStableMs = 0) {
+  let last = -1;
+  const deadline = Date.now() + Math.max(minStableMs, 8000);
+  while (Date.now() < deadline) {
+    try {
+      execFileSync('python', [path.join(repoRoot, 'scripts', 'qa', 'pull-flutter-prefs.py')], {
+        cwd: repoRoot,
+        stdio: 'pipe',
+      });
+      const prefs = fs.readFileSync(path.join(artifacts, 'qa-flutter-prefs.xml'), 'utf8');
+      const notifMatch = prefs.match(/flutter\.auvora_notif_inbox_v1">(.*?)<\/string>/s);
+      const count = !notifMatch
+        ? 0
+        : JSON.parse(
+            notifMatch[1]
+              .replace(/&quot;/g, '"')
+              .replace(/&amp;/g, '&')
+              .replace(/&#10;/g, '\n'),
+          ).filter(
+            (n) =>
+              String(n.title ?? '').toLowerCase() === 'transaction completed' ||
+              String(n.id ?? '').startsWith('tx-completed-'),
+          ).length;
+      if (count === last && count > 0) return count;
+      if (count === last && minStableMs === 0) return count;
+      last = count;
+    } catch {
+      // Prefs may be briefly unavailable right after force-stop / cold start.
+    }
+    sleep(1500);
+  }
+  return Math.max(last, 0);
 }
 
 report.notificationCount = readCompletedCount();

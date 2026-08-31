@@ -102,8 +102,7 @@ services:
     container_name: auvora-anvil
     restart: unless-stopped
     entrypoint: ['anvil']
-    command:
-      [
+    command: [
         '--host',
         '0.0.0.0',
         '--port',
@@ -116,8 +115,11 @@ services:
         '10',
         '--balance',
         '10000',
+        # Persist Anvil state periodically so hard restarts keep Local EVM QA history.
         '--state',
         '/data/anvil-state.json',
+        '--state-interval',
+        '30',
       ]
     ports:
       - '8545:8545'

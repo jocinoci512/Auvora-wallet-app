@@ -39,8 +39,8 @@ class TransferCompletionClient {
     if (hash.isEmpty) {
       throw const AuthException(AuthErrorKind.unknown, 'Missing transaction hash.');
     }
-    final from = (tx.from ?? '').trim();
-    final to = (tx.to ?? '').trim();
+    final from = tx.from.trim();
+    final to = tx.to.trim();
     if (from.isEmpty || to.isEmpty) {
       throw const AuthException(AuthErrorKind.unknown, 'Missing public transfer addresses.');
     }

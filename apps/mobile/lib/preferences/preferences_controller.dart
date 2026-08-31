@@ -10,7 +10,6 @@ import '../l10n/auvora_locale.dart';
 import '../portfolio/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../privacy/screenshot_guard.dart';
-import '../release/release_config.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
 import '../transfer/transfer_completion_client.dart';
 import 'models.dart';

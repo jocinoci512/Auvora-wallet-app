@@ -19,6 +19,15 @@ function Wait-HttpOk([string]$url, [int]$seconds = 60) {
   return $false
 }
 
+function Stop-StaleQaService([string]$pattern) {
+  Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and ($_.CommandLine -match $pattern) } |
+    ForEach-Object {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+      Add-Content $log "killed stale PID $($_.ProcessId) matching $pattern"
+    }
+}
+
 function Start-Svc([string]$name, [string[]]$nodeArgs, [hashtable]$extraEnv) {
   foreach ($k in $extraEnv.Keys) { Set-Item -Path "Env:$k" -Value $extraEnv[$k] }
   $env:NODE_ENV = 'development'
@@ -29,11 +38,18 @@ function Start-Svc([string]$name, [string[]]$nodeArgs, [hashtable]$extraEnv) {
 
 Write-Host '=== AUVORA QA LAB START ==='
 
-# Docker data plane
+# Docker data plane — wait until Postgres accepts connections before Nest/Prisma boots
 Push-Location $RepoRoot
 try {
   docker compose up -d postgres redis | Out-Null
 } finally { Pop-Location }
+$pgOk = $false
+for ($i = 0; $i -lt 30; $i++) {
+  docker exec auvora-postgres pg_isready -U auvora -d auvora_wallet 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { $pgOk = $true; break }
+  Start-Sleep -Seconds 2
+}
+if ($pgOk) { Add-Content $log 'postgres ready' } else { Add-Content $log 'postgres NOT ready' }
 
 # Local EVM + Mail
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'start-local-evm.ps1')
@@ -44,9 +60,10 @@ $bridgeUrl = 'http://127.0.0.1:3099/send'
 
 # Notifications with Mailpit bridge
 try { Invoke-WebRequest 'http://127.0.0.1:3006/health' -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log 'notifications already up' } catch {
+  Stop-StaleQaService 'notifications-service|services[\\/]notifications'
   Start-Svc 'notifications' @('scripts/cloud/with-env.mjs','pnpm','--filter','@auvora/notifications-service','dev') @{
     PORT = '3006'
-    NODE_OPTIONS = '--max-old-space-size=512'
+    NODE_OPTIONS = '--max-old-space-size=768'
     NOTIFICATIONS_SIMULATOR_ENABLED = 'false'
     NOTIFICATIONS_EMAIL_PROVIDER_URL = $bridgeUrl
     NOTIFICATIONS_CHANNEL_EMAIL_ENABLED = 'true'
