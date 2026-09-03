@@ -111,16 +111,33 @@ const report = {
 run('reverse', 'tcp:4000', 'tcp:4000');
 run('reverse', 'tcp:8545', 'tcp:8545');
 run('reverse', 'tcp:8899', 'tcp:8899');
-run('shell', 'am', 'force-stop', pkg);
-sleep(2000);
-run('shell', 'monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1');
-sleep(16000);
+if (process.env.AUVORA_SKIP_FORCE_STOP !== '1') {
+  run('shell', 'am', 'force-stop', pkg);
+  sleep(2000);
+  run('shell', 'monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1');
+  sleep(16000);
+} else {
+  sleep(2000);
+}
 
 let screen = dump('ui-sol-home.xml');
 let all = texts(screen).join(' | ');
+// If left on Account from a prior session, return to Home tabs first.
+if (/Auvora Account/i.test(all) && !/Home Tab/i.test(all)) {
+  const back = findTap(screen, (n) => /^Back$/i.test(n.label));
+  if (back) {
+    tap(back.x, back.y);
+    sleep(1500);
+    screen = dump('ui-sol-home-back.xml');
+    all = texts(screen).join(' | ');
+  }
+}
 report.banner = /LOCAL QA|Local EVM \+ Solana QA|Local Solana QA/i.test(all);
 report.localQaLabel = /LOCAL QA/i.test(all);
-if (/unlock|enter pin|passcode/i.test(all) && !/Good |Assets|Activity/i.test(all)) {
+const onVaultLockGate =
+  /Unlock Auvora|Authentication required|Verify identity/i.test(all) &&
+  !/Good morning|Assets Tab|Home Tab|Auvora Account/i.test(all);
+if (onVaultLockGate) {
   report.lockRequired = true;
   console.log(JSON.stringify(report, null, 2));
   console.log('\nUnlock the Auvora wallet on the Samsung.');

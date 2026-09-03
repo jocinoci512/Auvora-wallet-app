@@ -28,6 +28,7 @@ import '../transfer/address_validation.dart';
 import '../transfer/domain_resolution.dart';
 import '../transfer/customer_transfer_status.dart';
 import '../transfer/large_transfer_policy.dart';
+import '../transfer/local_qa_transfer_display.dart';
 import '../transfer/transfer_prepare_client.dart';
 import '../engine/quote_engine.dart';
 import '../wallet_engine/blockchain_adapter.dart';
@@ -36,6 +37,7 @@ import '../wallet_engine/evm_live_fee_quote.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
 import '../wallet_engine/solana_receipt_confirmer.dart';
 import '../wallet_engine/evm_testnet_broadcast.dart';
+import '../wallet_engine/solana_testnet_broadcast.dart';
 import '../wallet_engine/models.dart';
 import '../wallet_engine/network_manager.dart';
 import '../wallet_engine/transaction_engine.dart';
@@ -111,6 +113,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
   FeeSpeed _feeSpeed = FeeSpeed.standard;
   /// Live EVM gas quote shared with the signer (null until fetched / non-EVM).
   FeeEstimate? _liveEvmFee;
+  /// Live Local Solana QA fee (null until fetched / non-Solana-QA).
+  FeeEstimate? _liveSolanaFee;
   bool _feeRefreshing = false;
   String? _resolvedFromName;
   String? _domainProviderNote;
@@ -157,8 +161,8 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     WidgetsBinding.instance.addObserver(this);
     if (_qaValuationEnabled) {
       _hideUnsupported = false;
-      // Local EVM QA uses real on-chain amounts; keep crypto mode for tiny QA ETH transfers.
-      _fiatMode = !AuvoraQaLocalEvm.isActive;
+      // Local QA uses real on-chain amounts; keep crypto mode (no USD entry).
+      _fiatMode = !(AuvoraQaLocalEvm.isActive || AuvoraQaLocalSolana.isActive);
     }
     _toCtrl.addListener(() => setState(() {}));
     _amountCtrl.addListener(() => setState(() {}));
@@ -299,6 +303,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     setState(() => _step = s);
     if (s == _SendStep.amount || s == _SendStep.review || s == _SendStep.ready) {
       unawaited(_refreshLiveEvmFee());
+      unawaited(_refreshLiveSolanaFee());
     }
   }
 
@@ -309,22 +314,67 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         EvmTestnetBroadcast.enabledNow;
   }
 
+  bool get _usesLiveSolanaFee {
+    final asset = _asset;
+    return asset != null &&
+        asset.network == AssetNetwork.solana &&
+        SolanaTestnetBroadcast.enabledNow &&
+        AuvoraQaLocalSolana.isActive;
+  }
+
   FeeEstimate _feeFor(AssetHolding asset) {
     if (_usesLiveEvmFee && _liveEvmFee != null) return _liveEvmFee!;
+    if (_usesLiveSolanaFee && _liveSolanaFee != null) return _liveSolanaFee!;
     return estimateFee(asset: asset, amount: _parsedAmount(asset), speed: _feeSpeed);
   }
 
   String _feeDisplayLine(FeeEstimate fee, PortfolioController p) {
-    final amt = EvmLiveFeeQuote.formatNativeAmount(fee.feeCrypto);
-    if ((AuvoraQaLocalEvm.isActive || AuvoraQaLocalSolana.isActive) &&
-        fee.feeAsset.contains('QA')) {
-      final liveTag = fee.isLive ? '' : ' · estimate unavailable';
-      return '~$amt ${fee.feeAsset}$liveTag';
+    return LocalQaTransferDisplay.feeLine(fee: fee, money: p.money, asset: _asset);
+  }
+
+  Future<void> _refreshLiveSolanaFee() async {
+    if (!_usesLiveSolanaFee || _asset == null || !mounted) return;
+    final asset = _asset!;
+    final from = _wallet.addressFor(asset.network) ?? _wallet.address;
+    if (from == null || from.isEmpty) return;
+    setState(() => _feeRefreshing = true);
+    try {
+      final layer = context.read<BlockchainLayer>();
+      final chain = ChainIdMeta.fromAssetNetwork(asset.network);
+      final adapter = layer.adapterFor(chain);
+      final estimate = await adapter.estimateFee(
+        from: WalletAddressRecord(chain: chain, address: from, derivationPath: 'preview'),
+        assetSymbol: asset.ticker,
+        amount: _parsedAmount(asset),
+      );
+      if (!mounted) return;
+      setState(() {
+        _feeRefreshing = false;
+        _liveSolanaFee = FeeEstimate(
+          feeCrypto: estimate.networkFee,
+          feeUsd: 0,
+          feeAsset: AuvoraQaLocalSolana.feeAssetLabel,
+          arrivalLabel: estimate.arrivalLabel,
+          speed: _feeSpeed,
+          isLive: estimate.isLive,
+          rpcUnavailable: !estimate.isLive,
+        );
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _feeRefreshing = false;
+        _liveSolanaFee = FeeEstimate(
+          feeCrypto: 0,
+          feeUsd: 0,
+          feeAsset: AuvoraQaLocalSolana.feeAssetLabel,
+          arrivalLabel: 'Network fee unavailable — reconnect and refresh',
+          speed: _feeSpeed,
+          isLive: false,
+          rpcUnavailable: true,
+        );
+      });
     }
-    if (fee.isLive && fee.feeUsd <= 0) {
-      return '~$amt ${fee.feeAsset}';
-    }
-    return '${EvmLiveFeeQuote.formatNativeAmount(fee.feeCrypto)} ${fee.feeAsset} · ${p.money(fee.feeUsd)}';
   }
 
   Future<void> _refreshLiveEvmFee() async {
@@ -827,7 +877,9 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
     final amount = _parsedAmount(asset);
     final fee = _feeFor(asset);
     final feeInSame =
-        fee.feeAsset == asset.ticker || (fee.feeAsset == 'QA ETH' && asset.ticker == 'ETH');
+        fee.feeAsset == asset.ticker ||
+        (fee.feeAsset == 'QA ETH' && asset.ticker == 'ETH') ||
+        (fee.feeAsset == 'QA SOL' && asset.ticker == 'SOL');
     final insufficient = feeInSame ? amount + fee.feeCrypto > asset.balance : amount > asset.balance;
     final large = asset.balance > 0 && amount / asset.balance >= 0.5;
     final remaining = (asset.balance - amount - (feeInSame ? fee.feeCrypto : 0)).clamp(0.0, asset.balance);
@@ -836,7 +888,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
       children: [
         Text(
-          'Available ${p.crypto(asset.balance, asset.ticker)} · ${p.money(asset.fiatValue)}',
+          LocalQaTransferDisplay.availableLine(
+            asset: asset,
+            cryptoBalance: p.crypto(asset.balance, asset.ticker),
+            money: p.money,
+          ),
           style: const TextStyle(color: AetherColors.muted),
         ),
         const SizedBox(height: 12),
@@ -1112,9 +1168,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         const SizedBox(height: 10),
         _kv(
           'Amount',
-          qaCents != null
-              ? '${amount > 0 ? amount.toStringAsFixed(6) : '0.000001'} ${asset.ticker} · ${p.money(qaCents / 100)}'
-              : '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}',
+          LocalQaTransferDisplay.amountLine(
+            amount: amount,
+            asset: asset,
+            money: p.money,
+            qaNotionalUsdCents: qaCents,
+          ),
         ),
         _kv('Fee speed', fee.speed.label),
         _kv(
@@ -1135,6 +1194,15 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
           const SoftBanner(
             tone: BannerTone.info,
             message: 'Network fee is from live Local QA gas. QA ETH has no monetary value. Mainnet stays OFF.',
+          ),
+        ],
+        if (AuvoraQaLocalSolana.isActive &&
+            asset.network == AssetNetwork.solana) ...[
+          const SizedBox(height: 8),
+          const SoftBanner(
+            tone: BannerTone.info,
+            message:
+                'LOCAL QA · No monetary value. Network fee is QA SOL on the isolated validator only. Mainnet stays OFF.',
           ),
         ],
         if (_addrWarning != null) ...[
@@ -1181,7 +1249,14 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         FilledButton(
           onPressed: allChecked &&
                   !_submitting &&
-                  !(_usesLiveEvmFee && (_liveEvmFee == null || _liveEvmFee!.rpcUnavailable || !_liveEvmFee!.isLive))
+                  !(_usesLiveEvmFee &&
+                      (_liveEvmFee == null ||
+                          _liveEvmFee!.rpcUnavailable ||
+                          !_liveEvmFee!.isLive)) &&
+                  !(_usesLiveSolanaFee &&
+                      (_liveSolanaFee == null ||
+                          _liveSolanaFee!.rpcUnavailable ||
+                          !_liveSolanaFee!.isLive))
               ? () => _prepareFromReview()
               : null,
           child: Text(_submitting ? 'Checking…' : 'Continue'),
@@ -1212,7 +1287,14 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         ),
         const SizedBox(height: 16),
         _kv('Status', CustomerTransferStatus.ready),
-        _kv('Amount', '${amount.toStringAsFixed(6)} ${asset.ticker} · ${p.money(amount * asset.priceUsd)}'),
+        _kv(
+          'Amount',
+          LocalQaTransferDisplay.amountLine(
+            amount: amount,
+            asset: asset,
+            money: p.money,
+          ),
+        ),
         _kv('Network', _networkLabelFor(asset)),
         _kv(
           'Network fee',
@@ -1223,9 +1305,11 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         SoftBanner(
           tone: BannerTone.warn,
           message: ReleaseConfig.canBroadcastTestnet
-              ? (AuvoraQaLocalEvm.isActive
-                  ? 'Auvora Local EVM QA broadcast is ON. Signing submits only to the local QA chain. Mainnet stays OFF.'
-                  : 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.')
+              ? (AuvoraQaLocalSolana.isActive && asset.network == AssetNetwork.solana
+                  ? 'Auvora Local Solana QA broadcast is ON. Signing submits only to the local QA validator. Mainnet stays OFF.'
+                  : AuvoraQaLocalEvm.isActive
+                      ? 'Auvora Local EVM QA broadcast is ON. Signing submits only to the local QA chain. Mainnet stays OFF.'
+                      : 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.')
               : 'Live broadcast stays off. Do not sign unless you intend to complete a preview transfer.',
         ),
         if (AuvoraQaLocalEvm.isActive && fee.isLive) ...[
@@ -1235,18 +1319,43 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
             message: 'LOCAL QA · fee from live gas · QA ETH has no monetary value.',
           ),
         ],
+        if (AuvoraQaLocalSolana.isActive && asset.network == AssetNetwork.solana) ...[
+          const SizedBox(height: 10),
+          const SoftBanner(
+            tone: BannerTone.info,
+            message: 'LOCAL QA · No monetary value · fee in QA SOL · Mainnet stays OFF.',
+          ),
+        ],
         const SizedBox(height: 16),
         FilledButton(
           onPressed: _wallet.hasPin &&
-                  !(_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive))
+                  !(_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive)) &&
+                  !(_usesLiveSolanaFee &&
+                      (_liveSolanaFee == null ||
+                          _liveSolanaFee!.rpcUnavailable ||
+                          !_liveSolanaFee!.isLive))
               ? () async {
                   await _refreshLiveEvmFee();
+                  await _refreshLiveSolanaFee();
                   if (!mounted) return;
                   if (_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
                           'Live network fee could not be refreshed. Nothing was signed.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (_usesLiveSolanaFee &&
+                      (_liveSolanaFee == null ||
+                          _liveSolanaFee!.rpcUnavailable ||
+                          !_liveSolanaFee!.isLive)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Live Local Solana fee could not be refreshed. Nothing was signed.',
                         ),
                       ),
                     );
@@ -1520,11 +1629,18 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
       if (!mounted) return;
       setState(() => _progress = _TxProgressPhase.pending);
 
-      // Refresh live fee so signed gas matches the last confirmation screen.
+      // Refresh live fee so signed gas/fee matches the last confirmation screen.
       await _refreshLiveEvmFee();
+      await _refreshLiveSolanaFee();
       if (!mounted) return;
       if (_usesLiveEvmFee && (_liveEvmFee == null || !_liveEvmFee!.isLive)) {
         throw StateError('Live network fee could not be refreshed. Nothing was signed.');
+      }
+      if (_usesLiveSolanaFee &&
+          (_liveSolanaFee == null ||
+              _liveSolanaFee!.rpcUnavailable ||
+              !_liveSolanaFee!.isLive)) {
+        throw StateError('Live Local Solana fee could not be refreshed. Nothing was signed.');
       }
 
       final result = await engine.submitSend(

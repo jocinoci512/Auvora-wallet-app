@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../portfolio/models.dart';
+import '../release/auvora_qa_local_solana.dart';
 import '../release/network_env.dart';
 import 'domain_resolution.dart';
 
@@ -315,6 +316,16 @@ FeeEstimate _baseFee(AssetHolding asset) {
         arrivalLabel: 'About 10–40 minutes',
       );
     case AssetNetwork.solana:
+      // Auvora Local Solana QA: never attach production SOL USD valuation.
+      // Live fee is preferred via SolanaRpcAdapter when the Local QA validator is up.
+      if (AuvoraQaLocalSolana.isActive) {
+        return const FeeEstimate(
+          feeCrypto: 0.00005,
+          feeUsd: 0,
+          feeAsset: 'QA SOL',
+          arrivalLabel: 'Usually under a minute',
+        );
+      }
       return FeeEstimate(
         feeCrypto: 0.00005,
         feeUsd: 0.00005 * (asset.ticker == 'SOL' ? asset.priceUsd : 148),

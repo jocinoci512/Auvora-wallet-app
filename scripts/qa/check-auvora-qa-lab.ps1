@@ -24,6 +24,13 @@ function Status-Docker([string]$name) {
 
 $postgres = Status-Docker 'auvora-postgres'
 $redis = Status-Docker 'auvora-redis'
+# Host-side Redis RESP check — Docker "healthy" can still leave published :6379 black-holing Windows clients.
+try {
+  $redisPing = (node (Join-Path $PSScriptRoot 'redis-host-ping.mjs') 2>$null)
+  if ($redisPing -ne 'PONG') { $redis = "FAIL (host RESP: $redisPing)" }
+} catch {
+  $redis = 'FAIL (host RESP check error)'
+}
 $auth = Status-Http 'http://127.0.0.1:4001/ready'
 if ($auth -eq 'FAIL') { $auth = Status-Http 'http://127.0.0.1:4001/health' }
 $wallet = Status-Http 'http://127.0.0.1:3002/ready'

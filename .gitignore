@@ -90,3 +90,15 @@ docker-data
 # Local pnpm deploy validation outputs (never commit — tens of thousands of files)
 .tmp-deploy*/
 **/.tmp-deploy*/
+
+# Local Gradle / Android build cache (never commit — multi-GB)
+.gradle-user-home/
+
+# Local QA run dumps, APKs, screenshots, UI XML, logs (never commit)
+artifacts/
+
+# Ephemeral stack/boot status dumps
+.docker-boot.txt
+.stack-restart.txt
+.svc-retry.txt
+.web-tests.txt

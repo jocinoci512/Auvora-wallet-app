@@ -63,7 +63,7 @@ $bridgeUrl = 'http://127.0.0.1:3099/send'
 # Notifications with Mailpit bridge
 try { Invoke-WebRequest 'http://127.0.0.1:3006/health' -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log 'notifications already up' } catch {
   Stop-StaleQaService 'notifications-service|services[\\/]notifications'
-  Start-Svc 'notifications' @('scripts/cloud/with-env.mjs','pnpm','--filter','@auvora/notifications-service','dev') @{
+  Start-Svc 'notifications' @('scripts/qa/with-env-ipv4.mjs','pnpm','--filter','@auvora/notifications-service','dev') @{
     PORT = '3006'
     NODE_OPTIONS = '--max-old-space-size=768'
     NOTIFICATIONS_SIMULATOR_ENABLED = 'false'
@@ -76,7 +76,7 @@ try { Invoke-WebRequest 'http://127.0.0.1:3006/health' -UseBasicParsing -Timeout
 
 # Auth → notifications durable mail path + optional SMTP to Mailpit for critical-path
 try { Invoke-WebRequest 'http://127.0.0.1:4001/ready' -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log 'auth already ready' } catch {
-  Start-Svc 'auth' @('scripts/cloud/with-env.mjs','pnpm','--filter','@auvora/auth-service','dev') @{
+  Start-Svc 'auth' @('scripts/qa/with-env-ipv4.mjs','pnpm','--filter','@auvora/auth-service','dev') @{
     PORT = '4001'
     NODE_OPTIONS = '--max-old-space-size=768'
     MAIL_DRIVER = 'smtp'
@@ -97,7 +97,7 @@ foreach ($pair in @(
 )) {
   $url = "http://127.0.0.1:$($pair.Port)/ready"
   try { Invoke-WebRequest $url -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log "$($pair.Name) already ready" } catch {
-    Start-Svc $pair.Name @('scripts/cloud/with-env.mjs','pnpm','--filter',$pair.Filter,'dev') @{
+    Start-Svc $pair.Name @('scripts/qa/with-env-ipv4.mjs','pnpm','--filter',$pair.Filter,'dev') @{
       PORT = $pair.Port
       NODE_OPTIONS = '--max-old-space-size=768'
     }
@@ -106,7 +106,7 @@ foreach ($pair in @(
 }
 
 try { Invoke-WebRequest 'http://127.0.0.1:4000/health' -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log 'gateway already up' } catch {
-  Start-Svc 'gateway' @('scripts/cloud/with-env.mjs','pnpm','--filter','@auvora/gateway-service','dev') @{
+  Start-Svc 'gateway' @('scripts/qa/with-env-ipv4.mjs','pnpm','--filter','@auvora/gateway-service','dev') @{
     PORT = '4000'
     NODE_OPTIONS = '--max-old-space-size=768'
   }
@@ -115,13 +115,13 @@ try { Invoke-WebRequest 'http://127.0.0.1:4000/health' -UseBasicParsing -Timeout
 [void](Wait-HttpOk 'http://127.0.0.1:4000/ready' 60)
 
 try { Invoke-WebRequest 'http://127.0.0.1:3000/health' -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log 'web already up' } catch {
-  Start-Svc 'web' @('scripts/cloud/with-env.mjs','pnpm','--filter','@auvora/web','dev') @{
+  Start-Svc 'web' @('scripts/qa/with-env-ipv4.mjs','pnpm','--filter','@auvora/web','dev') @{
     NODE_OPTIONS = '--max-old-space-size=768'
   }
   if (Wait-HttpOk 'http://127.0.0.1:3000/health' 180) { Add-Content $log 'web UP' } else { Add-Content $log 'web FAIL' }
 }
 try { Invoke-WebRequest 'http://127.0.0.1:3001' -UseBasicParsing -TimeoutSec 2 | Out-Null; Add-Content $log 'admin already up' } catch {
-  Start-Svc 'admin' @('scripts/cloud/with-env.mjs','pnpm','--filter','@auvora/admin','dev') @{
+  Start-Svc 'admin' @('scripts/qa/with-env-ipv4.mjs','pnpm','--filter','@auvora/admin','dev') @{
     NODE_OPTIONS = '--max-old-space-size=768'
   }
   if (Wait-HttpOk 'http://127.0.0.1:3001' 180) { Add-Content $log 'admin UP' } else { Add-Content $log 'admin FAIL' }
