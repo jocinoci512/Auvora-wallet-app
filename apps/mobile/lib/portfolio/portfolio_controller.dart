@@ -3,8 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../release/release_config.dart';
 import '../search/fuzzy.dart';
+import '../wallet_engine/bitcoin_receipt_confirmer.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
 import '../wallet_engine/solana_receipt_confirmer.dart';
+import '../wallet_engine/tron_receipt_confirmer.dart';
 import 'models.dart';
 import 'portfolio_repository.dart';
 
@@ -43,6 +45,8 @@ class PortfolioController extends ChangeNotifier {
 
   final EvmReceiptConfirmer _receiptConfirmer = EvmReceiptConfirmer();
   final SolanaReceiptConfirmer _solanaReceiptConfirmer = SolanaReceiptConfirmer();
+  final BitcoinReceiptConfirmer _bitcoinReceiptConfirmer = BitcoinReceiptConfirmer();
+  final TronReceiptConfirmer _tronReceiptConfirmer = TronReceiptConfirmer();
   final Set<String> _activeReceiptPolls = {};
   final Set<String> _finalizedReceiptHashes = {};
 
@@ -416,6 +420,12 @@ class PortfolioController extends ChangeNotifier {
       if (SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) {
         // ignore: discarded_futures
         confirmLiveSolanaTransaction(txId: tx.id, onCompleted: onCompleted);
+      } else if (BitcoinReceiptConfirmer.isLiveBitcoinTxid(tx.hash)) {
+        // ignore: discarded_futures
+        confirmLiveBitcoinTransaction(txId: tx.id, onCompleted: onCompleted);
+      } else if (TronReceiptConfirmer.isLiveTronTxid(tx.hash)) {
+        // ignore: discarded_futures
+        confirmLiveTronTransaction(txId: tx.id, onCompleted: onCompleted);
       } else {
         // ignore: discarded_futures
         confirmLiveEvmTransaction(txId: tx.id, onCompleted: onCompleted);
@@ -424,7 +434,9 @@ class PortfolioController extends ChangeNotifier {
     for (final tx in snap.transactions) {
       if (tx.status != TxStatus.completed) continue;
       if (EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash) ||
-          SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) {
+          SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash) ||
+          BitcoinReceiptConfirmer.isLiveBitcoinTxid(tx.hash) ||
+          TronReceiptConfirmer.isLiveTronTxid(tx.hash)) {
         await txCompletedHandler?.call(tx);
       }
     }
@@ -433,7 +445,9 @@ class PortfolioController extends ChangeNotifier {
   bool _isAwaitingReceipt(PortfolioTx tx) {
     if (tx.status != TxStatus.pending && tx.status != TxStatus.confirming) return false;
     return EvmReceiptConfirmer.isLiveEvmTxHash(tx.hash) ||
-        SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash);
+        SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash) ||
+        BitcoinReceiptConfirmer.isLiveBitcoinTxid(tx.hash) ||
+        TronReceiptConfirmer.isLiveTronTxid(tx.hash);
   }
 
   /// Bounded receipt polling — never rebroadcasts.
@@ -525,6 +539,170 @@ class PortfolioController extends ChangeNotifier {
     } finally {
       _activeReceiptPolls.remove(txId);
     }
+  }
+
+  /// Bounded Bitcoin confirmation polling.
+  Future<void> confirmLiveBitcoinTransaction({
+    required String txId,
+    PortfolioTxCompletedHandler? onCompleted,
+  }) async {
+    final tx = txById(txId);
+    if (tx == null || !_isAwaitingReceipt(tx)) return;
+    if (!BitcoinReceiptConfirmer.isLiveBitcoinTxid(tx.hash)) return;
+    final hashKey = tx.hash.toLowerCase();
+    if (_finalizedReceiptHashes.contains(hashKey)) return;
+    if (_activeReceiptPolls.contains(txId)) return;
+    _activeReceiptPolls.add(txId);
+
+    try {
+      if (tx.status == TxStatus.pending) {
+        await finalizeTxStatus(txId, TxStatus.confirming);
+      }
+      final receipt = await _bitcoinReceiptConfirmer.pollUntilFinal(
+        txid: tx.hash,
+        isCancelled: () {
+          final current = txById(txId);
+          return current == null ||
+              current.status == TxStatus.completed ||
+              current.status == TxStatus.failed;
+        },
+      );
+      if (receipt == null) return;
+      final status = receipt.success ? TxStatus.completed : TxStatus.failed;
+      final finalized = await finalizeTxFromBitcoinReceipt(
+        txId: txId,
+        status: status,
+        receipt: receipt,
+      );
+      if (status == TxStatus.completed && finalized != null) {
+        _finalizedReceiptHashes.add(hashKey);
+        await txCompletedHandler?.call(finalized);
+        await onCompleted?.call(finalized);
+      }
+    } finally {
+      _activeReceiptPolls.remove(txId);
+    }
+  }
+
+  /// Bounded Tron confirmation polling.
+  Future<void> confirmLiveTronTransaction({
+    required String txId,
+    PortfolioTxCompletedHandler? onCompleted,
+  }) async {
+    final tx = txById(txId);
+    if (tx == null || !_isAwaitingReceipt(tx)) return;
+    if (!TronReceiptConfirmer.isLiveTronTxid(tx.hash)) return;
+    final hashKey = tx.hash.toLowerCase();
+    if (_finalizedReceiptHashes.contains(hashKey)) return;
+    if (_activeReceiptPolls.contains(txId)) return;
+    _activeReceiptPolls.add(txId);
+
+    try {
+      if (tx.status == TxStatus.pending) {
+        await finalizeTxStatus(txId, TxStatus.confirming);
+      }
+      final receipt = await _tronReceiptConfirmer.pollUntilFinal(
+        txid: tx.hash,
+        isCancelled: () {
+          final current = txById(txId);
+          return current == null ||
+              current.status == TxStatus.completed ||
+              current.status == TxStatus.failed;
+        },
+      );
+      if (receipt == null) return;
+      final status = receipt.success ? TxStatus.completed : TxStatus.failed;
+      final finalized = await finalizeTxFromTronReceipt(
+        txId: txId,
+        status: status,
+        receipt: receipt,
+      );
+      if (status == TxStatus.completed && finalized != null) {
+        _finalizedReceiptHashes.add(hashKey);
+        await txCompletedHandler?.call(finalized);
+        await onCompleted?.call(finalized);
+      }
+    } finally {
+      _activeReceiptPolls.remove(txId);
+    }
+  }
+
+  Future<PortfolioTx?> finalizeTxFromBitcoinReceipt({
+    required String txId,
+    required TxStatus status,
+    required BitcoinTransactionReceipt receipt,
+  }) async {
+    final snap = snapshot;
+    if (snap == null) return null;
+    PortfolioTx? updated;
+    final txs = snap.transactions.map((t) {
+      if (t.id != txId) return t;
+      updated = t.copyWith(
+        status: status,
+        blockNumber: receipt.blockHeight,
+        confirmedAt: DateTime.now(),
+        note: status == TxStatus.failed
+            ? 'This transfer could not be completed on-chain.'
+            : t.note,
+      );
+      return updated!;
+    }).toList();
+    snapshot = PortfolioSnapshot(
+      assets: snap.assets,
+      transactions: txs,
+      contacts: snap.contacts,
+      trend7d: snap.trend7d,
+      change24hUsd: snap.change24hUsd,
+      change24hPct: snap.change24hPct,
+      updatedAt: DateTime.now(),
+      isPreview: snap.isPreview,
+      offline: snap.offline,
+      priceError: snap.priceError,
+      syncDelayed: snap.syncDelayed,
+    );
+    notifyListeners();
+    await _persistSnapshot();
+    return updated;
+  }
+
+  Future<PortfolioTx?> finalizeTxFromTronReceipt({
+    required String txId,
+    required TxStatus status,
+    required TronTransactionReceipt receipt,
+  }) async {
+    final snap = snapshot;
+    if (snap == null) return null;
+    PortfolioTx? updated;
+    final txs = snap.transactions.map((t) {
+      if (t.id != txId) return t;
+      updated = t.copyWith(
+        status: status,
+        fee: receipt.feeTrx,
+        feeAsset: receipt.feeAssetLabel,
+        blockNumber: receipt.blockNumber,
+        confirmedAt: DateTime.now(),
+        note: status == TxStatus.failed
+            ? 'This transfer could not be completed on-chain.'
+            : t.note,
+      );
+      return updated!;
+    }).toList();
+    snapshot = PortfolioSnapshot(
+      assets: snap.assets,
+      transactions: txs,
+      contacts: snap.contacts,
+      trend7d: snap.trend7d,
+      change24hUsd: snap.change24hUsd,
+      change24hPct: snap.change24hPct,
+      updatedAt: DateTime.now(),
+      isPreview: snap.isPreview,
+      offline: snap.offline,
+      priceError: snap.priceError,
+      syncDelayed: snap.syncDelayed,
+    );
+    notifyListeners();
+    await _persistSnapshot();
+    return updated;
   }
 
   Future<PortfolioTx?> finalizeTxFromReceipt({

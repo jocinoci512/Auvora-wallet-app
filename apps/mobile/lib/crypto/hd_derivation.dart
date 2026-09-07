@@ -61,6 +61,41 @@ class HdDerivation {
     return Uint8List.fromList(node.key);
   }
 
+  /// Bitcoin account private key (m/84'/coinType'/account'/0/0). Caller must not log or export.
+  static Uint8List deriveBitcoinPrivateKey({
+    required String mnemonic,
+    int accountIndex = 0,
+    String passphrase = '',
+  }) {
+    final seed = seedFromMnemonic(mnemonic, passphrase: passphrase);
+    final coinType = AuvoraNetworkEnv.isTestnet ? 1 : 0;
+    final node =
+        _deriveSecpPath(seed, "m/84'/$coinType'/$accountIndex'/0/0");
+    return Uint8List.fromList(node.privateKey);
+  }
+
+  /// Bitcoin compressed public key (33 bytes) from private key.
+  static Uint8List bitcoinPublicKey(Uint8List privateKey) {
+    return _compressedPublicKey(privateKey);
+  }
+
+  /// Tron account private key (m/44'/195'/account'/0/0). Caller must not log or export.
+  static Uint8List deriveTronPrivateKey({
+    required String mnemonic,
+    int accountIndex = 0,
+    String passphrase = '',
+  }) {
+    final seed = seedFromMnemonic(mnemonic, passphrase: passphrase);
+    final node = _deriveSecpPath(seed, "m/44'/195'/$accountIndex'/0/0");
+    return Uint8List.fromList(node.privateKey);
+  }
+
+  /// Tron uncompressed public key (64 bytes, without 0x04 prefix) from private key.
+  static Uint8List tronPublicKey(Uint8List privateKey) {
+    final uncompressed = _uncompressedPublicKey(privateKey);
+    return uncompressed.sublist(1);
+  }
+
   static String deriveAddress({
     required String mnemonic,
     required AssetNetwork network,
@@ -224,6 +259,60 @@ class HdDerivation {
         .bytes
         .take(4);
     return _base58Encode(Uint8List.fromList([...payload, ...checksum]));
+  }
+
+  /// Base58Check encode payload.
+  static String base58CheckEncode(Uint8List payload) => _base58Check(payload);
+
+  /// Decode a Base58Check string. Validates 4-byte double-SHA256 checksum.
+  static Uint8List base58CheckDecode(String address) {
+    final raw = base58Decode(address);
+    if (raw.length < 4) throw const FormatException('Base58Check data too short');
+    final payload = raw.sublist(0, raw.length - 4);
+    final checksum = raw.sublist(raw.length - 4);
+    final expected = crypto.sha256
+        .convert(crypto.sha256.convert(payload).bytes)
+        .bytes
+        .sublist(0, 4);
+    for (var i = 0; i < 4; i++) {
+      if (checksum[i] != expected[i]) {
+        throw const FormatException('Base58Check checksum mismatch');
+      }
+    }
+    return payload;
+  }
+
+  /// Decode a Bech32 / SegWit address. Throws FormatException if invalid.
+  static ({String hrp, int witver, Uint8List witprog}) segwitDecode(String address) {
+    final lower = address.toLowerCase();
+    final pos = lower.lastIndexOf('1');
+    if (pos < 1 || pos + 7 > lower.length || lower.length > 90) {
+      throw const FormatException('Invalid Bech32 length or separator');
+    }
+    final hrp = lower.substring(0, pos);
+    final data = lower.substring(pos + 1);
+    final values = <int>[];
+    for (var i = 0; i < data.length; i++) {
+      final idx = _bech32Charset.indexOf(data[i]);
+      if (idx == -1) throw FormatException('Invalid Bech32 character: ${data[i]}');
+      values.add(idx);
+    }
+    if (_bech32Polymod([..._bech32HrpExpand(hrp), ...values]) != 1) {
+      throw const FormatException('Invalid Bech32 checksum');
+    }
+    final witver = values[0];
+    if (witver < 0 || witver > 16) {
+      throw FormatException('Invalid witness version: $witver');
+    }
+    final prog5 = values.sublist(1, values.length - 6);
+    final prog8 = _convertBits(prog5, 5, 8, false);
+    if (prog8.length < 2 || prog8.length > 40) {
+      throw FormatException('Invalid witness program length: ${prog8.length}');
+    }
+    if (witver == 0 && prog8.length != 20 && prog8.length != 32) {
+      throw FormatException('Witness v0 program must be 20 or 32 bytes');
+    }
+    return (hrp: hrp, witver: witver, witprog: Uint8List.fromList(prog8));
   }
 
   static String _segwitEncode({

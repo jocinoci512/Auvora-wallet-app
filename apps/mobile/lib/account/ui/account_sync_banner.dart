@@ -10,8 +10,8 @@ class AccountSyncBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sync = context.watch<WalletBackendSync>();
-    if (!sync.needsSyncWarning) return const SizedBox.shrink();
+    final sync = Provider.of<WalletBackendSync?>(context, listen: true);
+    if (sync == null || !sync.needsSyncWarning) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Text(

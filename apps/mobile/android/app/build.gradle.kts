@@ -15,7 +15,7 @@ if (hasReleaseKeystore) {
 
 android {
     namespace = "com.auvora.auvora_wallet"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -31,8 +31,8 @@ android {
 
     defaultConfig {
         applicationId = if (isQaBuild) "com.auvora.auvora_wallet.qa" else "com.auvora.auvora_wallet"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 24
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["appLabel"] = if (isQaBuild) "Auvora QA" else "Auvora Wallet"
@@ -51,12 +51,11 @@ android {
 
     buildTypes {
         release {
-            // Prefer upload keystore when android/key.properties is present.
-            // Alpha sideload falls back to debug signing (documented in store readiness).
+            // Enforce upload release signing for Google Play compliance — no debug fallback.
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                throw GradleException("Release builds require android/key.properties and upload-keystore.jks for Google Play compliance.")
             }
             // Minify deferred until ProGuard keep-rules are validated on device.
             isMinifyEnabled = false

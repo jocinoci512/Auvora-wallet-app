@@ -27,6 +27,7 @@ import 'transfer/address_book.dart';
 import 'ui/app_shell.dart';
 import 'ui/connections/deep_link_listener.dart';
 import 'wallet_engine/asset_registry.dart';
+import 'wallet_engine/bitcoin_rpc_adapter.dart';
 import 'wallet_engine/blockchain_adapter.dart';
 import 'wallet_engine/evm_rpc_adapter.dart';
 import 'wallet_engine/key_store.dart';
@@ -37,6 +38,7 @@ import 'wallet_engine/sync_engine.dart';
 import 'wallet_engine/transaction_engine.dart';
 import 'wallet_engine/models.dart';
 import 'wallet_engine/solana_rpc_adapter.dart';
+import 'wallet_engine/tron_rpc_adapter.dart';
 import 'wallet_engine/wallet_engine.dart';
 
 Future<void> main() async {
@@ -126,10 +128,9 @@ class _AuvoraAppState extends State<AuvoraApp> {
         Provider(
           create: (_) => BlockchainLayer(
             adapters: [
-              PreviewBlockchainAdapter(
-                chain: ChainId.bitcoin,
-                providerCode: 'btc-sim',
-                explorerBaseUrl: 'https://mempool.space/tx/',
+              BitcoinRpcBlockchainAdapter(
+                providerCode: 'btc-rpc',
+                explorerBaseUrl: 'https://mempool.space/testnet/tx/',
               ),
               EvmRpcBlockchainAdapter(
                 chain: ChainId.ethereum,
@@ -149,10 +150,9 @@ class _AuvoraAppState extends State<AuvoraApp> {
                 providerCode: 'bsc-rpc',
                 explorerBaseUrl: 'https://testnet.bscscan.com/tx/',
               ),
-              PreviewBlockchainAdapter(
-                chain: ChainId.tron,
-                providerCode: 'tron-sim',
-                explorerBaseUrl: 'https://tronscan.org/#/transaction/',
+              TronRpcBlockchainAdapter(
+                providerCode: 'tron-rpc',
+                explorerBaseUrl: 'https://nile.tronscan.org/#/transaction/',
               ),
               EvmRpcBlockchainAdapter(
                 chain: ChainId.polygon,

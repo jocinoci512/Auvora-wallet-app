@@ -32,10 +32,12 @@ import '../transfer/local_qa_transfer_display.dart';
 import '../transfer/transfer_prepare_client.dart';
 import '../engine/quote_engine.dart';
 import '../wallet_engine/blockchain_adapter.dart';
+import '../wallet_engine/bitcoin_receipt_confirmer.dart';
 import '../wallet_engine/evm_json_rpc.dart';
 import '../wallet_engine/evm_live_fee_quote.dart';
 import '../wallet_engine/evm_receipt_confirmer.dart';
 import '../wallet_engine/solana_receipt_confirmer.dart';
+import '../wallet_engine/tron_receipt_confirmer.dart';
 import '../wallet_engine/evm_testnet_broadcast.dart';
 import '../wallet_engine/solana_testnet_broadcast.dart';
 import '../wallet_engine/models.dart';
@@ -1674,6 +1676,12 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
       } else if (ReleaseConfig.canBroadcastTestnet &&
           SolanaReceiptConfirmer.isLiveSolanaSignature(tx.hash)) {
         unawaited(_portfolio.confirmLiveSolanaTransaction(txId: tx.id));
+      } else if (ReleaseConfig.canBroadcastTestnet &&
+          BitcoinReceiptConfirmer.isLiveBitcoinTxid(tx.hash)) {
+        unawaited(_portfolio.confirmLiveBitcoinTransaction(txId: tx.id));
+      } else if (ReleaseConfig.canBroadcastTestnet &&
+          TronReceiptConfirmer.isLiveTronTxid(tx.hash)) {
+        unawaited(_portfolio.confirmLiveTronTransaction(txId: tx.id));
       }
       await _book.rememberRecipient(address: _toCtrl.text.trim(), network: asset.network);
       HapticFeedback.mediumImpact();

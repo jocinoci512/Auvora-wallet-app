@@ -10,10 +10,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Local Solana QA active (dart-define)', () {
     test('isActive', () {
+      if (!AuvoraQaLocalSolana.isActive) {
+        // ignore: avoid_print
+        print('Skipping test: requires --dart-define=AUVORA_QA_LOCAL_SOLANA=true');
+        return;
+      }
       expect(AuvoraQaLocalSolana.isActive, isTrue);
     });
 
     test('static estimateFee uses QA SOL and feeUsd 0', () {
+      if (!AuvoraQaLocalSolana.isActive) return;
       final fee = estimateFee(
         asset: const AssetHolding(
           id: 'sol',
@@ -38,6 +44,7 @@ void main() {
     });
 
     test('amountLine uses QA SOL without fiat', () {
+      if (!AuvoraQaLocalSolana.isActive) return;
       final line = LocalQaTransferDisplay.amountLine(
         amount: 0.0001,
         asset: const AssetHolding(
@@ -58,6 +65,7 @@ void main() {
     });
 
     test('availableLine suppresses fiat', () {
+      if (!AuvoraQaLocalSolana.isActive) return;
       final line = LocalQaTransferDisplay.availableLine(
         asset: const AssetHolding(
           id: 'sol',

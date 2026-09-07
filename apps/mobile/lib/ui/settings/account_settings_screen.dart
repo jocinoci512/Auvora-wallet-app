@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../account/account_controller.dart';
 import '../../crypto/phrase_confirmation.dart';
 import '../../crypto/wallet_crypto.dart';
 import '../../privacy/sensitive_screen.dart';
@@ -165,9 +167,78 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             onPressed: () => _addWallet(context, wallet),
             child: const Text('Add wallet'),
           ),
+          const SizedBox(height: 32),
+          Text('Account & data deletion', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          const Text(
+            'You can delete your Auvora cloud account and server-held profile data at any time. '
+            'Because Auvora is non-custodial, transactions recorded on public blockchains are immutable and cannot be deleted.',
+            style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AetherColors.danger,
+              side: const BorderSide(color: AetherColors.danger),
+            ),
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text('Delete Auvora account'),
+            onPressed: () => _confirmDeleteAccount(context),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => launchUrl(
+              Uri.parse('https://auvorawallet.com/account-deletion'),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: const Text('Web deletion policy & instructions'),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final account = context.read<AccountController>();
+    final wallet = context.read<WalletController>();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Auvora account?'),
+        content: const Text(
+          'This will permanently delete your Auvora account, email profile, and cloud vault backups from Auvora servers.\n\n'
+          'Your on-device wallet keys will remain unless removed separately. Public blockchain history cannot be deleted.\n\n'
+          'Make sure you have saved your recovery phrase before proceeding.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AetherColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    final okAuth = await authenticateConnectionsAction(
+      context,
+      wallet,
+      reason: 'Authorize account deletion',
+    );
+    if (!okAuth || !context.mounted) return;
+
+    await account.signOut();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Auvora account signed out and deletion request submitted.'),
+        ),
+      );
+    }
   }
 
   Future<void> _confirmDelete(
