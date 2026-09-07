@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:auvora_wallet/crypto/hd_derivation.dart';
 import 'package:auvora_wallet/portfolio/models.dart';
