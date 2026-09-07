@@ -22,47 +22,44 @@ function Get-QaSolanaBalanceLamports([string]$addr) {
 }
 
 $before = Get-QaSolanaBalanceLamports $address
-Write-Host "Funding existing Auvora Solana address (public only)..."
-Write-Host "ADDRESS: $address"
-Write-Host "AMOUNT: $($lamports / 1e9) QA SOL"
-Write-Host "BALANCE_BEFORE: $($before / 1e9) QA SOL"
+if ($before -ge 1000000000) {
+  Write-Host "Existing Auvora Solana address already funded (balance: $($before / 1e9) QA SOL). Skipping airdrop."
+  $sig = 'SKIPPED_ALREADY_FUNDED'
+  $confirmed = $true
+} else {
+  Write-Host "Funding existing Auvora Solana address (public only)..."
+  Write-Host "ADDRESS: $address"
+  Write-Host "AMOUNT: $($lamports / 1e9) QA SOL"
+  Write-Host "BALANCE_BEFORE: $($before / 1e9) QA SOL"
 
-$sig = Invoke-QaSolanaRpc -Method 'requestAirdrop' -Params @($address, $lamports)
-Write-Host "AIRDROP_SIG: $sig"
+  $sig = Invoke-QaSolanaRpc -Method 'requestAirdrop' -Params @($address, $lamports)
+  Write-Host "AIRDROP_SIG: $sig"
 
-$confirmed = $false
-for ($i = 0; $i -lt 60; $i++) {
-  Start-Sleep -Seconds 1
-  try {
-    $st = Invoke-QaSolanaRpc -Method 'getSignatureStatuses' -Params @(
-      @(, $sig),
-      @{ searchTransactionHistory = $true }
-    )
-    $value = $st.value[0]
-    if ($null -eq $value) { continue }
-    if ($null -ne $value.err) { throw "Airdrop failed on-chain: $($value.err | ConvertTo-Json -Compress)" }
-    if ($value.confirmationStatus -eq 'confirmed' -or $value.confirmationStatus -eq 'finalized') {
-      $confirmed = $true
-      break
+  $confirmed = $false
+  for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Seconds 1
+    try {
+      $st = Invoke-QaSolanaRpc -Method 'getSignatureStatuses' -Params @(
+        @(, $sig),
+        @{ searchTransactionHistory = $true }
+      )
+      $value = $st.value[0]
+      if ($null -eq $value) { continue }
+      if ($null -ne $value.err) { throw "Airdrop failed on-chain: $($value.err | ConvertTo-Json -Compress)" }
+      if ($value.confirmationStatus -eq 'confirmed' -or $value.confirmationStatus -eq 'finalized') {
+        $confirmed = $true
+        break
+      }
+    } catch {
+      if ("$_" -match 'Airdrop failed') { throw }
     }
-  } catch {
-    if ("$_" -match 'Airdrop failed') { throw }
+  }
+  if (-not $confirmed) {
+    throw "Airdrop signature $sig did not confirm."
   }
 }
-if (-not $confirmed) {
-  throw "Airdrop signature $sig did not confirm."
-}
 
-$after = 0L
-for ($i = 0; $i -lt 30; $i++) {
-  $after = Get-QaSolanaBalanceLamports $address
-  if ($after -gt $before) { break }
-  Start-Sleep -Seconds 1
-}
-if ($after -le $before) {
-  throw "Airdrop confirmed but balance did not increase (before=$before after=$after)."
-}
-
+$after = Get-QaSolanaBalanceLamports $address
 $sol = [double]$after / 1e9
 Write-Host "BALANCE: $sol QA SOL"
 

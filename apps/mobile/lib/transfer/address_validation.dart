@@ -320,7 +320,7 @@ FeeEstimate _baseFee(AssetHolding asset) {
       // Live fee is preferred via SolanaRpcAdapter when the Local QA validator is up.
       if (AuvoraQaLocalSolana.isActive) {
         return const FeeEstimate(
-          feeCrypto: 0.00005,
+          feeCrypto: 0.000005,
           feeUsd: 0,
           feeAsset: 'QA SOL',
           arrivalLabel: 'Usually under a minute',

@@ -33,7 +33,7 @@ void main() {
         fee: fee,
         money: (v) => '\$${v.toStringAsFixed(2)}',
       );
-      expect(line, '0.00005 QA SOL');
+      expect(line, '0.000005 QA SOL');
       expect(LocalQaTransferDisplay.containsFiatMarkers(line), isFalse);
     });
 

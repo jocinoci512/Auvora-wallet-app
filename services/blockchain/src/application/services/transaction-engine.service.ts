@@ -108,8 +108,9 @@ export class TransactionEngine {
   async broadcastWithdrawal(input: BroadcastWithdrawalInput): Promise<ChainTransactionRecord> {
     const provider = this.providerFactory.getProvider(input.chain);
     const rpcUrl =
-      typeof (provider as { getSafeEndpoint?: () => string }).getSafeEndpoint === 'function'
-        ? (provider as { getSafeEndpoint: () => string }).getSafeEndpoint()
+      typeof (provider as unknown as { getSafeEndpoint?: () => string }).getSafeEndpoint ===
+      'function'
+        ? (provider as unknown as { getSafeEndpoint: () => string }).getSafeEndpoint()
         : undefined;
     assertBroadcastAllowed(this.env, { chain: input.chain, rpcUrl });
     const network = await this.requireNetwork(input.chain);
@@ -205,8 +206,9 @@ export class TransactionEngine {
     const tx = await this.getTransaction(id);
     const provider = this.providerFactory.getProvider(tx.chain);
     const rpcUrl =
-      typeof (provider as { getSafeEndpoint?: () => string }).getSafeEndpoint === 'function'
-        ? (provider as { getSafeEndpoint: () => string }).getSafeEndpoint()
+      typeof (provider as unknown as { getSafeEndpoint?: () => string }).getSafeEndpoint ===
+      'function'
+        ? (provider as unknown as { getSafeEndpoint: () => string }).getSafeEndpoint()
         : undefined;
     assertBroadcastAllowed(this.env, { chain: tx.chain, rpcUrl });
     if (tx.status !== ChainTxStatus.FAILED && tx.status !== ChainTxStatus.MEMPOOL) {
