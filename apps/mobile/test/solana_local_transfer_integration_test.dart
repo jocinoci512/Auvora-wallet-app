@@ -110,7 +110,7 @@ void main() {
       feeNative: fee / 1000000000,
     );
     expect(receipt, isNotNull);
-    expect(receipt!.success, isTrue);
+    expect(receipt.success, isTrue);
     expect(receipt.slot, greaterThan(0));
     // ignore: avoid_print
     print('SOLANA_QA_SIG=$signature feeLamports=${receipt.feeLamports} slot=${receipt.slot}');
