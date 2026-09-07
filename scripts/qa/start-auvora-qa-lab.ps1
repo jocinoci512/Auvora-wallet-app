@@ -128,7 +128,17 @@ try { Invoke-WebRequest 'http://127.0.0.1:3001' -UseBasicParsing -TimeoutSec 2 |
 }
 
 # ADB reverse when Samsung is attached
-$adb = 'D:\Android\Sdk\platform-tools\adb.exe'
+$adb = if ($env:ANDROID_HOME -and (Test-Path (Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'))) {
+  Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+} elseif (Test-Path 'E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe') {
+  'E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe'
+} elseif (Test-Path 'D:\Android\Sdk\platform-tools\adb.exe') {
+  'D:\Android\Sdk\platform-tools\adb.exe'
+} elseif (Get-Command adb -ErrorAction SilentlyContinue) {
+  (Get-Command adb).Source
+} else {
+  'adb.exe'
+}
 if (Test-Path $adb) {
   $devs = & $adb devices
   if ($devs -match 'R5CW51ZMNLB\s+device') {

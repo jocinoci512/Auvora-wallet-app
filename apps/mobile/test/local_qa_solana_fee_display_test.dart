@@ -107,7 +107,7 @@ void main() {
       expect(line, contains('QA ETH'));
     });
 
-    test('live lamport fee 5000 maps to 0.00005 QA SOL display', () {
+    test('live lamport fee 5000 maps to 0.000005 QA SOL display', () {
       const lamports = 5000;
       final feeCrypto = lamports / 1000000000;
       final fee = FeeEstimate(
@@ -117,9 +117,9 @@ void main() {
         arrivalLabel: 'Usually under a minute',
         isLive: true,
       );
-      expect(fee.feeCrypto, closeTo(0.00005, 1e-12));
+      expect(fee.feeCrypto, closeTo(0.000005, 1e-12));
       final line = LocalQaTransferDisplay.feeLine(fee: fee, money: (v) => '\$${v.toStringAsFixed(2)}');
-      expect(line, '0.00005 QA SOL');
+      expect(line, '0.000005 QA SOL');
     });
   });
 }

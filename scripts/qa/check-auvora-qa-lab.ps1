@@ -51,7 +51,17 @@ $bridge = Status-Http 'http://127.0.0.1:3099/health'
 $localEvm = if (Test-QaEvmHealthy) { 'HEALTHY' } else { 'FAIL' }
 $localSolana = if (Test-QaSolanaHealthy) { 'HEALTHY' } else { 'FAIL' }
 
-$adb = 'D:\Android\Sdk\platform-tools\adb.exe'
+$adb = if ($env:ANDROID_HOME -and (Test-Path (Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'))) {
+  Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+} elseif (Test-Path 'E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe') {
+  'E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe'
+} elseif (Test-Path 'D:\Android\Sdk\platform-tools\adb.exe') {
+  'D:\Android\Sdk\platform-tools\adb.exe'
+} elseif (Get-Command adb -ErrorAction SilentlyContinue) {
+  (Get-Command adb).Source
+} else {
+  'adb.exe'
+}
 $android = 'NOT CONNECTED'
 $reverse = 'N/A'
 $adb4000 = 'N/A'
