@@ -1,0 +1,23 @@
+title = "Auvora gitleaks config"
+
+[extend]
+useDefault = true
+
+# gitleaks 8.24.x (gitleaks-action) only honors the singular [allowlist] table.
+# generic-api-key matches dummy vault vectors, localStorage/keychain *names*,
+# audit prose, and Anvil QA sentinels — not live credentials.
+[allowlist]
+description = "False positives: dummy vault interop vectors, preference key names, audit wording, Anvil QA sentinel"
+paths = [
+  '''packages/vault-crypto/src/fixtures/interop-vectors\.json''',
+  '''apps/mobile/test/fixtures/interop-vectors\.json''',
+  '''services/wallet/src/presentation/controllers/vault-wire\.contract\.spec\.ts''',
+  '''scripts/qa/run-evm-failure-integration\.mjs''',
+  '''apps/mobile/lib/wallet_engine/key_store\.dart''',
+  '''apps/web/src/lib/intelligence/guidance\.ts''',
+  '''apps/web/src/lib/web3/demo\.ts''',
+  '''apps/web/src/lib/nft/prefs\.ts''',
+  '''apps/web/src/lib/web3/prefs\.ts''',
+  '''apps/web/src/lib/settings/prefs\.ts''',
+  '''docs/AUVORA_TECHNICAL_AUDIT_PERFORMANCE_ROUND2_REPORT\.md''',
+]
