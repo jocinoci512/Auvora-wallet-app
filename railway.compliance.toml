@@ -1,0 +1,53 @@
+# Auvora compliance-prod — dedicated Railway config-as-code.
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` is shared by Nest mesh services. compliance-prod must use
+# an explicit startCommand + dedicated docs so it does not inherit legacy
+# start paths.
+# Set:
+#   Config as Code path = /railway.compliance.toml
+#
+# Railway service settings:
+#   Service name       = compliance-prod
+#   Repository         = jocinoci512/Auvora-wallet-app
+#   Branch             = main
+#   Root Directory     = blank / "/"
+#   Builder            = Dockerfile (pinned below)
+#   Dockerfile path    = infrastructure/docker/Dockerfile.service (pinned below)
+#   Config as Code     = /railway.compliance.toml
+#   Healthcheck path   = /health (pinned below)
+#   Public networking  = OFF (private mesh only — gateway is the public edge)
+#
+# BUILD ARGS:
+# Set service Variables SERVICE=compliance and PORT=3005 so Dockerfile.service
+# receives matching ARG values at build time.
+#
+# REQUIRED non-secret Variables:
+#   SERVICE=compliance
+#   PORT=3005
+#   NODE_ENV=production
+#   LOG_LEVEL=info
+#   KYC_MODE=manual_admin_review
+#   COMPLIANCE_SIMULATOR_ENABLED=false
+#   OTEL_ENABLED=false
+#
+# REQUIRED secret / reference Variables:
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}
+#   REDIS_URL=${{Redis.REDIS_URL}}
+#   JWT_ACCESS_SECRET=${{ "auth-prods".JWT_ACCESS_SECRET }}
+#   CSRF_SECRET=${{ "auth-prods".CSRF_SECRET }}
+#   INTERNAL_API_KEY=${{ "gateway-prod".INTERNAL_API_KEY }}
+#   COMPLIANCE_FIELD_ENCRYPTION_KEY=<32-char secret>
+#
+# NOTE: Commercial KYC credentials (Stripe Identity, Sumsub, etc.) are NOT REQUIRED.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.service"
+
+[deploy]
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

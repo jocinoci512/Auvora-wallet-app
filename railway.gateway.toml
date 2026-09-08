@@ -42,6 +42,8 @@
 #   BLOCKCHAIN_SERVICE_URL=http://${{blockchain-prod.RAILWAY_PRIVATE_DOMAIN}}:3003
 #   MARKET_DATA_SERVICE_URL=http://${{ "market-data-prod".RAILWAY_PRIVATE_DOMAIN }}:3012
 #   CONNECTIONS_SERVICE_URL=http://${{connections-prod.RAILWAY_PRIVATE_DOMAIN}}:3016
+#   COMPLIANCE_SERVICE_URL=http://${{ "compliance-prod".RAILWAY_PRIVATE_DOMAIN }}:3005
+#   NOTIFICATIONS_SERVICE_URL=http://${{ "notifications-prod".RAILWAY_PRIVATE_DOMAIN }}:3006
 #   CORS_ORIGINS=https://auvorawallet.com,https://www.auvorawallet.com,https://admin.auvorawallet.com
 #   GATEWAY_RATE_LIMIT_MAX=400
 #   GATEWAY_RATE_LIMIT_WINDOW_SECONDS=60
