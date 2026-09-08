@@ -31,6 +31,29 @@ export const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   /**
+   * Controlled Mainnet Rollout — Global Kill Switch.
+   * Default: false. Master kill switch overrides all chain-level settings.
+   */
+  MAINNET_GLOBAL_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
+   * Chain-specific rollout gates (OFF | READY | CANARY | ACTIVE | PAUSED).
+   * All default strictly to OFF.
+   */
+  MAINNET_ETHEREUM_STATE: z.enum(['OFF', 'READY', 'CANARY', 'ACTIVE', 'PAUSED']).default('OFF'),
+  MAINNET_BNB_STATE: z.enum(['OFF', 'READY', 'CANARY', 'ACTIVE', 'PAUSED']).default('OFF'),
+  MAINNET_POLYGON_STATE: z.enum(['OFF', 'READY', 'CANARY', 'ACTIVE', 'PAUSED']).default('OFF'),
+  MAINNET_SOLANA_STATE: z.enum(['OFF', 'READY', 'CANARY', 'ACTIVE', 'PAUSED']).default('OFF'),
+  MAINNET_BITCOIN_STATE: z.enum(['OFF', 'READY', 'CANARY', 'ACTIVE', 'PAUSED']).default('OFF'),
+  MAINNET_TRON_STATE: z.enum(['OFF', 'READY', 'CANARY', 'ACTIVE', 'PAUSED']).default('OFF'),
+  /** Global emergency pause switch. When true, halts all broadcasts even if active. */
+  MAINNET_EMERGENCY_PAUSE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
    * Network environment. `testnet` selects Sepolia / Amoy / BSC testnet / Solana
    * Devnet / Bitcoin Testnet3 / Tron Nile host defaults. Never confuses with mainnet.
    */
@@ -91,6 +114,11 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServiceEnv {
   if (parsed.data.NODE_ENV === 'production' && parsed.data.BLOCKCHAIN_LIVE_BROADCAST) {
     throw new Error(
       'BLOCKCHAIN_LIVE_BROADCAST must be false in production Closed Beta (no live tx broadcast)',
+    );
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.MAINNET_GLOBAL_ENABLED) {
+    throw new Error(
+      'MAINNET_GLOBAL_ENABLED must be false in production during preparation phase (Mainnet OFF)',
     );
   }
   if (

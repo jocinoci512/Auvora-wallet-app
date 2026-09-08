@@ -341,6 +341,43 @@ export interface LiveProviderRpcHealthSummary {
   providers: LiveProviderRpcHealth[];
 }
 
+export type ChainRolloutState = 'OFF' | 'READY' | 'CANARY' | 'ACTIVE' | 'PAUSED';
+
+export interface MainnetReadinessReport {
+  globalMainnetEnabled: boolean;
+  liveBroadcastKillSwitchActive: boolean;
+  emergencyPauseActive: boolean;
+  chains: {
+    ETHEREUM: ChainRolloutState;
+    BNB_SMART_CHAIN: ChainRolloutState;
+    POLYGON: ChainRolloutState;
+    SOLANA: ChainRolloutState;
+    BITCOIN: ChainRolloutState;
+    TRON: ChainRolloutState;
+  };
+  safetyGuarantee: {
+    clientSideHardwareSigningOnly: boolean;
+    adminCannotSign: boolean;
+    adminCannotBroadcast: boolean;
+    adminCannotActivateMainnet: boolean;
+  };
+  chainPolicies?: Record<
+    string,
+    {
+      chain: ChainNetwork;
+      name: string;
+      nativeSymbol: string;
+      caip2: string;
+      expectedChainId: number | string;
+      standardConfirmations: number;
+      finalityMechanism: string;
+      reorgSafetyMargin: number;
+      nativeFeeAsset: string;
+      dryRunSimulationSupported: boolean;
+    }
+  >;
+}
+
 export interface SyncJob {
   id: string;
   chain: ChainNetwork;
@@ -2030,6 +2067,13 @@ export class AuvoraClient {
 
   async adminBlockchainHealth(): Promise<ProviderHealthSnapshot[]> {
     return this.request<ProviderHealthSnapshot[]>('GET', '/api/v1/admin/blockchain/health');
+  }
+
+  async adminGetMainnetReadiness(): Promise<MainnetReadinessReport> {
+    return this.request<MainnetReadinessReport>(
+      'GET',
+      '/api/v1/admin/blockchain/mainnet/readiness',
+    );
   }
 
   async adminBlockchainLiveRpcHealth(): Promise<LiveProviderRpcHealthSummary> {

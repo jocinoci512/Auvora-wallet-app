@@ -2,9 +2,12 @@ import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { AdminMetricsService } from '../../application/services/admin-metrics.service';
 import { AdminQueryService } from '../../application/services/admin-query.service';
+import { getMainnetRolloutSummary } from '../../application/services/broadcast-policy';
 import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { SyncService } from '../../application/services/sync.service';
 import { TransactionEngine } from '../../application/services/transaction-engine.service';
+import { ENV, type ServiceEnv } from '../../config/env.schema';
+import { MAINNET_CHAIN_CONFIRMATION_POLICIES } from '../../domain/mainnet-rollout';
 import {
   PERMISSION_BLOCKCHAIN_READ,
   PERMISSION_BLOCKCHAIN_SYNC,
@@ -43,7 +46,22 @@ export class AdminBlockchainController {
     @Inject(AdminMetricsService) private readonly metricsService: AdminMetricsService,
     @Inject(AdminQueryService) private readonly queryService: AdminQueryService,
     @Inject(ProviderRpcHealthService) private readonly providerRpcHealth: ProviderRpcHealthService,
+    @Inject(ENV) private readonly env: ServiceEnv,
   ) {}
+
+  /**
+   * Safe, read-only Mainnet readiness, rollouts, and kill-switch posture.
+   * Admin can display this dashboard, but CANNOT toggle Mainnet, sign, or broadcast.
+   */
+  @Get('mainnet/readiness')
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
+  getMainnetReadiness() {
+    const summary = getMainnetRolloutSummary(this.env);
+    return successResponse({
+      ...summary,
+      chainPolicies: MAINNET_CHAIN_CONFIRMATION_POLICIES,
+    });
+  }
 
   @Get('providers')
   @Permissions(PERMISSION_BLOCKCHAIN_READ)

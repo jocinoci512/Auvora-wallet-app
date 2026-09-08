@@ -161,4 +161,49 @@ describe('Production Mainnet Broadcast Kill Switch — All 6 Chains', () => {
       ).toThrow(ValidationError);
     }
   });
+
+  it('guarantees each chain has independent rollout gate defaulting to OFF', () => {
+    const defaultEnv = {
+      ...productionEnv,
+      MAINNET_GLOBAL_ENABLED: true,
+      BLOCKCHAIN_LIVE_BROADCAST: true,
+      MAINNET_ETHEREUM_STATE: 'OFF',
+      MAINNET_BNB_STATE: 'OFF',
+      MAINNET_POLYGON_STATE: 'OFF',
+      MAINNET_SOLANA_STATE: 'OFF',
+      MAINNET_BITCOIN_STATE: 'OFF',
+      MAINNET_TRON_STATE: 'OFF',
+    } as ServiceEnv;
+
+    const targets = [
+      {
+        chain: ChainNetwork.ETHEREUM,
+        evmChainId: 1,
+        rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/x',
+      },
+      {
+        chain: ChainNetwork.BNB_SMART_CHAIN,
+        evmChainId: 56,
+        rpcUrl: 'https://bnb-mainnet.g.alchemy.com/v2/x',
+      },
+      {
+        chain: ChainNetwork.POLYGON,
+        evmChainId: 137,
+        rpcUrl: 'https://polygon-mainnet.g.alchemy.com/v2/x',
+      },
+      { chain: ChainNetwork.SOLANA, rpcUrl: 'https://solana-mainnet.g.alchemy.com/v2/x' },
+      { chain: ChainNetwork.BITCOIN, rpcUrl: 'https://bitcoin-mainnet.g.alchemy.com/v2/x' },
+      { chain: ChainNetwork.TRON, rpcUrl: 'https://tron-mainnet.g.alchemy.com/v2/x' },
+    ];
+
+    for (const target of targets) {
+      expect(() =>
+        assertBroadcastAllowed(defaultEnv, {
+          chain: target.chain,
+          rpcUrl: target.rpcUrl,
+          evmChainId: target.evmChainId,
+        }),
+      ).toThrow(ValidationError);
+    }
+  });
 });

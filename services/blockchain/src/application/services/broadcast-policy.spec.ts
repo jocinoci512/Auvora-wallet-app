@@ -17,7 +17,11 @@ describe('assertLiveBroadcastAllowed', () => {
 
   it('allows when explicitly enabled', () => {
     expect(() =>
-      assertLiveBroadcastAllowed({ ...base, BLOCKCHAIN_LIVE_BROADCAST: true }),
+      assertLiveBroadcastAllowed({
+        ...base,
+        BLOCKCHAIN_LIVE_BROADCAST: true,
+        MAINNET_GLOBAL_ENABLED: true,
+      }),
     ).not.toThrow();
   });
 });
@@ -116,5 +120,20 @@ describe('assertBroadcastAllowed — mainnet hard block + testnet allowlist', ()
         rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/x',
       }),
     ).toThrow(/Mainnet RPC host/);
+  });
+
+  it('rejects broadcast when emergency pause is active', () => {
+    const env = {
+      ...base,
+      BLOCKCHAIN_LIVE_BROADCAST: true,
+      MAINNET_GLOBAL_ENABLED: true,
+      MAINNET_ETHEREUM_STATE: 'ACTIVE',
+      MAINNET_EMERGENCY_PAUSE: true,
+    } as ServiceEnv;
+    expect(() =>
+      assertBroadcastAllowed(env, {
+        chain: ChainNetwork.ETHEREUM,
+      }),
+    ).toThrow(/Global emergency broadcast pause is active/);
   });
 });

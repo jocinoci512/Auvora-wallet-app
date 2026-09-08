@@ -77,6 +77,11 @@ export function buildBlockchainProxyOpenApiPaths(): OpenAPIObject['paths'] {
       chainTag,
     ),
     '/api/v1/blockchain/fees/estimate': proxyPath('post', 'Estimate network fee', chainTag),
+    '/api/v1/admin/blockchain/mainnet/readiness': proxyPath(
+      'get',
+      'Get Mainnet readiness and kill switch posture (admin, read-only)',
+      adminTag,
+    ),
     '/api/v1/admin/blockchain/providers': proxyPath(
       'get',
       'List blockchain providers and configuration (admin)',

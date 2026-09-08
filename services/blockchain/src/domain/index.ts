@@ -43,3 +43,15 @@ export {
   type EventBusPort,
   type PublishEventInput,
 } from './events/event-bus.port';
+export {
+  type ChainRolloutState,
+  type SigningLocation,
+  type BroadcastLifecycleState,
+  type ChainConfirmationPolicy,
+  MAINNET_CHAIN_CONFIRMATION_POLICIES,
+  type MainnetDefenseInDepthContext,
+  type MainnetGateEvaluationResult,
+  type MainnetRolloutAuditEvent,
+  validateChainAddress,
+  evaluateMainnetBroadcastGate,
+} from './mainnet-rollout';

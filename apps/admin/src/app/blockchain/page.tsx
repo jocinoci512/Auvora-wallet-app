@@ -4,6 +4,7 @@ import {
   AuvoraClientError,
   type BlockchainMetrics,
   type LiveProviderRpcHealthSummary,
+  type MainnetReadinessReport,
   type ProviderHealthSnapshot,
 } from '@auvora/sdk';
 import { AsyncStates, Button, PageHeader } from '@auvora/ui';
@@ -26,6 +27,7 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
   const [metrics, setMetrics] = useState<BlockchainMetrics | null>(null);
   const [health, setHealth] = useState<ProviderHealthSnapshot[]>([]);
   const [liveRpc, setLiveRpc] = useState<LiveProviderRpcHealthSummary | null>(null);
+  const [mainnetReport, setMainnetReport] = useState<MainnetReadinessReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,14 +36,16 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
     setError(null);
     try {
       const client = createApiClient();
-      const [metricsData, healthData, liveRpcData] = await Promise.all([
+      const [metricsData, healthData, liveRpcData, mainnetData] = await Promise.all([
         client.adminBlockchainMetrics(),
         client.adminBlockchainHealth(),
         client.adminBlockchainLiveRpcHealth().catch(() => null),
+        client.adminGetMainnetReadiness().catch(() => null),
       ]);
       setMetrics(metricsData);
       setHealth(healthData);
       setLiveRpc(liveRpcData);
+      setMainnetReport(mainnetData);
     } catch (err) {
       if (err instanceof AuvoraClientError && err.status === 401) {
         setError('Your Admin session expired. Sign in again.');
@@ -207,6 +211,74 @@ export default function AdminBlockchainDashboardPage(): ReactElement {
             </table>
           )}
         </section>
+
+        {mainnetReport ? (
+          <section className="panel">
+            <div className="section-header">
+              <h2>Mainnet Readiness & Chain Rollout Posture</h2>
+              <span className="tag">
+                GLOBAL={mainnetReport.globalMainnetEnabled ? 'ENABLED' : 'OFF'} · KILL_SWITCH=
+                {mainnetReport.liveBroadcastKillSwitchActive ? 'ACTIVE' : 'OFF'}
+              </span>
+            </div>
+            <p className="page-subtitle" style={{ marginBottom: '1rem' }}>
+              Safety Boundary: Client-side local hardware signing only · Admin cannot sign,
+              broadcast, or activate Mainnet.
+            </p>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Chain</th>
+                  <th>Rollout Gate</th>
+                  <th>Broadcast Allowed</th>
+                  <th>Network / Chain ID</th>
+                  <th>Native Fee</th>
+                  <th>Confirmations & Finality</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(mainnetReport.chains).map(([chainName, state]) => {
+                  const policy = mainnetReport.chainPolicies?.[chainName];
+                  return (
+                    <tr key={chainName}>
+                      <td>{chainName.replace(/_/g, ' ')}</td>
+                      <td>
+                        <span
+                          className={`dot ${
+                            state === 'ACTIVE'
+                              ? 'dot--healthy'
+                              : state === 'READY' || state === 'CANARY'
+                                ? 'dot--warning'
+                                : 'dot--unhealthy'
+                          }`}
+                        />
+                        {state}
+                      </td>
+                      <td>
+                        {state === 'ACTIVE' || state === 'CANARY' ? (
+                          <span style={{ color: 'var(--color-danger, #ef4444)' }}>
+                            CONDITIONAL ({state})
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--color-success, #22c55e)' }}>
+                            BLOCKED (OFF)
+                          </span>
+                        )}
+                      </td>
+                      <td>{policy ? `${policy.name} (${policy.expectedChainId})` : '—'}</td>
+                      <td>{policy?.nativeFeeAsset ?? '—'}</td>
+                      <td>
+                        {policy
+                          ? `${policy.standardConfirmations} blocks · ${policy.finalityMechanism}`
+                          : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        ) : null}
 
         <section className="panel">
           <h2>Quick links</h2>

@@ -4,6 +4,13 @@ export const ReleaseConfig = {
   marketingVersion: '1.0.0-alpha.1',
   buildLabel: 'Version 1.0 Alpha',
   liveBroadcastEnabled: false,
+  /** Independent Mainnet Chain Rollout Gates (All default strictly to false / OFF). */
+  mainnetEthereumEnabled: false,
+  mainnetBnbEnabled: false,
+  mainnetPolygonEnabled: false,
+  mainnetSolanaEnabled: false,
+  mainnetBitcoinEnabled: false,
+  mainnetTronEnabled: false,
   /** When false, companion Receive blocks QR / copy / share for funding. */
   allowFundingAddresses: false,
   fundingBlockedMessage:

@@ -44,6 +44,8 @@ export type {
   ProviderHealthSnapshot,
   LiveProviderRpcHealth,
   LiveProviderRpcHealthSummary,
+  ChainRolloutState,
+  MainnetReadinessReport,
   SyncJob,
   SyncJobListResult,
   ListSyncJobsQuery,

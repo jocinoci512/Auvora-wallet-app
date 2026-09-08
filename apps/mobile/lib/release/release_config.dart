@@ -12,6 +12,46 @@ abstract final class ReleaseConfig {
   /// Live **mainnet** chain broadcast. Keep false — never enable for production funds.
   static const bool liveBroadcastEnabled = false;
 
+  /// Independent Mainnet Chain Rollout Gates (All default strictly to false / OFF).
+  /// Defense-in-depth: Mainnet must NOT be activated for all chains simultaneously.
+  /// Both [liveBroadcastEnabled] AND the chain-specific switch must be true for broadcast.
+  static const bool mainnetEthereumEnabled = false;
+  static const bool mainnetBnbEnabled = false;
+  static const bool mainnetPolygonEnabled = false;
+  static const bool mainnetSolanaEnabled = false;
+  static const bool mainnetBitcoinEnabled = false;
+  static const bool mainnetTronEnabled = false;
+
+  /// Returns whether a specific chain has live broadcast enabled.
+  /// Always returns false if the global [liveBroadcastEnabled] kill switch is false.
+  static bool isChainLiveBroadcastAllowed(String chain) {
+    if (!liveBroadcastEnabled) return false;
+    switch (chain.toUpperCase()) {
+      case 'ETHEREUM':
+      case 'ETH':
+        return mainnetEthereumEnabled;
+      case 'BNB_SMART_CHAIN':
+      case 'BNB':
+      case 'BSC':
+        return mainnetBnbEnabled;
+      case 'POLYGON':
+      case 'POL':
+      case 'MATIC':
+        return mainnetPolygonEnabled;
+      case 'SOLANA':
+      case 'SOL':
+        return mainnetSolanaEnabled;
+      case 'BITCOIN':
+      case 'BTC':
+        return mainnetBitcoinEnabled;
+      case 'TRON':
+      case 'TRX':
+        return mainnetTronEnabled;
+      default:
+        return false;
+    }
+  }
+
   /// Allow broadcast of locally signed **TESTNET** txs only when
   /// `AUVORA_NETWORK_ENV=testnet` and this define is true.
   /// Does not enable mainnet broadcast.
