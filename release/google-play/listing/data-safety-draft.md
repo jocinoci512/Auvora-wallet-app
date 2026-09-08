@@ -1,63 +1,76 @@
-# Play Console Data safety draft — Auvora Wallet
+# Play Console Data Safety Draft — Auvora Wallet
 
-Human-readable draft for the Play Console Data safety form. Confirm with counsel before submission. Do **not** declare “no data collected.”
+Human-readable guide for completing the Google Play Console Data Safety declaration.
+_Owner & Counsel Note: Review and confirm specific jurisdictional retention periods before production store submission. Do NOT declare "no data collected."_
 
-## Data the app may process
+---
 
-### Account / identity (when the user creates or signs in to an Auvora account)
+## 1. Overview of Data Processing Architecture
 
-- Email address
-- Username and optional name fields supplied by the user
-- Authentication tokens and session identifiers
-- Coarse device/session metadata used for native login (for example device fingerprint, platform label `android`, optional device name / app version)
+Auvora is a non-custodial cryptocurrency wallet. Private keys and recovery phrases are generated and retained exclusively on the user's device and are never collected or transmitted. However, optional cloud account features and regulatory compliance policies (such as transfer threshold gates) involve specific data collection and third-party service provider processing.
 
-Processed by the Auvora backend (public Gateway: `https://api.auvorawallet.com`) for account register, login, logout, refresh, and current-user/profile routes.
+---
 
-### Public wallet identifiers (when account or connection features require them)
+## 2. Data Types & Processing Classifications
 
-- Public wallet addresses may be transmitted (for example WalletConnect session accounts, or account-linked device metadata)
-- Auvora does **not** collect wallet signing secrets
+### A. Personal Info
 
-### Blockchain network requests
+#### 1. Email Address
 
-- RPC providers receive standard blockchain read requests (balances, tips, health probes) for configured networks
-- These requests may include public addresses
-- Live transaction broadcast is currently disabled in this release
+- **Collected**: Yes (when creating or using an optional Auvora account).
+- **Purpose**: Account management, security authentication (verification tokens, password resets), fraud prevention.
+- **Shared / Third-Party Processor**: Outbound transactional email delivered via Resend (SMTP).
+- **Ephemeral processing?**: No (stored in Auvora backend database until account deletion).
 
-### Market data
+#### 2. Name & Date of Birth
 
-- Market-data providers (for example CoinGecko / CoinCap; Alchemy Prices only if a client key is compiled in) receive symbol/price queries
-- Queries are for market quotes, not seed phrases or private keys
+- **Collected**: Yes (only when the user initiates identity verification for high-value transfer policies).
+- **Purpose**: Legal compliance, AML/CFT regulations, sanctions screening.
+- **Storage**: Stored in Auvora backend database encrypted with AES-256 at rest.
+- **Ephemeral processing?**: No.
 
-### WalletConnect / Reown
+#### 3. User IDs & Device Identifiers
 
-- Reown handles WalletConnect pairing and session metadata (dApp name, origin, requested chains/methods, public accounts)
-- The public Project ID may be compiled into the client
-- The Reown Secret is never shipped in the Android app
+- **Collected**: Yes (user UUID, coarse device fingerprint, client OS version).
+- **Purpose**: Account management, device session security, abuse prevention.
 
-## Data that stays on the device
+---
 
-- Private keys
-- Recovery phrase / mnemonic / seed
-- On-device vault material
-- Wallet PIN / biometric unlock material (OS-backed storage)
+### B. Financial Information & Identity Documents (KYC)
 
-Auvora does not collect wallet signing secrets. Server signing is disabled.
+#### 1. Government-Issued Documents & Biometric Selfie Imagery
 
-## Advertising, analytics, crash reporting
+- **Processed**: Yes (when user undergoes identity verification).
+- **Distinction (Provider-Hosted vs Auvora Storage)**:
+  - **Third-Party Service Provider Processing**: Government documents (passport, driver's license, national ID) and facial biometric verification selfies are uploaded directly over TLS to Auvora's authorized verification partner (**Stripe Identity**) for verification and fraud detection on Auvora's behalf.
+  - **Auvora-Controlled Storage**: Auvora does **not** store raw document images, passport scans, or facial biometric templates in its databases. Auvora stores only the external verification reference ID (`providerRef`), canonical verification status (`APPROVED`, `REJECTED`, `IN_REVIEW`), and compliance audit timestamps.
+- **Purpose**: Regulatory compliance, AML/CFT verification, fraud prevention.
+- **Shared?**: Yes, processed by authorized verification partner (Stripe Identity) as a data processor.
 
-- No ads
-- No currently wired analytics SDK (in-app Analytics toggle is unavailable)
-- No currently wired crash SDK (Sentry is not linked unless a future build compiles `SENTRY_DSN` **and** `SENTRY_ENABLED=true` **and** wires the SDK)
+---
 
-## Security practices (factual)
+### C. Blockchain & Network Identifiers
 
-- Data is encrypted in transit (HTTPS) for account API calls
-- Wallet secrets are stored in platform secure storage, not uploaded for self-custody
-- Users can use the wallet without creating an Auvora cloud account
+#### 1. Public Blockchain Addresses
 
-## Approximate location / contacts / photos
+- **Processed**: Yes (when querying balances, transaction history, or interacting with dApps via WalletConnect).
+- **Purpose**: App functionality.
+- **Shared**: Sent via HTTPS to node infrastructure providers (e.g. Alchemy, QuickNode, TronGrid) to read blockchain state.
+- **Secrets**: Private keys, mnemonics, and seed phrases are **never** transmitted or shared.
 
-- Not required for core wallet use
-- Camera is used only when the user scans a WalletConnect QR
-- Contacts permission is not part of the core wallet flow
+---
+
+### D. Crash Logs & Diagnostics
+
+- **Crash Reporting**: Sentry integration architecture is prepared. When enabled in production builds via compile-time/runtime configuration, diagnostic stack traces are collected for app stability.
+- **Redaction**: All personal identifiers, credentials, private keys, and mnemonics are scrubbed before telemetry dispatch.
+
+---
+
+## 3. Security Practices
+
+- **Data Encryption in Transit**: All data is encrypted in transit over secure protocols (TLS 1.3 / HTTPS).
+- **Data Encryption at Rest**: Sensitive data fields (PII, tokens) are encrypted with AES-256 in the database.
+- **Data Deletion Request Mechanism**: Users can request account and data deletion in-app or via support (privacy@auvorawallet.com).
+  - _Immediate Deletion_: Unverified user accounts and session data are purged immediately.
+  - _Statutory Legal Retention_: Under applicable AML/BSA regulations (e.g., 31 CFR § 1010.410), verified customer identity records must be retained for the statutory period (typically 5 years post-account closure) before permanent purge.

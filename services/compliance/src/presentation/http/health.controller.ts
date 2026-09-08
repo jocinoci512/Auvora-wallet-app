@@ -46,21 +46,34 @@ export class HealthController {
       this.prisma.isHealthy(),
       this.redis.ping(),
     ]);
+    const kycConfigured = Boolean(this.env.KYC_PROVIDER_API_KEY);
     const checks: Record<string, HealthStatus> = {
       database: dbHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,
       redis: redisHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,
+      kycProvider: kycConfigured ? HealthStatus.Ok : HealthStatus.Degraded,
       process: HealthStatus.Ok,
     };
-    const allHealthy = dbHealthy && redisHealthy;
+    const dbAndRedisHealthy = dbHealthy && redisHealthy;
+    const overallStatus = !dbAndRedisHealthy
+      ? HealthStatus.Unhealthy
+      : !kycConfigured
+        ? HealthStatus.Degraded
+        : HealthStatus.Ok;
+
     void this.observability?.reportHealth({
       serviceName: this.env.SERVICE_NAME,
       checkName: 'ready',
-      status: allHealthy ? 'HEALTHY' : 'UNHEALTHY',
+      status:
+        overallStatus === HealthStatus.Ok
+          ? 'HEALTHY'
+          : overallStatus === HealthStatus.Degraded
+            ? 'DEGRADED'
+            : 'UNHEALTHY',
       latencyMs: Date.now() - started,
       details: checks,
     });
     return {
-      status: allHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,
+      status: overallStatus,
       service: this.env.SERVICE_NAME,
       version: this.env.SERVICE_VERSION,
       timestamp: new Date().toISOString(),

@@ -336,4 +336,78 @@ describe('KycService', () => {
       }),
     );
   });
+
+  describe('KYC retention and deletion policy hooks', () => {
+    it('returns inventory with purgeable category for unverified draft users', async () => {
+      const { service, prisma } = makeService();
+      prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
+        id: 'draft-prof-1',
+        ownerUserId: 'draft-user-1',
+        status: VerificationStatus.DRAFT,
+      });
+
+      const inv = await service.getKycRetentionInventory('draft-user-1');
+      expect(inv.canPurgeImmediately).toBe(true);
+      expect(inv.retentionCategory).toBe('PURGEABLE_IMMEDIATE');
+      expect(inv.fields.deletableImmediately).toContain('unverified_session_cookies');
+      expect(inv.fields.potentialLegallyRetainedRecords).toContain(
+        'kyc_profiles.legal_name_encrypted (AES-256)',
+      );
+    });
+
+    it('returns statutory retention required category for approved KYC profiles', async () => {
+      const { service, prisma } = makeService();
+      prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
+        id: 'approved-prof-1',
+        ownerUserId: 'approved-user-1',
+        status: VerificationStatus.APPROVED,
+      });
+
+      const inv = await service.getKycRetentionInventory('approved-user-1');
+      expect(inv.canPurgeImmediately).toBe(false);
+      expect(inv.retentionCategory).toBe('STATUTORY_AML_RETENTION_REQUIRED');
+    });
+
+    it('purges immediately when unverified account requests deletion', async () => {
+      const { service, prisma } = makeService();
+      prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
+        id: 'draft-prof-1',
+        ownerUserId: 'draft-user-1',
+        status: VerificationStatus.DRAFT,
+      });
+      (prisma.kycProfile as Record<string, unknown>).delete = jest.fn().mockResolvedValue({});
+
+      const result = await service.executeAccountDeletionKycHook('draft-user-1');
+      expect(result.actionTaken).toBe('PURGED_IMMEDIATELY');
+      expect((prisma.kycProfile as Record<string, unknown>).delete).toHaveBeenCalledWith({
+        where: { id: 'draft-prof-1' },
+      });
+    });
+
+    it('archives and tags statutory retention when approved KYC account requests deletion', async () => {
+      const { service, prisma } = makeService();
+      prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
+        id: 'approved-prof-1',
+        ownerUserId: 'approved-user-1',
+        status: VerificationStatus.APPROVED,
+        metadata: {},
+      });
+      prisma.kycProfile.update = jest.fn().mockResolvedValue({});
+
+      const result = await service.executeAccountDeletionKycHook('approved-user-1', 1825);
+      expect(result.actionTaken).toBe('ARCHIVED_FOR_STATUTORY_RETENTION');
+      expect(result.retainedUntil).toBeDefined();
+      expect(prisma.kycProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'approved-prof-1' },
+          data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              statutoryRetentionRequired: true,
+              retentionPeriodDays: 1825,
+            }),
+          }),
+        }),
+      );
+    });
+  });
 });

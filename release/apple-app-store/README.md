@@ -33,6 +33,23 @@ All usage descriptions adhere to App Store Review Guideline 5.1.1 (Data Collecti
    `false`
    - Uses standard platform HTTPS (TLS) and standard common crypto libraries without proprietary non-exempt encryption.
 
+### 2.1 App Store Privacy Nutrition Labels Declaration
+
+When configuring the App Privacy questions in App Store Connect:
+
+- **Data Used to Track You**: None (Auvora does not track users across third-party apps or websites).
+- **Data Linked to You**:
+  - **Contact Info**: Email address (for optional account registration, security alerts, and transactional email via Resend).
+  - **Identifiers**: User ID and device ID (for authenticated session management and rate limiting).
+  - **Sensitive Info / Identity Verification**:
+    - _Processing_: Government identity documents and verification selfies are collected and processed by an authorized third-party processor (**Stripe Identity**) on Auvora's behalf for AML/CFT regulatory compliance and fraud prevention.
+    - _Storage_: Raw document images and biometric templates are **never** stored on Auvora servers. Auvora stores external session references (`providerRef`), verification status, and AES-256 field-encrypted legal name and date of birth required for statutory compliance.
+- **Diagnostics**: Crash data and performance metrics (collected via Sentry when configured; stripped of all credentials, private keys, and PII before transmission).
+- **Data Retention & Account Deletion**:
+  - Users can delete accounts in-app or via support.
+  - Non-verified accounts are purged immediately.
+  - Accounts with completed AML identity verifications are subject to mandatory statutory recordkeeping (typically 5 years post-account closure, subject to final owner/legal counsel determination).
+
 ---
 
 ## 3. Self-Custody Security Architecture

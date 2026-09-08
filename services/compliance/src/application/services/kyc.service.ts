@@ -862,6 +862,133 @@ export class KycService {
     return { success: true, eventId: payload.id, status: request.status };
   }
 
+  async getKycRetentionInventory(ownerUserId: string): Promise<{
+    ownerUserId: string;
+    profileId?: string;
+    status: string;
+    canPurgeImmediately: boolean;
+    retentionCategory: 'PURGEABLE_IMMEDIATE' | 'STATUTORY_AML_RETENTION_REQUIRED';
+    fields: {
+      deletableImmediately: string[];
+      providerReferences: string[];
+      securityAuditRecords: string[];
+      potentialLegallyRetainedRecords: string[];
+    };
+  }> {
+    const profile = await this.prisma.kycProfile.findUnique({
+      where: { ownerUserId },
+      include: { verificationRequests: true, documents: true },
+    });
+
+    const isVerifiedOrReview =
+      profile?.status === VerificationStatus.APPROVED ||
+      profile?.status === VerificationStatus.IN_REVIEW;
+
+    return {
+      ownerUserId,
+      profileId: profile?.id,
+      status: profile?.status ?? 'NONE',
+      canPurgeImmediately: !isVerifiedOrReview,
+      retentionCategory: isVerifiedOrReview
+        ? 'STATUTORY_AML_RETENTION_REQUIRED'
+        : 'PURGEABLE_IMMEDIATE',
+      fields: {
+        deletableImmediately: [
+          'kyc_profiles.metadata.temporaryTokens',
+          'kyc_profiles.metadata.draftInput',
+          'unverified_session_cookies',
+        ],
+        providerReferences: [
+          'verification_requests.provider_ref (Stripe Identity VerificationSession vs_...)',
+          'compliance_documents.provider_ref',
+          'sanctions_screening_results.provider_ref',
+          'pep_screening_results.provider_ref',
+        ],
+        securityAuditRecords: [
+          'compliance_audit_records',
+          'compliance_event_logs',
+          'verification_requests.metadata.processedWebhookEventIds',
+        ],
+        potentialLegallyRetainedRecords: [
+          'kyc_profiles.legal_name_encrypted (AES-256)',
+          'kyc_profiles.date_of_birth_encrypted (AES-256)',
+          'kyc_profiles.business_name_encrypted (AES-256)',
+          'kyc_profiles.country',
+          'kyc_profiles.status',
+          'kyc_profiles.level',
+          'kyc_profiles.verified_at',
+          'sanctions_screening_results.match_status',
+          'pep_screening_results.match_status',
+          'risk_score_records',
+        ],
+      },
+    };
+  }
+
+  async executeAccountDeletionKycHook(
+    ownerUserId: string,
+    statutoryRetentionDays = 1825,
+  ): Promise<{
+    actionTaken: 'PURGED_IMMEDIATELY' | 'ARCHIVED_FOR_STATUTORY_RETENTION';
+    ownerUserId: string;
+    retainedUntil?: string;
+    details: string;
+  }> {
+    const profile = await this.prisma.kycProfile.findUnique({ where: { ownerUserId } });
+    if (!profile) {
+      return {
+        actionTaken: 'PURGED_IMMEDIATELY',
+        ownerUserId,
+        details: 'No KYC record found for user; nothing to retain.',
+      };
+    }
+
+    const isApprovedOrReview =
+      profile.status === VerificationStatus.APPROVED ||
+      profile.status === VerificationStatus.IN_REVIEW;
+
+    if (!isApprovedOrReview) {
+      await this.prisma.kycProfile.delete({ where: { id: profile.id } });
+      this.logger.log(`Unverified KYC profile purged for user: ${ownerUserId}`);
+      return {
+        actionTaken: 'PURGED_IMMEDIATELY',
+        ownerUserId,
+        details: 'Unverified profile and verification drafts purged immediately.',
+      };
+    }
+
+    // Regulated account with verified KYC: cannot purge immediately under FinCEN / 5AMLD rules.
+    const retainUntilDate = new Date(Date.now() + statutoryRetentionDays * 86400 * 1000);
+    const prevMeta =
+      profile.metadata && typeof profile.metadata === 'object' && !Array.isArray(profile.metadata)
+        ? (profile.metadata as Record<string, unknown>)
+        : {};
+
+    await this.prisma.kycProfile.update({
+      where: { id: profile.id },
+      data: {
+        metadata: {
+          ...prevMeta,
+          accountDeletedAt: new Date().toISOString(),
+          statutoryRetentionRequired: true,
+          retentionPeriodDays: statutoryRetentionDays,
+          retentionExpiresAt: retainUntilDate.toISOString(),
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    this.logger.log(
+      `Verified KYC profile archived for statutory retention: user=${ownerUserId} retainedUntil=${retainUntilDate.toISOString()}`,
+    );
+
+    return {
+      actionTaken: 'ARCHIVED_FOR_STATUTORY_RETENTION',
+      ownerUserId,
+      retainedUntil: retainUntilDate.toISOString(),
+      details: `Account deletion registered. Verified identification archived for statutory retention (${statutoryRetentionDays} days / BSA/AML recordkeeping).`,
+    };
+  }
+
   private assertSelfOrAdmin(ownerUserId: string, requester: JwtAccessClaims) {
     if (
       ownerUserId !== requester.sub &&

@@ -18,9 +18,13 @@ describe('HealthController', () => {
     expect(typeof result.uptimeSeconds).toBe('number');
   });
 
-  it('returns readiness with dependency checks', async () => {
+  it('returns readiness with dependency checks when kycProvider is configured', async () => {
     const controller = new HealthController(
-      { SERVICE_NAME: 'compliance', SERVICE_VERSION: '0.1.0' } as never,
+      {
+        SERVICE_NAME: 'compliance',
+        SERVICE_VERSION: '0.1.0',
+        KYC_PROVIDER_API_KEY: 'sk_test_123',
+      } as never,
       { ping: async () => true } as never,
       { isHealthy: async () => true } as PrismaService,
     );
@@ -28,6 +32,20 @@ describe('HealthController', () => {
     expect(result.status).toBe(HealthStatus.Ok);
     expect(result.checks?.database).toBe(HealthStatus.Ok);
     expect(result.checks?.redis).toBe(HealthStatus.Ok);
+    expect(result.checks?.kycProvider).toBe(HealthStatus.Ok);
+  });
+
+  it('returns degraded readiness when kycProvider API key is unconfigured', async () => {
+    const controller = new HealthController(
+      { SERVICE_NAME: 'compliance', SERVICE_VERSION: '0.1.0' } as never,
+      { ping: async () => true } as never,
+      { isHealthy: async () => true } as PrismaService,
+    );
+    const result = await controller.getReady();
+    expect(result.status).toBe(HealthStatus.Degraded);
+    expect(result.checks?.database).toBe(HealthStatus.Ok);
+    expect(result.checks?.redis).toBe(HealthStatus.Ok);
+    expect(result.checks?.kycProvider).toBe(HealthStatus.Degraded);
   });
 
   it('reports unhealthy when redis is unreachable', async () => {

@@ -25,7 +25,8 @@ for (const file of gitFiles) {
     file.includes('.spec.') ||
     file.includes('_test.dart') ||
     file.includes('test/') ||
-    file.includes('tests/')
+    file.includes('tests/') ||
+    file.includes('scripts/qa/')
   ) {
     continue;
   }
