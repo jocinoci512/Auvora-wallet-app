@@ -94,8 +94,8 @@ export default function PrivacyPolicyPage(): ReactElement {
               <p className="cx-meta">
                 Auvora does NOT use external commercial KYC verification providers (such as Stripe
                 Identity, Persona, Veriff, or Sumsub). Customer identity documents are submitted
-                directly and securely to Auvora's encrypted compliance backend for manual review by
-                authorized Auvora administrators.
+                directly and securely to Auvora&apos;s encrypted compliance backend for manual
+                review by authorized Auvora administrators.
               </p>
             </div>
           </li>
@@ -104,9 +104,9 @@ export default function PrivacyPolicyPage(): ReactElement {
               <strong>What We Collect for Verification</strong>
               <p className="cx-meta">
                 When initiating verification, customers provide legal name, date of birth, country
-                of residence, ID type (passport, national ID card, driver's license, or residence
-                permit), ID document number, expiration date, and encrypted image files of the
-                government ID.
+                of residence, ID type (passport, national ID card, driver&apos;s license, or
+                residence permit), ID document number, expiration date, and encrypted image files of
+                the government ID.
               </p>
             </div>
           </li>

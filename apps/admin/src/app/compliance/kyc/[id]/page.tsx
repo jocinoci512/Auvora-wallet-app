@@ -3,7 +3,7 @@
 import { AuvoraClientError } from '@auvora/sdk';
 import { Button, StatusBadge } from '@auvora/ui';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { ConfirmReasonDialog } from '../../../../components/ConfirmReasonDialog';
 import { createApiClient, formatApiError } from '../../../../lib/api-client';
@@ -64,7 +64,6 @@ type KycDetailData = {
 
 export default function AdminKycDetailPage(): ReactElement {
   const params = useParams();
-  const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : (params.id as string);
 
   const [data, setData] = useState<KycDetailData | null>(null);
