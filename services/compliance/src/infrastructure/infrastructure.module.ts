@@ -58,6 +58,7 @@ import {
   UnavailableSanctionsProvider,
   UnavailableTravelRuleProvider,
 } from './providers/unavailable.providers';
+import { CommercialKycProvider } from './providers/commercial-kyc.provider';
 import { RedisAdapter } from './redis/redis.adapter';
 import { REDIS_PORT } from './redis/redis.port';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
@@ -78,6 +79,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
       { provide: TRAVEL_RULE_PROVIDER, useExisting: TravelRuleSimulatorProvider },
     ]
   : [
+      CommercialKycProvider,
       UnavailableIdentityProvider,
       UnavailableDocumentProvider,
       UnavailableSanctionsProvider,
@@ -87,8 +89,8 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
       UnavailableFraudProvider,
       LocalRiskScoringProvider,
       UnavailableTravelRuleProvider,
-      { provide: IDENTITY_VERIFICATION_PROVIDER, useExisting: UnavailableIdentityProvider },
-      { provide: DOCUMENT_VERIFICATION_PROVIDER, useExisting: UnavailableDocumentProvider },
+      { provide: IDENTITY_VERIFICATION_PROVIDER, useExisting: CommercialKycProvider },
+      { provide: DOCUMENT_VERIFICATION_PROVIDER, useExisting: CommercialKycProvider },
       { provide: SANCTIONS_PROVIDER, useExisting: UnavailableSanctionsProvider },
       { provide: PEP_PROVIDER, useExisting: UnavailablePepProvider },
       { provide: ADDRESS_RISK_PROVIDER, useExisting: UnavailableAddressRiskProvider },

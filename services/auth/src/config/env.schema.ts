@@ -150,6 +150,20 @@ export const envSchema = z
         message: 'AUTH_ALLOW_UNVERIFIED_LOGIN must be false in production',
       });
     }
+    if (data.NODE_ENV === 'production' && data.STAGING_ALLOW_UNVERIFIED_LOGIN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['STAGING_ALLOW_UNVERIFIED_LOGIN'],
+        message: 'STAGING_ALLOW_UNVERIFIED_LOGIN is forbidden in production',
+      });
+    }
+    if (data.NODE_ENV === 'production' && data.STAGING_ALLOW_MAIL_FAILOPEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['STAGING_ALLOW_MAIL_FAILOPEN'],
+        message: 'STAGING_ALLOW_MAIL_FAILOPEN is forbidden in production',
+      });
+    }
     if (data.NODE_ENV === 'production' && data.MAIL_DRIVER === 'console') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

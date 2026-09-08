@@ -47,7 +47,7 @@ export class SmtpMailAdapter implements MailPort {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`SMTP send failure to=${input.to}: ${msg}`);
-      if (this.env.STAGING_ALLOW_MAIL_FAILOPEN) {
+      if (this.env.NODE_ENV !== 'production' && this.env.STAGING_ALLOW_MAIL_FAILOPEN) {
         this.logger.warn(
           `[STAGING] Mail fail-open active — account verification link generated but SMTP undelivered. Provider credentials required for live delivery.`,
         );
