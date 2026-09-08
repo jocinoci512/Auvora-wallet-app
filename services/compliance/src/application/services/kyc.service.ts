@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   KycLevel,
   KycSubjectType,
@@ -17,6 +17,7 @@ import {
   NotFoundError,
   PERMISSION_COMPLIANCE_ADMIN,
   PERMISSION_COMPLIANCE_REVIEW,
+  UnauthorizedError,
   ValidationError,
 } from '../../domain';
 import {
@@ -51,6 +52,7 @@ import type {
   RiskScoringProvider,
   SanctionsProvider,
 } from '../../domain';
+import type { CommercialWebhookPayload } from '../../infrastructure/providers/commercial-kyc.provider';
 
 export interface SubmitKycInput {
   subjectType?: KycSubjectType;
@@ -64,6 +66,8 @@ export interface SubmitKycInput {
 
 @Injectable()
 export class KycService {
+  private readonly logger = new Logger(KycService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(FIELD_ENCRYPTION) private readonly crypto: FieldEncryptionPort,
@@ -276,6 +280,10 @@ export class KycService {
         providerRef: identity.providerRef,
         completedAt: null,
         reviewedAt: null,
+        metadata: {
+          ...(identity.sessionUrl ? { sessionUrl: identity.sessionUrl } : {}),
+          ...(identity.clientSecret ? { clientSecret: identity.clientSecret } : {}),
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -626,6 +634,232 @@ export class KycService {
       reason: trimmed,
     });
     return updated;
+  }
+
+  /**
+   * Processes inbound webhook from commercial identity verification partner.
+   * Cryptographically verifies signature, enforces 300s replay window, and provides idempotent deduplication.
+   */
+  async handleWebhook(
+    rawBody: string,
+    signatureHeader?: string,
+  ): Promise<{ success: boolean; eventId?: string; status?: string; duplicate?: boolean }> {
+    if (!signatureHeader) {
+      throw new ValidationError('Missing webhook signature header');
+    }
+
+    const secret = process.env['KYC_PROVIDER_WEBHOOK_SECRET'];
+    if (!secret) {
+      this.logger.warn(
+        'KYC webhook received but KYC_PROVIDER_WEBHOOK_SECRET is not configured — failing closed',
+      );
+      throw new UnauthorizedError('Webhook signature verification secret is not configured');
+    }
+
+    if (
+      !this.identity.verifyWebhookSignature ||
+      !this.identity.verifyWebhookSignature(rawBody, signatureHeader, secret)
+    ) {
+      throw new UnauthorizedError('Invalid webhook signature or expired timestamp');
+    }
+
+    let payload: CommercialWebhookPayload;
+    try {
+      payload = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+    } catch {
+      throw new ValidationError('Malformed webhook payload');
+    }
+
+    if (!payload || typeof payload !== 'object' || !payload.id || !payload.type) {
+      throw new ValidationError('Malformed webhook payload: missing event id or type');
+    }
+
+    const sessionObj = payload.data?.object;
+    if (!sessionObj || !sessionObj.id) {
+      // Safely ignore unknown non-identity event types
+      return { success: true, eventId: payload.id, status: 'ignored' };
+    }
+
+    const sessionId = sessionObj.id;
+    const clientRef = sessionObj.client_reference_id;
+    const metaOwnerId = sessionObj.metadata?.ownerUserId;
+    const ownerUserId = clientRef || metaOwnerId;
+
+    const request = await this.prisma.verificationRequest.findFirst({
+      where: {
+        OR: [
+          { providerRef: sessionId },
+          ...(ownerUserId
+            ? [
+                {
+                  ownerUserId,
+                  status: {
+                    in: [
+                      VerificationStatus.PENDING_PROVIDER,
+                      VerificationStatus.IN_REVIEW,
+                      VerificationStatus.SUBMITTED,
+                    ],
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!request) {
+      this.logger.warn(`Webhook received for unknown verification session: ${sessionId}`);
+      return { success: true, eventId: payload.id, status: 'unmatched' };
+    }
+
+    // Idempotency check: check if this event ID was already processed
+    const prevMeta =
+      request.metadata && typeof request.metadata === 'object' && !Array.isArray(request.metadata)
+        ? (request.metadata as Record<string, unknown>)
+        : {};
+    const processedEvents = Array.isArray(prevMeta.processedWebhookEventIds)
+      ? (prevMeta.processedWebhookEventIds as string[])
+      : [];
+
+    if (processedEvents.includes(payload.id)) {
+      return { success: true, eventId: payload.id, duplicate: true, status: request.status };
+    }
+
+    const updatedEvents = [...processedEvents, payload.id];
+
+    // Map provider event type / status
+    const eventType = payload.type;
+    const providerStatus = (sessionObj.status || '').toLowerCase();
+
+    if (eventType === 'identity.verification_session.verified' || providerStatus === 'verified') {
+      const updated = await this.prisma.verificationRequest.update({
+        where: { id: request.id },
+        data: {
+          status: VerificationStatus.APPROVED,
+          providerRef: sessionId,
+          completedAt: new Date(),
+          metadata: {
+            ...prevMeta,
+            processedWebhookEventIds: updatedEvents,
+            lastWebhookEvent: eventType,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.prisma.kycProfile.update({
+        where: { id: request.profileId },
+        data: {
+          status: VerificationStatus.APPROVED,
+          level: request.requestedLevel,
+          verifiedAt: new Date(),
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      await this.events.publish({
+        type: ComplianceEventType.KYCCompleted,
+        aggregateId: updated.id,
+        payload: { ownerUserId: request.ownerUserId, level: request.requestedLevel },
+      });
+      await this.notifications.publishEvent({
+        eventType: 'compliance.kyc.approved',
+        aggregateId: updated.id,
+        payload: { ownerUserId: request.ownerUserId, level: request.requestedLevel },
+      });
+      await this.emitAdminKycStatus({
+        ownerUserId: request.ownerUserId,
+        targetId: updated.id,
+        status: VerificationStatus.APPROVED,
+      });
+      await this.closeSupersededOpenRequests(request.ownerUserId, updated.id);
+
+      return { success: true, eventId: payload.id, status: 'APPROVED' };
+    }
+
+    if (
+      eventType === 'identity.verification_session.requires_input' ||
+      providerStatus === 'requires_input'
+    ) {
+      const customerReason =
+        sessionObj.last_error?.reason ||
+        'Document verification requires additional input. Please upload a clear valid government ID.';
+      const updated = await this.prisma.verificationRequest.update({
+        where: { id: request.id },
+        data: {
+          status: VerificationStatus.RENEWAL_REQUIRED,
+          rejectionReason: customerReason,
+          metadata: {
+            ...prevMeta,
+            customerVisibleReason: customerReason,
+            resubmissionRequired: true,
+            processedWebhookEventIds: updatedEvents,
+            lastWebhookEvent: eventType,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.prisma.kycProfile.update({
+        where: { id: request.profileId },
+        data: {
+          status: VerificationStatus.RENEWAL_REQUIRED,
+          metadata: {
+            resubmissionRequired: true,
+            customerVisibleReason: customerReason,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.notifications.publishEvent({
+        eventType: 'compliance.kyc.resubmission_required',
+        aggregateId: updated.id,
+        payload: { ownerUserId: request.ownerUserId, customerVisibleReason: customerReason },
+      });
+      await this.emitAdminKycStatus({
+        ownerUserId: request.ownerUserId,
+        targetId: updated.id,
+        status: VerificationStatus.RENEWAL_REQUIRED,
+        reason: customerReason,
+      });
+
+      return { success: true, eventId: payload.id, status: 'RENEWAL_REQUIRED' };
+    }
+
+    if (eventType === 'identity.verification_session.canceled' || providerStatus === 'canceled') {
+      await this.prisma.verificationRequest.update({
+        where: { id: request.id },
+        data: {
+          status: VerificationStatus.CANCELLED,
+          metadata: {
+            ...prevMeta,
+            processedWebhookEventIds: updatedEvents,
+            lastWebhookEvent: eventType,
+          } as Prisma.InputJsonValue,
+        },
+      });
+      return { success: true, eventId: payload.id, status: 'CANCELLED' };
+    }
+
+    if (
+      eventType === 'identity.verification_session.processing' ||
+      providerStatus === 'processing'
+    ) {
+      await this.prisma.verificationRequest.update({
+        where: { id: request.id },
+        data: {
+          status: VerificationStatus.IN_REVIEW,
+          providerRef: sessionId,
+          metadata: {
+            ...prevMeta,
+            processedWebhookEventIds: updatedEvents,
+            lastWebhookEvent: eventType,
+          } as Prisma.InputJsonValue,
+        },
+      });
+      return { success: true, eventId: payload.id, status: 'IN_REVIEW' };
+    }
+
+    return { success: true, eventId: payload.id, status: request.status };
   }
 
   private assertSelfOrAdmin(ownerUserId: string, requester: JwtAccessClaims) {

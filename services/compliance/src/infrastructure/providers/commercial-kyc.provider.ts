@@ -41,7 +41,7 @@ export class CommercialKycProvider
    * Initiates or checks identity verification session with commercial provider (Stripe Identity / Sumsub / Persona API).
    */
   async verifyIdentity(input: IdentityVerificationRequest): Promise<IdentityVerificationResult> {
-    const apiKey = process.env['KYC_PROVIDER_API_KEY'];
+    const apiKey = this.env.KYC_PROVIDER_API_KEY || process.env['KYC_PROVIDER_API_KEY'];
     if (!apiKey) {
       this.logger.warn(`Commercial KYC provider API key not configured — failing closed`);
       return {
@@ -53,7 +53,10 @@ export class CommercialKycProvider
     }
 
     try {
-      const baseUrl = process.env['KYC_PROVIDER_BASE_URL'] || 'https://api.stripe.com/v1/identity';
+      const baseUrl =
+        this.env.KYC_PROVIDER_BASE_URL ||
+        process.env['KYC_PROVIDER_BASE_URL'] ||
+        'https://api.stripe.com/v1/identity';
       const response = await fetch(`${baseUrl}/verification_sessions`, {
         method: 'POST',
         headers: {
@@ -71,7 +74,7 @@ export class CommercialKycProvider
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         this.logger.error(
-          `Commercial KYC session creation failed: ${response.status} ${errorText}`,
+          `Commercial KYC session creation failed: status=${response.status} err=${errorText.slice(0, 200)}`,
         );
         return {
           providerCode: this.getCode(),
@@ -81,11 +84,18 @@ export class CommercialKycProvider
         };
       }
 
-      const session = (await response.json()) as { id: string; status: string };
+      const session = (await response.json()) as {
+        id: string;
+        status: string;
+        url?: string;
+        client_secret?: string;
+      };
       return {
         providerCode: this.getCode(),
         providerRef: session.id,
         status: this.mapStatus(session.status),
+        sessionUrl: session.url,
+        clientSecret: session.client_secret,
         message: `Session initialized: ${session.id}`,
       };
     } catch (err: unknown) {
@@ -112,8 +122,10 @@ export class CommercialKycProvider
   /**
    * Cryptographically verify inbound webhook signature with replay protection (5-minute tolerance).
    */
-  verifyWebhookSignature(rawBody: string, signatureHeader: string, secret: string): boolean {
-    if (!signatureHeader || !secret) return false;
+  verifyWebhookSignature(rawBody: string, signatureHeader: string, secret?: string): boolean {
+    const activeSecret =
+      secret || this.env.KYC_PROVIDER_WEBHOOK_SECRET || process.env['KYC_PROVIDER_WEBHOOK_SECRET'];
+    if (!signatureHeader || !activeSecret) return false;
 
     // Header format: t=timestamp,v1=signature
     const parts = signatureHeader.split(',').reduce<Record<string, string>>((acc, item) => {
@@ -136,7 +148,7 @@ export class CommercialKycProvider
     }
 
     const payloadToSign = `${timestamp}.${rawBody}`;
-    const hmac = crypto.createHmac('sha256', secret).update(payloadToSign).digest('hex');
+    const hmac = crypto.createHmac('sha256', activeSecret).update(payloadToSign).digest('hex');
 
     return crypto.timingSafeEqual(Buffer.from(hmac, 'utf8'), Buffer.from(expectedSig, 'utf8'));
   }

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Inject, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { KycLevel, KycSubjectType } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
@@ -7,7 +8,7 @@ import { RiskService } from '../../application/services/risk.service';
 import { DashboardService } from '../../application/services/dashboard.service';
 import { PERMISSION_COMPLIANCE_READ, PERMISSION_COMPLIANCE_WRITE } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
-import { Permissions } from '../decorators/auth.decorators';
+import { Permissions, Public, SkipCsrf } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
@@ -101,6 +102,22 @@ export class ComplianceController {
   async kycStatus(@CurrentUser() user: JwtAccessClaims) {
     const data = await this.kyc.getLatestVerification(user.sub);
     return successResponse(this.kyc.toCustomerVerification(data));
+  }
+
+  @Post('webhook')
+  @Public()
+  @SkipCsrf()
+  async webhook(
+    @Req() req: Request,
+    @Headers('stripe-signature') stripeSignature?: string,
+    @Headers('x-kyc-signature') genericSignature?: string,
+  ) {
+    const rawBody =
+      (req as unknown as { rawBody?: Buffer | string }).rawBody?.toString() ??
+      (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+    const signature = stripeSignature || genericSignature;
+    const result = await this.kyc.handleWebhook(rawBody, signature);
+    return successResponse(result);
   }
 
   @Get('documents')

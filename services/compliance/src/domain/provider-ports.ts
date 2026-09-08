@@ -14,11 +14,14 @@ export interface IdentityVerificationResult {
   status: 'APPROVED' | 'REJECTED' | 'PENDING';
   score?: number;
   message?: string;
+  sessionUrl?: string;
+  clientSecret?: string;
 }
 
 export interface IdentityVerificationProvider {
   getCode(): string;
   verifyIdentity(input: IdentityVerificationRequest): Promise<IdentityVerificationResult>;
+  verifyWebhookSignature?(rawBody: string, signatureHeader: string, secret?: string): boolean;
 }
 
 export interface DocumentVerificationRequest {

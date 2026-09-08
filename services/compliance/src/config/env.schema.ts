@@ -21,6 +21,9 @@ export const envSchema = z.object({
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   APP_PUBLIC_URL: z.string().url().optional(),
+  KYC_PROVIDER_API_KEY: z.string().optional(),
+  KYC_PROVIDER_WEBHOOK_SECRET: z.string().optional(),
+  KYC_PROVIDER_BASE_URL: z.string().url().optional(),
   OTEL_ENABLED: z
     .enum(['true', 'false'])
     .default('false')
