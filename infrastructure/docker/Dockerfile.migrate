@@ -68,7 +68,7 @@ WORKDIR /app/database
 # Re-assert pnpm 9.15.9 here: Corepack resolves from database/package.json packageManager.
 RUN test "$(node -p "require('./package.json').packageManager")" = "pnpm@9.15.9" \
   && test "$(pnpm --version)" = "9.15.9" \
-  && pnpm install \
+  && pnpm install --prod=false \
   && test "$(pnpm --version)" = "9.15.9" \
   && test ! -e ./node_modules/redis-memory-server \
   && test ! -e /app/node_modules/redis-memory-server \
