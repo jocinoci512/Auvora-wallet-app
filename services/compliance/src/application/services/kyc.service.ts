@@ -1,5 +1,7 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
+  DocumentStatus,
+  DocumentType,
   KycLevel,
   KycSubjectType,
   PrismaService,
@@ -53,6 +55,7 @@ import type {
   SanctionsProvider,
 } from '../../domain';
 import type { CommercialWebhookPayload } from '../../infrastructure/providers/commercial-kyc.provider';
+import { SecureDocumentStorageService } from '../../infrastructure/storage/secure-document-storage.service';
 
 export interface SubmitKycInput {
   subjectType?: KycSubjectType;
@@ -62,6 +65,11 @@ export interface SubmitKycInput {
   legalName?: string;
   dateOfBirth?: string;
   businessName?: string;
+  idType?: DocumentType | string;
+  idNumber?: string;
+  idExpiration?: string;
+  frontDocumentId?: string;
+  backDocumentId?: string;
 }
 
 @Injectable()
@@ -83,7 +91,34 @@ export class KycService {
     @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
     @Inject(AI_PUBLISHER) private readonly ai: AiPublisherPort,
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
+    @Optional()
+    @Inject(SecureDocumentStorageService)
+    private readonly documentStorage?: SecureDocumentStorageService,
   ) {}
+
+  private async recordAudit(input: {
+    action: string;
+    actorUserId?: string;
+    subjectUserId?: string;
+    resourceType?: string;
+    resourceId?: string;
+    details?: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await (this.prisma as any).complianceAuditRecord?.create({
+        data: {
+          action: input.action,
+          actorUserId: input.actorUserId,
+          subjectUserId: input.subjectUserId,
+          resourceType: input.resourceType,
+          resourceId: input.resourceId,
+          details: (input.details ?? {}) as Prisma.InputJsonValue,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Could not record compliance audit record: ${String(err)}`);
+    }
+  }
 
   private async emitAdminKycStatus(input: {
     ownerUserId: string;
@@ -123,16 +158,47 @@ export class KycService {
     }
 
     const profile = await this.getOrCreateProfile(ownerUserId);
+    if (profile.status === VerificationStatus.APPROVED) {
+      throw new ConflictError('Identity verification has already been approved for this account');
+    }
+    const activeRequests = await this.prisma.verificationRequest.findMany({
+      where: {
+        ownerUserId,
+        status: { in: [VerificationStatus.IN_REVIEW, VerificationStatus.SUBMITTED] },
+      },
+    });
+    if (activeRequests.length > 0) {
+      throw new ConflictError('An identity verification request is already in review or submitted');
+    }
+
     const legalName = input.legalName?.trim();
+    const metadataToStore: Record<string, unknown> = {
+      ...(input.idType ? { idType: input.idType } : {}),
+      ...(input.idNumber ? { idNumberEncrypted: this.crypto.encrypt(input.idNumber.trim()) } : {}),
+      ...(input.idExpiration ? { idExpiration: input.idExpiration.trim() } : {}),
+      ...(input.frontDocumentId ? { frontDocumentId: input.frontDocumentId } : {}),
+      ...(input.backDocumentId ? { backDocumentId: input.backDocumentId } : {}),
+      kycMode: 'manual_admin_review',
+    };
+
     const request = await this.prisma.verificationRequest.create({
       data: {
         profileId: profile.id,
         ownerUserId,
         requestedLevel: input.requestedLevel,
-        status: VerificationStatus.PENDING_PROVIDER,
+        status: VerificationStatus.SUBMITTED,
         submittedAt: new Date(),
+        metadata: metadataToStore as Prisma.InputJsonValue,
       },
     });
+
+    const docIds = [input.frontDocumentId, input.backDocumentId].filter(Boolean) as string[];
+    if (docIds.length > 0) {
+      await this.prisma.complianceDocument.updateMany({
+        where: { id: { in: docIds }, ownerUserId },
+        data: { verificationRequestId: request.id },
+      });
+    }
 
     await this.events.publish({
       type: ComplianceEventType.KYCStarted,
@@ -142,12 +208,20 @@ export class KycService {
     await this.emitAdminKycStatus({
       ownerUserId,
       targetId: request.id,
-      status: VerificationStatus.PENDING_PROVIDER,
+      status: VerificationStatus.SUBMITTED,
     });
     await this.notifications.publishEvent({
       eventType: 'compliance.kyc.submitted',
       aggregateId: request.id,
       payload: { ownerUserId, requestedLevel: input.requestedLevel },
+    });
+    await this.recordAudit({
+      action: 'KYC_SUBMITTED',
+      actorUserId: ownerUserId,
+      subjectUserId: ownerUserId,
+      resourceType: 'VerificationRequest',
+      resourceId: request.id,
+      details: { requestedLevel: input.requestedLevel, idType: input.idType },
     });
 
     const identity = await this.identity.verifyIdentity({
@@ -270,17 +344,17 @@ export class KycService {
       payload: { ownerUserId, score: risk.score, band: risk.band },
     });
 
-    // Simulator/vendor screening is not production identity verification.
-    // Auvora Admin must approve or reject before the customer is Verified.
+    // First-party manual admin review: request status is SUBMITTED for Admin review.
     const updated = await this.prisma.verificationRequest.update({
       where: { id: request.id },
       data: {
-        status: VerificationStatus.IN_REVIEW,
+        status: VerificationStatus.SUBMITTED,
         providerCode: identity.providerCode,
         providerRef: identity.providerRef,
         completedAt: null,
         reviewedAt: null,
         metadata: {
+          ...metadataToStore,
           ...(identity.sessionUrl ? { sessionUrl: identity.sessionUrl } : {}),
           ...(identity.clientSecret ? { clientSecret: identity.clientSecret } : {}),
         } as Prisma.InputJsonValue,
@@ -291,7 +365,7 @@ export class KycService {
       where: { id: profile.id },
       data: {
         subjectType: input.subjectType ?? KycSubjectType.INDIVIDUAL,
-        status: VerificationStatus.IN_REVIEW,
+        status: VerificationStatus.SUBMITTED,
         country: input.country,
         nationality: input.nationality,
         legalNameEncrypted: legalName ? this.crypto.encrypt(legalName) : undefined,
@@ -323,6 +397,82 @@ export class KycService {
       where: { ownerUserId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async uploadDocumentPayload(
+    ownerUserId: string,
+    input: {
+      documentType: DocumentType | string;
+      fileBuffer: Buffer;
+      fileName?: string;
+      requestedContentType?: string;
+      side?: 'front' | 'back';
+      verificationRequestId?: string;
+    },
+  ) {
+    if (!this.documentStorage) {
+      throw new Error('Secure document storage service is not available');
+    }
+
+    const validated = this.documentStorage.validateAndSanitizeUpload({
+      fileBuffer: input.fileBuffer,
+      fileName: input.fileName,
+      requestedContentType: input.requestedContentType,
+    });
+
+    const profile = await this.getOrCreateProfile(ownerUserId);
+    const docId = this.ids.uuid();
+
+    const saved = this.documentStorage.saveEncryptedDocument(
+      ownerUserId,
+      docId,
+      validated.sanitizedBuffer,
+    );
+
+    const encryptedStorageKey = this.crypto.encrypt(saved.storageKey);
+
+    const created = await this.prisma.complianceDocument.create({
+      data: {
+        id: docId,
+        profileId: profile.id,
+        ownerUserId,
+        verificationRequestId: input.verificationRequestId,
+        documentType: input.documentType as DocumentType,
+        status: DocumentStatus.UPLOADED,
+        storageKeyEncrypted: encryptedStorageKey,
+        contentType: validated.contentType,
+        fileName: validated.safeFileName,
+        checksumSha256: saved.checksumSha256,
+        metadata: {
+          side: input.side ?? 'front',
+          fileSizeBytes: saved.fileSizeBytes,
+          exifStripped: validated.exifStripped,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.recordAudit({
+      action: 'DOCUMENT_UPLOADED',
+      actorUserId: ownerUserId,
+      subjectUserId: ownerUserId,
+      resourceType: 'ComplianceDocument',
+      resourceId: created.id,
+      details: {
+        documentType: created.documentType,
+        fileSizeBytes: saved.fileSizeBytes,
+        side: input.side ?? 'front',
+      },
+    });
+
+    return {
+      id: created.id,
+      documentType: created.documentType,
+      status: created.status,
+      fileName: created.fileName,
+      contentType: created.contentType,
+      createdAt: created.createdAt,
+      metadata: created.metadata,
+    };
   }
 
   async uploadDocument(
@@ -368,6 +518,106 @@ export class KycService {
     });
   }
 
+  async getDocumentContent(documentId: string, requester: JwtAccessClaims, viewToken?: string) {
+    const doc = await this.prisma.complianceDocument.findUnique({
+      where: { id: documentId },
+    });
+    if (!doc) {
+      throw new NotFoundError('Compliance document not found');
+    }
+
+    let authorized = false;
+    if (
+      viewToken &&
+      this.documentStorage?.verifyViewToken(viewToken, documentId, doc.ownerUserId)
+    ) {
+      authorized = true;
+    } else if (requester.sub === doc.ownerUserId) {
+      authorized = true;
+    } else {
+      this.assertReviewer(requester);
+      authorized = true;
+    }
+
+    if (!authorized) {
+      throw new ForbiddenError('Unauthorized document access');
+    }
+
+    if (!this.documentStorage) {
+      throw new Error('Document storage service unavailable');
+    }
+
+    const storageKey = this.crypto.decrypt(doc.storageKeyEncrypted);
+    const decryptedBuffer = this.documentStorage.readAndDecryptDocument(storageKey);
+
+    await this.recordAudit({
+      actorUserId: requester.sub,
+      action: 'DOCUMENT_VIEWED',
+      subjectUserId: doc.ownerUserId,
+      resourceType: 'ComplianceDocument',
+      resourceId: doc.id,
+      details: { documentType: doc.documentType, fileName: doc.fileName },
+    });
+
+    return {
+      buffer: decryptedBuffer,
+      contentType: doc.contentType || 'image/jpeg',
+      fileName: doc.fileName || 'document.jpg',
+    };
+  }
+
+  async getDocumentContentWithToken(documentId: string, viewToken: string) {
+    const doc = await this.prisma.complianceDocument.findUnique({
+      where: { id: documentId },
+    });
+    if (!doc) {
+      throw new NotFoundError('Compliance document not found');
+    }
+    if (!this.documentStorage) {
+      throw new Error('Document storage service unavailable');
+    }
+    const isValid = this.documentStorage.verifyViewToken(viewToken, documentId, doc.ownerUserId);
+    if (!isValid) {
+      throw new ForbiddenError('Invalid or expired document view token');
+    }
+
+    const storageKey = this.crypto.decrypt(doc.storageKeyEncrypted);
+    const decryptedBuffer = this.documentStorage.readAndDecryptDocument(storageKey);
+
+    await this.recordAudit({
+      action: 'DOCUMENT_VIEWED_TOKEN',
+      subjectUserId: doc.ownerUserId,
+      resourceType: 'ComplianceDocument',
+      resourceId: doc.id,
+      details: { documentType: doc.documentType, fileName: doc.fileName },
+    });
+
+    return {
+      buffer: decryptedBuffer,
+      contentType: doc.contentType || 'image/jpeg',
+      fileName: doc.fileName || 'document.jpg',
+    };
+  }
+
+  async getDocumentViewToken(documentId: string, reviewer: JwtAccessClaims) {
+    this.assertReviewer(reviewer);
+    const doc = await this.prisma.complianceDocument.findUnique({
+      where: { id: documentId },
+    });
+    if (!doc) {
+      throw new NotFoundError('Compliance document not found');
+    }
+    if (!this.documentStorage) {
+      throw new Error('Document storage service unavailable');
+    }
+    const token = this.documentStorage.generateViewToken(doc.id, doc.ownerUserId, 300);
+    return {
+      token,
+      documentId: doc.id,
+      expiresInSeconds: 300,
+    };
+  }
+
   async getLatestVerification(ownerUserId: string) {
     return this.prisma.verificationRequest.findFirst({
       where: { ownerUserId },
@@ -383,26 +633,44 @@ export class KycService {
       profile.metadata && typeof profile.metadata === 'object' && !Array.isArray(profile.metadata)
         ? (profile.metadata as Record<string, unknown>)
         : {};
+    const reqMeta =
+      latest?.metadata && typeof latest.metadata === 'object' && !Array.isArray(latest.metadata)
+        ? (latest.metadata as Record<string, unknown>)
+        : {};
+    const customerReason =
+      (typeof profileMeta.customerVisibleReason === 'string'
+        ? profileMeta.customerVisibleReason
+        : null) ??
+      (typeof reqMeta.customerVisibleReason === 'string' ? reqMeta.customerVisibleReason : null) ??
+      latest?.rejectionReason ??
+      null;
+
     return {
       status: profile.status,
       level: profile.level,
-      rejectionReason: latest?.rejectionReason ?? null,
+      rejectionReason: customerReason,
       metadata: {
-        resubmissionRequired: profileMeta.resubmissionRequired === true,
-        ...(typeof profileMeta.customerVisibleReason === 'string'
-          ? { customerVisibleReason: profileMeta.customerVisibleReason }
-          : {}),
+        resubmissionRequired:
+          profile.status === VerificationStatus.RENEWAL_REQUIRED ||
+          latest?.status === VerificationStatus.RENEWAL_REQUIRED ||
+          profileMeta.resubmissionRequired === true,
+        ...(customerReason ? { customerVisibleReason: customerReason } : {}),
       },
     };
   }
 
-  /** Customer GET: drop internal Admin notes from verification metadata. */
+  /** Customer GET: drop internal Admin notes and sensitive raw data from verification metadata. */
   toCustomerVerification<T extends { metadata?: unknown }>(row: T | null): T | null {
     if (!row) return null;
     const metadata = row.metadata;
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return row;
-    const { internalAdminNote: _hidden, ...safe } = metadata as Record<string, unknown>;
+    const {
+      internalAdminNote: _hidden,
+      idNumberEncrypted: _hidden2,
+      ...safe
+    } = metadata as Record<string, unknown>;
     void _hidden;
+    void _hidden2;
     return { ...row, metadata: safe };
   }
 
@@ -410,10 +678,141 @@ export class KycService {
     return this.prisma.verificationRequest.findMany({
       where: status
         ? { status }
-        : { status: { in: [VerificationStatus.IN_REVIEW, VerificationStatus.SUBMITTED] } },
-      orderBy: { submittedAt: 'asc' },
+        : {
+            status: {
+              in: [
+                VerificationStatus.SUBMITTED,
+                VerificationStatus.IN_REVIEW,
+                VerificationStatus.RENEWAL_REQUIRED,
+                VerificationStatus.REJECTED,
+                VerificationStatus.APPROVED,
+              ],
+            },
+          },
+      orderBy: { submittedAt: 'desc' },
       take: 100,
     });
+  }
+
+  async startReview(requestId: string, reviewer: JwtAccessClaims) {
+    this.assertReviewer(reviewer);
+    const request = await this.prisma.verificationRequest.findUnique({ where: { id: requestId } });
+    if (!request) throw new NotFoundError('Verification request not found');
+    if (request.status === VerificationStatus.APPROVED) {
+      throw new ConflictError('Verification request is already approved');
+    }
+    const updated = await this.prisma.verificationRequest.update({
+      where: { id: requestId },
+      data: {
+        status: VerificationStatus.IN_REVIEW,
+        reviewerUserId: reviewer.sub,
+        reviewedAt: new Date(),
+      },
+    });
+    await this.prisma.kycProfile.update({
+      where: { id: request.profileId },
+      data: { status: VerificationStatus.IN_REVIEW },
+    });
+    await this.recordAudit({
+      actorUserId: reviewer.sub,
+      action: 'KYC_REVIEW_OPENED',
+      subjectUserId: request.ownerUserId,
+      resourceType: 'VerificationRequest',
+      resourceId: request.id,
+    });
+    await this.emitAdminKycStatus({
+      ownerUserId: request.ownerUserId,
+      targetId: updated.id,
+      status: VerificationStatus.IN_REVIEW,
+    });
+    return updated;
+  }
+
+  async getReviewDetail(requestId: string, reviewer: JwtAccessClaims) {
+    this.assertReviewer(reviewer);
+    const request = await this.prisma.verificationRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        profile: true,
+        documents: true,
+      },
+    });
+    if (!request) throw new NotFoundError('Verification request not found');
+
+    const meta =
+      request.metadata && typeof request.metadata === 'object' && !Array.isArray(request.metadata)
+        ? (request.metadata as Record<string, unknown>)
+        : {};
+
+    let decryptedLegalName: string | null = null;
+    let decryptedDob: string | null = null;
+    let decryptedIdNumber: string | null = null;
+
+    if (request.profile?.legalNameEncrypted) {
+      try {
+        decryptedLegalName = this.crypto.decrypt(request.profile.legalNameEncrypted);
+      } catch {
+        // fallback
+      }
+    }
+    if (request.profile?.dateOfBirthEncrypted) {
+      try {
+        decryptedDob = this.crypto.decrypt(request.profile.dateOfBirthEncrypted);
+      } catch {
+        // fallback
+      }
+    }
+    if (typeof meta.idNumberEncrypted === 'string') {
+      try {
+        decryptedIdNumber = this.crypto.decrypt(meta.idNumberEncrypted);
+      } catch {
+        // fallback
+      }
+    }
+
+    const safeDocs = request.documents.map((d) => ({
+      id: d.id,
+      documentType: d.documentType,
+      status: d.status,
+      contentType: d.contentType,
+      fileName: d.fileName,
+      checksumSha256: d.checksumSha256,
+      metadata: d.metadata,
+      createdAt: d.createdAt,
+    }));
+
+    const auditRecords = await this.prisma.complianceAuditRecord.findMany({
+      where: { subjectUserId: request.ownerUserId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    return {
+      id: request.id,
+      ownerUserId: request.ownerUserId,
+      status: request.status,
+      requestedLevel: request.requestedLevel,
+      submittedAt: request.submittedAt,
+      reviewedAt: request.reviewedAt,
+      completedAt: request.completedAt,
+      rejectionReason: request.rejectionReason,
+      country: request.profile?.country ?? null,
+      nationality: request.profile?.nationality ?? null,
+      legalName: decryptedLegalName,
+      dateOfBirth: decryptedDob,
+      idType: meta.idType ?? null,
+      idNumber: decryptedIdNumber,
+      idExpiration: meta.idExpiration ?? null,
+      customerVisibleReason: meta.customerVisibleReason ?? request.rejectionReason,
+      internalAdminNote: meta.internalAdminNote ?? null,
+      documents: safeDocs,
+      auditHistory: auditRecords.map((a) => ({
+        action: a.action,
+        actorUserId: a.actorUserId,
+        createdAt: a.createdAt,
+        resourceType: a.resourceType,
+      })),
+    };
   }
 
   async approve(requestId: string, reviewer: JwtAccessClaims) {
@@ -443,6 +842,14 @@ export class KycService {
         verifiedAt: new Date(),
         expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       },
+    });
+    await this.recordAudit({
+      actorUserId: reviewer.sub,
+      action: 'KYC_APPROVED',
+      subjectUserId: request.ownerUserId,
+      resourceType: 'VerificationRequest',
+      resourceId: updated.id,
+      details: { level: request.requestedLevel },
     });
     await this.events.publish({
       type: ComplianceEventType.KYCCompleted,
@@ -582,6 +989,14 @@ export class KycService {
       status: VerificationStatus.REJECTED,
       reason: trimmed,
     });
+    await this.recordAudit({
+      actorUserId: reviewer.sub,
+      action: 'KYC_REJECTED',
+      subjectUserId: request.ownerUserId,
+      resourceType: 'VerificationRequest',
+      resourceId: updated.id,
+      details: { reason: trimmed, internalNotePresent: Boolean(internal) },
+    });
     return updated;
   }
 
@@ -632,6 +1047,14 @@ export class KycService {
       targetId: updated.id,
       status: VerificationStatus.RENEWAL_REQUIRED,
       reason: trimmed,
+    });
+    await this.recordAudit({
+      actorUserId: reviewer.sub,
+      action: 'KYC_RESUBMISSION_REQUESTED',
+      subjectUserId: request.ownerUserId,
+      resourceType: 'VerificationRequest',
+      resourceId: updated.id,
+      details: { instructions: trimmed },
     });
     return updated;
   }
@@ -999,11 +1422,12 @@ export class KycService {
   }
 
   private assertReviewer(requester: JwtAccessClaims) {
-    if (
-      !requester.permissions.includes(PERMISSION_COMPLIANCE_REVIEW) &&
-      !requester.permissions.includes(PERMISSION_COMPLIANCE_ADMIN)
-    ) {
-      throw new ForbiddenError('Review permission required');
+    const isSuperAdmin = requester.roles.includes('super_admin');
+    const isComplianceAdmin =
+      requester.roles.includes('admin') &&
+      requester.permissions.includes(PERMISSION_COMPLIANCE_REVIEW);
+    if (!isSuperAdmin && !isComplianceAdmin) {
+      throw new ForbiddenError('Super admin or authorized compliance review permission required');
     }
   }
 }

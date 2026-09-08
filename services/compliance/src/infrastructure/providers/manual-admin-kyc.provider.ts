@@ -1,0 +1,55 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import type {
+  DocumentVerificationInput,
+  DocumentVerificationOutput,
+  DocumentVerificationPort,
+  IdentityVerificationInput,
+  IdentityVerificationOutput,
+  IdentityVerificationPort,
+} from '../../domain';
+
+/**
+ * First-party manual admin review KYC provider.
+ * Does not depend on any third-party external KYC verification service.
+ * Submissions are placed in PENDING/IN_REVIEW state for authorized Auvora Admin review.
+ */
+@Injectable()
+export class ManualAdminKycProvider implements IdentityVerificationPort, DocumentVerificationPort {
+  private readonly logger = new Logger('ManualAdminKycProvider');
+
+  getCode(): string {
+    return 'manual-admin-review';
+  }
+
+  async verifyIdentity(input: IdentityVerificationInput): Promise<IdentityVerificationOutput> {
+    this.logger.log(
+      `First-party KYC submission registered for user ${input.ownerUserId}. Placed into manual Admin review queue.`,
+    );
+    return {
+      providerCode: this.getCode(),
+      providerRef: `manual-kyc-${input.ownerUserId.slice(0, 8)}-${Date.now()}`,
+      status: 'PENDING',
+      message:
+        'Identification details submitted directly to Auvora for authorized Admin verification.',
+      level: input.level,
+    };
+  }
+
+  async verifyDocument(input: DocumentVerificationInput): Promise<DocumentVerificationOutput> {
+    this.logger.log(
+      `First-party KYC document registered for user ${input.ownerUserId} (${input.documentType}). Stored encrypted for Admin review.`,
+    );
+    return {
+      providerCode: this.getCode(),
+      providerRef: `manual-doc-${randomUUID().slice(0, 8)}`,
+      status: 'UPLOADED',
+      message: 'Document securely encrypted and stored for authorized Admin review.',
+    };
+  }
+
+  verifyWebhookSignature(_rawBody: string, _signature?: string): boolean {
+    // First-party manual admin review has no external webhooks.
+    return false;
+  }
+}

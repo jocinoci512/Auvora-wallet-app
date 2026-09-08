@@ -21,6 +21,8 @@ export const envSchema = z.object({
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   APP_PUBLIC_URL: z.string().url().optional(),
+  KYC_MODE: z.enum(['manual_admin_review', 'commercial_provider']).default('manual_admin_review'),
+  KYC_DOCUMENT_STORAGE_DIR: z.string().optional(),
   KYC_PROVIDER_API_KEY: z.string().optional(),
   KYC_PROVIDER_WEBHOOK_SECRET: z.string().optional(),
   KYC_PROVIDER_BASE_URL: z.string().url().optional(),

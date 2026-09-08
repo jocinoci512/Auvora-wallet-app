@@ -764,6 +764,7 @@ export interface VerificationRequest {
   rejectionReason: string | null;
   submittedAt: string;
   completedAt: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface ComplianceDocument {
@@ -782,13 +783,20 @@ export interface SubmitKycInput {
   legalName?: string;
   dateOfBirth?: string;
   businessName?: string;
+  idType?: string;
+  idNumber?: string;
+  idExpiration?: string;
+  frontDocumentId?: string;
+  backDocumentId?: string;
 }
 
 export interface UploadComplianceDocumentInput {
   documentType: string;
-  storageKey: string;
+  storageKey?: string;
   contentType?: string;
   fileName?: string;
+  fileBase64?: string;
+  side?: 'front' | 'back';
   verificationRequestId?: string;
 }
 
@@ -2277,8 +2285,34 @@ export class AuvoraClient {
     return this.request<ComplianceDashboardMetrics>('GET', '/api/v1/admin/compliance/dashboard');
   }
 
-  async adminComplianceKycQueue(): Promise<VerificationRequest[]> {
-    return this.request<VerificationRequest[]>('GET', '/api/v1/admin/compliance/kyc/queue');
+  async adminComplianceKycQueue(status?: string): Promise<VerificationRequest[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return this.request<VerificationRequest[]>('GET', `/api/v1/admin/compliance/kyc/queue${query}`);
+  }
+
+  async adminGetKycDetail(id: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>('GET', `/api/v1/admin/compliance/kyc/${id}`);
+  }
+
+  async adminStartKycReview(id: string): Promise<VerificationRequest> {
+    return this.request<VerificationRequest>(
+      'POST',
+      `/api/v1/admin/compliance/kyc/${id}/start-review`,
+      {},
+    );
+  }
+
+  async adminGetDocumentViewToken(
+    documentId: string,
+  ): Promise<{ token: string; documentId: string; expiresInSeconds: number }> {
+    return this.request<{ token: string; documentId: string; expiresInSeconds: number }>(
+      'GET',
+      `/api/v1/admin/compliance/documents/${documentId}/view-token`,
+    );
+  }
+
+  adminDocumentContentUrl(documentId: string, token: string): string {
+    return `${this.baseUrl.replace(/\/$/, '')}/api/v1/compliance/documents/${documentId}/token-content?token=${encodeURIComponent(token)}`;
   }
 
   async adminApproveKyc(id: string): Promise<VerificationRequest> {

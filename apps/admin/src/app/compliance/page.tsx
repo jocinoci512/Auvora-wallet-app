@@ -15,11 +15,14 @@ import { useRealtimeRefetch } from '../../lib/admin-realtime-context';
 import type { AdminEvent } from '../../lib/realtime/admin-event';
 
 type PendingKyc = { id: string; kind: 'reject' | 'resubmit' };
+type KycFilter =
+  'ALL' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'REQUIRES_RESUBMISSION';
 
 export default function AdminCompliancePage(): ReactElement {
   const [metrics, setMetrics] = useState<ComplianceDashboardMetrics | null>(null);
   const [queue, setQueue] = useState<VerificationRequest[]>([]);
   const [providers, setProviders] = useState<ComplianceProvider[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState<KycFilter>('ALL');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingKyc | null>(null);
@@ -29,9 +32,10 @@ export default function AdminCompliancePage(): ReactElement {
     setError(null);
     try {
       const client = createApiClient();
+      const statusParam = selectedFilter === 'ALL' ? undefined : selectedFilter;
       const [m, q, p] = await Promise.all([
         client.adminComplianceDashboard(),
-        client.adminComplianceKycQueue(),
+        client.adminComplianceKycQueue(statusParam),
         client.adminListComplianceProviders(),
       ]);
       setMetrics(m);
@@ -44,7 +48,7 @@ export default function AdminCompliancePage(): ReactElement {
         setError(formatApiError(err));
       }
     }
-  }, []);
+  }, [selectedFilter]);
 
   useEffect(() => {
     void load();
@@ -55,6 +59,18 @@ export default function AdminCompliancePage(): ReactElement {
     () => void load(),
     800,
   );
+
+  async function startReview(id: string): Promise<void> {
+    setMessage(null);
+    try {
+      const client = createApiClient();
+      await client.adminStartKycReview(id);
+      setMessage('Review started (status set to IN_REVIEW)');
+      await load();
+    } catch (err) {
+      setError(formatApiError(err));
+    }
+  }
 
   async function approve(id: string): Promise<void> {
     setMessage(null);
@@ -90,73 +106,156 @@ export default function AdminCompliancePage(): ReactElement {
     }
   }
 
+  const filters: { label: string; value: KycFilter }[] = [
+    { label: 'All', value: 'ALL' },
+    { label: 'Submitted', value: 'SUBMITTED' },
+    { label: 'In Review', value: 'IN_REVIEW' },
+    { label: 'Approved', value: 'APPROVED' },
+    { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Needs Resubmission', value: 'REQUIRES_RESUBMISSION' },
+  ];
+
   return (
     <main className="page">
-      <h1>KYC queue</h1>
+      <h1>KYC Reviews</h1>
       <p>
-        Review identity verification submissions. Reasons shown to customers must be safe and
-        specific. Document binaries are never returned by this UI.
+        Review customer identity verification submissions. Document binaries are stored encrypted
+        and retrieved only through secure, short-lived tokens.
       </p>
       <p>
         <Link href="/compliance/alerts">AML alerts</Link> ·{' '}
         <Link href="/compliance/cases">Cases</Link> · <Link href="/compliance/rules">Rules</Link>
       </p>
-      {error ? <p role="alert">{error}</p> : null}
-      {message ? <p>{message}</p> : null}
+      {error ? (
+        <p role="alert" style={{ color: 'red' }}>
+          {error}
+        </p>
+      ) : null}
+      {message ? <p style={{ color: 'green' }}>{message}</p> : null}
       {metrics ? (
-        <section>
-          <p>Pending KYC: {metrics.pendingKyc}</p>
-          <p>Open alerts: {metrics.openAlerts}</p>
+        <section style={{ display: 'flex', gap: '2rem', marginBottom: '1rem' }}>
+          <p>
+            <strong>Pending KYC:</strong> {metrics.pendingKyc}
+          </p>
+          <p>
+            <strong>Open alerts:</strong> {metrics.openAlerts}
+          </p>
         </section>
       ) : null}
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        {filters.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => setSelectedFilter(f.value)}
+            style={{
+              padding: '0.35rem 0.75rem',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              cursor: 'pointer',
+              background: selectedFilter === f.value ? '#0066cc' : '#f5f5f5',
+              color: selectedFilter === f.value ? '#fff' : '#333',
+              fontWeight: selectedFilter === f.value ? 'bold' : 'normal',
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <table className="data-table">
         <thead>
           <tr>
             <th>Request</th>
-            <th>User</th>
+            <th>Customer</th>
+            <th>Country</th>
+            <th>ID Type</th>
             <th>Status</th>
-            <th>Level</th>
             <th>Submitted</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {queue.map((row) => (
-            <tr key={row.id}>
-              <td className="mono">{row.id.slice(0, 8)}…</td>
-              <td className="mono">
-                <Link href={`/users/${row.ownerUserId}`}>{row.ownerUserId.slice(0, 8)}…</Link>
-              </td>
-              <td>
-                <StatusBadge status={row.status} />
-              </td>
-              <td>{row.requestedLevel}</td>
-              <td>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '—'}</td>
-              <td>
-                <Button type="button" onClick={() => void approve(row.id)}>
-                  Approve
-                </Button>{' '}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setPending({ id: row.id, kind: 'reject' })}
-                >
-                  Reject
-                </Button>{' '}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setPending({ id: row.id, kind: 'resubmit' })}
-                >
-                  Request resubmission
-                </Button>
+          {queue.length === 0 ? (
+            <tr>
+              <td colSpan={7} style={{ textAlign: 'center', padding: '1rem' }}>
+                No verification submissions found for the selected filter.
               </td>
             </tr>
-          ))}
+          ) : (
+            queue.map((row) => {
+              const rowObj = row as VerificationRequest & { metadata?: Record<string, unknown> };
+              const meta = rowObj.metadata || {};
+              const country = (meta.country as string) || '—';
+              const idType = (meta.idType as string) || (meta.documentType as string) || '—';
+
+              return (
+                <tr key={row.id}>
+                  <td className="mono">
+                    <Link href={`/compliance/kyc/${row.id}`}>{row.id.slice(0, 8)}…</Link>
+                  </td>
+                  <td className="mono">
+                    <Link href={`/users/${row.ownerUserId}`}>{row.ownerUserId.slice(0, 8)}…</Link>
+                  </td>
+                  <td>{country}</td>
+                  <td>{idType}</td>
+                  <td>
+                    <StatusBadge status={row.status} />
+                  </td>
+                  <td>{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : '—'}</td>
+                  <td>
+                    <Link
+                      href={`/compliance/kyc/${row.id}`}
+                      style={{
+                        marginRight: '8px',
+                        padding: '4px 8px',
+                        border: '1px solid #0066cc',
+                        borderRadius: '4px',
+                        textDecoration: 'none',
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      Review
+                    </Link>
+                    {row.status === 'SUBMITTED' ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void startReview(row.id)}
+                      >
+                        Start review
+                      </Button>
+                    ) : null}{' '}
+                    {row.status !== 'APPROVED' ? (
+                      <Button type="button" onClick={() => void approve(row.id)}>
+                        Approve
+                      </Button>
+                    ) : null}{' '}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setPending({ id: row.id, kind: 'reject' })}
+                    >
+                      Reject
+                    </Button>{' '}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setPending({ id: row.id, kind: 'resubmit' })}
+                    >
+                      Resubmit
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
+
       {providers.length > 0 ? (
-        <section>
+        <section style={{ marginTop: '2rem' }}>
           <h2>Providers</h2>
           <ul>
             {providers.map((p) => (
@@ -167,6 +266,7 @@ export default function AdminCompliancePage(): ReactElement {
           </ul>
         </section>
       ) : null}
+
       <ConfirmReasonDialog
         open={pending !== null}
         title={pending?.kind === 'resubmit' ? 'Request resubmission' : 'Reject KYC'}

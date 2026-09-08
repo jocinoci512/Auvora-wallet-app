@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage(): ReactElement {
   return (
     <LegalShell
       title="Privacy Policy"
-      subtitle="How Auvora protects your self-custody privacy, handles identity verification, and secures your data."
+      subtitle="How Auvora protects your self-custody privacy, handles first-party identity verification, and secures your data."
       current="/legal/privacy"
     >
       <section className="cx-panel">
@@ -71,8 +71,8 @@ export default function PrivacyPolicyPage(): ReactElement {
               <strong>Transactional Email &amp; Communications</strong>
               <p className="cx-meta">
                 Critical account security notices (verification links, password reset tokens,
-                security alerts) are transmitted via our transactional email provider (Resend). We
-                never send marketing emails without consent.
+                compliance status updates) are transmitted via our transactional email provider
+                (Resend). We never send marketing emails without consent.
               </p>
             </div>
           </li>
@@ -80,51 +80,56 @@ export default function PrivacyPolicyPage(): ReactElement {
       </section>
 
       <section className="cx-panel">
-        <h2>3. Identity Verification &amp; Compliance (KYC / AML)</h2>
+        <h2>3. Identity Verification &amp; Compliance (First-Party Admin Review)</h2>
         <p>
-          To prevent financial fraud, terrorism financing, and comply with global anti-money
+          To prevent financial fraud, terrorism financing, and comply with applicable anti-money
           laundering (AML) and sanctions regulations, Auvora enforces transfer policies on
-          high-value transfers (e.g., identity verification at or above $5,000 USD equivalent).
+          high-value transfers (e.g., identity verification required for transfers of $5,000 USD
+          equivalent or more, and administrative review for transfers of $10,000 USD or more).
         </p>
         <ul className="cx-list">
           <li>
             <div>
-              <strong>Authorized Third-Party Verification Partner</strong>
+              <strong>First-Party Manual Verification by Authorized Personnel</strong>
               <p className="cx-meta">
-                Identity verification is performed through our authorized compliance and identity
-                verification provider (e.g., Stripe Identity). When initiating verification, you are
-                connected directly to the provider&apos;s secure, encrypted hosted environment.
+                Auvora does NOT use external commercial KYC verification providers (such as Stripe
+                Identity, Persona, Veriff, or Sumsub). Customer identity documents are submitted
+                directly and securely to Auvora's encrypted compliance backend for manual review by
+                authorized Auvora administrators.
               </p>
             </div>
           </li>
           <li>
             <div>
-              <strong>Provider-Hosted Document Processing</strong>
+              <strong>What We Collect for Verification</strong>
               <p className="cx-meta">
-                Your government identity documents (passports, driver&apos;s licenses, national IDs)
-                and biometric verification imagery (selfies) are captured and processed directly on
-                the compliance provider&apos;s certified infrastructure.
+                When initiating verification, customers provide legal name, date of birth, country
+                of residence, ID type (passport, national ID card, driver's license, or residence
+                permit), ID document number, expiration date, and encrypted image files of the
+                government ID.
               </p>
             </div>
           </li>
           <li>
             <div>
-              <strong>What Auvora Does NOT Store</strong>
+              <strong>Secure Document Storage &amp; Encryption at Rest</strong>
               <p className="cx-meta">
-                Auvora does <em>not</em> store unencrypted facial biometric templates, raw selfie
-                images, or raw document scans in our databases.
+                Government ID images are never stored in plain text or raw database columns. All
+                document binaries are sanitized (stripping unnecessary EXIF/GPS metadata), validated
+                against malicious file structures, and encrypted at rest using server-side
+                AES-256-GCM encryption before storage. Documents are never exposed through permanent
+                public URLs.
               </p>
             </div>
           </li>
           <li>
             <div>
-              <strong>What Auvora Stores</strong>
+              <strong>Strict Role-Based Access Control &amp; Short-Lived Access</strong>
               <p className="cx-meta">
-                Auvora stores only verification reference identifiers (e.g., external verification
-                session IDs), canonical verification status (e.g., Verified, Action Required,
-                Rejected), requested verification level, timestamps, and AES-256 field-encrypted
-                customer name and date of birth required for legal compliance and sanctions
-                screening.
+                Only authorized Super Administrators have permission to review government ID
+                documents. Support agents and general staff are strictly blocked. Viewing documents
+                requires ephemeral, short-lived signed tokens, and every document access is
+                immutably audited.
               </p>
             </div>
           </li>
@@ -139,8 +144,10 @@ export default function PrivacyPolicyPage(): ReactElement {
             <div>
               <strong>Encryption in Transit &amp; at Rest</strong>
               <p className="cx-meta">
-                All API communications require TLS 1.3/HTTPS. All sensitive database columns (PII,
-                tokens) are encrypted with AES-256 before persistence.
+                All API communications require TLS 1.3/HTTPS. Sensitive database columns (PII,
+                tokens, ID numbers) are encrypted with AES-256 before persistence. Document
+                encryption keys remain strictly server-side and completely separate from customer
+                self-custody wallet vaults.
               </p>
             </div>
           </li>
@@ -149,8 +156,8 @@ export default function PrivacyPolicyPage(): ReactElement {
               <strong>Strict Telemetry &amp; Log Redaction</strong>
               <p className="cx-meta">
                 Our application servers automatically redact passwords, tokens, API keys, private
-                keys, mnemonics, phone numbers, and identity references from internal logs and
-                telemetry.
+                keys, mnemonics, phone numbers, ID numbers, document binaries, and signed URLs from
+                internal logs and telemetry.
               </p>
             </div>
           </li>
@@ -158,7 +165,7 @@ export default function PrivacyPolicyPage(): ReactElement {
       </section>
 
       <section className="cx-panel">
-        <h2>5. Account Deletion &amp; Statutory Retention Policy</h2>
+        <h2>5. Account Deletion &amp; Data Retention Policy</h2>
         <p>
           You have the right to request deletion of your Auvora account and associated personal data
           at any time:
@@ -166,30 +173,27 @@ export default function PrivacyPolicyPage(): ReactElement {
         <ul className="cx-list">
           <li>
             <div>
-              <strong>Immediate Deletion</strong>
+              <strong>Immediate Deletion for Unverified Accounts</strong>
               <p className="cx-meta">
                 For accounts that have not completed formal regulatory identity verification,
                 account deletion immediately purges all user profile information, authentication
-                sessions, and device links.
+                sessions, draft records, and device links.
               </p>
             </div>
           </li>
           <li>
             <div>
-              <strong>Statutory Compliance Retention (Subject to Owner &amp; Legal Review)</strong>
+              <strong>
+                Configurable Retention &amp; Audit Records (Subject to Legal Confirmation)
+              </strong>
               <p className="cx-meta">
-                Where an account has completed identity verification for transactions subject to
-                anti-money laundering (AML) and Counter-Terrorist Financing (CTF) regulations (such
-                as the Bank Secrecy Act / FinCEN regulations 31 CFR § 1010.410, EU 5AMLD/6AMLD, or
-                equivalent local statutes), Auvora is legally mandated to retain customer
-                identification records, sanctions screening logs, and transaction audit trails for a
-                mandatory statutory retention period [
-                <em>
-                  Standard statutory window: 5 years following account closure, subject to final
-                  legal counsel confirmation
-                </em>
-                ]. During this period, records are archived, access-controlled, and strictly
-                isolated from operational use.
+                Where an account has completed identity verification for high-value transactions,
+                applicable AML/CTF regulations require retention of identification records and audit
+                logs. Raw ID document images and audit logs are managed under distinct, configurable
+                retention policies. Formal statutory retention durations remain subject to final
+                confirmation by legal counsel prior to public launch. During any applicable
+                retention period, records remain encrypted, access-controlled, and strictly isolated
+                from operational use.
               </p>
             </div>
           </li>

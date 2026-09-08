@@ -18,7 +18,7 @@ const REVIEWER_USER: JwtAccessClaims = {
   sub: 'reviewer-uuid-1',
   email: 'compliance-officer@auvorawallet.com',
   sessionId: 'sess-reviewer',
-  roles: ['compliance_officer'],
+  roles: ['admin', 'super_admin'],
   permissions: ['compliance:review' as never],
 };
 

@@ -46,7 +46,8 @@ export class HealthController {
       this.prisma.isHealthy(),
       this.redis.ping(),
     ]);
-    const kycConfigured = Boolean(this.env.KYC_PROVIDER_API_KEY);
+    const kycConfigured =
+      this.env.KYC_MODE === 'manual_admin_review' || Boolean(this.env.KYC_PROVIDER_API_KEY);
     const checks: Record<string, HealthStatus> = {
       database: dbHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,
       redis: redisHealthy ? HealthStatus.Ok : HealthStatus.Unhealthy,

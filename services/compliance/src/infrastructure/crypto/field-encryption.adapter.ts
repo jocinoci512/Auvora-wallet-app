@@ -8,6 +8,8 @@ export interface FieldEncryptionPort {
   encrypt(plaintext: string): string;
   decrypt(ciphertext: string): string;
   hash(value: string): string;
+  encryptBuffer(buffer: Buffer): Buffer;
+  decryptBuffer(ciphertext: Buffer): Buffer;
 }
 
 @Injectable()
@@ -38,6 +40,31 @@ export class AesFieldEncryptionAdapter implements FieldEncryptionPort {
       decipher.final(),
     ]);
     return decrypted.toString('utf8');
+  }
+
+  encryptBuffer(buffer: Buffer): Buffer {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', this.key, iv);
+    const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    // Format: [1 byte version (0x01)] [12 bytes IV] [16 bytes Tag] [encrypted payload]
+    return Buffer.concat([Buffer.from([0x01]), iv, tag, encrypted]);
+  }
+
+  decryptBuffer(ciphertext: Buffer): Buffer {
+    if (ciphertext.length < 1 + 12 + 16) {
+      throw new Error('Invalid buffer ciphertext: payload too short');
+    }
+    const version = ciphertext[0];
+    if (version !== 0x01) {
+      throw new Error(`Unsupported buffer ciphertext version: ${version}`);
+    }
+    const iv = ciphertext.subarray(1, 13);
+    const tag = ciphertext.subarray(13, 29);
+    const data = ciphertext.subarray(29);
+    const decipher = createDecipheriv('aes-256-gcm', this.key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(data), decipher.final()]);
   }
 
   hash(value: string): string {

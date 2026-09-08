@@ -36,17 +36,19 @@ class KycStatusSnapshot {
     final label = switch (status) {
       'APPROVED' => 'Verified',
       'IN_REVIEW' || 'PENDING_PROVIDER' || 'SUBMITTED' => 'In review',
-      'REJECTED' => resubmit || status == 'RENEWAL_REQUIRED'
+      'REJECTED' => resubmit || status == 'RENEWAL_REQUIRED' || status == 'REQUIRES_RESUBMISSION'
           ? 'Action required'
           : 'Rejected',
-      'RENEWAL_REQUIRED' => 'Action required',
+      'RENEWAL_REQUIRED' || 'REQUIRES_RESUBMISSION' => 'Action required',
       _ => 'Not verified',
     };
     return KycStatusSnapshot(
       status: status,
       level: level,
       productLabel: label,
-      needsResubmission: resubmit || status == 'RENEWAL_REQUIRED',
+      needsResubmission: resubmit ||
+          status == 'RENEWAL_REQUIRED' ||
+          status == 'REQUIRES_RESUBMISSION',
       isApproved: status == 'APPROVED',
       customerReason: reason == null || reason.isEmpty ? null : reason,
     );
@@ -78,11 +80,41 @@ class KycClient {
 
   /// Starts a BASIC verification request (provider may place it IN_REVIEW).
   Future<Map<String, dynamic>> submitBasic({required String accessToken}) async {
-    return _post(
-      '/api/v1/compliance/kyc',
-      accessToken,
-      {'requestedLevel': 'BASIC', 'legalName': 'QA User', 'country': 'US'},
+    return submitKyc(
+      accessToken: accessToken,
+      requestedLevel: 'BASIC',
+      legalName: 'QA User',
+      country: 'US',
     );
+  }
+
+  /// Submits full first-party customer KYC verification.
+  Future<Map<String, dynamic>> submitKyc({
+    required String accessToken,
+    required String requestedLevel,
+    String? legalName,
+    String? country,
+    String? dateOfBirth,
+    String? idType,
+    String? idNumber,
+    String? idExpiration,
+    String? frontDocumentId,
+    String? backDocumentId,
+  }) async {
+    final payload = <String, dynamic>{
+      'requestedLevel': requestedLevel,
+      if (legalName != null && legalName.isNotEmpty) 'legalName': legalName,
+      if (country != null && country.isNotEmpty) 'country': country,
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty) 'dateOfBirth': dateOfBirth,
+      if (idType != null && idType.isNotEmpty) 'idType': idType,
+      if (idNumber != null && idNumber.isNotEmpty) 'idNumber': idNumber,
+      if (idExpiration != null && idExpiration.isNotEmpty) 'idExpiration': idExpiration,
+      if (frontDocumentId != null && frontDocumentId.isNotEmpty)
+        'frontDocumentId': frontDocumentId,
+      if (backDocumentId != null && backDocumentId.isNotEmpty)
+        'backDocumentId': backDocumentId,
+    };
+    return _post('/api/v1/compliance/kyc', accessToken, payload);
   }
 
   Future<Map<String, dynamic>> _get(String path, String accessToken) async {

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Headers, Inject, Post, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Get, Headers, Inject, Param, Post, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { KycLevel, KycSubjectType } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
@@ -40,15 +40,35 @@ export class SubmitKycDto {
   @IsOptional()
   @IsString()
   businessName?: string;
+
+  @IsOptional()
+  @IsString()
+  idType?: string;
+
+  @IsOptional()
+  @IsString()
+  idNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  idExpiration?: string;
+
+  @IsOptional()
+  @IsUUID()
+  frontDocumentId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  backDocumentId?: string;
 }
 
 export class UploadDocumentDto {
   @IsString()
   documentType!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  storageKey!: string;
+  storageKey?: string;
 
   @IsOptional()
   @IsString()
@@ -57,6 +77,14 @@ export class UploadDocumentDto {
   @IsOptional()
   @IsString()
   fileName?: string;
+
+  @IsOptional()
+  @IsString()
+  fileBase64?: string;
+
+  @IsOptional()
+  @IsString()
+  side?: 'front' | 'back';
 
   @IsOptional()
   @IsUUID()
@@ -130,8 +158,41 @@ export class ComplianceController {
   @Post('documents')
   @Permissions(PERMISSION_COMPLIANCE_WRITE)
   async upload(@CurrentUser() user: JwtAccessClaims, @Body() dto: UploadDocumentDto) {
-    const data = await this.kyc.uploadDocument(user.sub, dto);
+    if (dto.fileBase64) {
+      const buffer = Buffer.from(dto.fileBase64, 'base64');
+      const data = await this.kyc.uploadDocumentPayload(user.sub, {
+        documentType: dto.documentType,
+        fileBuffer: buffer,
+        fileName: dto.fileName,
+        requestedContentType: dto.contentType,
+        side: dto.side,
+        verificationRequestId: dto.verificationRequestId,
+      });
+      return successResponse(data);
+    }
+    const data = await this.kyc.uploadDocument(user.sub, {
+      ...dto,
+      storageKey: dto.storageKey || `local://${dto.fileName || 'doc'}`,
+    });
     return successResponse(data);
+  }
+
+  @Get('documents/:id/token-content')
+  @Public()
+  async documentContentWithToken(
+    @Param('id') id: string,
+    @Query('token') token: string,
+    @Res() res: Response,
+  ) {
+    if (!token) {
+      throw new UnauthorizedError('Token is required');
+    }
+    const { buffer, contentType, fileName } = await this.kyc.getDocumentContentWithToken(id, token);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.end(buffer);
   }
 
   @Get('risk')

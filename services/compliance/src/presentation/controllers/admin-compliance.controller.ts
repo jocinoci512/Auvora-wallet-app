@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ComplianceRuleAction, type CaseStatus, type VerificationStatus } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
@@ -13,9 +14,13 @@ import {
   PERMISSION_COMPLIANCE_REVIEW,
   PERMISSION_COMPLIANCE_RULES,
   ADMIN_PORTAL_ROLES,
+  ROLE_ADMIN,
+  ROLE_SUPER_ADMIN,
+  UnauthorizedError,
+  ForbiddenError,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
-import { Permissions, Roles } from '../decorators/auth.decorators';
+import { Permissions, Public, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import {
   IsEnum,
@@ -166,13 +171,29 @@ export class AdminComplianceController {
     return successResponse(await this.kyc.listQueue(status));
   }
 
+  @Get('kyc/:id')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
+  @Permissions(PERMISSION_COMPLIANCE_REVIEW)
+  async getKycDetail(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims) {
+    return successResponse(await this.kyc.getReviewDetail(id, user));
+  }
+
+  @Post('kyc/:id/start-review')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
+  @Permissions(PERMISSION_COMPLIANCE_REVIEW)
+  async startReview(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims) {
+    return successResponse(await this.kyc.startReview(id, user));
+  }
+
   @Post('kyc/:id/approve')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
   @Permissions(PERMISSION_COMPLIANCE_REVIEW)
   async approve(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims) {
     return successResponse(await this.kyc.approve(id, user));
   }
 
   @Post('kyc/:id/reject')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
   @Permissions(PERMISSION_COMPLIANCE_REVIEW)
   async reject(
     @Param('id') id: string,
@@ -183,6 +204,7 @@ export class AdminComplianceController {
   }
 
   @Post('kyc/:id/resubmission')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
   @Permissions(PERMISSION_COMPLIANCE_REVIEW)
   async requestResubmission(
     @Param('id') id: string,
@@ -190,6 +212,29 @@ export class AdminComplianceController {
     @CurrentUser() user: JwtAccessClaims,
   ) {
     return successResponse(await this.kyc.requestResubmission(id, user, dto.reason));
+  }
+
+  @Get('documents/:id/view-token')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
+  @Permissions(PERMISSION_COMPLIANCE_REVIEW)
+  async documentViewToken(@Param('id') id: string, @CurrentUser() user: JwtAccessClaims) {
+    return successResponse(await this.kyc.getDocumentViewToken(id, user));
+  }
+
+  @Get('documents/:id/content')
+  @Roles(ROLE_SUPER_ADMIN, ROLE_ADMIN)
+  @Permissions(PERMISSION_COMPLIANCE_REVIEW)
+  async streamDocument(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtAccessClaims,
+    @Res() res: Response,
+  ) {
+    const result = await this.kyc.getDocumentContent(id, user);
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${result.fileName}"`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.end(result.buffer);
   }
 
   @Get('documents')

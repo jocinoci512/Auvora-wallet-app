@@ -59,15 +59,22 @@ import {
   UnavailableTravelRuleProvider,
 } from './providers/unavailable.providers';
 import { CommercialKycProvider } from './providers/commercial-kyc.provider';
+import { ManualAdminKycProvider } from './providers/manual-admin-kyc.provider';
+import { SecureDocumentStorageService } from './storage/secure-document-storage.service';
 import { RedisAdapter } from './redis/redis.adapter';
 import { REDIS_PORT } from './redis/redis.port';
 import { SystemClockAdapter, UuidIdGeneratorAdapter } from './system/system.adapters';
 
 const env = loadEnv();
 
+const kycReviewProvider =
+  env.KYC_MODE === 'commercial_provider' ? CommercialKycProvider : ManualAdminKycProvider;
+
 const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
   ? [
       ...COMPLIANCE_SIMULATOR_PROVIDERS,
+      ManualAdminKycProvider,
+      CommercialKycProvider,
       { provide: IDENTITY_VERIFICATION_PROVIDER, useExisting: IdentitySimulatorProvider },
       { provide: DOCUMENT_VERIFICATION_PROVIDER, useExisting: DocumentSimulatorProvider },
       { provide: SANCTIONS_PROVIDER, useExisting: SanctionsSimulatorProvider },
@@ -79,6 +86,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
       { provide: TRAVEL_RULE_PROVIDER, useExisting: TravelRuleSimulatorProvider },
     ]
   : [
+      ManualAdminKycProvider,
       CommercialKycProvider,
       UnavailableIdentityProvider,
       UnavailableDocumentProvider,
@@ -89,8 +97,8 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
       UnavailableFraudProvider,
       LocalRiskScoringProvider,
       UnavailableTravelRuleProvider,
-      { provide: IDENTITY_VERIFICATION_PROVIDER, useExisting: CommercialKycProvider },
-      { provide: DOCUMENT_VERIFICATION_PROVIDER, useExisting: CommercialKycProvider },
+      { provide: IDENTITY_VERIFICATION_PROVIDER, useExisting: kycReviewProvider },
+      { provide: DOCUMENT_VERIFICATION_PROVIDER, useExisting: kycReviewProvider },
       { provide: SANCTIONS_PROVIDER, useExisting: UnavailableSanctionsProvider },
       { provide: PEP_PROVIDER, useExisting: UnavailablePepProvider },
       { provide: ADDRESS_RISK_PROVIDER, useExisting: UnavailableAddressRiskProvider },
@@ -110,6 +118,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     SystemClockAdapter,
     UuidIdGeneratorAdapter,
     AesFieldEncryptionAdapter,
+    SecureDocumentStorageService,
     EventBusService,
     NotificationsPublisherAdapter,
     RedisAdminEventPublisher,
@@ -135,6 +144,7 @@ const providerBindings = env.COMPLIANCE_SIMULATOR_ENABLED
     CLOCK,
     ID_GENERATOR,
     FIELD_ENCRYPTION,
+    SecureDocumentStorageService,
     EVENT_BUS,
     NOTIFICATIONS_PUBLISHER,
     ADMIN_EVENT_PUBLISHER,

@@ -35,9 +35,30 @@ describe('HealthController', () => {
     expect(result.checks?.kycProvider).toBe(HealthStatus.Ok);
   });
 
-  it('returns degraded readiness when kycProvider API key is unconfigured', async () => {
+  it('returns ok readiness when KYC_MODE is manual_admin_review without external API key', async () => {
     const controller = new HealthController(
-      { SERVICE_NAME: 'compliance', SERVICE_VERSION: '0.1.0' } as never,
+      {
+        SERVICE_NAME: 'compliance',
+        SERVICE_VERSION: '0.1.0',
+        KYC_MODE: 'manual_admin_review',
+      } as never,
+      { ping: async () => true } as never,
+      { isHealthy: async () => true } as PrismaService,
+    );
+    const result = await controller.getReady();
+    expect(result.status).toBe(HealthStatus.Ok);
+    expect(result.checks?.database).toBe(HealthStatus.Ok);
+    expect(result.checks?.redis).toBe(HealthStatus.Ok);
+    expect(result.checks?.kycProvider).toBe(HealthStatus.Ok);
+  });
+
+  it('returns degraded readiness when KYC_MODE is commercial_provider and API key is unconfigured', async () => {
+    const controller = new HealthController(
+      {
+        SERVICE_NAME: 'compliance',
+        SERVICE_VERSION: '0.1.0',
+        KYC_MODE: 'commercial_provider',
+      } as never,
       { ping: async () => true } as never,
       { isHealthy: async () => true } as PrismaService,
     );

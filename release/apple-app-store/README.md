@@ -42,13 +42,13 @@ When configuring the App Privacy questions in App Store Connect:
   - **Contact Info**: Email address (for optional account registration, security alerts, and transactional email via Resend).
   - **Identifiers**: User ID and device ID (for authenticated session management and rate limiting).
   - **Sensitive Info / Identity Verification**:
-    - _Processing_: Government identity documents and verification selfies are collected and processed by an authorized third-party processor (**Stripe Identity**) on Auvora's behalf for AML/CFT regulatory compliance and fraud prevention.
-    - _Storage_: Raw document images and biometric templates are **never** stored on Auvora servers. Auvora stores external session references (`providerRef`), verification status, and AES-256 field-encrypted legal name and date of birth required for statutory compliance.
-- **Diagnostics**: Crash data and performance metrics (collected via Sentry when configured; stripped of all credentials, private keys, and PII before transmission).
+    - _Processing_: First-party verification. Government identity documents (passport, driver's license, national ID, residence permit) are submitted directly to Auvora's secure backend for manual verification by authorized Auvora administrators. No external commercial KYC providers (such as Stripe Identity) are used.
+    - _Storage_: Government ID images are sanitized (metadata/EXIF stripped), encrypted with server-side AES-256-GCM at rest, and stored in access-controlled private storage. They are never publicly accessible, never exposed via permanent URLs, and retrievable only by authorized Super Administrators via short-lived signed tokens.
+- **Diagnostics**: Crash data and performance metrics (collected via observability when configured; stripped of all credentials, private keys, and PII before transmission).
 - **Data Retention & Account Deletion**:
   - Users can delete accounts in-app or via support.
   - Non-verified accounts are purged immediately.
-  - Accounts with completed AML identity verifications are subject to mandatory statutory recordkeeping (typically 5 years post-account closure, subject to final owner/legal counsel determination).
+  - Configurable retention separates raw ID documents from compliance audit history. Durations remain subject to final confirmation by legal counsel.
 
 ---
 

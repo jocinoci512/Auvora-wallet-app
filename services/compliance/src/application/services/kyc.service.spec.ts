@@ -183,7 +183,7 @@ describe('KycService', () => {
       requestedLevel: KycLevel.BASIC,
       legalName: 'QA User',
     });
-    expect(result.status).toBe(VerificationStatus.IN_REVIEW);
+    expect(result.status).toBe(VerificationStatus.SUBMITTED);
     expect(events.publish).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'KYCCompleted' }),
     );
@@ -195,7 +195,7 @@ describe('KycService', () => {
       requestedLevel: KycLevel.BASIC,
       legalName: 'Sanction Case',
     });
-    expect(result.status).toBe(VerificationStatus.IN_REVIEW);
+    expect(result.status).toBe(VerificationStatus.SUBMITTED);
   });
 
   it('sends the request to review when a PEP hit occurs', async () => {
@@ -204,7 +204,7 @@ describe('KycService', () => {
       requestedLevel: KycLevel.BASIC,
       legalName: 'Pep Case',
     });
-    expect(result.status).toBe(VerificationStatus.IN_REVIEW);
+    expect(result.status).toBe(VerificationStatus.SUBMITTED);
   });
 
   it('rejects the request immediately when identity verification fails', async () => {
@@ -332,7 +332,17 @@ describe('KycService', () => {
     await service.listQueue();
     expect(prisma.verificationRequest.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: { in: [VerificationStatus.IN_REVIEW, VerificationStatus.SUBMITTED] } },
+        where: {
+          status: {
+            in: [
+              VerificationStatus.SUBMITTED,
+              VerificationStatus.IN_REVIEW,
+              VerificationStatus.RENEWAL_REQUIRED,
+              VerificationStatus.REJECTED,
+              VerificationStatus.APPROVED,
+            ],
+          },
+        },
       }),
     );
   });
