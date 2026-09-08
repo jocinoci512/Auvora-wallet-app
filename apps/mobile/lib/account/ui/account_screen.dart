@@ -90,7 +90,7 @@ class _NotConfiguredView extends StatelessWidget {
             Text(
               'This build refused the configured account API host (localhost / '
               'insecure HTTP are blocked). Your wallet still works fully on-device. '
-              'QA and release builds use https://api.auvorawallet.com.',
+              'Production builds use https://api.auvorawallet.com.',
               textAlign: TextAlign.center,
               style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.outline),
             ),
@@ -760,13 +760,13 @@ class _AuthFormsState extends State<_AuthForms> {
             child: const Text('Forgot password?'),
           ),
         const SizedBox(height: 12),
-          Text(
-            'Password reset restores account login only. It cannot decrypt an '
-            'encrypted wallet vault — after a password change, re-wrap the vault '
-            'with your recovery phrase on a trusted device, then upload again.',
-            textAlign: TextAlign.center,
-            style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.outline),
-          ),
+        Text(
+          'Password reset only restores access to your Auvora account. It cannot reset '
+          'or restore your secret recovery phrase. Your private keys and crypto funds '
+          'remain securely on your device.',
+          textAlign: TextAlign.center,
+          style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.outline),
+        ),
       ],
     );
   }

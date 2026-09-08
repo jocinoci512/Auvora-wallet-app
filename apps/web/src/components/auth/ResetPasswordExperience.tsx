@@ -34,7 +34,7 @@ function ResetForm(): ReactElement {
     try {
       await resetPassword(token, password);
       setInfo(
-        'Password updated. You can sign in. Note: password reset does not decrypt your wallet vault — re-wrap with your recovery phrase on a trusted device, then upload the new ciphertext.',
+        'Password updated. You can sign in. Note: password reset restores account access only — it does not restore or reset your secret recovery phrase. Your keys and funds remain securely on your device.',
       );
     } catch (err) {
       setError(humanizeAuthError(err, 'This reset link could not be used. Request a new one.'));

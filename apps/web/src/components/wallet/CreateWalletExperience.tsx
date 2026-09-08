@@ -554,8 +554,7 @@ export function CreateWalletExperience(): ReactElement {
               <h3>Cross-device encrypted vault</h3>
               <p>
                 Optionally encrypt this recovery phrase with your account password and upload
-                ciphertext only. Password reset cannot decrypt it — re-wrap with the phrase after a
-                password change.
+                ciphertext only. Auvora servers never see your recovery phrase or private keys.
               </p>
               <label className="ob-field">
                 <span>Account password</span>

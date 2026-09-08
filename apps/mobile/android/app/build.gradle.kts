@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.io.File
 
 plugins {
     id("com.android.application")
@@ -54,7 +55,12 @@ android {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                val rawStoreFile = keystoreProperties["storeFile"] as String
+                // key.properties is in apps/mobile/android/ (rootProject).
+                // If rawStoreFile is relative (e.g. "../upload-keystore.jks" or "upload-keystore.jks"),
+                // resolve it relative to keystorePropertiesFile.parentFile.
+                val candidate = File(rawStoreFile)
+                storeFile = if (candidate.isAbsolute) candidate else File(keystorePropertiesFile.parentFile, rawStoreFile)
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }
