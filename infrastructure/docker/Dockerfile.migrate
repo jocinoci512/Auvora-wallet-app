@@ -60,6 +60,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 # Copy ONLY the database package — never root package.json (redis-memory-server).
 COPY database/package.json ./database/
+COPY database/tsconfig.json ./database/
 COPY database/prisma ./database/prisma/
 COPY database/seed ./database/seed/
 WORKDIR /app/database

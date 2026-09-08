@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Aether Mist / Lagoon — mobile adaptation of the web design system.
 abstract final class AetherColors {
@@ -48,8 +47,8 @@ ThemeData buildAetherTheme({
 }) {
   final isDark = brightness == Brightness.dark;
   final base = isDark ? ThemeData.dark(useMaterial3: true) : ThemeData.light(useMaterial3: true);
-  final display = GoogleFonts.syneTextTheme(base.textTheme);
-  final body = GoogleFonts.manropeTextTheme(base.textTheme);
+  final display = base.textTheme;
+  final body = base.textTheme;
   final primary = accentColor ?? AetherColors.lagoon;
   final onSurface = highContrast
       ? (isDark ? Colors.white : Colors.black)

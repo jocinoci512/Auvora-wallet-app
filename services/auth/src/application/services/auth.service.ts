@@ -280,7 +280,8 @@ export class AuthService {
 
     if (!user.emailVerified) {
       const allowUnverified =
-        this.env.NODE_ENV !== 'production' && this.env.AUTH_ALLOW_UNVERIFIED_LOGIN;
+        (this.env.NODE_ENV !== 'production' && this.env.AUTH_ALLOW_UNVERIFIED_LOGIN) ||
+        this.env.STAGING_ALLOW_UNVERIFIED_LOGIN;
       if (!allowUnverified) {
         throw new ForbiddenError('Email address must be verified before signing in');
       }

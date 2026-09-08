@@ -106,6 +106,11 @@ export const envSchema = z
     ADMIN_REALTIME_HEARTBEAT_MS: z.coerce.number().int().positive().default(15000),
     /** Per-client bounded outbound buffer (events) before slow clients are dropped. */
     ADMIN_REALTIME_CLIENT_BUFFER: z.coerce.number().int().positive().max(10000).default(200),
+    /** Staging only: allow unverified login if external email delivery is in staging mode. */
+    STAGING_ALLOW_UNVERIFIED_LOGIN: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     /** Staging only: fail open on transactional mail if external SMTP credentials are not yet configured. */
     STAGING_ALLOW_MAIL_FAILOPEN: z
       .enum(['true', 'false'])
