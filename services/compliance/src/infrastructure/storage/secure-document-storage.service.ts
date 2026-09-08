@@ -197,7 +197,12 @@ export class SecureDocumentStorageService {
     if (parts.length !== 4 || parts[0] !== 'v1') {
       return false;
     }
-    const [, documentId, expiresStr, signature] = parts;
+    const documentId = parts[1];
+    const expiresStr = parts[2];
+    const signature = parts[3];
+    if (!documentId || !expiresStr || !signature) {
+      return false;
+    }
     if (documentId !== expectedDocumentId) {
       return false;
     }
@@ -378,6 +383,9 @@ export class SecureDocumentStorageService {
       }
 
       const marker = buffer[offset + 1];
+      if (marker === undefined) {
+        break;
+      }
       // SOS (Start of Scan) FF DA or EOI FF D9 -> copy remainder directly
       if (marker === 0xda || marker === 0xd9) {
         chunks.push(buffer.subarray(offset));
