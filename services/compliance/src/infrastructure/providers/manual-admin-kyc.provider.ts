@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type {
-  DocumentVerificationInput,
-  DocumentVerificationOutput,
-  DocumentVerificationPort,
-  IdentityVerificationInput,
-  IdentityVerificationOutput,
-  IdentityVerificationPort,
+  DocumentVerificationProvider,
+  DocumentVerificationRequest,
+  DocumentVerificationResult,
+  IdentityVerificationProvider,
+  IdentityVerificationRequest,
+  IdentityVerificationResult,
 } from '../../domain';
 
 /**
@@ -15,14 +15,16 @@ import type {
  * Submissions are placed in PENDING/IN_REVIEW state for authorized Auvora Admin review.
  */
 @Injectable()
-export class ManualAdminKycProvider implements IdentityVerificationPort, DocumentVerificationPort {
+export class ManualAdminKycProvider
+  implements IdentityVerificationProvider, DocumentVerificationProvider
+{
   private readonly logger = new Logger('ManualAdminKycProvider');
 
   getCode(): string {
     return 'manual-admin-review';
   }
 
-  async verifyIdentity(input: IdentityVerificationInput): Promise<IdentityVerificationOutput> {
+  async verifyIdentity(input: IdentityVerificationRequest): Promise<IdentityVerificationResult> {
     this.logger.log(
       `First-party KYC submission registered for user ${input.ownerUserId}. Placed into manual Admin review queue.`,
     );
@@ -32,18 +34,17 @@ export class ManualAdminKycProvider implements IdentityVerificationPort, Documen
       status: 'PENDING',
       message:
         'Identification details submitted directly to Auvora for authorized Admin verification.',
-      level: input.level,
     };
   }
 
-  async verifyDocument(input: DocumentVerificationInput): Promise<DocumentVerificationOutput> {
+  async verifyDocument(input: DocumentVerificationRequest): Promise<DocumentVerificationResult> {
     this.logger.log(
       `First-party KYC document registered for user ${input.ownerUserId} (${input.documentType}). Stored encrypted for Admin review.`,
     );
     return {
       providerCode: this.getCode(),
       providerRef: `manual-doc-${randomUUID().slice(0, 8)}`,
-      status: 'UPLOADED',
+      status: 'PROCESSING',
       message: 'Document securely encrypted and stored for authorized Admin review.',
     };
   }

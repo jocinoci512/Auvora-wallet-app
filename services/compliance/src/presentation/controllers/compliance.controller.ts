@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Headers, Inject, Param, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { KycLevel, KycSubjectType } from '@auvora/database';
@@ -6,7 +17,11 @@ import type { JwtAccessClaims } from '@auvora/types';
 import { KycService } from '../../application/services/kyc.service';
 import { RiskService } from '../../application/services/risk.service';
 import { DashboardService } from '../../application/services/dashboard.service';
-import { PERMISSION_COMPLIANCE_READ, PERMISSION_COMPLIANCE_WRITE } from '../../domain';
+import {
+  PERMISSION_COMPLIANCE_READ,
+  PERMISSION_COMPLIANCE_WRITE,
+  UnauthorizedError,
+} from '../../domain';
 import { successResponse } from '@auvora/nest-common';
 import { Permissions, Public, SkipCsrf } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
