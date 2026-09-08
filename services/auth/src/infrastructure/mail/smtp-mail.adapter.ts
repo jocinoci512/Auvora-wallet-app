@@ -19,7 +19,7 @@ export class SmtpMailAdapter implements MailPort {
     dns.setDefaultResultOrder?.('ipv4first');
     const fromName = env.SMTP_FROM_NAME || AUTH_EMAIL_SENDER_NAME;
     this.fromAddress = `"${fromName.replace(/"/g, '')}" <${env.SMTP_FROM}>`;
-    this.transporter = nodemailer.createTransport({
+    this.transporter = (nodemailer.createTransport as any)({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
@@ -28,7 +28,6 @@ export class SmtpMailAdapter implements MailPort {
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 10000,
-      // @ts-expect-error nodemailer supports family option for socket creation
       family: 4,
       // Defense-in-depth: never resolve local files or remote URLs from message content.
       disableFileAccess: true,
