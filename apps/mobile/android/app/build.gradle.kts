@@ -62,11 +62,12 @@ android {
 
     buildTypes {
         release {
-            // Enforce upload release signing for Google Play compliance — no debug fallback.
+            // Play/upload builds use the keystore when android/key.properties exists.
+            // CI and local sideload have no upload keystore — fall back to debug signing.
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
-                throw GradleException("Release builds require android/key.properties and upload-keystore.jks for Google Play compliance.")
+                signingConfigs.getByName("debug")
             }
             // Minify deferred until ProGuard keep-rules are validated on device.
             isMinifyEnabled = false
