@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import dns from 'node:dns';
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
@@ -15,6 +16,7 @@ export class SmtpMailAdapter implements MailPort {
     if (!env.SMTP_HOST || !env.SMTP_PORT || !env.SMTP_FROM) {
       throw new Error('SMTP_HOST, SMTP_PORT, and SMTP_FROM are required when MAIL_DRIVER=smtp');
     }
+    dns.setDefaultResultOrder?.('ipv4first');
     const fromName = env.SMTP_FROM_NAME || AUTH_EMAIL_SENDER_NAME;
     this.fromAddress = `"${fromName.replace(/"/g, '')}" <${env.SMTP_FROM}>`;
     this.transporter = nodemailer.createTransport({
@@ -23,9 +25,11 @@ export class SmtpMailAdapter implements MailPort {
       secure: env.SMTP_PORT === 465,
       auth:
         env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-      connectionTimeout: 4000,
-      greetingTimeout: 4000,
-      socketTimeout: 4000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+      // @ts-expect-error nodemailer supports family option for socket creation
+      family: 4,
       // Defense-in-depth: never resolve local files or remote URLs from message content.
       disableFileAccess: true,
       disableUrlAccess: true,
