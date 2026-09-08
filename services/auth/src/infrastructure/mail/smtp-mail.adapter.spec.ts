@@ -105,4 +105,33 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it('delivers successfully via Resend HTTPS fallback when cloud SMTP socket times out', async () => {
+    mockSendMail.mockRejectedValue(new Error('Connection timeout'));
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ id: 're_fallback_id_123' }),
+      } as any);
+
+      const adapter = new SmtpMailAdapter(baseProdEnv as ServiceEnv);
+      await expect(
+        adapter.send({
+          to: 'user@example.com',
+          subject: 'Verify your Auvora email',
+          text: 'Verify link',
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.resend.com/emails',
+        expect.objectContaining({
+          method: 'POST',
+        }),
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

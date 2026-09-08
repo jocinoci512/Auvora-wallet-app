@@ -25,9 +25,9 @@ export class SmtpMailAdapter implements MailPort {
       secure: env.SMTP_PORT === 465,
       auth:
         env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
       family: 4,
       // Defense-in-depth: never resolve local files or remote URLs from message content.
       disableFileAccess: true,
@@ -47,8 +47,54 @@ export class SmtpMailAdapter implements MailPort {
         html: input.html,
       });
       this.logger.log(`SMTP mail sent to=${input.to} subject="${input.subject}"`);
+      return;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`SMTP send attempt to=${input.to} resulted in: ${msg}`);
+
+      // Resilient fallback: when cloud egress blocks outbound SMTP sockets (25/465/587),
+      // seamlessly deliver via Resend HTTPS REST API using the identical API key.
+      if (
+        this.env.SMTP_HOST === 'smtp.resend.com' &&
+        this.env.SMTP_PASS?.startsWith('re_') &&
+        (msg.includes('timeout') ||
+          msg.includes('ETIMEDOUT') ||
+          msg.includes('ESOCKET') ||
+          msg.includes('EHOSTUNREACH') ||
+          msg.includes('ECONNREFUSED'))
+      ) {
+        try {
+          const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.env.SMTP_PASS}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: this.fromAddress,
+              to: input.to,
+              subject: input.subject,
+              text: input.text,
+              html: input.html,
+            }),
+            signal: AbortSignal.timeout(8000),
+          });
+          if (res.ok) {
+            const data = (await res.json().catch(() => ({}))) as { id?: string };
+            this.logger.log(
+              `Resend HTTPS fallback mail successfully delivered to=${input.to} messageId=${data.id || 'ok'}`,
+            );
+            return;
+          }
+          const errBody = await res.text().catch(() => '');
+          this.logger.error(`Resend HTTPS fallback failed HTTP ${res.status}: ${errBody}`);
+        } catch (httpErr) {
+          this.logger.error(
+            `Resend HTTPS fallback connection error: ${httpErr instanceof Error ? httpErr.message : String(httpErr)}`,
+          );
+        }
+      }
+
       this.logger.error(`SMTP send failure to=${input.to}: ${msg}`);
       if (this.env.NODE_ENV !== 'production' && this.env.STAGING_ALLOW_MAIL_FAILOPEN) {
         this.logger.warn(
