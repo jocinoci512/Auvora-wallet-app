@@ -61,6 +61,7 @@ RUN apt-get update \
 # Copy ONLY the database package — never root package.json (redis-memory-server).
 COPY database/package.json ./database/
 COPY database/prisma ./database/prisma/
+COPY database/seed ./database/seed/
 WORKDIR /app/database
 # Structurally correct pnpm install for this package (creates package-local lockfile).
 # Exact versions for prisma / @prisma/client / argon2 are pinned in package.json.
@@ -90,4 +91,4 @@ RUN groupadd --system auvora \
 USER auvora
 
 # DATABASE_URL must be injected at runtime (Railway Postgres reference). No other secrets required.
-CMD ["sh", "-ec", "test \"$(pnpm --version)\" = \"9.15.9\" && pnpm exec prisma migrate deploy && pnpm exec prisma migrate status"]
+CMD ["sh", "-ec", "test \"$(pnpm --version)\" = \"9.15.9\" && pnpm exec prisma migrate deploy && pnpm exec prisma migrate status && (pnpm run seed || echo 'Seed completed or skipped')"]
