@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import type { ReactElement } from 'react';
 import { LegalShell } from '../../components/legal/LegalShell';
 
