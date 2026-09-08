@@ -19,7 +19,11 @@ const env = { ...process.env, NODE_ENV: 'production' };
 const forceClean = process.env.NEXT_FORCE_CLEAN !== '0';
 
 if (existsSync(nextDir) && forceClean) {
-  rmSync(nextDir, { recursive: true, force: true });
+  try {
+    rmSync(nextDir, { recursive: true, force: true, maxRetries: 3 });
+  } catch (err) {
+    console.warn('Warning: could not fully clear .next cache:', err?.message);
+  }
 }
 
 const requireFromApp = createRequire(path.join(cwd, 'package.json'));
