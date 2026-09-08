@@ -113,7 +113,7 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ id: 're_fallback_id_123' }),
-      } as any);
+      } as unknown as Response);
 
       const adapter = new SmtpMailAdapter(baseProdEnv as ServiceEnv);
       await expect(

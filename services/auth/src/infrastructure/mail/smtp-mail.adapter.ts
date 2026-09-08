@@ -19,7 +19,11 @@ export class SmtpMailAdapter implements MailPort {
     dns.setDefaultResultOrder?.('ipv4first');
     const fromName = env.SMTP_FROM_NAME || AUTH_EMAIL_SENDER_NAME;
     this.fromAddress = `"${fromName.replace(/"/g, '')}" <${env.SMTP_FROM}>`;
-    this.transporter = (nodemailer.createTransport as any)({
+    // nodemailer 9 is not fully covered by @types/nodemailer@6.
+    const createTransport = nodemailer.createTransport as unknown as (
+      options: Record<string, unknown>,
+    ) => Transporter;
+    this.transporter = createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
