@@ -109,6 +109,7 @@ RUN set -e; \
     echo "ERROR: /deploy/dist/main.js missing after pnpm deploy (nest build output not packaged)." >&2; \
     exit 1; \
   fi; \
+  cp /deploy/dist/main.js /deploy/dist/index.js; \
   node -e "const {createRequire}=require('module'); const r=createRequire('/deploy/package.json'); r('@nestjs/common'); r('@auvora/database'); console.log('deploy bundle ok');"
 
 FROM node:22-alpine AS runner
