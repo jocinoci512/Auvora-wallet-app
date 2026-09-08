@@ -13,6 +13,7 @@ if (-not (Test-Path (Join-Path $MobileRoot "pubspec.yaml"))) {
 
 $Flutter = $null
 foreach ($c in @(
+  "E:\AuvoraPortable\Flutter\flutter-sdk\bin\flutter.bat",
   "C:\Users\kwasi\flutter\bin\flutter.bat",
   "D:\auvora-wallet\.tools\flutter\bin\flutter.bat",
   "D:\flutter-sdk\bin\flutter.bat"

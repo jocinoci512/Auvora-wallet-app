@@ -9,7 +9,11 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
-const adbPath = 'D:\\Android\\Sdk\\platform-tools\\adb.exe';
+const adbPath = fs.existsSync('E:\\AuvoraPortable\\Android\\Sdk\\platform-tools\\adb.exe')
+  ? 'E:\\AuvoraPortable\\Android\\Sdk\\platform-tools\\adb.exe'
+  : process.env.ANDROID_HOME
+    ? `${process.env.ANDROID_HOME}\\platform-tools\\adb.exe`
+    : 'D:\\Android\\Sdk\\platform-tools\\adb.exe';
 const serial = 'R5CW51ZMNLB';
 const pkg = 'com.auvora.auvora_wallet.qa';
 const txHash = '0xb76fd4160505fa5a9f298bc312073a1278fad6d495b98b1a0fa15c381687f35f';

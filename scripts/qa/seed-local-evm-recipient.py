@@ -4,7 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
-ADB = r"D:\Android\Sdk\platform-tools\adb.exe"
+import os
+ADB = r"E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe" if os.path.exists(r"E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe") else r"D:\Android\Sdk\platform-tools\adb.exe"
 SERIAL = "R5CW51ZMNLB"
 PKG = "com.auvora.auvora_wallet.qa"
 OUT = Path(r"D:\auvora-wallet\artifacts\qa-flutter-prefs.xml")

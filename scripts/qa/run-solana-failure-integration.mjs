@@ -4,6 +4,7 @@
  * Uses abandon…about QA addresses only — never the user's Auvora signing key.
  */
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,7 +38,9 @@ async function jsonRpc(url, method, params = []) {
 }
 
 function runFlutterTests() {
-  const flutter = 'C:\\Users\\kwasi\\flutter\\bin\\flutter.bat';
+  const flutter = fs.existsSync('E:\\AuvoraPortable\\Flutter\\flutter-sdk\\bin\\flutter.bat')
+    ? 'E:\\AuvoraPortable\\Flutter\\flutter-sdk\\bin\\flutter.bat'
+    : 'C:\\Users\\kwasi\\flutter\\bin\\flutter.bat';
   const r = spawnSync(
     flutter,
     [

@@ -39,7 +39,9 @@ async function jsonRpc(url, method, params = []) {
 }
 
 function runFlutterTests() {
-  const flutter = 'C:\\Users\\kwasi\\flutter\\bin\\flutter.bat';
+  const flutter = fs.existsSync('E:\\AuvoraPortable\\Flutter\\flutter-sdk\\bin\\flutter.bat')
+    ? 'E:\\AuvoraPortable\\Flutter\\flutter-sdk\\bin\\flutter.bat'
+    : 'C:\\Users\\kwasi\\flutter\\bin\\flutter.bat';
   const r = spawnSync(
     flutter,
     ['test', 'test/evm_failure_harness_test.dart', 'test/evm_receipt_confirmer_test.dart'],

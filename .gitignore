@@ -86,6 +86,11 @@ docs/api
 
 # Docker
 docker-data
+*.vhdx
+
+# Dart / Flutter / Gradle
+.dart_tool
+.gradle
 
 # Local pnpm deploy validation outputs (never commit — tens of thousands of files)
 .tmp-deploy*/

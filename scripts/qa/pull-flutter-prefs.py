@@ -1,7 +1,8 @@
 import subprocess
 from pathlib import Path
 
-adb = r"D:\Android\Sdk\platform-tools\adb.exe"
+import os
+adb = r"E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe" if os.path.exists(r"E:\AuvoraPortable\Android\Sdk\platform-tools\adb.exe") else r"D:\Android\Sdk\platform-tools\adb.exe"
 out = Path(r"D:\auvora-wallet\artifacts\qa-flutter-prefs.xml")
 raw = subprocess.check_output(
     [

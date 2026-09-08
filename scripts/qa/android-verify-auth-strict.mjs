@@ -2,7 +2,11 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 
-const adb = 'D:\\Android\\Sdk\\platform-tools\\adb.exe';
+const adb = fs.existsSync('E:\\AuvoraPortable\\Android\\Sdk\\platform-tools\\adb.exe')
+  ? 'E:\\AuvoraPortable\\Android\\Sdk\\platform-tools\\adb.exe'
+  : process.env.ANDROID_HOME
+    ? `${process.env.ANDROID_HOME}\\platform-tools\\adb.exe`
+    : 'D:\\Android\\Sdk\\platform-tools\\adb.exe';
 const serial = 'R5CW51ZMNLB';
 const pkg = 'com.auvora.auvora_wallet.qa';
 const run = (...a) => execFileSync(adb, ['-s', serial, ...a], { encoding: 'utf8' }).trim();

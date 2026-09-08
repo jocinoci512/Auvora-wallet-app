@@ -1,5 +1,8 @@
 /** LOCAL QA ONLY — safe public address comparison (no secrets). */
-import { PrismaClient } from '@auvora/database-schema';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { PrismaClient } = require('../../database/generated/client/index.js');
 
 const userId = 'df1db712-5e50-42c1-92fc-2c7236244cf8';
 

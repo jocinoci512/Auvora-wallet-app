@@ -5,7 +5,11 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 
-const adb = 'D:\\Android\\Sdk\\platform-tools\\adb.exe';
+const adb = fs.existsSync('E:\\AuvoraPortable\\Android\\Sdk\\platform-tools\\adb.exe')
+  ? 'E:\\AuvoraPortable\\Android\\Sdk\\platform-tools\\adb.exe'
+  : process.env.ANDROID_HOME
+    ? `${process.env.ANDROID_HOME}\\platform-tools\\adb.exe`
+    : 'D:\\Android\\Sdk\\platform-tools\\adb.exe';
 const serial = 'R5CW51ZMNLB';
 const userId = 'df1db712-5e50-42c1-92fc-2c7236244cf8';
 

@@ -23,19 +23,30 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Side-by-side QA: set auvoraQa=true in android/gradle.properties (build-qa.ps1).
-    // Never overwrites com.auvora.auvora_wallet when auvoraQa is unset/false.
+    // Side-by-side QA / Staging: set auvoraQa=true or auvoraStaging=true in android/gradle.properties.
+    // Never overwrites com.auvora.auvora_wallet when neither is set.
+    val isStagingBuild =
+        listOfNotNull(rootProject.findProperty("auvoraStaging"), project.findProperty("auvoraStaging"))
+            .any { it.toString().equals("true", ignoreCase = true) }
     val isQaBuild =
         listOfNotNull(rootProject.findProperty("auvoraQa"), project.findProperty("auvoraQa"))
             .any { it.toString().equals("true", ignoreCase = true) }
 
     defaultConfig {
-        applicationId = if (isQaBuild) "com.auvora.auvora_wallet.qa" else "com.auvora.auvora_wallet"
+        applicationId = when {
+            isStagingBuild -> "com.auvora.auvora_wallet.staging"
+            isQaBuild -> "com.auvora.auvora_wallet.qa"
+            else -> "com.auvora.auvora_wallet"
+        }
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["appLabel"] = if (isQaBuild) "Auvora QA" else "Auvora Wallet"
+        manifestPlaceholders["appLabel"] = when {
+            isStagingBuild -> "Auvora Staging"
+            isQaBuild -> "Auvora QA"
+            else -> "Auvora Wallet"
+        }
     }
 
     signingConfigs {
