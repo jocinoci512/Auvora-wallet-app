@@ -22,11 +22,17 @@ foreach ($c in @(
 }
 if (-not $Flutter) { throw "flutter not found" }
 
+$GatewayUrl = if ($env:AUVORA_STAGING_GATEWAY_URL) {
+  $env:AUVORA_STAGING_GATEWAY_URL
+} else {
+  "https://gateway-production-bc6a.up.railway.app"
+}
+
 # Canonical Staging dart-defines (targets public testnets, never local Anvil / local Solana).
 $DartDefines = @(
   'AUVORA_NETWORK_ENV=testnet',
   'AUVORA_ALLOW_LOCAL_API=false',
-  'AUVORA_API_BASE_URL=https://api-staging.auvorawallet.com',
+  "AUVORA_API_BASE_URL=$GatewayUrl",
   'AUVORA_SEED_INBOX=false',
   'TESTNET_BROADCAST_ENABLED=true',
   'AUVORA_QA_LOCAL_EVM=false',
@@ -78,12 +84,12 @@ try {
   Write-Host "PUBLIC TESTNETS: Sepolia, Amoy, BSC Testnet, Devnet, Testnet3, Nile"
   Write-Host "ENDPOINT: https://api-staging.auvorawallet.com"
 
-  $args = @("build", "apk", "--debug")
+  $defineArgs = @()
   foreach ($d in $DartDefines) {
-    $args += @("--dart-define", $d)
+    $defineArgs += "--dart-define=$d"
   }
 
-  & $Flutter @args
+  & $Flutter build apk --debug @defineArgs
   if ($LASTEXITCODE -ne 0) { throw "flutter build failed" }
 
   $src = Join-Path $MobileRoot "build\app\outputs\flutter-apk\app-debug.apk"
@@ -91,6 +97,14 @@ try {
   if (Test-Path $src) {
     Copy-Item $src $dst -Force
     Write-Host "Staging APK ready at: $dst"
+  }
+
+  $RepoArtifacts = "E:\AuvoraPortable\Project\auvora-wallet\artifacts"
+  if (-not (Test-Path $RepoArtifacts)) { New-Item -ItemType Directory -Path $RepoArtifacts | Out-Null }
+  $StagingArtifact = Join-Path $RepoArtifacts "auvora-staging-debug.apk"
+  if (Test-Path $src) {
+    Copy-Item -Force $src $StagingArtifact
+    Write-Host "Staging Artifact copied to: $StagingArtifact"
   }
 } finally {
   Set-Content -Path $GradleProps -Value $Backup -NoNewline

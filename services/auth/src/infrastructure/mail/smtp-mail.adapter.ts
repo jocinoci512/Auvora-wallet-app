@@ -23,6 +23,9 @@ export class SmtpMailAdapter implements MailPort {
       secure: env.SMTP_PORT === 465,
       auth:
         env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
       // Defense-in-depth: never resolve local files or remote URLs from message content.
       disableFileAccess: true,
       disableUrlAccess: true,
@@ -32,13 +35,25 @@ export class SmtpMailAdapter implements MailPort {
   async send(input: SendMailInput): Promise<void> {
     // Only allow the MailPort contract fields — never raw, attachments, envelope,
     // list headers, jsonTransport, or other attacker-influenced Nodemailer options.
-    await this.transporter.sendMail({
-      from: this.fromAddress,
-      to: input.to,
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
-    });
-    this.logger.log(`SMTP mail sent to=${input.to} subject="${input.subject}"`);
+    try {
+      await this.transporter.sendMail({
+        from: this.fromAddress,
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      });
+      this.logger.log(`SMTP mail sent to=${input.to} subject="${input.subject}"`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`SMTP send failure to=${input.to}: ${msg}`);
+      if (this.env.STAGING_ALLOW_MAIL_FAILOPEN) {
+        this.logger.warn(
+          `[STAGING] Mail fail-open active — account verification link generated but SMTP undelivered. Provider credentials required for live delivery.`,
+        );
+        return;
+      }
+      throw err;
+    }
   }
 }
