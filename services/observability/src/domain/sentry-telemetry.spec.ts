@@ -104,7 +104,7 @@ describe('SentryTelemetryEngine — Production Monitoring Readiness', () => {
     });
 
     it('redacts email, phone, password, JWT, refresh token, mnemonic, private key, KYC ID, provider key, and RPC credential', () => {
-      const fakePrivateKey = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+      const fakePrivateKey = 'TEST_PRIVATE_KEY_PLACEHOLDER';
       const fakeMnemonic =
         'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
       const fakeJwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.fakeSig';

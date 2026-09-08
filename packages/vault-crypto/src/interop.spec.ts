@@ -5,7 +5,7 @@ import {
   encryptVaultBundle,
   VAULT_ALGORITHM_ID,
   type EncryptedVaultEnvelope,
-} from './index';
+} from './index.js';
 
 type InteropFixture = {
   password: string;
@@ -98,11 +98,11 @@ describe('vault-crypto interop', () => {
   });
 
   it('rejects tampered ciphertext', async () => {
+    const tamperedBytes = Buffer.from(fixture.envelope.ciphertext, 'base64');
+    tamperedBytes[30] = (tamperedBytes[30] ?? 0) ^ 0xff;
     const tampered: EncryptedVaultEnvelope = {
       ...fixture.envelope,
-      ciphertext: Buffer.from(fixture.envelope.ciphertext, 'base64')
-        .map((b, i) => (i === 30 ? b ^ 0xff : b))
-        .toString('base64'),
+      ciphertext: tamperedBytes.toString('base64'),
     };
 
     await expect(
