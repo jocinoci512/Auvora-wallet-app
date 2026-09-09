@@ -110,17 +110,26 @@ void main() {
     expect(c.error, isNotNull);
   });
 
-  test('register -> auto sign-in -> signedIn', () async {
-    final c = controllerWith(
-      routed({
-        'POST /api/v1/auth/register': [created({'userId': 'u1'})],
-        'POST /api/v1/auth/login': [ok({'accessToken': 'acc-1', 'refreshToken': 'ref-1', 'expiresIn': 900, 'sessionId': 's1'})],
-        'GET /api/v1/me': [ok(profile)],
-      }),
-    );
+  test('register accepts the account without auto sign-in', () async {
+    var loginCalls = 0;
+    final mock = MockClient((req) async {
+      final key = '${req.method} ${req.url.path}';
+      if (key == 'POST /api/v1/auth/register') {
+        return created({'userId': 'u1'});
+      }
+      if (key == 'POST /api/v1/auth/login') {
+        loginCalls += 1;
+        return ok({'accessToken': 'acc-1', 'refreshToken': 'ref-1', 'expiresIn': 900, 'sessionId': 's1'});
+      }
+      return http.Response('{}', 404, headers: {'content-type': 'application/json'});
+    });
+    final c = controllerWith(mock);
     final result = await c.register(email: 'a@b.com', username: 'alice', password: 'SuperSecret123');
     expect(result, isTrue);
-    expect(c.isSignedIn, isTrue);
+    expect(c.isSignedIn, isFalse);
+    expect(c.status, AccountStatus.signedOut);
+    expect(c.info, contains('verification'));
+    expect(loginCalls, 0);
   });
 
   test('signOut clears account tokens (wallet vault untouched)', () async {
