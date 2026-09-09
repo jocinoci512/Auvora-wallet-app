@@ -1891,6 +1891,136 @@ export class AuvoraClient {
     return this.request<EncryptedVaultBlob>('PUT', '/api/v1/vault', input);
   }
 
+  async upsertEncryptedVaultForRecovery(
+    input: UpsertEncryptedVaultInput & { resetToken: string; requestId: string },
+  ): Promise<EncryptedVaultBlob> {
+    return this.request<EncryptedVaultBlob>('PUT', '/api/v1/vault/recovery', input);
+  }
+
+  async createVaultRecoveryRequest(input: {
+    resetToken: string;
+    requestingDeviceFingerprint: string;
+    requestingPlatform?: string;
+    requestingPublicKey: string;
+  }): Promise<{ requestId: string; expiresAt: string; status: string }> {
+    return this.request('POST', '/api/v1/me/vault-recovery/requests', input);
+  }
+
+  async listPendingVaultRecoveryRequests(): Promise<
+    Array<{
+      requestId: string;
+      requestingPlatform: string | null;
+      requestingDeviceFingerprint: string;
+      createdAt: string;
+      expiresAt: string;
+      status: string;
+      requestingPublicKey: string;
+    }>
+  > {
+    return this.request('GET', '/api/v1/me/vault-recovery/requests/pending');
+  }
+
+  async approveVaultRecoveryRequest(
+    requestId: string,
+    input: {
+      ciphertext: string;
+      nonce: string;
+      ephemeralPublicKey: string;
+      aad: string;
+      approvingDeviceId?: string;
+    },
+  ): Promise<{ requestId: string; status: string }> {
+    return this.request(
+      'POST',
+      `/api/v1/me/vault-recovery/requests/${encodeURIComponent(requestId)}/approve`,
+      input,
+    );
+  }
+
+  async denyVaultRecoveryRequest(
+    requestId: string,
+  ): Promise<{ requestId: string; status: string }> {
+    return this.request(
+      'POST',
+      `/api/v1/me/vault-recovery/requests/${encodeURIComponent(requestId)}/deny`,
+    );
+  }
+
+  async collectVaultRecoveryPayload(
+    requestId: string,
+    input: { resetToken: string; requestingDeviceFingerprint: string },
+  ): Promise<{
+    requestId: string;
+    ownerUserId: string;
+    wrapped: {
+      ciphertext: string;
+      nonce: string;
+      ephemeralPublicKey: string;
+      aad: string;
+      algorithmId: string;
+    };
+  }> {
+    return this.request(
+      'POST',
+      `/api/v1/me/vault-recovery/requests/${encodeURIComponent(requestId)}/collect`,
+      input,
+    );
+  }
+
+  async completeVaultRecovery(input: {
+    resetToken: string;
+    requestId: string;
+    newPassword: string;
+    expectedVaultEpoch: number;
+  }): Promise<{ message: string }> {
+    return this.request('POST', '/api/v1/me/vault-recovery/complete', input);
+  }
+
+  async adminGetUserVaultStatus(userId: string): Promise<{
+    exists: boolean;
+    epoch: number | null;
+    algorithmId: string | null;
+    version: number | null;
+    updatedAt: string | null;
+    uploadedByDeviceId: string | null;
+  }> {
+    return this.request('GET', `/api/v1/admin/users/${encodeURIComponent(userId)}/vault-status`);
+  }
+
+  async adminGetUserVaultRecovery(userId: string): Promise<{
+    items: Array<{
+      requestId: string;
+      status: string;
+      requestingPlatform: string | null;
+      createdAt: string;
+      expiresAt: string;
+      deniedAt: string | null;
+      consumedAt: string | null;
+      approvedByDeviceId: string | null;
+    }>;
+  }> {
+    return this.request('GET', `/api/v1/admin/users/${encodeURIComponent(userId)}/vault-recovery`);
+  }
+
+  async adminAcceptanceVerifyEmail(userId: string): Promise<{
+    userId: string;
+    emailVerified: boolean;
+    status: string;
+    message: string;
+  }> {
+    return this.request(
+      'POST',
+      `/api/v1/admin/acceptance/users/${encodeURIComponent(userId)}/verify-email`,
+    );
+  }
+
+  async adminAcceptanceCleanup(userId: string): Promise<{ userId: string; message: string }> {
+    return this.request(
+      'POST',
+      `/api/v1/admin/acceptance/users/${encodeURIComponent(userId)}/cleanup`,
+    );
+  }
+
   async listWallets(skip = 0, take = 50): Promise<WalletListResult> {
     const params = new URLSearchParams({ skip: String(skip), take: String(take) });
     return this.request<WalletListResult>('GET', `/api/v1/wallets?${params}`);

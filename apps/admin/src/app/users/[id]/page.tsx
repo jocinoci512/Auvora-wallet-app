@@ -23,9 +23,13 @@ import {
   adminListLargeTransferReviews,
   adminListUserDevices,
   adminListUserSessions,
+  adminGetUserVaultStatus,
+  adminGetUserVaultRecovery,
   type AdminUserAccount,
   type AdminUserDevice,
   type AdminUserSession,
+  type AdminVaultStatus,
+  type AdminVaultRecoveryItem,
   type LargeTransferReviewRow,
   type SimulationAccountView,
 } from '../../../lib/admin-control-plane';
@@ -55,6 +59,8 @@ export default function AdminUserDetailPage(): ReactElement {
   const [addresses, setAddresses] = useState<ChainAddress[]>([]);
   const [devices, setDevices] = useState<AdminUserDevice[]>([]);
   const [sessions, setSessions] = useState<AdminUserSession[]>([]);
+  const [vaultStatus, setVaultStatus] = useState<AdminVaultStatus | null>(null);
+  const [vaultRecovery, setVaultRecovery] = useState<AdminVaultRecoveryItem[]>([]);
   const [audit, setAudit] = useState<SecurityAuditLog[]>([]);
   const [portfolio, setPortfolio] = useState<{
     wallets: Array<{
@@ -94,6 +100,8 @@ export default function AdminUserDetailPage(): ReactElement {
         addressResult,
         deviceRows,
         sessionRows,
+        vaultStatusResult,
+        vaultRecoveryResult,
         auditResult,
         portfolioResult,
         simulationResult,
@@ -105,6 +113,8 @@ export default function AdminUserDetailPage(): ReactElement {
         client.adminListAddresses({ ownerUserId: userId, take: 50 }).catch(() => ({ items: [] })),
         adminListUserDevices(userId).catch(() => []),
         adminListUserSessions(userId).catch(() => []),
+        adminGetUserVaultStatus(userId).catch(() => null),
+        adminGetUserVaultRecovery(userId).catch(() => ({ items: [] as AdminVaultRecoveryItem[] })),
         client.adminListAudit({ targetUserId: userId, take: 50 }).catch(() => ({ logs: [] })),
         client.getWalletEnginePortfolio(userId).catch(() => null),
         adminGetSimulationAccount(userId).catch(() => null),
@@ -123,6 +133,8 @@ export default function AdminUserDetailPage(): ReactElement {
       setAddresses(addressResult.items);
       setDevices(deviceRows);
       setSessions(sessionRows);
+      setVaultStatus(vaultStatusResult);
+      setVaultRecovery(vaultRecoveryResult.items);
       setAudit(auditResult.logs);
       setPortfolio(portfolioResult as typeof portfolio);
       setSimulation(simulationResult);
@@ -228,6 +240,7 @@ export default function AdminUserDetailPage(): ReactElement {
               <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
               <TabsTrigger value="simulation">Simulation</TabsTrigger>
               <TabsTrigger value="devices">Devices</TabsTrigger>
+              <TabsTrigger value="vault">Vault</TabsTrigger>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="connections">Connections</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
@@ -478,6 +491,86 @@ export default function AdminUserDetailPage(): ReactElement {
 
             <TabsContent value="devices">
               <DeviceTable devices={devices} />
+            </TabsContent>
+
+            <TabsContent value="vault">
+              <section className="panel">
+                <h2>Encrypted vault status</h2>
+                <p className="page-subtitle">
+                  Metadata only — ciphertext and wrapped keys are never shown.
+                </p>
+                {vaultStatus == null ? (
+                  <EmptyState title="Unavailable" description="Could not load vault status." />
+                ) : vaultStatus.exists ? (
+                  <dl className="admin-dl">
+                    <div>
+                      <dt>Exists</dt>
+                      <dd>Yes</dd>
+                    </div>
+                    <div>
+                      <dt>Epoch</dt>
+                      <dd>{vaultStatus.epoch}</dd>
+                    </div>
+                    <div>
+                      <dt>Algorithm</dt>
+                      <dd>{vaultStatus.algorithmId}</dd>
+                    </div>
+                    <div>
+                      <dt>Version</dt>
+                      <dd>{vaultStatus.version}</dd>
+                    </div>
+                    <div>
+                      <dt>Updated</dt>
+                      <dd>{formatWhen(vaultStatus.updatedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>Uploaded by device</dt>
+                      <dd>
+                        {vaultStatus.uploadedByDeviceId
+                          ? shortId(vaultStatus.uploadedByDeviceId)
+                          : '—'}
+                      </dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <EmptyState
+                    title="No vault"
+                    description="This account has no cloud vault blob."
+                  />
+                )}
+              </section>
+              <section className="panel" style={{ marginTop: '1rem' }}>
+                <h2>Device recovery requests</h2>
+                {vaultRecovery.length === 0 ? (
+                  <EmptyState
+                    title="No recovery requests"
+                    description="No recent trusted-device recovery activity."
+                  />
+                ) : (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Platform</th>
+                        <th>Created</th>
+                        <th>Expires</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vaultRecovery.map((row) => (
+                        <tr key={row.requestId}>
+                          <td>
+                            <StatusBadge status={row.status} />
+                          </td>
+                          <td>{row.requestingPlatform ?? '—'}</td>
+                          <td>{formatWhen(row.createdAt)}</td>
+                          <td>{formatWhen(row.expiresAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
             </TabsContent>
 
             <TabsContent value="sessions">

@@ -10,6 +10,8 @@ import { AdminUsersController } from './controllers/admin-users.controller';
 import { AdminSystemHealthController } from './controllers/admin-system-health.controller';
 import { AuthController } from './controllers/auth.controller';
 import { MeController } from './controllers/me.controller';
+import { VaultRecoveryController } from './controllers/vault-recovery.controller';
+import { AdminAcceptanceController } from './controllers/admin-acceptance.controller';
 import { DomainExceptionFilter } from '@auvora/nest-common';
 import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -34,7 +36,9 @@ import { RealtimeHubService } from './realtime/realtime-hub.service';
     AuthController,
     AdminAuthController,
     MeController,
+    VaultRecoveryController,
     AdminUsersController,
+    AdminAcceptanceController,
     AdminOperatorsController,
     AdminAuditController,
     AdminSystemHealthController,

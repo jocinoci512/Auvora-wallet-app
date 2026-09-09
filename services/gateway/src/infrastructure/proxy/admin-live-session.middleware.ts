@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 
 const AUTH_SESSION_PREFIXES = [
   '/api/v1/admin/users',
+  '/api/v1/admin/acceptance',
   '/api/v1/admin/audit',
   '/api/v1/admin/operators',
   '/api/v1/admin/realtime',

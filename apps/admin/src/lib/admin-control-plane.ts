@@ -57,6 +57,36 @@ export async function adminListUserSessions(userId: string): Promise<AdminUserSe
   return adminRequest(`/api/v1/admin/users/${encodeURIComponent(userId)}/sessions`);
 }
 
+export interface AdminVaultStatus {
+  exists: boolean;
+  epoch: number | null;
+  algorithmId: string | null;
+  version: number | null;
+  updatedAt: string | null;
+  uploadedByDeviceId: string | null;
+}
+
+export interface AdminVaultRecoveryItem {
+  requestId: string;
+  status: string;
+  requestingPlatform: string | null;
+  createdAt: string;
+  expiresAt: string;
+  deniedAt: string | null;
+  consumedAt: string | null;
+  approvedByDeviceId: string | null;
+}
+
+export async function adminGetUserVaultStatus(userId: string): Promise<AdminVaultStatus> {
+  return adminRequest(`/api/v1/admin/users/${encodeURIComponent(userId)}/vault-status`);
+}
+
+export async function adminGetUserVaultRecovery(
+  userId: string,
+): Promise<{ items: AdminVaultRecoveryItem[] }> {
+  return adminRequest(`/api/v1/admin/users/${encodeURIComponent(userId)}/vault-recovery`);
+}
+
 export async function adminListOperators(
   query: {
     query?: string;

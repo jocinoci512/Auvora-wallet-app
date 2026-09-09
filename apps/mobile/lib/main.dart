@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'account/account_controller.dart';
+import 'account/vault_recovery_service.dart';
 import 'account/vault_sync_service.dart';
 import 'account/wallet_backend_sync.dart';
 import 'connections/connections_controller.dart';
@@ -305,6 +306,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
             ..attach(account: account, wallet: wallet),
         ),
         ChangeNotifierProvider(create: (_) => VaultSyncService()),
+        ChangeNotifierProvider(create: (_) => VaultRecoveryService()),
         ChangeNotifierProxyProvider3<AccountController, WalletController,
             VaultSyncService, _VaultSyncBinder>(
           create: (_) => _VaultSyncBinder(),
@@ -314,6 +316,12 @@ class _AuvoraAppState extends State<AuvoraApp> {
               wallet: wallet,
               vaultSync: vaultSync,
             ),
+        ),
+        ChangeNotifierProxyProvider2<AccountController, VaultRecoveryService,
+            _VaultRecoveryBinder>(
+          create: (_) => _VaultRecoveryBinder(),
+          update: (_, account, recovery, binder) => binder!
+            ..bind(account: account, recovery: recovery),
         ),
         // Applies deferred live WC provider without rebuilding the whole tree.
         ChangeNotifierProxyProvider2<ConnectionsController, DeepLinkRouter,
@@ -334,6 +342,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
           context.watch<_WcLiveUpgrader>();
           context.watch<WalletBackendSync>();
           context.watch<_VaultSyncBinder>();
+          context.watch<_VaultRecoveryBinder>();
           final a11y = prefs.accessibility;
           final scale = a11y.textScale.clamp(0.85, 1.35);
           // GoogleFonts + ThemeData copy is expensive — rebuild only when inputs change.
@@ -502,6 +511,29 @@ class _WcAccountBinder extends ChangeNotifier {
 
 /// After sign-in + unlock (or sign-in with empty local vault), sync encrypted vault.
 /// Auto-uploads after first-device wallet create when [AccountPasswordSession] is fresh.
+/// Poll pending vault recovery requests when signed in (trusted device).
+class _VaultRecoveryBinder extends ChangeNotifier {
+  String? _lastUserId;
+  bool _scheduled = false;
+
+  void bind({
+    required AccountController account,
+    required VaultRecoveryService recovery,
+  }) {
+    if (!account.isSignedIn) return;
+    final userId = account.profile?.id;
+    if (userId == null || userId.isEmpty || userId == _lastUserId) return;
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _scheduled = false;
+      _lastUserId = userId;
+      await recovery.refreshPending(account: account);
+      notifyListeners();
+    });
+  }
+}
+
 class _VaultSyncBinder extends ChangeNotifier {
   String? _lastKey;
   bool _scheduled = false;

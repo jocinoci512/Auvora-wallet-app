@@ -165,6 +165,44 @@ export class EventNotificationMapperService {
             deviceName: String(p.deviceName ?? 'Device'),
           },
         };
+      case 'auth.vault_recovery.requested':
+        return {
+          templateCode: 'auth.vault_recovery_requested',
+          category: 'SECURITY',
+          channels: ['EMAIL', 'IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.vault_recovery.requested:${id}`,
+          variables: {
+            platform: String(p.platform ?? 'a new device'),
+          },
+        };
+      case 'auth.vault_recovery.approved':
+        return {
+          templateCode: 'auth.vault_recovery_approved',
+          category: 'SECURITY',
+          channels: ['EMAIL', 'IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.vault_recovery.approved:${id}`,
+          variables: {},
+        };
+      case 'auth.vault_recovery.denied':
+        return {
+          templateCode: 'auth.vault_recovery_denied',
+          category: 'SECURITY',
+          channels: ['EMAIL', 'IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.vault_recovery.denied:${id}`,
+          variables: {},
+        };
+      case 'auth.vault_recovery.completed':
+        return {
+          templateCode: 'auth.vault_recovery_completed',
+          category: 'SECURITY',
+          channels: ['EMAIL', 'IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.vault_recovery.completed:${id}`,
+          variables: {},
+        };
       case 'compliance.kyc.submitted':
         return {
           templateCode: 'kyc.submitted',

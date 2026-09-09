@@ -64,6 +64,21 @@ enum AuditAction {
   LARGE_TRANSFER_REVIEW_APPROVED
   LARGE_TRANSFER_REVIEW_REJECTED
   VAULT_BLOB_UPSERTED
+  VAULT_RECOVERY_REQUESTED
+  VAULT_RECOVERY_APPROVED
+  VAULT_RECOVERY_DENIED
+  VAULT_RECOVERY_COMPLETED
+  VAULT_RECOVERY_EXPIRED
+  ACCEPTANCE_EMAIL_VERIFIED
+  ACCEPTANCE_USER_CLEANUP
+}
+
+enum VaultDeviceRecoveryStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+  CONSUMED
 }
 
 /// Infrastructure metadata row used to validate migrations without product models.
@@ -109,6 +124,7 @@ model User {
   mfaTotpCredential       MfaTotpCredential?
   mfaRecoveryCodes        MfaRecoveryCode[]
   encryptedVaultBlob      EncryptedVaultBlob?
+  vaultDeviceRecoveryRequests VaultDeviceRecoveryRequest[]
 
   @@index([status])
   @@index([createdAt])
@@ -237,6 +253,48 @@ model EncryptedVaultBlob {
 
   @@index([ownerUserId])
   @@map("encrypted_vault_blobs")
+}
+
+/// Consumer trusted-device vault recovery request (not custody institutional recovery).
+/// Server stores public keys + ciphertext only — never vault plaintext.
+model VaultDeviceRecoveryRequest {
+  id                          String                     @id @default(uuid()) @db.Uuid
+  ownerUserId                 String                     @map("owner_user_id") @db.Uuid
+  requestingDeviceFingerprint String                     @map("requesting_device_fingerprint")
+  requestingPlatform          String?                    @map("requesting_platform")
+  requestingPublicKey         String                     @map("requesting_public_key")
+  ownershipTokenHash          String                     @map("ownership_token_hash")
+  status                      VaultDeviceRecoveryStatus  @default(PENDING)
+  expiresAt                   DateTime                   @map("expires_at")
+  approvedByDeviceId          String?                    @map("approved_by_device_id") @db.Uuid
+  deniedAt                    DateTime?                  @map("denied_at")
+  consumedAt                  DateTime?                  @map("consumed_at")
+  createdAt                   DateTime                   @default(now()) @map("created_at")
+  updatedAt                   DateTime                   @updatedAt @map("updated_at")
+
+  owner   User                        @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  payload VaultDeviceRecoveryPayload?
+
+  @@index([ownerUserId, status])
+  @@index([expiresAt])
+  @@index([ownershipTokenHash])
+  @@map("vault_device_recovery_requests")
+}
+
+model VaultDeviceRecoveryPayload {
+  id                 String    @id @default(uuid()) @db.Uuid
+  requestId          String    @unique @map("request_id") @db.Uuid
+  ciphertext         String
+  nonce              String
+  ephemeralPublicKey String    @map("ephemeral_public_key")
+  aad                String
+  expiresAt          DateTime  @map("expires_at")
+  consumedAt         DateTime? @map("consumed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  request VaultDeviceRecoveryRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("vault_device_recovery_payloads")
 }
 
 /// Encrypted TOTP secret (AES-256-GCM). Secret is never returned after enrollment.

@@ -8,6 +8,7 @@ export const AUTH_PROXY_PREFIXES = [
   '/api/v1/auth',
   '/api/v1/me',
   '/api/v1/admin/users',
+  '/api/v1/admin/acceptance',
   '/api/v1/admin/audit',
   '/api/v1/admin/operators',
   '/api/v1/admin/system-health',

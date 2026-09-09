@@ -13,6 +13,8 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService } from '../../application/services/auth.service';
+import { VaultDeviceRecoveryService } from '../../application/services/vault-device-recovery.service';
+import { PrismaService } from '@auvora/database';
 import {
   ADMIN_PORTAL_ROLES,
   PERMISSION_ROLES_MANAGE,
@@ -48,7 +50,11 @@ void _adminUsersDtoRuntime;
 @Controller('api/v1/admin/users')
 @Roles(...ADMIN_PORTAL_ROLES)
 export class AdminUsersController {
-  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
+  constructor(
+    @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(VaultDeviceRecoveryService) private readonly vaultRecovery: VaultDeviceRecoveryService,
+  ) {}
 
   @Get()
   @Permissions(PERMISSION_USERS_READ)
@@ -76,6 +82,48 @@ export class AdminUsersController {
   async getUserSessions(@Param() params: UserIdParamDto) {
     const data = await this.authService.adminListSessions(params.userId);
     return successResponse(data);
+  }
+
+  /** Metadata-only vault status — never returns ciphertext or wrapped keys. */
+  @Get(':userId/vault-status')
+  @Permissions(PERMISSION_USERS_READ)
+  async getVaultStatus(@Param() params: UserIdParamDto) {
+    const row = await this.prisma.encryptedVaultBlob.findUnique({
+      where: { ownerUserId: params.userId },
+      select: {
+        epoch: true,
+        algorithmId: true,
+        version: true,
+        updatedAt: true,
+        uploadedByDeviceId: true,
+      },
+    });
+    if (!row) {
+      return successResponse({
+        exists: false,
+        epoch: null,
+        algorithmId: null,
+        version: null,
+        updatedAt: null,
+        uploadedByDeviceId: null,
+      });
+    }
+    return successResponse({
+      exists: true,
+      epoch: row.epoch,
+      algorithmId: row.algorithmId,
+      version: row.version,
+      updatedAt: row.updatedAt.toISOString(),
+      uploadedByDeviceId: row.uploadedByDeviceId,
+    });
+  }
+
+  /** Pending/recent vault recovery request metadata only (no transfer ciphertext). */
+  @Get(':userId/vault-recovery')
+  @Permissions(PERMISSION_USERS_READ)
+  async getVaultRecovery(@Param() params: UserIdParamDto) {
+    const data = await this.vaultRecovery.adminListForUser(params.userId);
+    return successResponse({ items: data });
   }
 
   @Patch(':userId/status')

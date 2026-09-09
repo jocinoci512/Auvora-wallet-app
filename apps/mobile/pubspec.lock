@@ -1155,7 +1155,7 @@ packages:
     source: hosted
     version: "5.15.0"
   x25519:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: x25519
       sha256: cec3c125f0d934dccba6c4cab48f3fbf866dc78895dcc5a1584d35b0a845005b

@@ -8,6 +8,8 @@ import '../auth_api_client.dart';
 import '../account_password_session.dart';
 import '../kyc_client.dart';
 import '../vault_sync_service.dart';
+import 'emergency_recovery_screen.dart';
+import 'vault_device_recovery_screen.dart';
 
 /// Auvora account (backend identity) screen: create account, sign in, view
 /// profile, sign out. Kept separate from the on-device non-custodial wallet —
@@ -275,10 +277,21 @@ class _ProfileViewState extends State<_ProfileView> {
             color: t.colorScheme.errorContainer,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(
-                vaultSync.lastStatus ??
-                    'Account access is restored. Unlock your wallet with emergency recovery using your recovery phrase. Auvora will not replace your wallet automatically.',
-                style: t.textTheme.bodyMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vaultSync.lastStatus ??
+                        'Account access is restored. Unlock your wallet with emergency recovery using your recovery phrase. Auvora will not replace your wallet automatically.',
+                    style: t.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: () => _openEmergencyRecovery(context),
+                    icon: const Icon(Icons.key_outlined),
+                    label: const Text('Emergency recovery'),
+                  ),
+                ],
               ),
             ),
           ),
@@ -406,6 +419,12 @@ class _ProfileViewState extends State<_ProfileView> {
       SnackBar(
         content: Text(vaultSync.lastStatus ?? account.info ?? 'Password updated.'),
       ),
+    );
+  }
+
+  Future<void> _openEmergencyRecovery(BuildContext context) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const EmergencyRecoveryScreen()),
     );
   }
 
@@ -1084,11 +1103,22 @@ class _AuthFormsState extends State<_AuthForms> {
                   height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(_createMode ? 'Create Account' : 'Sign In'),
         ),
-        if (!_createMode)
+        if (!_createMode) ...[
           TextButton(
             onPressed: account.busy ? null : () => _forgotPassword(account),
             child: const Text('Forgot password?'),
           ),
+          TextButton(
+            onPressed: account.busy
+                ? null
+                : () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const VaultDeviceRecoveryScreen(),
+                      ),
+                    ),
+            child: const Text('Recover wallet on this device'),
+          ),
+        ],
         if (!_createMode)
           TextButton(
             onPressed: account.busy ? null : () => _resendVerification(account),

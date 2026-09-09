@@ -4,6 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../account/ui/vault_device_recovery_screen.dart';
 import '../../connections/connections_controller.dart';
 import '../../connections/deep_link_router.dart';
 import '../../connections/wallet_connect_provider.dart';
@@ -49,6 +50,16 @@ class _DeepLinkListenerState extends State<DeepLinkListener> {
 
   Future<void> _onUri(Uri uri) async {
     if (!mounted) return;
+    final resetToken = _extractPasswordResetToken(uri);
+    if (resetToken != null && resetToken.length >= 20) {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => VaultDeviceRecoveryScreen(initialResetToken: resetToken),
+        ),
+      );
+      return;
+    }
     final router = context.read<DeepLinkRouter>();
     final connections = context.read<ConnectionsController>();
     final wallet = context.read<WalletController>();
@@ -103,6 +114,14 @@ class _DeepLinkListenerState extends State<DeepLinkListener> {
     final request = await connections.handleInboundDeepLink(uri.toString());
     if (!mounted || request == null) return;
     await showConnectionApprovalSheet(context, request: request);
+  }
+
+  static String? _extractPasswordResetToken(Uri uri) {
+    final path = uri.path.toLowerCase();
+    if (!path.contains('reset-password')) return null;
+    final token = uri.queryParameters['token']?.trim();
+    if (token != null && token.isNotEmpty) return token;
+    return null;
   }
 
   @override
