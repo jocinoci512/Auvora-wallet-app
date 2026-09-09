@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@auvora/database';
+import { generateOpaqueToken, hashToken } from '@auvora/security';
 import { UserStatus } from '@auvora/types';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../domain';
 import { AUDIT_REPOSITORY, type AuditRepositoryPort } from '../ports/audit-repository.port';
@@ -106,5 +107,81 @@ export class AcceptanceAdminService {
     });
 
     return { userId: user.id, message: 'Acceptance account cleaned up' };
+  }
+
+  /** Mint a short-lived password-reset token for acceptance harness (never log the raw token). */
+  async mintPasswordResetToken(input: {
+    actorUserId: string;
+    actorRoles: string[];
+    userId: string;
+    ctx: RequestContext;
+  }): Promise<{ resetToken: string; expiresAt: string }> {
+    if (!input.actorRoles.includes(ROLE_SUPER_ADMIN)) {
+      throw new ForbiddenError('SUPER_ADMIN required');
+    }
+    const user = await this.users.findById(input.userId);
+    if (!user) throw new NotFoundError('User not found');
+    this.assertAcceptanceEmail(user.email);
+    await this.assertSimulationActive(user.id);
+
+    const rawToken = generateOpaqueToken();
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await this.users.createPasswordResetToken(user.id, tokenHash, expiresAt);
+
+    await this.audit.create({
+      action: 'ACCEPTANCE_PASSWORD_RESET_MINTED' as never,
+      actorUserId: input.actorUserId,
+      targetUserId: user.id,
+      ipAddress: input.ctx.ipAddress,
+      userAgent: input.ctx.userAgent,
+      metadata: { expiresAt: expiresAt.toISOString() },
+    });
+
+    return { resetToken: rawToken, expiresAt: expiresAt.toISOString() };
+  }
+
+  /** Force-expire a vault recovery request for acceptance testing only. */
+  async forceExpireVaultRecoveryRequest(input: {
+    actorUserId: string;
+    actorRoles: string[];
+    requestId: string;
+    ctx: RequestContext;
+  }): Promise<{ requestId: string; status: string }> {
+    if (!input.actorRoles.includes(ROLE_SUPER_ADMIN)) {
+      throw new ForbiddenError('SUPER_ADMIN required');
+    }
+    const row = await this.prisma.vaultDeviceRecoveryRequest.findUnique({
+      where: { id: input.requestId },
+    });
+    if (!row) throw new NotFoundError('Recovery request not found');
+
+    const user = await this.users.findById(row.ownerUserId);
+    if (!user) throw new NotFoundError('User not found');
+    this.assertAcceptanceEmail(user.email);
+    await this.assertSimulationActive(user.id);
+
+    const past = new Date(Date.now() - 1000);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vaultDeviceRecoveryRequest.update({
+        where: { id: row.id },
+        data: { status: 'EXPIRED', expiresAt: past },
+      });
+      await tx.vaultDeviceRecoveryPayload.updateMany({
+        where: { requestId: row.id },
+        data: { expiresAt: past },
+      });
+    });
+
+    await this.audit.create({
+      action: 'ACCEPTANCE_VAULT_RECOVERY_FORCE_EXPIRED' as never,
+      actorUserId: input.actorUserId,
+      targetUserId: user.id,
+      ipAddress: input.ctx.ipAddress,
+      userAgent: input.ctx.userAgent,
+      metadata: { requestId: row.id },
+    });
+
+    return { requestId: row.id, status: 'EXPIRED' };
   }
 }

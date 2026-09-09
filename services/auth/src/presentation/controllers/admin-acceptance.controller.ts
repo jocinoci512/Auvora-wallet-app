@@ -60,6 +60,55 @@ export class AdminAcceptanceController {
     });
     return successResponse(data);
   }
+
+  @Post(':userId/mint-password-reset-token')
+  @Permissions(PERMISSION_USERS_WRITE)
+  @RequireStepUp()
+  async mintPasswordResetToken(
+    @CurrentUser() actor: JwtAccessClaims,
+    @Param() params: UserIdParamDto,
+    @Req() req: Request,
+  ) {
+    const data = await this.acceptance.mintPasswordResetToken({
+      actorUserId: actor.sub,
+      actorRoles: actor.roles ?? [],
+      userId: params.userId,
+      ctx: extractRequestContext(req),
+    });
+    return successResponse(data);
+  }
+}
+
+class RequestIdParamDto {
+  @IsUUID()
+  requestId!: string;
+}
+void RequestIdParamDto;
+
+@ApiTags('admin-acceptance')
+@Controller('api/v1/admin/acceptance/vault-recovery')
+@Roles(ROLE_SUPER_ADMIN)
+export class AdminAcceptanceVaultRecoveryController {
+  constructor(
+    @Inject(AcceptanceAdminService) private readonly acceptance: AcceptanceAdminService,
+  ) {}
+
+  @Post(':requestId/force-expire')
+  @Permissions(PERMISSION_USERS_WRITE)
+  @RequireStepUp()
+  async forceExpire(
+    @CurrentUser() actor: JwtAccessClaims,
+    @Param() params: RequestIdParamDto,
+    @Req() req: Request,
+  ) {
+    const data = await this.acceptance.forceExpireVaultRecoveryRequest({
+      actorUserId: actor.sub,
+      actorRoles: actor.roles ?? [],
+      requestId: params.requestId,
+      ctx: extractRequestContext(req),
+    });
+    return successResponse(data);
+  }
 }
 
 // Silence unused import if Roles spread needs ADMIN_PORTAL_ROLES elsewhere
