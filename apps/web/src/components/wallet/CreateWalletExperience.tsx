@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect, type ReactElement } from 'react';
 import { createApiClient, formatApiError } from '../../lib/api-client';
 import { isSignedIn, getCachedUser } from '../../lib/auth/session';
-import { uploadVaultBundle } from '../../lib/vault/vault-sync';
+import { uploadVaultBundle, readDeviceVault } from '../../lib/vault/vault-sync';
+import {
+  ensurePublicWalletsRegistered,
+  initializePublicSessionFromVault,
+} from '../../lib/vault/wallet-public-session';
 import {
   generateDemoPhrase,
   pickChallengeIndexes,
@@ -96,9 +100,7 @@ export function CreateWalletExperience(): ReactElement {
       setStep('backup');
     } catch (err) {
       if (err instanceof AuvoraClientError && err.status === 401) {
-        setError(
-          'Sign in to your Auvora account to create this wallet on the server. You can also continue on this device. Keys stay here.',
-        );
+        setError('Sign in to your Auvora account to create this wallet. Keys stay on this device.');
         setStep('setup');
       } else {
         setError(formatApiError(err));
@@ -184,10 +186,13 @@ export function CreateWalletExperience(): ReactElement {
           ],
         },
       });
-      setVaultStatus(
-        `Encrypted vault uploaded for ${user?.email ?? 'account'} (epoch ${stored.epoch}).`,
-      );
+      setVaultStatus(`Secure backup saved for ${user?.email ?? 'your account'}.`);
       setVaultPassword('');
+      const deviceVault = readDeviceVault();
+      if (deviceVault) {
+        const publicSession = initializePublicSessionFromVault(deviceVault);
+        await ensurePublicWalletsRegistered(publicSession);
+      }
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -551,10 +556,10 @@ export function CreateWalletExperience(): ReactElement {
           </p>
           {isSignedIn() ? (
             <section className="ob-panel" style={{ textAlign: 'left', marginTop: '1.25rem' }}>
-              <h3>Cross-device encrypted vault</h3>
+              <h3>Secure backup for other devices</h3>
               <p>
-                Optionally encrypt this recovery phrase with your account password and upload
-                ciphertext only. Auvora servers never see your recovery phrase or private keys.
+                Optionally protect this recovery phrase with your account password and store an
+                encrypted backup. Auvora servers never see your recovery phrase or private keys.
               </p>
               <label className="ob-field">
                 <span>Account password</span>
@@ -574,7 +579,7 @@ export function CreateWalletExperience(): ReactElement {
                 disabled={submitting || vaultPassword.length < 12 || Boolean(vaultStatus)}
                 onClick={() => void uploadEncryptedVault()}
               >
-                {submitting ? 'Encrypting…' : 'Upload encrypted vault'}
+                {submitting ? 'Protecting…' : 'Save encrypted backup'}
               </button>
             </section>
           ) : (

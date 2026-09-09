@@ -86,7 +86,7 @@ if (/^More$/i.test(texts(screen)[3] || '') || texts(screen).includes('More')) {
 const homeTexts = texts(screen);
 const joined = homeTexts.join(' | ');
 const homeSignInBanner =
-  /Sign in again so this wallet|session has expired|Sign in is required before encrypted/i.test(
+  /Sign in again so this wallet|appear on your account|session has expired|Sign in is required before encrypted/i.test(
     joined,
   );
 const localQa = /LOCAL QA|Local EVM \+ Solana QA|mainnet OFF/i.test(joined);

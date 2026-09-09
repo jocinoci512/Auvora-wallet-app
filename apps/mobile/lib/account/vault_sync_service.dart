@@ -8,11 +8,12 @@ import 'auth_token_store.dart';
 import 'vault_client.dart';
 import 'vault_crypto.dart';
 
-/// Cross-device encrypted vault sync (ciphertext only — never plaintext to server).
+/// Cross-device encrypted vault sync (encrypted backup only — never plaintext to server).
 ///
-/// Password reset note: changing the Auvora account password does **not** decrypt
-/// an existing vault. Clients must re-wrap with the recovery phrase
-/// ([rewrapVaultWithNewPassword]) and PUT a new epoch.
+/// Account password reset restores login only. Existing secure backups stay
+/// protected under the prior password until this trusted device refreshes the
+/// backup with the new password ([reprotectCloudVaultWithAccountPassword]) or
+/// the customer uses emergency recovery with their recovery phrase.
 class VaultSyncService extends ChangeNotifier {
   VaultSyncService({
     VaultClient? client,
@@ -30,6 +31,8 @@ class VaultSyncService extends ChangeNotifier {
   int? _remoteEpoch;
   bool _needsPasswordForUpload = false;
   bool _needsPasswordForRestore = false;
+  bool _needsTrustedDeviceReprotect = false;
+  bool _needsEmergencyRecovery = false;
   bool _backupIncomplete = false;
   int _autoUploadAttempts = 0;
 
@@ -41,12 +44,18 @@ class VaultSyncService extends ChangeNotifier {
   bool get isConfigured => _client.isConfigured;
   bool get needsPasswordForUpload => _needsPasswordForUpload;
   bool get needsPasswordForRestore => _needsPasswordForRestore;
-  /// True when local wallet exists but cloud ciphertext is missing after retries.
+  /// Local wallet is unlocked; cloud backup still uses a prior account password.
+  bool get needsTrustedDeviceReprotect => _needsTrustedDeviceReprotect;
+  /// No trusted local wallet; guide customer to emergency recovery phrase.
+  bool get needsEmergencyRecovery => _needsEmergencyRecovery;
+  /// True when local wallet exists but cloud backup is missing after retries.
   bool get backupIncomplete => _backupIncomplete;
 
   void clearPasswordFlags() {
     _needsPasswordForUpload = false;
     _needsPasswordForRestore = false;
+    _needsTrustedDeviceReprotect = false;
+    _needsEmergencyRecovery = false;
     notifyListeners();
   }
 
@@ -59,7 +68,7 @@ class VaultSyncService extends ChangeNotifier {
     if (!isConfigured) return;
 
     try {
-      final token = await account.readAccessToken();
+      final token = await account.ensureAccessToken();
       if (token == null || token.isEmpty) return;
       final remote = await _client.getVault(accessToken: token);
       _remoteEpoch = remote?.epoch;
@@ -68,18 +77,24 @@ class VaultSyncService extends ChangeNotifier {
       if (localEmpty && remote != null) {
         _needsPasswordForRestore = true;
         _needsPasswordForUpload = false;
+        _needsTrustedDeviceReprotect = false;
+        _needsEmergencyRecovery = false;
         _backupIncomplete = false;
-        _lastStatus = 'Cloud backup available — confirm your password to unlock';
+        _lastStatus = 'Secure backup available — confirm your password to unlock';
       } else if (!localEmpty && wallet.unlocked && remote == null) {
         _needsPasswordForUpload = true;
         _needsPasswordForRestore = false;
+        _needsTrustedDeviceReprotect = false;
+        _needsEmergencyRecovery = false;
         _backupIncomplete = true;
         _lastStatus = 'Confirm your Auvora password once to finish secure backup';
       } else if (!localEmpty && wallet.unlocked && remote != null) {
         _needsPasswordForUpload = false;
         _needsPasswordForRestore = false;
-        _backupIncomplete = false;
-        _lastStatus = 'Secure backup complete';
+        if (!_needsTrustedDeviceReprotect) {
+          _backupIncomplete = false;
+          _lastStatus = 'Secure backup complete';
+        }
       } else {
         _needsPasswordForUpload = false;
         _needsPasswordForRestore = false;
@@ -94,6 +109,10 @@ class VaultSyncService extends ChangeNotifier {
       // Happy path: auto-restore on a second device when local wallet is empty.
       if (_needsPasswordForRestore && !_busy && AccountPasswordSession.peek() != null) {
         await tryAutoRestore(account: account, wallet: wallet);
+      }
+      // After account password reset: refresh cloud backup from this trusted device.
+      if (_needsTrustedDeviceReprotect && !_busy && AccountPasswordSession.peek() != null) {
+        await tryAutoReprotect(account: account, wallet: wallet);
       }
     } on AuthException catch (e) {
       _lastError = e.message;
@@ -159,6 +178,53 @@ class VaultSyncService extends ChangeNotifier {
     return ok;
   }
 
+  /// Refresh cloud backup under the new account password using local unlocked keys.
+  /// No recovery-phrase prompt — phrase material never leaves this device.
+  Future<bool> tryAutoReprotect({
+    required AccountController account,
+    required WalletController wallet,
+  }) async {
+    final password = AccountPasswordSession.peek();
+    if (password == null || password.isEmpty) return false;
+    return reprotectCloudVaultWithAccountPassword(
+      account: account,
+      wallet: wallet,
+      newPassword: password,
+    );
+  }
+
+  /// Trusted-device path after account password change/reset.
+  ///
+  /// Requires an unlocked local wallet. Re-encrypts and uploads under [newPassword]
+  /// without asking for the recovery phrase.
+  Future<bool> reprotectCloudVaultWithAccountPassword({
+    required AccountController account,
+    required WalletController wallet,
+    required String newPassword,
+  }) async {
+    if (!wallet.unlocked || (wallet.vaults.isEmpty && wallet.wallet == null)) {
+      _needsTrustedDeviceReprotect = false;
+      _needsEmergencyRecovery = true;
+      _lastStatus =
+          'Account access is restored. To unlock your wallet here, use emergency recovery with your recovery phrase.';
+      _lastError = null;
+      notifyListeners();
+      return false;
+    }
+    final ok = await uploadLocalVault(
+      account: account,
+      wallet: wallet,
+      password: newPassword,
+    );
+    if (ok) {
+      _needsTrustedDeviceReprotect = false;
+      _needsEmergencyRecovery = false;
+      _lastStatus = 'Secure backup updated for your new password';
+      notifyListeners();
+    }
+    return ok;
+  }
+
   /// Encrypt local wallets and PUT `/api/v1/vault`.
   Future<bool> uploadLocalVault({
     required AccountController account,
@@ -175,7 +241,7 @@ class VaultSyncService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await account.readAccessToken();
+      final token = await account.ensureAccessToken();
       if (token == null || token.isEmpty) {
         throw const AuthException(
           AuthErrorKind.forbidden,
@@ -216,6 +282,8 @@ class VaultSyncService extends ChangeNotifier {
       _lastSuccessAt = DateTime.now();
       _lastStatus = 'Secure backup complete';
       _needsPasswordForUpload = false;
+      _needsTrustedDeviceReprotect = false;
+      _needsEmergencyRecovery = false;
       _backupIncomplete = false;
       _lastError = null;
       AccountPasswordSession.clear();
@@ -260,7 +328,7 @@ class VaultSyncService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await account.readAccessToken();
+      final token = await account.ensureAccessToken();
       if (token == null || token.isEmpty) {
         throw const AuthException(
           AuthErrorKind.forbidden,
@@ -288,6 +356,8 @@ class VaultSyncService extends ChangeNotifier {
       _lastSuccessAt = DateTime.now();
       _lastStatus = 'Wallet unlocked from secure backup';
       _needsPasswordForRestore = false;
+      _needsTrustedDeviceReprotect = false;
+      _needsEmergencyRecovery = false;
       _lastError = null;
       AccountPasswordSession.clear();
       return imported > 0;
@@ -295,11 +365,42 @@ class VaultSyncService extends ChangeNotifier {
       _lastError = _customerFacingVaultError(e);
       return false;
     } catch (_) {
-      _lastError = 'Incorrect password. Please try again.';
+      // Password no longer unwraps cloud backup (typical after account reset).
+      final hasTrustedLocal =
+          wallet.unlocked && (wallet.vaults.isNotEmpty || wallet.wallet != null);
+      if (hasTrustedLocal) {
+        _needsTrustedDeviceReprotect = true;
+        _needsEmergencyRecovery = false;
+        _needsPasswordForRestore = false;
+        _lastError = null;
+        _lastStatus =
+            'Your account password changed. Confirm once on this device to refresh secure backup — no recovery phrase needed.';
+        notifyListeners();
+        final sessionPassword = AccountPasswordSession.peek();
+        if (sessionPassword != null && sessionPassword.isNotEmpty) {
+          _busy = false;
+          notifyListeners();
+          return reprotectCloudVaultWithAccountPassword(
+            account: account,
+            wallet: wallet,
+            newPassword: sessionPassword,
+          );
+        }
+        return false;
+      }
+      _needsTrustedDeviceReprotect = false;
+      _needsEmergencyRecovery = true;
+      _needsPasswordForRestore = false;
+      _lastError = null;
+      _lastStatus =
+          'Account access is restored. This device needs emergency recovery with your recovery phrase to unlock the wallet. Auvora will not create a replacement wallet automatically.';
+      notifyListeners();
       return false;
     } finally {
-      _busy = false;
-      notifyListeners();
+      if (_busy) {
+        _busy = false;
+        notifyListeners();
+      }
     }
   }
 }

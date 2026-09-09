@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import '../../theme/aether_theme.dart';
 import '../wallet_backend_sync.dart';
 
-/// Subtle non-technical warning when public metadata has not reached the backend.
+/// Subtle transport warning when account metadata could not reach the cloud.
+/// Never implies the customer must "link" a wallet that already exists on-device.
 class AccountSyncBanner extends StatelessWidget {
   const AccountSyncBanner({super.key});
 
@@ -15,7 +16,7 @@ class AccountSyncBanner extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Text(
-        sync.lastError ?? 'Account sync is delayed. Your wallet stays on this device.',
+        sync.lastError ?? 'Account details will update when the connection is stable.',
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AetherColors.mutedFor(context),

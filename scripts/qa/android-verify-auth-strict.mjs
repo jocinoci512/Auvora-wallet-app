@@ -89,7 +89,7 @@ if (!/Good |Total portfolio|Hide balances/i.test(homeJoined)) {
   homeJoined = texts(screen).join(' | ');
 }
 
-const homeBanner = /Sign in again so this wallet/i.test(homeJoined);
+const homeBanner = /Sign in again so this wallet|appear on your account/i.test(homeJoined);
 const sessionExpired = /session has expired/i.test(homeJoined);
 
 tapLabel(screen, (n) => /^More Tab/i.test(n.label));

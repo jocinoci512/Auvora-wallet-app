@@ -238,6 +238,51 @@ class _ProfileViewState extends State<_ProfileView> {
             ),
           ),
         ],
+        if (vaultSync.needsTrustedDeviceReprotect) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: t.colorScheme.tertiaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vaultSync.lastStatus ??
+                        'Your account password changed. Refresh secure backup on this device — no recovery phrase needed.',
+                    style: t.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: vaultSync.busy
+                        ? null
+                        : () => _promptVaultPassword(
+                              context,
+                              restore: false,
+                              reprotect: true,
+                            ),
+                    icon: const Icon(Icons.security),
+                    label: const Text('Refresh secure backup'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        if (vaultSync.needsEmergencyRecovery) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: t.colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                vaultSync.lastStatus ??
+                    'Account access is restored. Unlock your wallet with emergency recovery using your recovery phrase. Auvora will not replace your wallet automatically.',
+                style: t.textTheme.bodyMedium,
+              ),
+            ),
+          ),
+        ],
         if (vaultSync.needsPasswordForRestore || vaultSync.needsPasswordForUpload) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
@@ -258,7 +303,8 @@ class _ProfileViewState extends State<_ProfileView> {
           ),
         ] else if (wallet.unlocked &&
             wallet.vaults.isNotEmpty &&
-            vaultSync.remoteEpoch == null) ...[
+            vaultSync.remoteEpoch == null &&
+            !vaultSync.needsTrustedDeviceReprotect) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: vaultSync.busy
@@ -327,6 +373,12 @@ class _ProfileViewState extends State<_ProfileView> {
           ),
         ],
         const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: account.busy ? null : () => _changePassword(context),
+          icon: const Icon(Icons.password_outlined),
+          label: const Text('Change password'),
+        ),
+        const SizedBox(height: 12),
         FilledButton.tonalIcon(
           onPressed: account.busy ? null : () => account.signOut(),
           icon: const Icon(Icons.logout),
@@ -336,7 +388,32 @@ class _ProfileViewState extends State<_ProfileView> {
     );
   }
 
-  Future<void> _promptVaultPassword(BuildContext context, {required bool restore}) async {
+  Future<void> _changePassword(BuildContext context) async {
+    final account = widget.account;
+    final wallet = context.read<WalletController>();
+    final vaultSync = context.read<VaultSyncService>();
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _ChangePasswordDialog(
+        account: account,
+        wallet: wallet,
+        vaultSync: vaultSync,
+      ),
+    );
+    if (!context.mounted || result != true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(vaultSync.lastStatus ?? account.info ?? 'Password updated.'),
+      ),
+    );
+  }
+
+  Future<void> _promptVaultPassword(
+    BuildContext context, {
+    required bool restore,
+    bool reprotect = false,
+  }) async {
     final account = widget.account;
     final wallet = context.read<WalletController>();
     final vaultSync = context.read<VaultSyncService>();
@@ -345,6 +422,7 @@ class _ProfileViewState extends State<_ProfileView> {
       barrierDismissible: false,
       builder: (ctx) => _SecureBackupPasswordDialog(
         restore: restore,
+        reprotect: reprotect,
         account: account,
         wallet: wallet,
         vaultSync: vaultSync,
@@ -384,9 +462,11 @@ class _SecureBackupPasswordDialog extends StatefulWidget {
     required this.account,
     required this.wallet,
     required this.vaultSync,
+    this.reprotect = false,
   });
 
   final bool restore;
+  final bool reprotect;
   final AccountController account;
   final WalletController wallet;
   final VaultSyncService vaultSync;
@@ -442,11 +522,17 @@ class _SecureBackupPasswordDialogState extends State<_SecureBackupPasswordDialog
               wallet: widget.wallet,
               password: password,
             )
-          : await widget.vaultSync.uploadLocalVault(
-              account: widget.account,
-              wallet: widget.wallet,
-              password: password,
-            );
+          : widget.reprotect
+              ? await widget.vaultSync.reprotectCloudVaultWithAccountPassword(
+                  account: widget.account,
+                  wallet: widget.wallet,
+                  newPassword: password,
+                )
+              : await widget.vaultSync.uploadLocalVault(
+                  account: widget.account,
+                  wallet: widget.wallet,
+                  password: password,
+                );
       if (!mounted) return;
       if (!ok) {
         setState(() {
@@ -481,7 +567,13 @@ class _SecureBackupPasswordDialogState extends State<_SecureBackupPasswordDialog
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.restore ? 'Unlock wallet from backup' : 'Finish secure backup'),
+      title: Text(
+        widget.restore
+            ? 'Unlock wallet from backup'
+            : widget.reprotect
+                ? 'Refresh secure backup'
+                : 'Finish secure backup',
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,7 +581,9 @@ class _SecureBackupPasswordDialogState extends State<_SecureBackupPasswordDialog
           Text(
             widget.restore
                 ? 'Confirm your Auvora password to unlock your wallet on this device.'
-                : 'Confirm your Auvora password so this wallet can be unlocked on your other devices.',
+                : widget.reprotect
+                    ? 'Confirm your new Auvora password. This device updates secure backup without asking for your recovery phrase.'
+                    : 'Confirm your Auvora password so this wallet can be unlocked on your other devices.',
           ),
           const SizedBox(height: 12),
           TextField(
@@ -516,7 +610,11 @@ class _SecureBackupPasswordDialogState extends State<_SecureBackupPasswordDialog
             const LinearProgressIndicator(),
             const SizedBox(height: 8),
             Text(
-              widget.restore ? 'Unlocking…' : 'Creating secure backup…',
+              widget.restore
+                  ? 'Unlocking…'
+                  : widget.reprotect
+                      ? 'Refreshing secure backup…'
+                      : 'Creating secure backup…',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -530,6 +628,182 @@ class _SecureBackupPasswordDialogState extends State<_SecureBackupPasswordDialog
         FilledButton(
           onPressed: _submitting ? null : _onContinue,
           child: Text(_submitting ? 'Please wait…' : 'Continue'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog({
+    required this.account,
+    required this.wallet,
+    required this.vaultSync,
+  });
+
+  final AccountController account;
+  final WalletController wallet;
+  final VaultSyncService vaultSync;
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  late final TextEditingController _current;
+  late final TextEditingController _next;
+  late final TextEditingController _confirm;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = TextEditingController();
+    _next = TextEditingController();
+    _confirm = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onContinue() async {
+    if (_submitting) return;
+    final current = _current.text;
+    final next = _next.text;
+    if (current.trim().isEmpty || next.trim().isEmpty) {
+      setState(() => _error = 'Enter your current and new passwords.');
+      return;
+    }
+    if (next.length < 12) {
+      setState(() => _error = 'New password must be at least 12 characters.');
+      return;
+    }
+    if (next != _confirm.text) {
+      setState(() => _error = 'New passwords do not match.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final confirmed = await widget.account.confirmPassword(current);
+      if (!mounted) return;
+      if (!confirmed) {
+        setState(() {
+          _submitting = false;
+          _error = 'Current password is incorrect.';
+        });
+        return;
+      }
+      // Re-protect cloud backup under the new password while still authorized,
+      // then rotate account credentials.
+      if (widget.wallet.unlocked &&
+          (widget.wallet.vaults.isNotEmpty || widget.wallet.wallet != null)) {
+        final backedUp = await widget.vaultSync.reprotectCloudVaultWithAccountPassword(
+          account: widget.account,
+          wallet: widget.wallet,
+          newPassword: next,
+        );
+        if (!backedUp) {
+          if (!mounted) return;
+          setState(() {
+            _submitting = false;
+            _error = widget.vaultSync.lastError ??
+                'Could not refresh secure backup before changing password.';
+          });
+          return;
+        }
+      }
+      final ok = await widget.account.changePassword(
+        currentPassword: current,
+        newPassword: next,
+      );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _submitting = false;
+          _error = widget.account.error ?? 'Could not change password.';
+        });
+        return;
+      }
+      Navigator.of(context).pop(true);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Could not change password. Please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Change password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Your wallet backup on this device is updated to match the new password. '
+            'Recovery phrase is not required.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _current,
+            obscureText: true,
+            enabled: !_submitting,
+            decoration: const InputDecoration(labelText: 'Current password'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _next,
+            obscureText: true,
+            enabled: !_submitting,
+            decoration: const InputDecoration(labelText: 'New password'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _confirm,
+            obscureText: true,
+            enabled: !_submitting,
+            decoration: const InputDecoration(labelText: 'Confirm new password'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+          ],
+          if (_submitting) ...[
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _onContinue,
+          child: Text(_submitting ? 'Please wait…' : 'Update password'),
         ),
       ],
     );
@@ -630,11 +904,35 @@ class _AuthFormsState extends State<_AuthForms> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(vaultSync.lastStatus ?? 'Encrypted vault restored')),
           );
+        } else if (mounted && vaultSync.needsTrustedDeviceReprotect) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                vaultSync.lastStatus ??
+                    'Secure backup will refresh on this trusted device.',
+              ),
+            ),
+          );
+        } else if (mounted && vaultSync.needsEmergencyRecovery) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                vaultSync.lastStatus ??
+                    'Use emergency recovery with your recovery phrase to unlock this wallet.',
+              ),
+            ),
+          );
         } else if (mounted && vaultSync.lastError != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(vaultSync.lastError!)),
           );
         }
+      } else if (vaultSync.needsTrustedDeviceReprotect) {
+        await vaultSync.reprotectCloudVaultWithAccountPassword(
+          account: account,
+          wallet: wallet,
+          newPassword: password,
+        );
       } else if (wallet.unlocked && wallet.vaults.isNotEmpty) {
         await vaultSync.uploadLocalVault(
           account: account,

@@ -116,12 +116,14 @@ class WalletBackendSync extends ChangeNotifier {
     StartupTiming.mark('walletPublicRegStart');
 
     try {
-      final token = await account.readAccessToken();
+      // Refresh first — stale access tokens were causing a false "sign in again /
+      // link wallet" Home banner while the local wallet was already unlocked.
+      final token = await account.ensureAccessToken();
       if (token == null || token.isEmpty) {
-        throw const AuthException(
-          AuthErrorKind.forbidden,
-          'Sign in is required before wallet metadata can sync.',
-        );
+        // Session expired: keep the local wallet UI clean — do not imply linking.
+        _lastError = null;
+        StartupTiming.mark('walletPublicRegSkipAuth');
+        return;
       }
       await registerAccounts(accessToken: token, accounts: accounts);
       _lastSuccessAt = DateTime.now();
@@ -131,11 +133,19 @@ class WalletBackendSync extends ChangeNotifier {
       _retryTimer?.cancel();
       StartupTiming.mark('walletPublicRegDone');
     } on AuthException catch (e) {
+      if (e.kind == AuthErrorKind.forbidden ||
+          e.kind == AuthErrorKind.invalidCredentials ||
+          e.kind == AuthErrorKind.emailNotVerified) {
+        // Auth problem is not a wallet-link problem. Clear banner; session UX owns it.
+        _lastError = null;
+        StartupTiming.mark('walletPublicRegFailAuth');
+        return;
+      }
       _lastError = _friendlySyncMessage(e);
       StartupTiming.mark('walletPublicRegFail');
       _scheduleRetry(account: account, wallet: wallet);
     } catch (_) {
-      _lastError = 'Account sync is delayed. Your wallet stays on this device.';
+      _lastError = 'Account details will update when the connection is stable.';
       StartupTiming.mark('walletPublicRegFail');
       _scheduleRetry(account: account, wallet: wallet);
     } finally {
@@ -195,12 +205,9 @@ class WalletBackendSync extends ChangeNotifier {
       case AuthErrorKind.network:
       case AuthErrorKind.timeout:
       case AuthErrorKind.server:
-        return 'Account sync is delayed. Your wallet stays on this device.';
-      case AuthErrorKind.forbidden:
-      case AuthErrorKind.invalidCredentials:
-        return 'Sign in again so this wallet can appear on your account.';
+        return 'Account details will update when the connection is stable.';
       default:
-        return 'Account sync is delayed. Your wallet stays on this device.';
+        return 'Account details will update when the connection is stable.';
     }
   }
 

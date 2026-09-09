@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../release/network_env.dart';
 import '../state/wallet_session_restore.dart';
+import 'account_password_session.dart';
 import 'auth_api_client.dart';
 import 'auth_token_store.dart';
 import 'auvora_api_config.dart';
@@ -298,6 +299,49 @@ class AccountController extends ChangeNotifier {
     }
   }
 
+  /// Change account password while signed in, then re-sign in with the new
+  /// password. Caller must refresh the encrypted vault under [newPassword] on
+  /// this trusted device (see [VaultSyncService.reprotectCloudVaultWithAccountPassword]).
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (!isSignedIn || !isConfigured) return false;
+    final email = _profile?.email;
+    if (email == null || email.isEmpty) return false;
+    _busy = true;
+    _error = null;
+    _info = null;
+    notifyListeners();
+    try {
+      final token = await ensureAccessToken();
+      if (token == null || token.isEmpty) {
+        _error = 'Sign in again before changing your password.';
+        return false;
+      }
+      await _client.changePassword(
+        accessToken: token,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      // change-password revokes sessions — establish a fresh one immediately.
+      await _loginInternal(email: email, password: newPassword);
+      AccountPasswordSession.capture(newPassword);
+      _status = AccountStatus.signedIn;
+      _info = 'Password updated.';
+      return true;
+    } on AuthException catch (e) {
+      _error = e.message;
+      return false;
+    } catch (_) {
+      _error = 'Could not change password. Please try again.';
+      return false;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
   /// Confirm the account password without signing the user out on failure.
   ///
   /// Used by secure-backup / unlock flows. Wrong password returns false and
@@ -321,6 +365,9 @@ class AccountController extends ChangeNotifier {
         refreshToken: session.refreshToken,
         expiresIn: session.expiresIn,
       );
+      // Keep password in memory briefly so secure backup can finish without a
+      // second prompt (never persists to disk).
+      AccountPasswordSession.capture(trimmed);
       return true;
     } on AuthException catch (e) {
       if (e.kind == AuthErrorKind.invalidCredentials || e.kind == AuthErrorKind.forbidden) {

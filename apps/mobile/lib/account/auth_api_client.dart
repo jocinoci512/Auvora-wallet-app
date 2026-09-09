@@ -328,6 +328,25 @@ class AuthApiClient {
     _decodeData(res);
   }
 
+  /// Authenticated password change. Caller must re-protect the encrypted vault
+  /// under [newPassword] on a trusted device before or after this call.
+  Future<void> changePassword({
+    required String accessToken,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.post(
+          _endpoint('/api/v1/auth/change-password'),
+          headers: _headers(bearer: accessToken),
+          body: jsonEncode({
+            'currentPassword': currentPassword,
+            'newPassword': newPassword,
+          }),
+        ));
+    _decodeData(res);
+  }
+
   /// Best-effort backend session termination. Local credentials are cleared by
   /// the caller regardless of the result.
   Future<void> logout(String accessToken) async {
