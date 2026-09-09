@@ -2,22 +2,22 @@ import 'package:flutter/material.dart';
 
 /// Aether Mist / Lagoon — mobile adaptation of the web design system.
 abstract final class AetherColors {
-  static const mist = Color(0xFFF4F6F8);
-  static const mistDeep = Color(0xFFE8EEF2);
-  static const ink = Color(0xFF12161C);
-  static const muted = Color(0xFF5C6570);
-  static const mutedOnDark = Color(0xFFA8B0BA);
-  static const lagoon = Color(0xFF0E4F5C);
-  static const lagoonDeep = Color(0xFF0B3A44);
-  static const lagoonSoft = Color(0xFF3D9AAA);
-  static const lagoonMist = Color(0xFFB7D7DD);
+  static const mist = Color(0xFFF2F6F3);
+  static const mistDeep = Color(0xFFDEE8E3);
+  static const ink = Color(0xFF102D32);
+  static const muted = Color(0xFF49605E);
+  static const mutedOnDark = Color(0xFFB9F4D7);
+  static const lagoon = Color(0xFF087F75);
+  static const lagoonDeep = Color(0xFF102D32);
+  static const lagoonSoft = Color(0xFF087F75);
+  static const lagoonMist = Color(0xFFB9F4D7);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceDark = Color(0xFF1A1F27);
+  static const surfaceDark = Color(0xFF163036);
   static const danger = Color(0xFFB42318);
   static const success = Color(0xFF067647);
   static const warn = Color(0xFFB54708);
-  static const border = Color(0xFFD8DEE6);
-  static const borderDark = Color(0xFF2A323C);
+  static const border = Color(0xFFDEE8E3);
+  static const borderDark = Color(0xFF2A454A);
 
   /// Brightness-aware secondary text for WCAG-friendly contrast.
   static Color mutedFor(BuildContext context) {

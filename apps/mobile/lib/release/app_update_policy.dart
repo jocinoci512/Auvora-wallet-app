@@ -28,7 +28,7 @@ class AppVersionPolicy {
 
   static const AppVersionPolicy defaults = AppVersionPolicy(
     minimumSupportedVersionCode: 1,
-    latestRecommendedVersionCode: 31,
+    latestRecommendedVersionCode: 32,
     storeUrl: 'https://play.google.com/store/apps/details?id=com.auvora.auvora_wallet',
     message: null,
   );

@@ -1,0 +1,39 @@
+AUVORA — REFINED BRAND PACKAGE
+
+USE THESE FILES
+Website on a light background: Auvora_Primary.svg (PNG alternative included).
+Website on a dark background: Auvora_Reverse.svg.
+Single-color reproduction: Auvora_Monochrome.svg.
+Symbol alone: Auvora_Symbol.svg.
+App source: Auvora_App_Icon.svg and opaque 1024px PNG.
+Website favicon: favicon.ico and small PNG sizes.
+Client emails: Auvora_Email_Logo.png (820 x 320; display at 205 x 80).
+Larger email header: Auvora_Email_Header.png (display at 600 x 150).
+
+EMAIL SETUP — STILL REQUIRED
+The HTML files are templates, not installed email settings.
+For manually written messages: insert Auvora_Email_Logo.png into your email
+provider's signature editor and select it as the default for new messages and
+replies. Add your real name, role and contact details.
+For automated app emails: have your developer host the email PNG at a public
+HTTPS asset URL or attach it using a matching Content-ID. Replace the relative
+image src in Auvora_Email_Template.html with that URL or cid reference. Replace
+bracketed placeholders, then install the template in your mail-sending service.
+The signature HTML is a starting layout for providers that accept HTML.
+Test a delivered message in the email clients you use, including dark mode.
+Recipients may block remote images; the image includes readable alternative text.
+No email account, app or live website was modified as part of this asset delivery.
+
+DESIGN RULES
+Deep lagoon #102D32; teal #087F75; mint #B9F4D7; background #F2F6F3.
+Use the primary logo on white/light backgrounds and reverse on dark lagoon.
+Keep space around the mark; do not stretch, add shadows, or recolor each letter.
+Use the symbol for tiny placements, where the WALLET descriptor is too small.
+The app master is square and opaque; preview corners are illustrative.
+Android adaptive-icon layers still need platform-specific packaging.
+All delivered SVG lettering is outlined and requires no installed font.
+
+VALIDATION
+Logo variants rendered and visually reviewed together. SVGs use vector paths.
+PNG dimensions and SVG text removal checked. Email HTML has not been tested
+through a live mail provider.

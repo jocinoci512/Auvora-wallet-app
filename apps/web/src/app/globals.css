@@ -1,4 +1,4 @@
-/* App-specific overrides — shared chrome lives in @auvora/ui/styles.css */
+/* App-specific overrides â€” shared chrome lives in @auvora/ui/styles.css */
 
 /*
  * Typography tokens. Fonts are self-hosted via @fontsource (imported in
@@ -339,7 +339,7 @@ code {
   }
 }
 
-/* —— Premium app shell (reconstruction) —— */
+/* â€”â€” Premium app shell (reconstruction) â€”â€” */
 .auv-badge {
   display: inline-flex;
   align-items: center;
@@ -385,7 +385,7 @@ code {
   max-height: 100vh;
   overflow: auto;
   padding: 1.25rem 1rem 2rem;
-    background: color-mix(in srgb, var(--auvora-color-surface, #EEF1F4) 92%, transparent);
+    background: color-mix(in srgb, var(--auvora-color-surface, #F2F6F3) 92%, transparent);
 }
 .auv-sidebar {
   border-right: 1px solid var(--auvora-color-border, #d5dbe0);
@@ -437,7 +437,7 @@ code {
 }
 .auv-sidebar__link:hover,
 .auv-sidebar__link.is-current {
-  background: color-mix(in srgb, var(--auvora-color-accent, #0E4F5C) 12%, transparent);
+  background: color-mix(in srgb, var(--auvora-color-accent, #087F75) 12%, transparent);
 }
 .auv-sidebar__foot {
   margin-top: 1.5rem;
@@ -467,7 +467,7 @@ code {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: color-mix(in srgb, var(--auvora-color-surface, #EEF1F4) 94%, transparent);
+  background: color-mix(in srgb, var(--auvora-color-surface, #F2F6F3) 94%, transparent);
   border-bottom: 1px solid var(--auvora-color-border, #d5dbe0);
   backdrop-filter: blur(8px);
 }
@@ -498,7 +498,7 @@ code {
   border-radius: 6px;
 }
 .auv-mobilebar__panel a.is-current {
-  background: color-mix(in srgb, var(--auvora-color-accent, #0E4F5C) 12%, transparent);
+  background: color-mix(in srgb, var(--auvora-color-accent, #087F75) 12%, transparent);
 }
 
 .auv-auth,
@@ -585,3 +585,33 @@ code {
     transition: none !important;
   }
 }
+
+/* Official brand logo light/dark pairing */
+.mh-nav__logo--dark,
+.ws-sidebar__logo--dark,
+.as__logo--dark { display: none; }
+.mh-nav__logo--light,
+.ws-sidebar__logo--light,
+.as__logo--light { display: block; }
+[data-theme='dark'] .mh-nav__logo--light,
+.auvora-theme-dark .mh-nav__logo--light,
+[data-theme='dark'] .ws-sidebar__logo--light,
+.auvora-theme-dark .ws-sidebar__logo--light,
+[data-theme='dark'] .as__logo--light,
+.auvora-theme-dark .as__logo--light { display: none; }
+[data-theme='dark'] .mh-nav__logo--dark,
+.auvora-theme-dark .mh-nav__logo--dark,
+[data-theme='dark'] .ws-sidebar__logo--dark,
+.auvora-theme-dark .ws-sidebar__logo--dark,
+[data-theme='dark'] .as__logo--dark,
+.auvora-theme-dark .as__logo--dark { display: block; }
+.ws-sidebar__logo--compact { display: none; }
+@media (max-width: 720px) {
+  .ws-sidebar__logo--light,
+  .ws-sidebar__logo--dark { display: none !important; }
+  .ws-sidebar__logo--compact { display: block; }
+}
+.as__brand { margin-bottom: 18px; }
+.admin-auth-brand { margin-bottom: 12px; }
+.admin-sidebar__brand { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.admin-sidebar__brand-label { margin: 0; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--auvora-color-text-muted); }

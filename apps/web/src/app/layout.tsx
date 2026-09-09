@@ -24,6 +24,17 @@ export const metadata: Metadata = {
   description:
     'Auvora is a secure, non-custodial wallet for managing digital assets across Ethereum, Solana, Bitcoin, and more. Your keys stay on your device.',
   applicationName: appName,
+  icons: {
+    icon: [
+      { url: '/brand/favicon.ico' },
+      { url: '/brand/Auvora_Icon_32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/brand/Auvora_Icon_64.png', sizes: '64x64', type: 'image/png' },
+      { url: '/brand/Auvora_Icon_192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/brand/Auvora_Icon_512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/brand/Auvora_Icon_180.png', sizes: '180x180', type: 'image/png' }],
+  },
+  manifest: '/brand/site.webmanifest',
   keywords: [
     'Auvora',
     'crypto wallet',
@@ -61,8 +72,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#EEF1F4' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A0C10' },
+    { media: '(prefers-color-scheme: light)', color: '#F2F6F3' },
+    { media: '(prefers-color-scheme: dark)', color: '#102D32' },
   ],
 };
 

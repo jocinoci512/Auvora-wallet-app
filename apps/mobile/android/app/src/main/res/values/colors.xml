@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#0E4F5C</color>
-    <color name="launch_background">#F4F6F8</color>
-    <color name="auvora_lagoon">#0E4F5C</color>
+    <color name="ic_launcher_background">#102D32</color>
+    <color name="launch_background">#F2F6F3</color>
+    <color name="auvora_lagoon">#087F75</color>
+    <color name="auvora_deep_lagoon">#102D32</color>
+    <color name="auvora_mint">#B9F4D7</color>
 </resources>

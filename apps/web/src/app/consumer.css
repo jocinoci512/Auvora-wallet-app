@@ -1,16 +1,16 @@
 /*
- * Consumer auth, onboarding, settings polish — same Mist/Lagoon tokens
+ * Consumer auth, onboarding, settings polish â€” same Mist/Lagoon tokens
  * as wallet-shell.css / wallet-flow.css. Do not fork a second palette.
  */
 
 .as {
-  --as-canvas: #eef1f4;
+  --as-canvas: #F2F6F3;
   --as-solid: #ffffff;
-  --as-ink: #0b1220;
+  --as-ink: #102D32;
   --as-muted: #5c6570;
   --as-line: #d5dbe3;
-  --as-lagoon: #0e4f5c;
-  --as-lumen: #5eead4;
+  --as-lagoon: #087F75;
+  --as-lumen: #B9F4D7;
   --as-danger: #b42318;
   --as-success: #0f6a4b;
   --as-warn: #8a5a00;
@@ -151,7 +151,7 @@
 }
 
 [data-theme='dark'] .as-btn--primary {
-  color: #0b1220;
+  color: #102D32;
 }
 
 .as-btn--ghost {
@@ -258,7 +258,7 @@
 
 .as-chrome {
   min-height: 100vh;
-  background: var(--as-canvas, #eef1f4);
+  background: var(--as-canvas, #F2F6F3);
 }
 
 [data-theme='dark'] .as-chrome {
@@ -278,7 +278,7 @@
   font-family: var(--font-auvora-display), system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: #0e4f5c;
+  color: #087F75;
   text-decoration: none;
 }
 

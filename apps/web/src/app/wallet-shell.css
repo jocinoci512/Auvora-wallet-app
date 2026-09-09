@@ -6,17 +6,17 @@
  */
 
 .ws {
-  --ws-canvas: #eef1f4;
+  --ws-canvas: #F2F6F3;
   --ws-canvas-subtle: #e4e8ed;
   --ws-surface: #f7f9fb;
   --ws-solid: #ffffff;
-  --ws-ink: #0b1220;
+  --ws-ink: #102D32;
   --ws-muted: #5c6570;
   --ws-faint: #8b939e;
   --ws-line: #d5dbe3;
-  --ws-lagoon: #0e4f5c;
+  --ws-lagoon: #087F75;
   --ws-lagoon-hover: #0a3f49;
-  --ws-lumen: #5eead4;
+  --ws-lumen: #B9F4D7;
   --ws-reserve: #9a7b4f;
   --ws-success: #0f6a4b;
   --ws-danger: #b42318;
@@ -81,7 +81,7 @@
   outline-offset: 2px;
 }
 
-/* —— Sidebar —— */
+/* â€”â€” Sidebar â€”â€” */
 .ws-sidebar {
   position: sticky;
   top: 0;
@@ -212,7 +212,7 @@
   color: var(--ws-lagoon-hover);
 }
 
-/* —— Stage / topbar / main —— */
+/* â€”â€” Stage / topbar / main â€”â€” */
 .ws-stage {
   min-width: 0;
   max-width: 100%;
@@ -368,7 +368,7 @@ main.ws-main {
   color: var(--ws-muted);
 }
 
-/* —— Mobile tab bar —— */
+/* â€”â€” Mobile tab bar â€”â€” */
 .ws-tabbar {
   display: none;
 }

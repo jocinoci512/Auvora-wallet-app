@@ -116,18 +116,40 @@ export function ActivateDeviceExperience(): ReactElement {
         algorithmId: remote.algorithmId as 'auvora-vault-v1',
         version: 1 as const,
         kdfSalt: remote.kdfSalt,
-        kdfParams: remote.kdfParams as {
-          type: 'argon2id';
-          memoryKiB: number;
-          iterations: number;
-          parallelism: number;
+        kdfParams: {
+          type: 'argon2id' as const,
+          memoryCost: Number(
+            (remote.kdfParams as { memoryCost?: number; memoryKiB?: number }).memoryCost ??
+              (remote.kdfParams as { memoryKiB?: number }).memoryKiB ??
+              0,
+          ),
+          timeCost: Number(
+            (remote.kdfParams as { timeCost?: number; iterations?: number }).timeCost ??
+              (remote.kdfParams as { iterations?: number }).iterations ??
+              0,
+          ),
+          parallelism: Number((remote.kdfParams as { parallelism?: number }).parallelism ?? 1),
+          hashLength: Number((remote.kdfParams as { hashLength?: number }).hashLength ?? 32),
         },
         recoveryKdfSalt: remote.recoveryKdfSalt,
-        recoveryKdfParams: remote.recoveryKdfParams as {
-          type: 'argon2id';
-          memoryKiB: number;
-          iterations: number;
-          parallelism: number;
+        recoveryKdfParams: {
+          type: 'argon2id' as const,
+          memoryCost: Number(
+            (remote.recoveryKdfParams as { memoryCost?: number; memoryKiB?: number }).memoryCost ??
+              (remote.recoveryKdfParams as { memoryKiB?: number }).memoryKiB ??
+              0,
+          ),
+          timeCost: Number(
+            (remote.recoveryKdfParams as { timeCost?: number; iterations?: number }).timeCost ??
+              (remote.recoveryKdfParams as { iterations?: number }).iterations ??
+              0,
+          ),
+          parallelism: Number(
+            (remote.recoveryKdfParams as { parallelism?: number }).parallelism ?? 1,
+          ),
+          hashLength: Number(
+            (remote.recoveryKdfParams as { hashLength?: number }).hashLength ?? 32,
+          ),
         },
         wrappedVaultKey: remote.wrappedVaultKey,
         wrappedVaultKeyRecovery: remote.wrappedVaultKeyRecovery,

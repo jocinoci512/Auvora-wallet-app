@@ -1,17 +1,17 @@
-﻿/* Aether core wallet actions — Phase 5 */
+/* Aether core wallet actions — Phase 5 */
 
 .cx {
-  --cx-canvas: #eef1f4;
+  --cx-canvas: #F2F6F3;
   --cx-subtle: #e4e8ed;
   --cx-surface: #f7f9fb;
   --cx-solid: #ffffff;
-  --cx-ink: #0b1220;
+  --cx-ink: #102D32;
   --cx-muted: #5c6570;
   --cx-faint: #8b939e;
   --cx-line: #d5dbe3;
-  --cx-lagoon: #0e4f5c;
+  --cx-lagoon: #087F75;
   --cx-lagoon-hover: #0a3f49;
-  --cx-lumen: #5eead4;
+  --cx-lumen: #B9F4D7;
   --cx-warn: #8a5a00;
   --cx-warn-soft: #fff6e5;
   --cx-danger: #b42318;
@@ -1565,7 +1565,7 @@ html[data-reduce-motion='true'] .cx * {
 }
 
 html[data-high-contrast='true'] .cx {
-  --cx-line: #0b1220;
+  --cx-line: #102D32;
   --cx-muted: #2a3340;
   --cx-ink: #05080f;
 }

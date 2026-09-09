@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactElement, ReactNode } from 'react';
-import { AppShell } from '@auvora/ui';
+import { AppShell, BrandLogo } from '@auvora/ui';
 import { AccessTokenPanel } from './AccessTokenPanel';
 import { AdminHeader } from './AdminHeader';
 import { AdminSidebar } from './AdminSidebar';
@@ -48,7 +48,10 @@ export function AuthScreen({
   return (
     <section className="admin-auth-screen">
       <div className="admin-auth-card">
-        <p className="admin-auth-kicker">Auvora Control Plane</p>
+        <div className="admin-auth-brand">
+          <BrandLogo variant="primary" height={40} alt="Auvora Admin" />
+        </div>
+        <p className="admin-auth-kicker">Auvora Admin</p>
         <h1>{title}</h1>
         <p className="admin-auth-copy">{description}</p>
         {children}

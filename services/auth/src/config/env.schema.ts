@@ -121,7 +121,7 @@ export const envSchema = z
      * minimum defaults to 1 so existing production installs are not force-blocked until raised.
      */
     MOBILE_MIN_VERSION_CODE: z.coerce.number().int().positive().default(1),
-    MOBILE_LATEST_VERSION_CODE: z.coerce.number().int().positive().default(31),
+    MOBILE_LATEST_VERSION_CODE: z.coerce.number().int().positive().default(32),
     MOBILE_STORE_URL: z
       .string()
       .url()

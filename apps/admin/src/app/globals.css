@@ -1,4 +1,4 @@
-/* App-specific overrides — shared chrome lives in @auvora/ui/styles.css */
+/* App-specific overrides â€” shared chrome lives in @auvora/ui/styles.css */
 /* Phase 8: Admin Aether chrome (Mist / Lagoon) without forking @auvora/ui for web */
 
 /*
@@ -14,20 +14,20 @@
 :root,
 [data-theme='light'],
 .auvora-theme-light {
-  --auvora-color-primary: #0e4f5c;
+  --auvora-color-primary: #087F75;
   --auvora-color-primary-hover: #0a3f49;
   --auvora-color-primary-pressed: #08333b;
   --auvora-color-primary-muted: #d5e8ec;
-  --auvora-color-background: #eef1f4;
+  --auvora-color-background: #F2F6F3;
   --auvora-color-background-subtle: #e4e8ed;
   --auvora-color-surface: #f7f9fb;
   --auvora-color-surface-solid: #ffffff;
   --auvora-color-border: #d5dbe3;
-  --auvora-color-text: #0b1220;
+  --auvora-color-text: #102D32;
   --auvora-color-text-muted: #5c6570;
   --auvora-color-hover: rgba(14, 79, 92, 0.08);
   --auvora-color-pressed: rgba(14, 79, 92, 0.14);
-  --auvora-color-focus: #5eead4;
+  --auvora-color-focus: #B9F4D7;
   --auvora-paper: var(--auvora-color-background);
   --auvora-accent: var(--auvora-color-primary);
   --auvora-accent-muted: var(--auvora-color-primary-muted);
@@ -38,7 +38,7 @@
 
 [data-theme='dark'],
 .auvora-theme-dark {
-  --auvora-color-primary: #5eead4;
+  --auvora-color-primary: #B9F4D7;
   --auvora-color-primary-hover: #7ef0dc;
   --auvora-color-primary-pressed: #2dd4bf;
   --auvora-color-primary-muted: #14353c;
@@ -51,7 +51,7 @@
   --auvora-color-text-muted: #9aa3ad;
   --auvora-color-hover: rgba(94, 234, 212, 0.1);
   --auvora-color-pressed: rgba(94, 234, 212, 0.16);
-  --auvora-color-focus: #5eead4;
+  --auvora-color-focus: #B9F4D7;
   --auvora-paper: var(--auvora-color-background);
   --auvora-accent: var(--auvora-color-primary);
   --auvora-accent-muted: var(--auvora-color-primary-muted);
@@ -1150,7 +1150,7 @@ button.admin-kpi {
 }
 
 :focus-visible {
-  outline: 2px solid var(--auvora-color-focus, #5eead4);
+  outline: 2px solid var(--auvora-color-focus, #B9F4D7);
   outline-offset: 2px;
 }
 
@@ -1165,3 +1165,5 @@ button.admin-kpi {
   }
 }
 
+
+.admin-auth-brand{margin-bottom:12px}.admin-sidebar__brand{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.admin-sidebar__brand-label{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--auvora-color-text-muted)}
