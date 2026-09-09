@@ -53,8 +53,11 @@ export async function adminRequest<T>(path: string, init: RequestInit = {}): Pro
   const payload = (await res.json().catch(() => undefined)) as ApiEnvelope<T> | undefined;
   if (!res.ok || !payload?.success || payload.data === null || payload.data === undefined) {
     const message = payload?.error?.message ?? `Request failed (${res.status})`;
-    const error = new Error(message) as Error & { status?: number };
+    const error = new Error(message) as Error & { status?: number; code?: string };
     error.status = res.status;
+    if (typeof payload?.error?.code === 'string') {
+      error.code = payload.error.code;
+    }
     throw error;
   }
   return payload.data;
@@ -149,15 +152,25 @@ export async function adminStepUp(
   password: string,
   code: string,
 ): Promise<{ csrfToken: string; stepUpExp: number }> {
-  const data = await adminRequest<{ csrfToken: string; stepUpExp: number }>(
-    '/api/v1/auth/admin/step-up',
-    {
+  const attempt = () =>
+    adminRequest<{ csrfToken: string; stepUpExp: number }>('/api/v1/auth/admin/step-up', {
       method: 'POST',
       body: JSON.stringify({ password, code }),
-    },
-  );
-  setAdminCsrfToken(data.csrfToken);
-  return data;
+    });
+  try {
+    const data = await attempt();
+    setAdminCsrfToken(data.csrfToken);
+    return data;
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status !== 401) throw error;
+    // Access JWT may have expired while refresh cookie is still valid (AuthGate used
+    // to skip /step-up because it was marked public). Refresh once, then retry.
+    await adminRefresh();
+    const data = await attempt();
+    setAdminCsrfToken(data.csrfToken);
+    return data;
+  }
 }
 
 export async function adminLogout(): Promise<void> {

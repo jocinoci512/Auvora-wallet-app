@@ -348,7 +348,7 @@ export class AdminAuthService {
     const user = await this.requireAdminUser(userId);
     const session = await this.sessions.findById(sessionId);
     if (!session || session.revokedAt || session.userId !== userId || session.surface !== 'admin') {
-      throw new UnauthorizedError('Admin session is no longer valid');
+      throw new UnauthorizedError('Admin session is no longer valid', 'SESSION_UNAUTHORIZED');
     }
     const passwordOk = await this.passwordHasher.verify(input.password, user.passwordHash);
     if (!passwordOk) {
@@ -360,7 +360,7 @@ export class AdminAuthService {
         userAgent: ctx.userAgent,
         metadata: { reason: 'password' },
       });
-      throw new UnauthorizedError('Step-up authentication failed');
+      throw new UnauthorizedError('Step-up authentication failed', 'INVALID_PASSWORD');
     }
     const factor = await this.totp.findByUserId(user.id);
     if (factor?.confirmedAt) {
@@ -380,7 +380,7 @@ export class AdminAuthService {
           userAgent: ctx.userAgent,
           metadata: { reason: 'mfa' },
         });
-        throw new UnauthorizedError('Step-up authentication failed');
+        throw new UnauthorizedError('Step-up authentication failed', 'INVALID_AUTHENTICATOR');
       }
       await this.totp.markUsedStep(user.id, BigInt(verified.step));
     } else if (user.roles.some((role) => MFA_REQUIRED_ROLES.includes(role))) {

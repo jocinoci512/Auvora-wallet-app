@@ -78,20 +78,37 @@ export function formatApiError(error: unknown): string {
 
 export function formatAdminError(error: unknown): string {
   const status = (error as { status?: number } | null)?.status;
-  if (status === 401) return 'Your Admin session expired. Sign in again.';
+  const code = (error as { code?: string } | null)?.code;
+  const message = formatApiError(error);
+  if (status === 401) {
+    if (
+      code === 'INVALID_PASSWORD' ||
+      code === 'INVALID_AUTHENTICATOR' ||
+      /step-up authentication failed/i.test(message)
+    ) {
+      return 'Password or authenticator code was incorrect. Try again with a fresh code.';
+    }
+    return 'Your Admin session expired. Sign in again.';
+  }
   if (status === 403) {
-    const message = formatApiError(error);
+    if (code === 'CSRF_FAILED' || /csrf/i.test(message)) {
+      return 'Your Admin session could not be verified. Refresh the page and try again.';
+    }
     if (/step-up/i.test(message)) {
       return 'This action needs a recent password and authenticator confirmation.';
     }
+    if (/mfa enrollment/i.test(message)) {
+      return 'Authenticator enrollment is required before confirming identity.';
+    }
     return 'You do not have permission for this action.';
   }
-  if (status === 429) return 'Too many requests. Wait a moment and try again.';
+  if (status === 429 || code === 'RATE_LIMITED' || code === 'RATE_LIMIT_EXCEEDED') {
+    return 'Too many requests. Wait a moment and try again.';
+  }
   if (status === 502 || status === 503 || status === 504) {
     return 'A dependent service is unavailable. Try again shortly.';
   }
   if (status === 500) return 'The control plane could not complete this request.';
-  const message = formatApiError(error);
   if (/request failed with status/i.test(message)) {
     return 'A dependent service is unavailable. Try again shortly.';
   }
@@ -111,7 +128,6 @@ export const ADMIN_PUBLIC_PATHS = [
   '/forbidden',
   '/session-expired',
   '/suspended',
-  '/step-up',
 ] as const;
 
 export function isAdminPublicPath(pathname: string): boolean {

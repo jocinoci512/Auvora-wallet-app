@@ -40,7 +40,7 @@ export class ValidationError extends DomainError {
 }
 
 export class UnauthorizedError extends DomainError {
-  constructor(message = 'Unauthorized') {
-    super(message, 'UNAUTHORIZED', 401);
+  constructor(message = 'Unauthorized', code = 'UNAUTHORIZED') {
+    super(message, code, 401);
   }
 }
