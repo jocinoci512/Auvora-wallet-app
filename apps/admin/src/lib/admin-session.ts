@@ -25,7 +25,7 @@ export interface AdminOperator {
 interface ApiEnvelope<T> {
   success: boolean;
   data: T | null;
-  error?: { message?: string } | null;
+  error?: { message?: string; code?: string } | null;
 }
 
 function deviceFingerprint(): string {
