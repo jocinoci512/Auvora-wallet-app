@@ -1,5 +1,6 @@
 'use client';
 
+/** Admin session + CSRF helpers for cookie-authenticated control-plane calls. */
 import { env } from '../env';
 import { setAdminCsrfToken, setAdminUiMarker } from './api-client';
 
