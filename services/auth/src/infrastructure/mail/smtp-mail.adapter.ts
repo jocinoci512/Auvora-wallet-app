@@ -24,7 +24,11 @@ export class SmtpMailAdapter implements MailPort {
     // the SMTP password is a Resend API key so the first attempt is immediate.
     this.preferResendHttps =
       env.SMTP_HOST === 'smtp.resend.com' && Boolean(env.SMTP_PASS?.startsWith('re_'));
-    this.transporter = (nodemailer.createTransport as any)({
+    // nodemailer 9 is not fully covered by @types/nodemailer@6.
+    const createTransport = nodemailer.createTransport as unknown as (
+      options: Record<string, unknown>,
+    ) => Transporter;
+    this.transporter = createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,

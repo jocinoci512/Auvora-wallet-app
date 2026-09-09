@@ -169,7 +169,7 @@ export function CreateWalletExperience(): ReactElement {
     setError(null);
     try {
       const user = getCachedUser();
-      const stored = await uploadVaultBundle({
+      await uploadVaultBundle({
         password: vaultPassword,
         recoveryPhrase: phrase.join(' '),
         bundle: {
