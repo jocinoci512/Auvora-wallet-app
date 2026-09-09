@@ -190,14 +190,20 @@ export class AuthService {
 
     const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
     const content = buildVerifyEmail(verifyUrl);
-    // Critical path: one-time token link must go out via MAIL_PORT immediately.
-    // Production QA should set MAIL_DRIVER=notifications for durable EMAIL delivery.
-    await this.mail.send({
-      to: email,
-      subject: content.subject,
-      text: content.text,
-      html: content.html,
-    });
+    // Critical path: deliver verification immediately, but never leave a created
+    // account stranded behind a 500 if the mail provider rejects/transiently fails.
+    // Customer can use resend-verification; IN_APP event still fires below.
+    try {
+      await this.mail.send({
+        to: email,
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.error(`Verification mail failed after register userId=${user.id}: ${message}`);
+    }
 
     await this.audit.create({
       action: 'REGISTER',
@@ -389,15 +395,27 @@ export class AuthService {
       });
     }
 
+    // Owner requirement: customers are informed on successful account access.
+    // One email/IN_APP per successful auth session (dedupe on sessionId).
+    await this.sendSecurityMail(
+      user.email,
+      buildNewLoginNotice({
+        deviceName: input.deviceName,
+        platform: input.devicePlatform ?? 'web',
+        ipAddress: ctx.ipAddress,
+      }),
+    );
+    this.emitNotificationEvent({
+      eventType: 'auth.login.completed',
+      aggregateId: session.id,
+      payload: {
+        ownerUserId: user.id,
+        deviceName: input.deviceName ?? 'Unknown device',
+        platform: input.devicePlatform ?? 'web',
+        newDevice: isNewDevice,
+      },
+    });
     if (isNewDevice) {
-      await this.sendSecurityMail(
-        user.email,
-        buildNewLoginNotice({
-          deviceName: input.deviceName,
-          platform: input.devicePlatform ?? 'web',
-          ipAddress: ctx.ipAddress,
-        }),
-      );
       this.emitNotificationEvent({
         eventType: 'auth.login.new_device',
         aggregateId: device.id,
@@ -584,12 +602,18 @@ export class AuthService {
     const verifyUrl = `${this.env.APP_PUBLIC_URL}/auth/verify-email?token=${rawToken}`;
     const content = buildVerifyEmail(verifyUrl);
     // Critical path: token link via MAIL_PORT; also enqueue durable IN_APP.
-    await this.mail.send({
-      to: user.email,
-      subject: content.subject,
-      text: content.text,
-      html: content.html,
-    });
+    // Enumeration-safe: never surface mail provider failures as HTTP 500.
+    try {
+      await this.mail.send({
+        to: user.email,
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.error(`Resend-verification mail failed userId=${user.id}: ${message}`);
+    }
     this.emitNotificationEvent({
       eventType: 'auth.email.verification_sent',
       aggregateId: user.id,
@@ -613,13 +637,19 @@ export class AuthService {
 
       const resetUrl = `${this.env.APP_PUBLIC_URL}/auth/reset-password?token=${rawToken}`;
       const content = buildPasswordResetEmail(resetUrl);
-      // Critical path: one-time reset link via MAIL_PORT (use MAIL_DRIVER=notifications for durable EMAIL).
-      await this.mail.send({
-        to: user.email,
-        subject: content.subject,
-        text: content.text,
-        html: content.html,
-      });
+      // Critical path: one-time reset link via MAIL_PORT.
+      // Enumeration-safe: mail failures must not change the HTTP response.
+      try {
+        await this.mail.send({
+          to: user.email,
+          subject: content.subject,
+          text: content.text,
+          html: content.html,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown error';
+        this.logger.error(`Password-reset mail failed userId=${user.id}: ${message}`);
+      }
       this.emitNotificationEvent({
         eventType: 'auth.password_reset.requested',
         aggregateId: user.id,

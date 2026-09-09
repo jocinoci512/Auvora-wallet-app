@@ -141,14 +141,14 @@ class AuthApiClient {
       final data = body['data'];
       return data is Map<String, dynamic> ? data : body;
     }
-    throw _mapError(res.statusCode);
+    throw _mapError(res.statusCode, body);
   }
 
   /// Handles list payloads where `data` is a [List] or `{ items: [...] }`.
   List<Map<String, dynamic>> _decodeList(http.Response res) {
     final body = _decodeBody(res);
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw _mapError(res.statusCode);
+      throw _mapError(res.statusCode, body);
     }
     final data = body['data'];
     if (data is List) {
@@ -176,7 +176,16 @@ class AuthApiClient {
     return const [];
   }
 
-  AuthException _mapError(int status) {
+  AuthException _mapError(int status, [Map<String, dynamic>? body]) {
+    final serverMessage = () {
+      final err = body?['error'];
+      if (err is Map && err['message'] is String) {
+        return (err['message'] as String).trim();
+      }
+      return '';
+    }();
+    final lower = serverMessage.toLowerCase();
+
     switch (status) {
       case 400:
       case 422:
@@ -184,9 +193,15 @@ class AuthApiClient {
       case 401:
         return const AuthException(AuthErrorKind.invalidCredentials, 'Invalid email or password.');
       case 403:
+        if (lower.contains('verif')) {
+          return const AuthException(
+            AuthErrorKind.emailNotVerified,
+            'Verify your email before signing in. Check your inbox, then try again.',
+          );
+        }
         return const AuthException(
           AuthErrorKind.forbidden,
-          'This account is not permitted to sign in. Verify your email or contact support.',
+          'This account is not permitted to sign in. Contact support if you need help.',
         );
       case 409:
         return const AuthException(AuthErrorKind.conflict, 'An account with these details already exists.');
@@ -298,6 +313,17 @@ class AuthApiClient {
           _endpoint('/api/v1/auth/forgot-password'),
           headers: _headers(),
           body: jsonEncode({'email': email}),
+        ));
+    _decodeData(res);
+  }
+
+  /// Resend email verification. Enumeration-safe on the backend.
+  Future<void> resendVerification(String email) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.post(
+          _endpoint('/api/v1/auth/resend-verification'),
+          headers: _headers(),
+          body: jsonEncode({'email': email.trim()}),
         ));
     _decodeData(res);
   }

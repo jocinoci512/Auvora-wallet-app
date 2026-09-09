@@ -88,7 +88,9 @@ class MoreTab extends StatelessWidget {
           subtitle: const Text('Create/sign in — one identity across web & Android; keys stay on device'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const AccountScreen()),
+            MaterialPageRoute<void>(
+              builder: (_) => const AccountScreen(preferSignIn: true),
+            ),
           ),
         ),
         ListTile(

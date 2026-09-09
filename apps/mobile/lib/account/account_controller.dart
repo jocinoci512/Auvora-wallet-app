@@ -29,12 +29,14 @@ class AccountController extends ChangeNotifier {
   AccountStatus _status = AccountStatus.unknown;
   AuthProfile? _profile;
   String? _error;
+  String? _info;
   bool _busy = false;
   AuvoraLinkState _linkState = AuvoraLinkState.online;
 
   AccountStatus get status => _status;
   AuthProfile? get profile => _profile;
   String? get error => _error;
+  String? get info => _info;
   bool get busy => _busy;
   AuvoraLinkState get linkState => _linkState;
 
@@ -229,7 +231,8 @@ class AccountController extends ChangeNotifier {
     _set(status: AccountStatus.signedIn);
   }
 
-  /// Create an account, then sign in with the same credentials.
+  /// Create an account. Does **not** auto sign-in — production requires email
+  /// verification before login. Returns true when registration was accepted.
   Future<bool> register({
     required String email,
     required String username,
@@ -237,7 +240,18 @@ class AccountController extends ChangeNotifier {
     String? firstName,
     String? lastName,
   }) async {
-    return _guard(() async {
+    if (!isConfigured) {
+      _error = 'Account backend is not configured for this build.';
+      _info = null;
+      _set(status: AccountStatus.signedOut);
+      return false;
+    }
+    _busy = true;
+    _error = null;
+    _info = null;
+    _linkState = AuvoraLinkState.online;
+    _set(status: AccountStatus.authenticating);
+    try {
       await _client.register(
         email: email,
         username: username,
@@ -245,12 +259,43 @@ class AccountController extends ChangeNotifier {
         firstName: firstName,
         lastName: lastName,
       );
-      return _loginInternal(email: email, password: password);
-    });
+      _busy = false;
+      _info =
+          'Account created. Check your email for a verification link, then sign in.';
+      _set(status: AccountStatus.signedOut);
+      return true;
+    } on AuthException catch (e) {
+      _error = e.message;
+      _busy = false;
+      _set(status: AccountStatus.signedOut);
+      return false;
+    }
   }
 
   Future<bool> signIn({required String email, required String password}) async {
     return _guard(() => _loginInternal(email: email, password: password));
+  }
+
+  /// Resend verification email (enumeration-safe).
+  Future<void> resendVerification(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty || !isConfigured) return;
+    try {
+      await _client.resendVerification(trimmed);
+      _info = 'If that account needs verification, a new email is on the way.';
+      _error = null;
+      notifyListeners();
+    } on AuthException catch (e) {
+      // Still show a calm confirmation for transport-safe UX when possible.
+      if (e.kind == AuthErrorKind.network || e.kind == AuthErrorKind.timeout) {
+        _error = e.message;
+        notifyListeners();
+        return;
+      }
+      _info = 'If that account needs verification, a new email is on the way.';
+      _error = null;
+      notifyListeners();
+    }
   }
 
   /// Confirm the account password without signing the user out on failure.
@@ -320,11 +365,13 @@ class AccountController extends ChangeNotifier {
   Future<bool> _guard(Future<bool> Function() run) async {
     if (!isConfigured) {
       _error = 'Account backend is not configured for this build.';
+      _info = null;
       _set(status: AccountStatus.signedOut);
       return false;
     }
     _busy = true;
     _error = null;
+    _info = null;
     _linkState = AuvoraLinkState.online;
     _set(status: AccountStatus.authenticating);
     try {

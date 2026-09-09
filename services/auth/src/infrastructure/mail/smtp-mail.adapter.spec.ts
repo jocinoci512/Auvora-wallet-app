@@ -16,6 +16,7 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
   };
 
   let mockSendMail: jest.Mock;
+  let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -23,9 +24,42 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
     (nodemailer.createTransport as jest.Mock).mockReturnValue({
       sendMail: mockSendMail,
     });
+    originalFetch = global.fetch;
   });
 
-  it('fails closed in production when SMTP transport fails', async () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('prefers Resend HTTPS first when SMTP_PASS is a Resend API key', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 're_primary_id' }),
+    } as Response);
+
+    const adapter = new SmtpMailAdapter(baseProdEnv as ServiceEnv);
+    await expect(
+      adapter.send({
+        to: 'user@example.com',
+        subject: 'Verify your Auvora email',
+        text: 'Verify',
+        html: '<p>Verify</p>',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.resend.com/emails',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(mockSendMail).not.toHaveBeenCalled();
+  });
+
+  it('falls back to SMTP when Resend HTTPS primary fails, then fails closed in production', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => 'provider down',
+    } as Response);
     mockSendMail.mockRejectedValue(new Error('SMTP Connection Refused (EHOSTUNREACH)'));
 
     const adapter = new SmtpMailAdapter(baseProdEnv as ServiceEnv);
@@ -34,7 +68,7 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
       adapter.send({
         to: 'user@example.com',
         subject: 'Verify your Auvora email',
-        text: 'Click here to verify: https://auvorawallet.com/auth/verify?token=123',
+        text: 'Click here to verify',
         html: '<p>Click here to verify</p>',
       }),
     ).rejects.toThrow('SMTP Connection Refused (EHOSTUNREACH)');
@@ -49,6 +83,11 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
       STAGING_ALLOW_MAIL_FAILOPEN: true,
     };
 
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => 'unauthorized',
+    } as Response);
     mockSendMail.mockRejectedValue(new Error('Provider Authentication Failure (535)'));
 
     const adapter = new SmtpMailAdapter(deceptiveEnv as ServiceEnv);
@@ -57,13 +96,18 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
       adapter.send({
         to: 'user@example.com',
         subject: 'Reset your password',
-        text: 'Reset link: https://auvorawallet.com/auth/reset?token=456',
+        text: 'Reset link',
         html: '<p>Reset link</p>',
       }),
     ).rejects.toThrow('Provider Authentication Failure (535)');
   });
 
-  it('delivers email successfully when SMTP transport succeeds', async () => {
+  it('delivers via SMTP fallback when HTTPS primary fails but SMTP succeeds', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: async () => 'unavailable',
+    } as Response);
     mockSendMail.mockResolvedValue({ messageId: 'msg_12345' });
 
     const adapter = new SmtpMailAdapter(baseProdEnv as ServiceEnv);
@@ -92,11 +136,15 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
       STAGING_ALLOW_MAIL_FAILOPEN: true,
     };
 
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => 'down',
+    } as Response);
     mockSendMail.mockRejectedValue(new Error('Local Mailpit / mock SMTP offline'));
 
     const adapter = new SmtpMailAdapter(stagingEnv as ServiceEnv);
 
-    // In staging with explicit opt-in, errors are caught and logged without breaking developer sign-up
     await expect(
       adapter.send({
         to: 'dev@example.com',
@@ -104,34 +152,5 @@ describe('SmtpMailAdapter — Fail-Closed Production Semantics', () => {
         text: 'Verify',
       }),
     ).resolves.toBeUndefined();
-  });
-
-  it('delivers successfully via Resend HTTPS fallback when cloud SMTP socket times out', async () => {
-    mockSendMail.mockRejectedValue(new Error('Connection timeout'));
-    const originalFetch = global.fetch;
-    try {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 're_fallback_id_123' }),
-      } as any);
-
-      const adapter = new SmtpMailAdapter(baseProdEnv as ServiceEnv);
-      await expect(
-        adapter.send({
-          to: 'user@example.com',
-          subject: 'Verify your Auvora email',
-          text: 'Verify link',
-        }),
-      ).resolves.toBeUndefined();
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.resend.com/emails',
-        expect.objectContaining({
-          method: 'POST',
-        }),
-      );
-    } finally {
-      global.fetch = originalFetch;
-    }
   });
 });

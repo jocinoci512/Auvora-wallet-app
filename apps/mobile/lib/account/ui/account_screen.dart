@@ -599,6 +599,18 @@ class _AuthFormsState extends State<_AuthForms> {
           )
         : await account.signIn(email: email, password: password);
     if (!mounted) return;
+    if (_createMode && ok) {
+      setState(() => _createMode = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            account.info ??
+                'Account created. Check your email for a verification link, then sign in.',
+          ),
+        ),
+      );
+      return;
+    }
     if (!ok && account.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(account.error!)));
       return;
@@ -641,6 +653,26 @@ class _AuthFormsState extends State<_AuthForms> {
       }
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
+  }
+
+  Future<void> _resendVerification(AccountController account) async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email above first.')),
+      );
+      return;
+    }
+    await account.resendVerification(email);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          account.info ??
+              'If that account needs verification, a new email is on the way.',
+        ),
+      ),
+    );
   }
 
   Future<void> _forgotPassword(AccountController account) async {
@@ -758,6 +790,11 @@ class _AuthFormsState extends State<_AuthForms> {
           TextButton(
             onPressed: account.busy ? null : () => _forgotPassword(account),
             child: const Text('Forgot password?'),
+          ),
+        if (!_createMode)
+          TextButton(
+            onPressed: account.busy ? null : () => _resendVerification(account),
+            child: const Text('Resend verification email'),
           ),
         const SizedBox(height: 12),
         Text(

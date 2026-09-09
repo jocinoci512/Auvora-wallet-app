@@ -130,6 +130,18 @@ export class EventNotificationMapperService {
           dedupeKey: `auth.password.changed:${id}`,
           variables: {},
         };
+      case 'auth.login.completed':
+        return {
+          templateCode: 'security.login_alert',
+          category: 'SECURITY',
+          channels: ['EMAIL', 'IN_APP'],
+          priority: 'HIGH',
+          dedupeKey: `auth.login.completed:${id}`,
+          variables: {
+            deviceName: String(p.deviceName ?? 'Unknown device'),
+            platform: String(p.platform ?? 'unknown'),
+          },
+        };
       case 'auth.login.new_device':
         return {
           templateCode: 'security.new_device',

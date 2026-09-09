@@ -209,6 +209,7 @@ describe('EventNotificationMapperService', () => {
         'auth.account.created',
         'auth.email.verified',
         'auth.password.changed',
+        'auth.login.completed',
         'auth.login.new_device',
         'auth.device.revoked',
       ] as const;

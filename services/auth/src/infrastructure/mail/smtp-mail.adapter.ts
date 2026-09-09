@@ -11,6 +11,7 @@ export class SmtpMailAdapter implements MailPort {
   private readonly logger = new Logger(SmtpMailAdapter.name);
   private readonly transporter: Transporter;
   private readonly fromAddress: string;
+  private readonly preferResendHttps: boolean;
 
   constructor(@Inject(ENV) private readonly env: ServiceEnv) {
     if (!env.SMTP_HOST || !env.SMTP_PORT || !env.SMTP_FROM) {
@@ -19,6 +20,10 @@ export class SmtpMailAdapter implements MailPort {
     dns.setDefaultResultOrder?.('ipv4first');
     const fromName = env.SMTP_FROM_NAME || AUTH_EMAIL_SENDER_NAME;
     this.fromAddress = `"${fromName.replace(/"/g, '')}" <${env.SMTP_FROM}>`;
+    // Railway / many cloud hosts block outbound SMTP — prefer Resend HTTPS when
+    // the SMTP password is a Resend API key so the first attempt is immediate.
+    this.preferResendHttps =
+      env.SMTP_HOST === 'smtp.resend.com' && Boolean(env.SMTP_PASS?.startsWith('re_'));
     this.transporter = (nodemailer.createTransport as any)({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
@@ -36,8 +41,18 @@ export class SmtpMailAdapter implements MailPort {
   }
 
   async send(input: SendMailInput): Promise<void> {
-    // Only allow the MailPort contract fields — never raw, attachments, envelope,
-    // list headers, jsonTransport, or other attacker-influenced Nodemailer options.
+    if (this.preferResendHttps) {
+      try {
+        await this.sendViaResendHttps(input);
+        return;
+      } catch (httpsErr: unknown) {
+        const httpsMsg = httpsErr instanceof Error ? httpsErr.message : String(httpsErr);
+        this.logger.warn(
+          `Resend HTTPS primary send failed to=${input.to}: ${httpsMsg}; falling back to SMTP`,
+        );
+      }
+    }
+
     try {
       await this.transporter.sendMail({
         from: this.fromAddress,
@@ -52,42 +67,15 @@ export class SmtpMailAdapter implements MailPort {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`SMTP send attempt to=${input.to} resulted in: ${msg}`);
 
-      // Resilient fallback: when cloud egress blocks outbound SMTP sockets (25/465/587),
-      // seamlessly deliver via Resend HTTPS REST API using the identical API key.
+      // Fallback when SMTP was primary (or HTTPS primary already failed): try HTTPS once.
       if (
         this.env.SMTP_HOST === 'smtp.resend.com' &&
         this.env.SMTP_PASS?.startsWith('re_') &&
-        (msg.includes('timeout') ||
-          msg.includes('ETIMEDOUT') ||
-          msg.includes('ESOCKET') ||
-          msg.includes('EHOSTUNREACH') ||
-          msg.includes('ECONNREFUSED'))
+        !this.preferResendHttps
       ) {
         try {
-          const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${this.env.SMTP_PASS}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: this.fromAddress,
-              to: input.to,
-              subject: input.subject,
-              text: input.text,
-              html: input.html,
-            }),
-            signal: AbortSignal.timeout(8000),
-          });
-          if (res.ok) {
-            const data = (await res.json().catch(() => ({}))) as { id?: string };
-            this.logger.log(
-              `Resend HTTPS fallback mail successfully delivered to=${input.to} messageId=${data.id || 'ok'}`,
-            );
-            return;
-          }
-          const errBody = await res.text().catch(() => '');
-          this.logger.error(`Resend HTTPS fallback failed HTTP ${res.status}: ${errBody}`);
+          await this.sendViaResendHttps(input);
+          return;
         } catch (httpErr) {
           this.logger.error(
             `Resend HTTPS fallback connection error: ${httpErr instanceof Error ? httpErr.message : String(httpErr)}`,
@@ -104,5 +92,31 @@ export class SmtpMailAdapter implements MailPort {
       }
       throw err;
     }
+  }
+
+  private async sendViaResendHttps(input: SendMailInput): Promise<void> {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.env.SMTP_PASS}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.fromAddress,
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { id?: string };
+      this.logger.log(`Resend HTTPS mail delivered to=${input.to} messageId=${data.id || 'ok'}`);
+      return;
+    }
+    const errBody = await res.text().catch(() => '');
+    this.logger.error(`Resend HTTPS failed HTTP ${res.status}: ${errBody}`);
+    throw new Error(`Resend HTTPS failed HTTP ${res.status}`);
   }
 }
