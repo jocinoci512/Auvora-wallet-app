@@ -3,6 +3,7 @@ export {
   NotFoundError,
   ForbiddenError,
   ConflictError,
+  UnauthorizedError,
   ValidationError,
   RateLimitError,
   InvalidStatusTransitionError,

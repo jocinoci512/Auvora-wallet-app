@@ -68,7 +68,7 @@ export class VaultDeviceRecoveryService {
     requestingPlatform?: string;
     requestingPublicKey: string;
     ctx: RequestContext;
-  }) {
+  }): Promise<{ requestId: string; expiresAt: string; status: string }> {
     await this.enforceLimit(`vault-recovery:create:${input.ctx.ipAddress ?? 'unknown'}`, 8);
     const tokenHash = hashToken(input.resetToken);
     const reset = await this.prisma.passwordResetToken.findFirst({
@@ -140,7 +140,17 @@ export class VaultDeviceRecoveryService {
     };
   }
 
-  async listPendingForOwner(ownerUserId: string) {
+  async listPendingForOwner(ownerUserId: string): Promise<
+    Array<{
+      requestId: string;
+      requestingPlatform: string | null;
+      requestingDeviceFingerprint: string;
+      createdAt: string;
+      expiresAt: string;
+      status: string;
+      requestingPublicKey: string;
+    }>
+  > {
     const now = new Date();
     await this.prisma.vaultDeviceRecoveryRequest.updateMany({
       where: { ownerUserId, status: 'PENDING', expiresAt: { lt: now } },
@@ -386,7 +396,18 @@ export class VaultDeviceRecoveryService {
     return { message: 'Recovery completed. Sign in with your new password.' };
   }
 
-  async adminListForUser(ownerUserId: string) {
+  async adminListForUser(ownerUserId: string): Promise<
+    Array<{
+      requestId: string;
+      status: string;
+      requestingPlatform: string | null;
+      createdAt: string;
+      expiresAt: string;
+      deniedAt: string | null;
+      consumedAt: string | null;
+      approvedByDeviceId: string | null;
+    }>
+  > {
     const rows = await this.prisma.vaultDeviceRecoveryRequest.findMany({
       where: { ownerUserId },
       orderBy: { createdAt: 'desc' },

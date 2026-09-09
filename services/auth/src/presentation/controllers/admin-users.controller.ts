@@ -121,7 +121,9 @@ export class AdminUsersController {
   /** Pending/recent vault recovery request metadata only (no transfer ciphertext). */
   @Get(':userId/vault-recovery')
   @Permissions(PERMISSION_USERS_READ)
-  async getVaultRecovery(@Param() params: UserIdParamDto) {
+  async getVaultRecovery(
+    @Param() params: UserIdParamDto,
+  ): Promise<ReturnType<typeof successResponse>> {
     const data = await this.vaultRecovery.adminListForUser(params.userId);
     return successResponse({ items: data });
   }

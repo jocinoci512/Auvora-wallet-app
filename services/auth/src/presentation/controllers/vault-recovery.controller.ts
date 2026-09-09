@@ -99,7 +99,10 @@ export class VaultRecoveryController {
   @Public()
   @SkipCsrf()
   @Post('requests')
-  async create(@Body() dto: CreateVaultRecoveryDto, @Req() req: Request) {
+  async create(
+    @Body() dto: CreateVaultRecoveryDto,
+    @Req() req: Request,
+  ): Promise<ReturnType<typeof successResponse>> {
     const data = await this.recovery.createRequest({
       resetToken: dto.resetToken,
       requestingDeviceFingerprint: dto.requestingDeviceFingerprint,
@@ -111,7 +114,7 @@ export class VaultRecoveryController {
   }
 
   @Get('requests/pending')
-  async pending(@CurrentUser() user: JwtAccessClaims) {
+  async pending(@CurrentUser() user: JwtAccessClaims): Promise<ReturnType<typeof successResponse>> {
     const data = await this.recovery.listPendingForOwner(user.sub);
     return successResponse(data);
   }
