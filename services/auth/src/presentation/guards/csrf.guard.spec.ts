@@ -1,5 +1,5 @@
-import { ForbiddenException } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
+import { ForbiddenError } from '../../domain';
 import { CsrfGuard } from './csrf.guard';
 
 function context(request: object) {
@@ -45,11 +45,11 @@ describe('CsrfGuard', () => {
           headers: {},
         }),
       ),
-    ).toThrow(ForbiddenException);
+    ).toThrow(ForbiddenError);
   });
 
-  it('rejects invalid CSRF on admin mutations', () => {
-    expect(() =>
+  it('rejects invalid CSRF on admin mutations with CSRF_FAILED', () => {
+    try {
       guard.canActivate(
         context({
           method: 'POST',
@@ -57,7 +57,11 @@ describe('CsrfGuard', () => {
           cookies: { admin_csrf_token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
           headers: { 'x-csrf-token': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' },
         }),
-      ),
-    ).toThrow(ForbiddenException);
+      );
+      throw new Error('expected CSRF rejection');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ForbiddenError);
+      expect((error as ForbiddenError).code).toBe('CSRF_FAILED');
+    }
   });
 });

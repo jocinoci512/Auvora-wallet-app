@@ -37,7 +37,8 @@ describe('Admin frontend route protection', () => {
     const session = readFileSync(join(__dirname, './lib/admin-session.ts'), 'utf8');
     expect(middleware).not.toMatch(/['"]\/step-up['"]/);
     expect(client).not.toMatch(/ADMIN_PUBLIC_PATHS[\s\S]*['"]\/step-up['"]/);
-    expect(session).toContain('adminRefresh');
+    expect(session).toContain('adminEnsureFreshSession');
+    expect(session).toContain('isCsrfFailure');
     expect(session).toContain("'/api/v1/auth/admin/step-up'");
   });
 

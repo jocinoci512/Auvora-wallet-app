@@ -22,8 +22,8 @@ export class NotFoundError extends DomainError {
 }
 
 export class ForbiddenError extends DomainError {
-  constructor(message = 'Forbidden') {
-    super(message, 'FORBIDDEN', 403);
+  constructor(message = 'Forbidden', code = 'FORBIDDEN') {
+    super(message, code, 403);
   }
 }
 

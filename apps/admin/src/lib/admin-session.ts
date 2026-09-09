@@ -41,8 +41,9 @@ export async function adminRequest<T>(path: string, init: RequestInit = {}): Pro
   if (init.body) {
     headers['Content-Type'] = 'application/json';
   }
+  const method = (init.method || 'GET').toUpperCase();
   const csrf = typeof window !== 'undefined' ? sessionStorage.getItem('auvora_admin_csrf') : null;
-  if (csrf && init.method && init.method !== 'GET') {
+  if (csrf && method !== 'GET' && method !== 'HEAD') {
     headers['x-csrf-token'] = csrf;
   }
   const res = await fetch(`${API}${path}`, {
@@ -57,10 +58,19 @@ export async function adminRequest<T>(path: string, init: RequestInit = {}): Pro
     error.status = res.status;
     if (typeof payload?.error?.code === 'string') {
       error.code = payload.error.code;
+    } else if (res.status === 403 && /csrf/i.test(message)) {
+      error.code = 'CSRF_FAILED';
     }
     throw error;
   }
   return payload.data;
+}
+
+function isCsrfFailure(error: unknown): boolean {
+  const err = error as { status?: number; code?: string; message?: string };
+  return (
+    err.status === 403 && (err.code === 'CSRF_FAILED' || /csrf/i.test(String(err.message || error)))
+  );
 }
 
 export async function adminLogin(
@@ -144,8 +154,24 @@ export async function adminSession(): Promise<{
   operator: AdminOperator;
   sessionId: string;
   stepUpExp: number | null;
+  csrfToken?: string;
 }> {
-  return adminRequest('/api/v1/auth/admin/session', { method: 'GET' });
+  const data = await adminRequest<{
+    operator: AdminOperator;
+    sessionId: string;
+    stepUpExp: number | null;
+    csrfToken?: string;
+  }>('/api/v1/auth/admin/session', { method: 'GET' });
+  if (data.csrfToken) setAdminCsrfToken(data.csrfToken);
+  return data;
+}
+
+/**
+ * Sync access JWT + CSRF before privileged mutations.
+ * Refresh is CSRF-exempt but rotates admin_csrf_token; always persist the body token.
+ */
+export async function adminEnsureFreshSession(): Promise<void> {
+  await adminRefresh();
 }
 
 export async function adminStepUp(
@@ -157,16 +183,19 @@ export async function adminStepUp(
       method: 'POST',
       body: JSON.stringify({ password, code }),
     });
+
+  // Refresh first so x-csrf-token matches the rotated admin_csrf_token cookie.
+  await adminEnsureFreshSession();
+
   try {
     const data = await attempt();
     setAdminCsrfToken(data.csrfToken);
     return data;
   } catch (error) {
     const status = (error as { status?: number }).status;
-    if (status !== 401) throw error;
-    // Access JWT may have expired while refresh cookie is still valid (AuthGate used
-    // to skip /step-up because it was marked public). Refresh once, then retry.
-    await adminRefresh();
+    // One recovery path only: expired access JWT or stale CSRF after another refresh.
+    if (status !== 401 && !isCsrfFailure(error)) throw error;
+    await adminEnsureFreshSession();
     const data = await attempt();
     setAdminCsrfToken(data.csrfToken);
     return data;
