@@ -10,7 +10,6 @@ const PUBLIC_PATHS = [
   '/forbidden',
   '/session-expired',
   '/suspended',
-  '/step-up',
 ];
 
 describe('Admin frontend route protection', () => {
@@ -30,6 +29,17 @@ describe('Admin frontend route protection', () => {
       expect(client).toContain(`'${path}'`);
     }
     expect(client).not.toContain("'/users'");
+  });
+
+  it('requires a live Admin session before step-up (refresh access JWT)', () => {
+    const middleware = readFileSync(join(__dirname, './middleware.ts'), 'utf8');
+    const client = readFileSync(join(__dirname, './lib/api-client.ts'), 'utf8');
+    const session = readFileSync(join(__dirname, './lib/admin-session.ts'), 'utf8');
+    expect(middleware).not.toMatch(/['"]\/step-up['"]/);
+    expect(client).not.toMatch(/ADMIN_PUBLIC_PATHS[\s\S]*['"]\/step-up['"]/);
+    expect(session).toContain('adminEnsureFreshSession');
+    expect(session).toContain('isCsrfFailure');
+    expect(session).toContain("'/api/v1/auth/admin/step-up'");
   });
 
   it('AuthGate requires SUPER_ADMIN after a valid session', () => {

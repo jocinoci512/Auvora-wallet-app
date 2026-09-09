@@ -9,6 +9,7 @@ import '../../preferences/preferences_controller.dart';
 import '../../release/auvora_qa_local_evm.dart';
 import '../../release/integration_config.dart';
 import '../../release/release_config.dart';
+import '../../account/ui/vault_recovery_approval_sheet.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../../wallet_engine/price_service.dart';
@@ -121,6 +122,7 @@ class _MobileHome extends StatelessWidget {
             onOpenMore: onOpenMore,
           ),
         ),
+        const SliverToBoxAdapter(child: VaultRecoveryApprovalBanner()),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -311,6 +313,7 @@ class _DesktopHome extends StatelessWidget {
             onOpenMore: onOpenMore,
           ),
         ),
+        const SliverToBoxAdapter(child: VaultRecoveryApprovalBanner()),
         if (snap.isPreview)
           const SliverToBoxAdapter(
             child: Padding(

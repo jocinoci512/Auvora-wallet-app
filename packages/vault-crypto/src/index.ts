@@ -11,3 +11,11 @@ export {
   type VaultUploadPayload,
   type VaultWalletEntry,
 } from './envelope.js';
+export {
+  DEVICE_WRAP_ALG,
+  generateDeviceRecoveryKeyPair,
+  wrapVaultKeyForDevice,
+  unwrapVaultKeyForDevice,
+  type DeviceKeyPair,
+  type DeviceWrappedVaultKey,
+} from './device-wrap.js';

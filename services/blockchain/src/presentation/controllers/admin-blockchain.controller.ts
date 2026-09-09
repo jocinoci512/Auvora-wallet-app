@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { AdminMetricsService } from '../../application/services/admin-metrics.service';
 import { AdminQueryService } from '../../application/services/admin-query.service';
+import { BlockchainService } from '../../application/services/blockchain.service';
 import { getMainnetRolloutSummary } from '../../application/services/broadcast-policy';
 import { ProviderRpcHealthService } from '../../application/services/provider-rpc-health.service';
 import { SyncService } from '../../application/services/sync.service';
@@ -22,6 +23,7 @@ import {
   AdminListSyncJobsQueryDto,
   TriggerSyncDto,
 } from '../dto/admin.dto';
+import { AdminListAddressesQueryDto } from '../dto/address.dto';
 import { AdminListTransactionsQueryDto } from '../dto/transaction.dto';
 
 // Keep DTO classes as runtime values for Nest ValidationPipe + Swagger.
@@ -32,6 +34,7 @@ const _adminBlockchainDtoRuntime = {
   AdminListSyncJobsQueryDto,
   TriggerSyncDto,
   AdminListTransactionsQueryDto,
+  AdminListAddressesQueryDto,
 };
 void _adminBlockchainDtoRuntime;
 
@@ -46,8 +49,22 @@ export class AdminBlockchainController {
     @Inject(AdminMetricsService) private readonly metricsService: AdminMetricsService,
     @Inject(AdminQueryService) private readonly queryService: AdminQueryService,
     @Inject(ProviderRpcHealthService) private readonly providerRpcHealth: ProviderRpcHealthService,
+    @Inject(BlockchainService) private readonly blockchainService: BlockchainService,
     @Inject(ENV) private readonly env: ServiceEnv,
   ) {}
+
+  @Get('addresses')
+  @Permissions(PERMISSION_BLOCKCHAIN_READ)
+  async listAddresses(@Query() query: AdminListAddressesQueryDto) {
+    const data = await this.blockchainService.adminListAddresses({
+      ownerUserId: query.ownerUserId,
+      chain: query.chain,
+      status: query.status,
+      skip: query.skip ?? 0,
+      take: query.take ?? 50,
+    });
+    return successResponse(data);
+  }
 
   /**
    * Safe, read-only Mainnet readiness, rollouts, and kill-switch posture.

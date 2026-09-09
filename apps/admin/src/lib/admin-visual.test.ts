@@ -6,7 +6,17 @@ import { safeServiceName, walletNetworkEnv, walletPublicAddress } from './admin-
 describe('formatAdminError', () => {
   it('maps auth and availability failures without JWT-paste copy', () => {
     expect(formatAdminError({ status: 401, message: 'nope' })).toContain('session expired');
+    expect(
+      formatAdminError({
+        status: 401,
+        code: 'INVALID_PASSWORD',
+        message: 'Step-up authentication failed',
+      }),
+    ).toContain('Password or authenticator');
     expect(formatAdminError({ status: 403, message: 'nope' })).toContain('permission');
+    expect(formatAdminError({ status: 403, message: 'Invalid CSRF token' })).toContain(
+      'could not be verified',
+    );
     expect(formatAdminError({ status: 429, message: 'nope' })).toContain('Too many requests');
     expect(formatAdminError({ status: 503, message: 'nope' })).toContain('unavailable');
     expect(formatAdminError({ status: 504, message: 'Request failed with status 504' })).toContain(

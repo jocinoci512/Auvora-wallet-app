@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent, type ReactElement } from 'react';
 import { Alert, Button, Field, Input } from '@auvora/ui';
 import { AuthScreen } from '../../components/AdminChrome';
-import { formatApiError } from '../../lib/api-client';
+import { formatAdminError } from '../../lib/api-client';
 import { adminStepUp } from '../../lib/admin-session';
 
 function safeNext(value: string | null): string {
@@ -28,7 +28,7 @@ function StepUpForm(): ReactElement {
       await adminStepUp(password, code);
       router.replace(safeNext(params.get('next')));
     } catch (err) {
-      setError(formatApiError(err));
+      setError(formatAdminError(err));
     } finally {
       setPending(false);
     }

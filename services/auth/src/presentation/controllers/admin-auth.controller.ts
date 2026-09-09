@@ -12,6 +12,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { successResponse } from '@auvora/nest-common';
+import { extractCsrfCookie } from '@auvora/security';
 import type { JwtAccessClaims } from '@auvora/types';
 import { AdminAuthService } from '../../application/services/admin-auth.service';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
@@ -180,7 +181,11 @@ export class AdminAuthController {
   @Get('session')
   async session(@Req() req: Request & { user: JwtAccessClaims }) {
     const data = await this.adminAuth.getSession(req.user.sub, req.user.sessionId);
-    return successResponse(data);
+    const csrfToken = extractCsrfCookie(
+      req.cookies as Record<string, unknown> | undefined,
+      req.path,
+    );
+    return successResponse(csrfToken ? { ...data, csrfToken } : data);
   }
 
   @Post('step-up')

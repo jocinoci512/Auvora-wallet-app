@@ -397,7 +397,19 @@ describe('AdminAuthService', () => {
     expect(sessions.setStepUpExpiresAt).toHaveBeenCalled();
     await expect(
       service.stepUp('admin-1', 'sess-1', { password: 'bad', code: '000000' }, {}),
-    ).rejects.toBeInstanceOf(UnauthorizedError);
+    ).rejects.toMatchObject({ code: 'INVALID_PASSWORD' });
+    await expect(
+      service.stepUp('admin-1', 'sess-1', { password: 'Password12!ab', code: '000000' }, {}),
+    ).rejects.toMatchObject({ code: 'INVALID_AUTHENTICATOR' });
+  });
+
+  it('step-up rejects missing admin session without requiring prior step-up', async () => {
+    const { service, users, sessions } = createService();
+    users.findById.mockResolvedValue(adminUser());
+    sessions.findById.mockResolvedValue(null);
+    await expect(
+      service.stepUp('admin-1', 'sess-missing', { password: 'Password12!ab', code: '123456' }, {}),
+    ).rejects.toMatchObject({ code: 'SESSION_UNAUTHORIZED' });
   });
 
   it('24-29. operator serializer never leaks secrets and READ_ONLY listing is safe', async () => {

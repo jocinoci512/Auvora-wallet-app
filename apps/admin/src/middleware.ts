@@ -9,7 +9,8 @@ const PUBLIC_PATHS = [
   '/forbidden',
   '/session-expired',
   '/suspended',
-  '/step-up',
+  // /step-up is intentionally protected: AuthGate must refresh the Admin access
+  // JWT before password+TOTP confirmation, or step-up POSTs return 401.
 ];
 
 const DEFERRED_MESH_PREFIXES = [

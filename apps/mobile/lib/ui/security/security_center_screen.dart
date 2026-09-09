@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../account/ui/vault_recovery_approval_sheet.dart';
 import '../../connections/connections_controller.dart';
 import '../../crypto/phrase_confirmation.dart';
 import '../../intelligence/intelligence_controller.dart';
@@ -65,6 +66,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
                         style: TextStyle(color: AetherColors.muted, height: 1.45),
                       ),
                       const SizedBox(height: 18),
+                      const VaultRecoveryApprovalBanner(),
                       _DashboardCard(snapshot: snapshot, wallet: wallet),
                       if (snapshot.recommendations.isNotEmpty) ...[
                         const SizedBox(height: 18),

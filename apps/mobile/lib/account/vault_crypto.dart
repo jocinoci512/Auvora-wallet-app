@@ -369,6 +369,106 @@ Future<VaultPlaintextBundle> decryptVaultBundle({
   return bundle;
 }
 
+/// Extract the 32-byte vault key using the account password.
+Future<Uint8List> extractVaultKeyWithPassword({
+  required String ownerUserId,
+  required EncryptedVaultEnvelope envelope,
+  required int epoch,
+  required String password,
+}) async {
+  if (envelope.algorithmId != kVaultAlgorithmId) {
+    throw StateError('Unsupported vault algorithm');
+  }
+  final aad = buildVaultAad(ownerUserId, epoch);
+  final wrapAad = '$aad|wrap-password';
+  final passwordKey = deriveArgon2idKey(
+    secret: password,
+    salt: _fromBase64(envelope.kdfSalt),
+    params: envelope.kdfParams,
+  );
+  return aesGcmDecrypt(
+    key: passwordKey,
+    payload: _fromBase64(envelope.wrappedVaultKey),
+    aad: wrapAad,
+  );
+}
+
+/// Extract the 32-byte vault key using the recovery phrase.
+Future<Uint8List> extractVaultKeyWithRecoveryPhrase({
+  required String ownerUserId,
+  required EncryptedVaultEnvelope envelope,
+  required int epoch,
+  required String recoveryPhrase,
+}) async {
+  if (envelope.algorithmId != kVaultAlgorithmId) {
+    throw StateError('Unsupported vault algorithm');
+  }
+  final aad = buildVaultAad(ownerUserId, epoch);
+  final recoveryWrapAad = '$aad|wrap-recovery';
+  final recoveryKey = deriveArgon2idKey(
+    secret: normalizeRecoveryPhrase(recoveryPhrase),
+    salt: _fromBase64(envelope.recoveryKdfSalt),
+    params: envelope.recoveryKdfParams,
+  );
+  return aesGcmDecrypt(
+    key: recoveryKey,
+    payload: _fromBase64(envelope.wrappedVaultKeyRecovery),
+    aad: recoveryWrapAad,
+  );
+}
+
+/// Decrypt a vault bundle when the raw 32-byte vault key is already known.
+Future<VaultPlaintextBundle> decryptVaultBundleWithKey({
+  required String ownerUserId,
+  required EncryptedVaultEnvelope envelope,
+  required int epoch,
+  required Uint8List vaultKey,
+}) async {
+  if (envelope.algorithmId != kVaultAlgorithmId) {
+    throw StateError('Unsupported vault algorithm');
+  }
+  final aad = buildVaultAad(ownerUserId, epoch);
+  final ciphertextAad = '$aad|bundle';
+  final plaintext = aesGcmDecrypt(
+    key: vaultKey,
+    payload: _fromBase64(envelope.ciphertext),
+    aad: ciphertextAad,
+  );
+  final decoded = jsonDecode(utf8.decode(plaintext));
+  if (decoded is! Map) {
+    throw StateError('Invalid vault bundle format');
+  }
+  final bundle = VaultPlaintextBundle.fromJson(Map<String, dynamic>.from(decoded));
+  if (bundle.version != 1 || bundle.wallets.isEmpty) {
+    throw StateError('Invalid vault bundle format');
+  }
+  return bundle;
+}
+
+/// Re-protect cloud vault under [newPassword] when the vault key is known.
+Future<VaultUploadPayload> rewrapVaultWithVaultKeyAndNewPassword({
+  required String ownerUserId,
+  required EncryptedVaultEnvelope envelope,
+  required int epoch,
+  required Uint8List vaultKey,
+  required String newPassword,
+}) async {
+  final bundle = await decryptVaultBundleWithKey(
+    ownerUserId: ownerUserId,
+    envelope: envelope,
+    epoch: epoch,
+    vaultKey: vaultKey,
+  );
+  final recoveryPhrase = bundle.wallets.first.mnemonic;
+  return encryptVaultBundle(
+    ownerUserId: ownerUserId,
+    epoch: epoch + 1,
+    password: newPassword,
+    recoveryPhrase: recoveryPhrase,
+    bundle: bundle,
+  );
+}
+
 /// After an account password reset, clients must re-wrap the vault key with the
 /// new password using the recovery phrase (client-side only). The server never
 /// holds plaintext and cannot rotate wraps for you.

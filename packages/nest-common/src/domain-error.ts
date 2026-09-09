@@ -22,8 +22,8 @@ export class NotFoundError extends DomainError {
 }
 
 export class ForbiddenError extends DomainError {
-  constructor(message = 'Forbidden') {
-    super(message, 'FORBIDDEN', 403);
+  constructor(message = 'Forbidden', code = 'FORBIDDEN') {
+    super(message, code, 403);
   }
 }
 
@@ -40,7 +40,7 @@ export class ValidationError extends DomainError {
 }
 
 export class UnauthorizedError extends DomainError {
-  constructor(message = 'Unauthorized') {
-    super(message, 'UNAUTHORIZED', 401);
+  constructor(message = 'Unauthorized', code = 'UNAUTHORIZED') {
+    super(message, code, 401);
   }
 }

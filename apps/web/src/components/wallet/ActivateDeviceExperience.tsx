@@ -3,15 +3,15 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react';
-import { formatApiError } from '../../lib/api-client';
-import { isSignedIn } from '../../lib/auth/session';
+import { createApiClient, formatApiError } from '../../lib/api-client';
+import { getCachedUser, isSignedIn } from '../../lib/auth/session';
 import { resolveActivationRoute, type ActivationRoute } from '../../lib/vault/activation-route';
+import { decryptVaultBundle, rewrapVaultWithNewPassword } from '../../lib/vault/browser-envelope';
 import {
   clearDeviceVault,
   getEncryptedVault,
   readDeviceVault,
   restoreVaultFromCloud,
-  uploadVaultBundle,
 } from '../../lib/vault/vault-sync';
 import { OnboardingShell } from '../onboarding/OnboardingShell';
 import '../../app/onboarding.css';
@@ -97,26 +97,73 @@ export function ActivateDeviceExperience(): ReactElement {
       setError('Enter a 12- or 24-word recovery phrase.');
       return;
     }
+    if (password.length < 12) {
+      setError('Enter the account password that will protect this wallet on this device.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const stored = await uploadVaultBundle({
-        password,
-        recoveryPhrase: words.join(' '),
-        bundle: {
-          version: 1,
-          wallets: [
-            {
-              walletId: `web-${crypto.randomUUID()}`,
-              mnemonic: words.join(' '),
-              label: 'Recovered wallet',
-              metadata: { source: 'explicit-recovery' },
-            },
-          ],
+      const user = getCachedUser();
+      if (!user?.id) throw new Error('Sign in before recovering.');
+      const client = createApiClient({ timeoutMs: 45_000 });
+      const remote = await client.getEncryptedVault();
+      if (!remote) {
+        throw new Error('No encrypted vault is stored for this account yet.');
+      }
+      const recoveryPhrase = words.join(' ');
+      const envelope = {
+        algorithmId: remote.algorithmId as 'auvora-vault-v1',
+        version: 1 as const,
+        kdfSalt: remote.kdfSalt,
+        kdfParams: remote.kdfParams as {
+          type: 'argon2id';
+          memoryKiB: number;
+          iterations: number;
+          parallelism: number;
         },
+        recoveryKdfSalt: remote.recoveryKdfSalt,
+        recoveryKdfParams: remote.recoveryKdfParams as {
+          type: 'argon2id';
+          memoryKiB: number;
+          iterations: number;
+          parallelism: number;
+        },
+        wrappedVaultKey: remote.wrappedVaultKey,
+        wrappedVaultKeyRecovery: remote.wrappedVaultKeyRecovery,
+        ciphertext: remote.ciphertext,
+        aad: remote.aad,
+      };
+      // Prove phrase unlocks the existing cloud vault (never create a replacement wallet).
+      await decryptVaultBundle({
+        ownerUserId: user.id,
+        envelope,
+        epoch: remote.epoch,
+        recoveryPhrase,
       });
-      setWalletCount(1);
-      setStatus(`Wallet recovered and secured (revision ${stored.epoch}).`);
+      const payload = await rewrapVaultWithNewPassword({
+        ownerUserId: user.id,
+        envelope,
+        epoch: remote.epoch,
+        recoveryPhrase,
+        newPassword: password,
+      });
+      const stored = await client.upsertEncryptedVault({
+        algorithmId: payload.algorithmId,
+        version: payload.version,
+        epoch: payload.epoch,
+        kdfSalt: payload.kdfSalt,
+        kdfParams: payload.kdfParams,
+        recoveryKdfSalt: payload.recoveryKdfSalt,
+        recoveryKdfParams: payload.recoveryKdfParams,
+        wrappedVaultKey: payload.wrappedVaultKey,
+        wrappedVaultKeyRecovery: payload.wrappedVaultKeyRecovery,
+        ciphertext: payload.ciphertext,
+        aad: payload.aad,
+      });
+      const restored = await restoreVaultFromCloud({ password });
+      setWalletCount(restored.wallets.length);
+      setStatus(`Existing wallet restored and secured (revision ${stored.epoch}).`);
       setHasRemote(true);
       setHasLocal(true);
       setRoute('ready');

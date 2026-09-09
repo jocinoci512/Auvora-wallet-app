@@ -25,7 +25,7 @@ export interface AdminOperator {
 interface ApiEnvelope<T> {
   success: boolean;
   data: T | null;
-  error?: { message?: string } | null;
+  error?: { message?: string; code?: string } | null;
 }
 
 function deviceFingerprint(): string {
@@ -41,8 +41,9 @@ export async function adminRequest<T>(path: string, init: RequestInit = {}): Pro
   if (init.body) {
     headers['Content-Type'] = 'application/json';
   }
+  const method = (init.method || 'GET').toUpperCase();
   const csrf = typeof window !== 'undefined' ? sessionStorage.getItem('auvora_admin_csrf') : null;
-  if (csrf && init.method && init.method !== 'GET') {
+  if (csrf && method !== 'GET' && method !== 'HEAD') {
     headers['x-csrf-token'] = csrf;
   }
   const res = await fetch(`${API}${path}`, {
@@ -53,11 +54,23 @@ export async function adminRequest<T>(path: string, init: RequestInit = {}): Pro
   const payload = (await res.json().catch(() => undefined)) as ApiEnvelope<T> | undefined;
   if (!res.ok || !payload?.success || payload.data === null || payload.data === undefined) {
     const message = payload?.error?.message ?? `Request failed (${res.status})`;
-    const error = new Error(message) as Error & { status?: number };
+    const error = new Error(message) as Error & { status?: number; code?: string };
     error.status = res.status;
+    if (typeof payload?.error?.code === 'string') {
+      error.code = payload.error.code;
+    } else if (res.status === 403 && /csrf/i.test(message)) {
+      error.code = 'CSRF_FAILED';
+    }
     throw error;
   }
   return payload.data;
+}
+
+function isCsrfFailure(error: unknown): boolean {
+  const err = error as { status?: number; code?: string; message?: string };
+  return (
+    err.status === 403 && (err.code === 'CSRF_FAILED' || /csrf/i.test(String(err.message || error)))
+  );
 }
 
 export async function adminLogin(
@@ -141,23 +154,52 @@ export async function adminSession(): Promise<{
   operator: AdminOperator;
   sessionId: string;
   stepUpExp: number | null;
+  csrfToken?: string;
 }> {
-  return adminRequest('/api/v1/auth/admin/session', { method: 'GET' });
+  const data = await adminRequest<{
+    operator: AdminOperator;
+    sessionId: string;
+    stepUpExp: number | null;
+    csrfToken?: string;
+  }>('/api/v1/auth/admin/session', { method: 'GET' });
+  if (data.csrfToken) setAdminCsrfToken(data.csrfToken);
+  return data;
+}
+
+/**
+ * Sync access JWT + CSRF before privileged mutations.
+ * Refresh is CSRF-exempt but rotates admin_csrf_token; always persist the body token.
+ */
+export async function adminEnsureFreshSession(): Promise<void> {
+  await adminRefresh();
 }
 
 export async function adminStepUp(
   password: string,
   code: string,
 ): Promise<{ csrfToken: string; stepUpExp: number }> {
-  const data = await adminRequest<{ csrfToken: string; stepUpExp: number }>(
-    '/api/v1/auth/admin/step-up',
-    {
+  const attempt = () =>
+    adminRequest<{ csrfToken: string; stepUpExp: number }>('/api/v1/auth/admin/step-up', {
       method: 'POST',
       body: JSON.stringify({ password, code }),
-    },
-  );
-  setAdminCsrfToken(data.csrfToken);
-  return data;
+    });
+
+  // Refresh first so x-csrf-token matches the rotated admin_csrf_token cookie.
+  await adminEnsureFreshSession();
+
+  try {
+    const data = await attempt();
+    setAdminCsrfToken(data.csrfToken);
+    return data;
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    // One recovery path only: expired access JWT or stale CSRF after another refresh.
+    if (status !== 401 && !isCsrfFailure(error)) throw error;
+    await adminEnsureFreshSession();
+    const data = await attempt();
+    setAdminCsrfToken(data.csrfToken);
+    return data;
+  }
 }
 
 export async function adminLogout(): Promise<void> {
