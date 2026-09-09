@@ -25,7 +25,7 @@ import 'security/security_controller.dart';
 import 'state/wallet_controller.dart';
 import 'theme/aether_theme.dart';
 import 'transfer/address_book.dart';
-import 'ui/app_shell.dart';
+import 'ui/update_aware_shell.dart';
 import 'ui/connections/deep_link_listener.dart';
 import 'wallet_engine/asset_registry.dart';
 import 'wallet_engine/bitcoin_rpc_adapter.dart';
@@ -420,7 +420,7 @@ class _AuvoraAppState extends State<AuvoraApp> {
                 ),
               );
             },
-            home: const AppShell(),
+            home: const UpdateAwareShell(),
           );
         },
       ),

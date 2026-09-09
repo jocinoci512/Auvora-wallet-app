@@ -34,6 +34,8 @@ android {
             .any { it.toString().equals("true", ignoreCase = true) }
 
     defaultConfig {
+        // PERMANENT production identity. Never change the else branch.
+        // QA/staging suffixes are for side-by-side developer installs only.
         applicationId = when {
             isStagingBuild -> "com.auvora.auvora_wallet.staging"
             isQaBuild -> "com.auvora.auvora_wallet.qa"
@@ -47,6 +49,17 @@ android {
             isStagingBuild -> "Auvora Staging"
             isQaBuild -> "Auvora QA"
             else -> "Auvora Wallet"
+        }
+        // Fail the build if a "production" configuration somehow resolves to QA/staging.
+        if (!isQaBuild && !isStagingBuild && applicationId != "com.auvora.auvora_wallet") {
+            throw GradleException(
+                "Production applicationId lock violated: expected com.auvora.auvora_wallet, got $applicationId",
+            )
+        }
+        if ((isQaBuild || isStagingBuild) && applicationId == "com.auvora.auvora_wallet") {
+            throw GradleException(
+                "QA/staging build must not use the production applicationId com.auvora.auvora_wallet",
+            )
         }
     }
 

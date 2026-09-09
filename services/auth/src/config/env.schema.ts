@@ -116,6 +116,17 @@ export const envSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+    /**
+     * Mobile client version policy (public). Numbers only — never used to host APK/IPA binaries.
+     * minimum defaults to 1 so existing production installs are not force-blocked until raised.
+     */
+    MOBILE_MIN_VERSION_CODE: z.coerce.number().int().positive().default(1),
+    MOBILE_LATEST_VERSION_CODE: z.coerce.number().int().positive().default(31),
+    MOBILE_STORE_URL: z
+      .string()
+      .url()
+      .default('https://play.google.com/store/apps/details?id=com.auvora.auvora_wallet'),
+    MOBILE_REQUIRED_UPDATE_MESSAGE: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production' && !data.COOKIE_SECURE) {

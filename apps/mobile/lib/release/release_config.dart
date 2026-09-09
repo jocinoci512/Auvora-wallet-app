@@ -6,8 +6,10 @@ import 'network_env.dart';
 /// Secrets and partner keys live in [IntegrationConfig] (`--dart-define`), never here.
 abstract final class ReleaseConfig {
   static const String releaseChannel = 'alpha';
-  static const String marketingVersion = '1.0.0-alpha.1';
+  static const String marketingVersion = '1.0.0-alpha.2';
   static const String buildLabel = 'Version 1.0 Alpha';
+  /// Must match pubspec `+N` for release guards / update policy.
+  static const int versionCode = 31;
 
   /// Live **mainnet** chain broadcast. Keep false — never enable for production funds.
   static const bool liveBroadcastEnabled = false;

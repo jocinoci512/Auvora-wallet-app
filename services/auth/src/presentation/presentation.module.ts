@@ -10,6 +10,7 @@ import { AdminUsersController } from './controllers/admin-users.controller';
 import { AdminSystemHealthController } from './controllers/admin-system-health.controller';
 import { AuthController } from './controllers/auth.controller';
 import { MeController } from './controllers/me.controller';
+import { MobileAppVersionController } from './controllers/mobile-app-version.controller';
 import { VaultRecoveryController } from './controllers/vault-recovery.controller';
 import {
   AdminAcceptanceController,
@@ -37,6 +38,7 @@ import { RealtimeHubService } from './realtime/realtime-hub.service';
   controllers: [
     HealthController,
     AuthController,
+    MobileAppVersionController,
     AdminAuthController,
     MeController,
     VaultRecoveryController,
