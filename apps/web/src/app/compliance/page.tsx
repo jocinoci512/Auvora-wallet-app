@@ -277,7 +277,7 @@ export default function CompliancePage(): ReactElement {
               <select value={idType} onChange={(e) => setIdType(e.target.value)}>
                 <option value="PASSPORT">Passport</option>
                 <option value="NATIONAL_ID">National ID card</option>
-                <option value="DRIVER_LICENSE">Driver's license</option>
+                <option value="DRIVER_LICENSE">Driver&apos;s license</option>
                 <option value="RESIDENCE_PERMIT">Residence permit</option>
               </select>
             </label>
