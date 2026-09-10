@@ -92,4 +92,5 @@ RUN groupadd --system auvora \
 USER auvora
 
 # DATABASE_URL must be injected at runtime (Railway Postgres reference). No other secrets required.
-CMD ["sh", "-ec", "test \"$(pnpm --version)\" = \"9.15.9\" && pnpm exec prisma migrate deploy && pnpm exec prisma migrate status && (pnpm run seed || echo 'Seed completed or skipped')"]
+# One-time recovery: mark failed acceptance enum migration rolled back, then deploy corrected SQL.
+CMD ["sh", "-ec", "test \"$(pnpm --version)\" = \"9.15.9\" && (pnpm exec prisma migrate resolve --rolled-back 20260909190000_acceptance_audit_actions || true) && pnpm exec prisma migrate deploy && pnpm exec prisma migrate status"]
