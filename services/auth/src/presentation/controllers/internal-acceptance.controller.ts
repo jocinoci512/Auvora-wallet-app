@@ -23,8 +23,8 @@ void RequestIdParamDto;
 
 const ACCEPTANCE_ACTOR = {
   actorUserId: 'system:acceptance-runner',
-  actorRoles: [ROLE_SUPER_ADMIN],
-} as const;
+  actorRoles: [ROLE_SUPER_ADMIN] as string[],
+};
 
 @ApiTags('internal-acceptance')
 @Public()
