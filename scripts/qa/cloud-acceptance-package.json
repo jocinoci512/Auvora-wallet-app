@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@auvora/vault-crypto": "file:./packages/vault-crypto",
+    "@noble/curves": "1.9.0",
     "@scure/bip39": "1.5.4",
     "argon2": "0.41.1",
     "ioredis": "5.6.1"

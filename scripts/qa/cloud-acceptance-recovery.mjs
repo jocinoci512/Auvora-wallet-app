@@ -40,17 +40,19 @@ let userCsrfToken = '';
 
 async function loadVaultCrypto() {
   const candidates = [
-    path.resolve(__dirname, '../../packages/vault-crypto/dist/index.js'),
-    path.resolve('/app/packages/vault-crypto/dist/index.js'),
+    '@auvora/vault-crypto',
+    pathToFileURL(path.resolve(__dirname, '../../packages/vault-crypto/dist/index.js')).href,
+    pathToFileURL(path.resolve('/app/packages/vault-crypto/dist/index.js')).href,
   ];
-  for (const local of candidates) {
+  const errors = [];
+  for (const spec of candidates) {
     try {
-      return await import(pathToFileURL(local).href);
-    } catch {
-      /* try next */
+      return await import(spec);
+    } catch (err) {
+      errors.push(`${spec}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  return import('@auvora/vault-crypto');
+  throw new Error(`vault-crypto load failed (${errors.length} attempts)`);
 }
 
 async function loadBip39() {
