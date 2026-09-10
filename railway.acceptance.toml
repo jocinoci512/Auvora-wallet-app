@@ -1,0 +1,22 @@
+# Auvora temporary one-shot cloud acceptance runner (`acceptance-runner`).
+#
+# WHY THIS FILE EXISTS:
+# Root `railway.toml` pins Nest services. This one-off must use its own
+# config-as-code file (same pattern as `railway.migrate.toml`).
+#
+# Railway service settings for `acceptance-runner`:
+#   Root Directory   = blank / "/"
+#   Config as Code   = /railway.acceptance.toml
+#   Variables        = API_BASE, AUTH_INTERNAL_BASE, REDIS_URL
+#                      (ACCEPTANCE_RUNNER_KEY optional — generated at runtime)
+#   Public networking = OFF
+#   Tear down after successful run.
+#
+# Do NOT set this config file on gateway/auth/wallet/etc.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infrastructure/docker/Dockerfile.acceptance"
+
+[deploy]
+restartPolicyType = "NEVER"

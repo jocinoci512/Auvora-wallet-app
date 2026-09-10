@@ -15,6 +15,8 @@ import {
   AdminAcceptanceController,
   AdminAcceptanceVaultRecoveryController,
 } from './controllers/admin-acceptance.controller';
+import { InternalAcceptanceController } from './controllers/internal-acceptance.controller';
+import { AcceptanceRunnerGuard } from './guards/acceptance-runner.guard';
 import { DomainExceptionFilter } from '@auvora/nest-common';
 import { CsrfGuard } from './guards/csrf.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -43,6 +45,7 @@ import { RealtimeHubService } from './realtime/realtime-hub.service';
     AdminUsersController,
     AdminAcceptanceController,
     AdminAcceptanceVaultRecoveryController,
+    InternalAcceptanceController,
     AdminOperatorsController,
     AdminAuditController,
     AdminSystemHealthController,
@@ -50,6 +53,7 @@ import { RealtimeHubService } from './realtime/realtime-hub.service';
   ],
   providers: [
     JwtStrategy,
+    AcceptanceRunnerGuard,
     RealtimeHubService,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

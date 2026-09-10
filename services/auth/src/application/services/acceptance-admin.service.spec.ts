@@ -6,10 +6,15 @@ describe('AcceptanceAdminService RBAC', () => {
     simulationAccount: {
       findUnique: jest.fn(),
       updateMany: jest.fn(),
+      upsert: jest.fn(),
+    },
+    encryptedVaultBlob: {
+      findUnique: jest.fn(),
     },
     vaultDeviceRecoveryRequest: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     vaultDeviceRecoveryPayload: {
       updateMany: jest.fn(),
@@ -69,6 +74,55 @@ describe('AcceptanceAdminService RBAC', () => {
         ctx: {},
       }),
     ).rejects.toThrow(/auvora-acceptance\.test/);
+  });
+
+  it('bootstraps acceptance users with simulation ACTIVE and verified email', async () => {
+    users.findById.mockResolvedValue({
+      id: 'user-1',
+      email: 'qa@auvora-acceptance.test',
+    });
+    prisma.simulationAccount.upsert.mockResolvedValue({ status: 'ACTIVE' });
+    const svc = build();
+    const result = await svc.bootstrapAcceptanceUser({
+      actorUserId: 'system:acceptance-runner',
+      actorRoles: [ROLE_SUPER_ADMIN],
+      userId: 'user-1',
+      ctx: {},
+    });
+    expect(result.simulationStatus).toBe('ACTIVE');
+    expect(prisma.simulationAccount.upsert).toHaveBeenCalled();
+    expect(users.markEmailVerified).toHaveBeenCalledWith('user-1');
+    expect(audit.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ACCEPTANCE_EMAIL_VERIFIED',
+        metadata: expect.objectContaining({ bootstrap: true }),
+      }),
+    );
+  });
+
+  it('returns scrubbed safe status for acceptance users', async () => {
+    users.findById.mockResolvedValue({
+      id: 'user-1',
+      email: 'qa@auvora-acceptance.test',
+    });
+    prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+      epoch: 1,
+      algorithmId: 'v1',
+      version: 1,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      uploadedByDeviceId: 'device-1',
+    });
+    prisma.vaultDeviceRecoveryRequest.count.mockResolvedValue(3);
+    const svc = build();
+    const result = await svc.getSafeUserStatus({
+      actorUserId: 'system:acceptance-runner',
+      actorRoles: [ROLE_SUPER_ADMIN],
+      userId: 'user-1',
+    });
+    expect(result.vault.exists).toBe(true);
+    expect(result.vault.epoch).toBe(1);
+    expect(result.recoveryRequestCount).toBe(3);
+    expect(result.vault).not.toHaveProperty('ciphertext');
   });
 
   it('verifies only ACTIVE simulation acceptance users', async () => {
