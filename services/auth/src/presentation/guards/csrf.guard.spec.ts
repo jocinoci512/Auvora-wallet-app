@@ -64,4 +64,17 @@ describe('CsrfGuard', () => {
       expect((error as ForbiddenError).code).toBe('CSRF_FAILED');
     }
   });
+
+  it('allows Bearer Authorization mutations without CSRF pair', () => {
+    expect(
+      guard.canActivate(
+        context({
+          method: 'POST',
+          path: '/api/v1/me/vault-recovery/requests/x/approve',
+          cookies: {},
+          headers: { authorization: 'Bearer eyJhbGciOi.test' },
+        }),
+      ),
+    ).toBe(true);
+  });
 });

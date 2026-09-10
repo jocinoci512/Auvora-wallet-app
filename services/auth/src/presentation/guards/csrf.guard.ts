@@ -22,7 +22,13 @@ export class CsrfGuard implements CanActivate {
     ]);
 
     const request = context.switchToHttp().getRequest<Request>();
-    if (!MUTATING_METHODS.has(request.method) || isPublic || skipCsrf) {
+    const authHeader = request.headers.authorization;
+    const hasBearer =
+      typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ');
+
+    // Cookie-session browsers need CSRF; Bearer API clients (mobile / harness) are not
+    // CSRF-vulnerable the same way — match packages/nest-common CsrfGuard.
+    if (!MUTATING_METHODS.has(request.method) || isPublic || skipCsrf || hasBearer) {
       return true;
     }
 
