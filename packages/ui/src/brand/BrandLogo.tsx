@@ -37,7 +37,8 @@ export function BrandLogo({
       style={{
         height,
         width: isSymbol ? height : 'auto',
-        display: 'block',
+        // Do not set display here — auth shells toggle light/dark logos via CSS
+        // (.as__logo--light / --dark). Inline display:block would override those rules.
         objectFit: 'contain',
         ...style,
       }}

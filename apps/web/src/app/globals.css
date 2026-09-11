@@ -589,7 +589,7 @@ code {
 /* Official brand logo light/dark pairing */
 .mh-nav__logo--dark,
 .ws-sidebar__logo--dark,
-.as__logo--dark { display: none; }
+.as__logo--dark { display: none !important; }
 .mh-nav__logo--light,
 .ws-sidebar__logo--light,
 .as__logo--light { display: block; }
@@ -598,13 +598,13 @@ code {
 [data-theme='dark'] .ws-sidebar__logo--light,
 .auvora-theme-dark .ws-sidebar__logo--light,
 [data-theme='dark'] .as__logo--light,
-.auvora-theme-dark .as__logo--light { display: none; }
+.auvora-theme-dark .as__logo--light { display: none !important; }
 [data-theme='dark'] .mh-nav__logo--dark,
 .auvora-theme-dark .mh-nav__logo--dark,
 [data-theme='dark'] .ws-sidebar__logo--dark,
 .auvora-theme-dark .ws-sidebar__logo--dark,
 [data-theme='dark'] .as__logo--dark,
-.auvora-theme-dark .as__logo--dark { display: block; }
+.auvora-theme-dark .as__logo--dark { display: block !important; }
 .ws-sidebar__logo--compact { display: none; }
 @media (max-width: 720px) {
   .ws-sidebar__logo--light,
