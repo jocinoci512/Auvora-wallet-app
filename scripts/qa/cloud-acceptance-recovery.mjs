@@ -290,6 +290,8 @@ async function main() {
         firstName: 'Accept',
         lastName: 'Vault',
       },
+      // Same private auth process/DB as bootstrap (avoid any public-edge skew).
+      internal: true,
     });
     results.register = assertPass(
       'Synthetic verified account: register',
