@@ -115,8 +115,13 @@ async function api(method, urlPath, { body, token, internal = false } = {}) {
 }
 
 function safeErrDetail(res) {
-  const msg = res?.json?.message || res?.json?.error || res?.json?.code || '';
-  const text = typeof msg === 'string' ? msg.slice(0, 120) : '';
+  const err = res?.json?.error;
+  const msg =
+    (typeof err?.message === 'string' && err.message) ||
+    (typeof res?.json?.message === 'string' && res.json.message) ||
+    (typeof err?.code === 'string' && err.code) ||
+    '';
+  const text = msg.slice(0, 160);
   return text ? `status=${res.status} err=${text}` : `status=${res.status}`;
 }
 
@@ -292,7 +297,13 @@ async function main() {
       `status=${reg.status}`,
     );
     const userId = reg.data?.userId || reg.data?.user?.id || reg.data?.id;
-    results.userId = assertPass('User id', typeof userId === 'string' && userId.length > 10);
+    const userIdKeys = Object.keys(reg.data && typeof reg.data === 'object' ? reg.data : {});
+    results.userId = assertPass(
+      'User id',
+      typeof userId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId),
+      `keys=${userIdKeys.join(',') || 'none'} uuid=${typeof userId === 'string' && userId.includes('-')}`,
+    );
     if (!results.userId) throw new Error('no userId');
 
     const bootstrap = await api(
