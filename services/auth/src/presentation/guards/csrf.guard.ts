@@ -22,7 +22,8 @@ export class CsrfGuard implements CanActivate {
     ]);
 
     const request = context.switchToHttp().getRequest<Request>();
-    const authHeader = request.headers.authorization;
+    const headers = request.headers ?? {};
+    const authHeader = headers.authorization;
     const hasBearer =
       typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ');
 
@@ -36,7 +37,7 @@ export class CsrfGuard implements CanActivate {
       request.cookies as Record<string, unknown> | undefined,
       request.path,
     );
-    const headerToken = request.headers[CSRF_TOKEN_HEADER] as string | undefined;
+    const headerToken = headers[CSRF_TOKEN_HEADER] as string | undefined;
 
     if (!cookieToken || !headerToken || !timingSafeEqualString(cookieToken, headerToken)) {
       throw new ForbiddenError('Invalid CSRF token', 'CSRF_FAILED');

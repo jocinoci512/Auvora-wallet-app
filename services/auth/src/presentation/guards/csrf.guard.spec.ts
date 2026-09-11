@@ -18,7 +18,9 @@ describe('CsrfGuard', () => {
 
   it('allows GET without CSRF (SSE-safe)', () => {
     expect(
-      guard.canActivate(context({ method: 'GET', path: '/api/v1/admin/realtime/events' })),
+      guard.canActivate(
+        context({ method: 'GET', path: '/api/v1/admin/realtime/events', headers: {} }),
+      ),
     ).toBe(true);
   });
 
