@@ -57,17 +57,30 @@ async function loadVaultCrypto() {
 }
 
 async function loadBip39() {
+  const errors = [];
   try {
     const mod = await import('@scure/bip39');
     const wordlist = (await import('@scure/bip39/wordlists/english.js')).wordlist;
     return { generateMnemonic: mod.generateMnemonic, wordlist };
-  } catch {
-    const root = path.resolve(__dirname, '../../apps/web/node_modules/@scure/bip39');
-    const mod = await import(pathToFileURL(path.join(root, 'index.js')).href);
-    const wordlist = (await import(pathToFileURL(path.join(root, 'wordlists/english.js')).href))
-      .wordlist;
-    return { generateMnemonic: mod.generateMnemonic, wordlist };
+  } catch (err) {
+    errors.push(`pkg: ${err instanceof Error ? err.message : String(err)}`);
   }
+  // Docker harness installs deps at /app/node_modules (WORKDIR /app).
+  const roots = [
+    path.resolve(__dirname, '../../node_modules/@scure/bip39'),
+    path.resolve('/app/node_modules/@scure/bip39'),
+  ];
+  for (const root of roots) {
+    try {
+      const mod = await import(pathToFileURL(path.join(root, 'index.js')).href);
+      const wordlist = (await import(pathToFileURL(path.join(root, 'wordlists/english.js')).href))
+        .wordlist;
+      return { generateMnemonic: mod.generateMnemonic, wordlist };
+    } catch (err) {
+      errors.push(`${root}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  throw new Error(`bip39 load failed (${errors.length} attempts)`);
 }
 
 function assertPass(label, ok, detail = '') {
