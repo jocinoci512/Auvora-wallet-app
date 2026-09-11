@@ -22,10 +22,9 @@ RUN pnpm install --frozen-lockfile --filter @auvora/vault-crypto... \
   && pnpm --filter @auvora/vault-crypto build
 
 WORKDIR /app/harness
-# Install harness deps after vault-crypto dist is present so file:./packages/vault-crypto resolves.
+# Harness loads vault-crypto from packages/vault-crypto/dist (no npm workspace: protocol).
 RUN mkdir -p packages/vault-crypto/dist scripts/qa \
   && cp -R /app/packages/vault-crypto/dist/. packages/vault-crypto/dist/ \
-  && cp /app/packages/vault-crypto/package.json packages/vault-crypto/package.json \
   && cp /app/scripts/qa/cloud-acceptance-recovery.mjs scripts/qa/ \
   && cp /app/scripts/qa/cloud-acceptance-package.json ./package.json \
   && npm install --omit=dev
