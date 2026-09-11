@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="108"
+   height="108"
+   viewBox="0 0 108 108"
+   version="1.1"
+   id="svg8"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs12" />
+  <title
+     id="title2">Auvora Wallet</title>
+  <path
+     fill="#087F75"
+     d="M12 88 43 18Q46 11 54 11H66L37 78Q33 88 24 88Z"
+     id="path4" />
+  <path
+     fill="#087F75"
+     d="M69 25 96 88H72L59 58 46 88H33Z"
+     id="path6" />
+</svg>

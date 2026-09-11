@@ -1,17 +1,17 @@
-/* Aether onboarding — Phase 3 */
+/* Aether onboarding â€” Phase 3 */
 
 .ob {
-  --ob-canvas: #eef1f4;
+  --ob-canvas: #F2F6F3;
   --ob-subtle: #e4e8ed;
   --ob-surface: #f7f9fb;
   --ob-solid: #ffffff;
-  --ob-ink: #0b1220;
+  --ob-ink: #102D32;
   --ob-muted: #5c6570;
   --ob-faint: #8b939e;
   --ob-line: #d5dbe3;
-  --ob-lagoon: #0e4f5c;
+  --ob-lagoon: #087F75;
   --ob-lagoon-hover: #0a3f49;
-  --ob-lumen: #5eead4;
+  --ob-lumen: #B9F4D7;
   --ob-warn: #8a5a00;
   --ob-warn-soft: #fff6e5;
   --ob-danger: #b42318;

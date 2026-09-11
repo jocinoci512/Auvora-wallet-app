@@ -1,24 +1,24 @@
 /*
  * Auvora marketing design system (locked).
  *
- * The homepage draws ONLY from the tokens below — colours, surfaces, borders,
+ * The homepage draws ONLY from the tokens below â€” colours, surfaces, borders,
  * text, spacing, radius, shadows, typography, and motion. Do not introduce
  * ad-hoc values; extend the scales here instead. Colour tokens mirror the
  * Mist/Lagoon palette shared with @auvora/ui.
  */
 .mh {
   /* --- Colour / surface / border / text --- */
-  --mh-canvas: #eef1f4;
+  --mh-canvas: #F2F6F3;
   --mh-canvas-subtle: #e4e8ed;
   --mh-surface: #f7f9fb;
   --mh-solid: #ffffff;
-  --mh-ink: #0b1220;
+  --mh-ink: #102D32;
   --mh-muted: #5c6570;
   --mh-faint: #8b939e;
   --mh-line: #d5dbe3;
-  --mh-lagoon: #0e4f5c;
+  --mh-lagoon: #087F75;
   --mh-lagoon-hover: #0a3f49;
-  --mh-lumen: #5eead4;
+  --mh-lumen: #B9F4D7;
   --mh-reserve: #9a7b4f;
   --mh-success: #0f6a4b;
   --mh-danger: #b42318;
@@ -251,7 +251,7 @@
   transform: scale(0.98);
 }
 
-/* Hero — one composition, brand first, no cards */
+/* Hero â€” one composition, brand first, no cards */
 .mh-hero {
   display: grid;
   grid-template-columns: 1fr;
@@ -701,7 +701,7 @@
   }
 }
 
-/* Features — interaction containers ok */
+/* Features â€” interaction containers ok */
 .mh-features__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1167,7 +1167,7 @@
   max-width: 40rem;
 }
 
-/* Final CTA — one message, one button */
+/* Final CTA â€” one message, one button */
 .mh-final {
   text-align: center;
   padding: clamp(4.5rem, 12vw, 8rem) 1.5rem;
@@ -1255,7 +1255,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem clamp(1.25rem, 4vw, 2rem);
-  background: color-mix(in srgb, var(--mh-canvas, #eef1f4) 86%, transparent);
+  background: color-mix(in srgb, var(--mh-canvas, #F2F6F3) 86%, transparent);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--mh-line, #d5dbe3) 70%, transparent);
 }
@@ -1278,7 +1278,7 @@
   padding: 0 0.75rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--mh-lagoon, #0e4f5c);
+  color: var(--mh-lagoon, #087F75);
 }
 
 .mh-nav__menu summary::-webkit-details-marker {
@@ -1294,7 +1294,7 @@
   min-width: 12rem;
   padding: 0.5rem;
   border-radius: 12px;
-  background: var(--mh-canvas, #eef1f4);
+  background: var(--mh-canvas, #F2F6F3);
   border: 1px solid color-mix(in srgb, var(--mh-line, #d5dbe3) 80%, transparent);
   box-shadow: 0 12px 32px color-mix(in srgb, #0a0c10 12%, transparent);
 }
@@ -1340,12 +1340,12 @@
   font-weight: 700;
   font-size: 1.15rem;
   letter-spacing: -0.03em;
-  color: var(--mh-lagoon, #0e4f5c);
+  color: var(--mh-lagoon, #087F75);
   text-decoration: none;
 }
 
 .mh-nav__brand:focus-visible {
-  outline: 2px solid var(--mh-lumen, #5eead4);
+  outline: 2px solid var(--mh-lumen, #B9F4D7);
   outline-offset: 2px;
 }
 
@@ -1373,7 +1373,7 @@
 }
 
 .mh-nav__link:hover {
-  color: var(--mh-lagoon, #0e4f5c);
+  color: var(--mh-lagoon, #087F75);
 }
 
 body:has(.mh) .token-panel,

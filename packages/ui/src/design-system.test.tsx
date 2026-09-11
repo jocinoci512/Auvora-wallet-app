@@ -9,10 +9,10 @@ import { cn } from './utils/cn';
 describe('@auvora/ui design system', () => {
   it('exposes semantic tokens and cssVar helper', () => {
     expect(tokens.color.primary).toMatch(/^#/);
-    expect(colorLight.primary).toBe('#0f6e56');
+    expect(colorLight.primary).toBe('#087F75');
     expect(colorDark.primary).toMatch(/^#/);
     expect(cssVar('color-primary')).toBe('var(--auvora-color-primary)');
-    expect(cssVar('color-primary', '#0f6e56')).toContain('#0f6e56');
+    expect(cssVar('color-primary', '#087F75')).toContain('#087F75');
   });
 
   it('renders Button with variant classes', () => {

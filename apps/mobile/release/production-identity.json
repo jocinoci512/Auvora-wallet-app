@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Auvora Wallet production app identity (safe metadata only)",
+  "description": "No signing secrets, keystores, passwords, or private keys. Used by release guards and Play continuity.",
+  "android": {
+    "applicationId": "com.auvora.auvora_wallet",
+    "namespace": "com.auvora.auvora_wallet",
+    "storeListingName": "Auvora Wallet",
+    "forbiddenApplicationIds": ["com.auvora.auvora_wallet.qa", "com.auvora.auvora_wallet.staging"],
+    "qaApplicationId": "com.auvora.auvora_wallet.qa",
+    "stagingApplicationId": "com.auvora.auvora_wallet.staging",
+    "minSdk": 24,
+    "targetSdk": 36,
+    "uploadKeyAliasExpected": "upload",
+    "uploadCertificateSha256": "1339d68fedc18b0638d6de73810f518e6b9ebab0629435ea3fbc55577d6da564",
+    "uploadCertificateSha1": "a26ab1bd42a9a93eee9e26452683939d106b3cb2",
+    "playAppSigning": {
+      "status": "upload-key-local",
+      "note": "Preserve the same upload key lineage for every customer update. If Play App Signing is enabled later, keep this upload certificate as the upload key and never rotate without Play Console re-enrollment."
+    },
+    "deepLinks": {
+      "customSchemes": ["auvora", "wc"],
+      "httpsHosts": ["auvorawallet.com", "www.auvorawallet.com"],
+      "pathPrefixes": ["/wc", "/connect"]
+    },
+    "push": {
+      "fcm": false,
+      "note": "No Firebase / FCM identity yet. Future push must bind to com.auvora.auvora_wallet only — never QA/staging."
+    }
+  },
+  "ios": {
+    "bundleId": "com.auvora.auvoraWallet",
+    "displayName": "Auvora Wallet",
+    "storeReady": false,
+    "developmentTeamConfigured": false,
+    "keychainAccessGroups": [],
+    "note": "One permanent customer Bundle ID. Do not invent a second Store app. Team + entitlements required before claiming App Store update readiness."
+  },
+  "windows": {
+    "targetPresent": false,
+    "note": "No apps/mobile/windows target. Desktop companion is apps/web."
+  },
+  "versioning": {
+    "currentProductionVersionCode": 31,
+    "nextMinimumVersionCode": 32,
+    "versionNameStrategy": "semver[+build]: keep MAJOR.MINOR.PATCH; drop -alpha before public GA; versionCode always strictly increases for Store/superseding builds",
+    "neverReuseVersionCode": true
+  },
+  "api": {
+    "productionBaseUrl": "https://api.auvorawallet.com",
+    "forbiddenProductionHosts": ["localhost", "127.0.0.1", "10.0.2.2", ".railway.app", "staging"]
+  },
+  "mainnet": {
+    "liveBroadcastEnabled": false,
+    "mustRemainOffUntilExplicitOwnerApproval": true
+  },
+  "storage": {
+    "secureStorageSchema": "auvora_vault_v3_indexed",
+    "authTokenSchema": "auvora_acct_*_v1",
+    "preferencesNamespace": "shared_preferences",
+    "assumeCleanInstall": false
+  }
+}

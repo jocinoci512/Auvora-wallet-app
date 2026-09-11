@@ -30,13 +30,13 @@ function layoutHtml(opts: {
     opts.ctaLabel && opts.ctaUrl
       ? `<p style="margin:28px 0 8px;">
           <a href="${escapeHtml(opts.ctaUrl)}"
-             style="display:inline-block;padding:14px 22px;background:#0f172a;color:#f8fafc;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">
+             style="display:inline-block;padding:14px 22px;background:#087F75;color:#F2F6F3;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">
             ${escapeHtml(opts.ctaLabel)}
           </a>
         </p>
-        <p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#64748b;word-break:break-all;">
+        <p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#49605E;word-break:break-all;">
           Or open this link:<br/>
-          <a href="${escapeHtml(opts.ctaUrl)}" style="color:#334155;">${escapeHtml(opts.ctaUrl)}</a>
+          <a href="${escapeHtml(opts.ctaUrl)}" style="color:#087F75;">${escapeHtml(opts.ctaUrl)}</a>
         </p>`
       : '';
 
@@ -47,28 +47,33 @@ function layoutHtml(opts: {
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${escapeHtml(opts.title)}</title>
 </head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+<body style="margin:0;padding:0;background:#F2F6F3;font-family:Arial,Helvetica,sans-serif;color:#102D32;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(opts.preheader)}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F2F6F3;padding:24px 12px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;">
           <tr>
-            <td style="padding:28px 28px 8px;border-bottom:1px solid #e2e8f0;">
-              <p style="margin:0;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;font-weight:600;">Auvora Wallet</p>
-              <h1 style="margin:10px 0 0;font-size:22px;line-height:1.3;font-weight:700;color:#0f172a;">${escapeHtml(opts.title)}</h1>
+            <td style="padding:24px 28px 12px;">
+              <img src="https://auvorawallet.com/brand/email/Auvora_Email_Logo.png" alt="Auvora Wallet" width="205" height="80" style="display:block;border:0;width:205px;height:80px;"/>
             </td>
           </tr>
           <tr>
-            <td style="padding:24px 28px 8px;font-size:15px;line-height:1.6;color:#334155;">
+            <td style="padding:8px 28px 8px;border-top:1px solid #DEE8E3;">
+              <h1 style="margin:16px 0 0;font-size:22px;line-height:1.3;font-weight:700;color:#102D32;">${escapeHtml(opts.title)}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 28px 8px;font-size:16px;line-height:26px;color:#102D32;">
               ${opts.bodyHtml}
               ${cta}
             </td>
           </tr>
           <tr>
-            <td style="padding:8px 28px 28px;font-size:12px;line-height:1.55;color:#64748b;border-top:1px solid #e2e8f0;">
-              <p style="margin:16px 0 0;">${escapeHtml(ANTI_PHISH)}</p>
-              <p style="margin:12px 0 0;">© Auvora Wallet · <a href="https://auvorawallet.com" style="color:#64748b;">auvorawallet.com</a></p>
+            <td style="padding:20px 28px 28px;font-size:13px;line-height:22px;color:#49605E;border-top:1px solid #DEE8E3;">
+              <p style="margin:0 0 12px;">${escapeHtml(ANTI_PHISH)}</p>
+              <p style="margin:0;">Kind regards,<br/><strong>Auvora Wallet Team</strong></p>
+              <p style="margin:12px 0 0;">© Auvora Wallet · <a href="https://auvorawallet.com" style="color:#49605E;">auvorawallet.com</a></p>
             </td>
           </tr>
         </table>

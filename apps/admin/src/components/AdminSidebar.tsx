@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactElement } from 'react';
-import { Sidebar } from '@auvora/ui';
+import { Sidebar, BrandLogo } from '@auvora/ui';
 import { useAdminIdentity } from '../lib/admin-identity';
 import { useAdminNav } from '../lib/admin-nav';
 import { hasPermission } from '../lib/admin-rbac';
@@ -119,7 +119,15 @@ export function AdminSidebar(): ReactElement {
         className={`admin-sidebar${open ? ' admin-sidebar--open' : ''}`}
         aria-label="Admin navigation"
       >
-        <p className="admin-sidebar__brand">Auvora Control Plane</p>
+        <div className="admin-sidebar__brand">
+          <BrandLogo
+            variant="primary"
+            height={28}
+            alt="Auvora Admin"
+            className="admin-sidebar__logo"
+          />
+          <p className="admin-sidebar__brand-label">Auvora Admin</p>
+        </div>
         {NAV_GROUPS.map((group) => {
           const visible = group.items.filter(
             (item) => !item.permission || hasPermission(identity?.operator, item.permission),

@@ -11,6 +11,7 @@ import '../account/vault_crypto.dart';
 import '../crypto/wallet_crypto.dart';
 import '../portfolio/models.dart';
 import '../release/network_env.dart';
+import '../release/storage_schema.dart';
 import '../reliability/startup_timing.dart';
 import '../wallet_engine/key_store.dart';
 import '../wallet_engine/models.dart';
@@ -238,8 +239,10 @@ class WalletController extends ChangeNotifier {
     final engine = _engine;
     // SharedPreferences and vault restore are independent — overlap them.
     final prefsFuture = SharedPreferences.getInstance();
+    final schemaFuture = StorageSchema.migrateIfNeeded();
     final engineBoot = engine?.bootstrap();
     final prefs = await prefsFuture;
+    await schemaFuture;
     onboardingComplete = prefs.getBool(_kOnboarded) ?? false;
     if (engineBoot != null) {
       await engineBoot;

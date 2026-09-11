@@ -52,24 +52,31 @@ class WelcomeScreen extends StatelessWidget {
               children: [
                 const Spacer(flex: 2),
                 Center(
-                  child: Container(
-                    width: 72,
+                  child: Image.asset(
+                    isDark
+                        ? 'assets/brand/Auvora_Reverse.png'
+                        : 'assets/brand/Auvora_Primary.png',
                     height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AetherColors.lagoon.withValues(alpha: isDark ? 0.28 : 0.1),
-                      border: Border.all(
-                        color: AetherColors.lagoon.withValues(alpha: 0.22),
+                    fit: BoxFit.contain,
+                    semanticLabel: 'Auvora Wallet',
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AetherColors.lagoon.withValues(alpha: isDark ? 0.28 : 0.1),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'A',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          color: isDark ? AetherColors.lagoonMist : AetherColors.lagoon,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1,
+                      child: Center(
+                        child: Image.asset(
+                          'assets/brand/Auvora_Symbol.png',
+                          height: 40,
+                          errorBuilder: (_, __, ___) => Text(
+                            'A',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: isDark ? AetherColors.lagoonMist : AetherColors.lagoon,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),

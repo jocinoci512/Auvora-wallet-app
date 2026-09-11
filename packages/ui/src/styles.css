@@ -1,6 +1,6 @@
 /* ============================================================================
- * Auvora Design System — semantic tokens + component styles
- * Light (:root / data-theme=light) · Dark ([data-theme=dark] / .auvora-theme-dark)
+ * Auvora Design System â€” semantic tokens + component styles
+ * Light (:root / data-theme=light) Â· Dark ([data-theme=dark] / .auvora-theme-dark)
  * ============================================================================ */
 
 :root,
@@ -9,12 +9,12 @@
   color-scheme: light;
 
   /* Semantic colors */
-  --auvora-color-primary: #0f6e56;
-  --auvora-color-primary-hover: #0c5a46;
-  --auvora-color-primary-pressed: #0a4a39;
-  --auvora-color-primary-muted: #d7ede6;
+  --auvora-color-primary: #087F75;
+  --auvora-color-primary-hover: #066A62;
+  --auvora-color-primary-pressed: #055650;
+  --auvora-color-primary-muted: #B9F4D7;
   --auvora-color-secondary: #3d4f5f;
-  --auvora-color-success: #0f6e56;
+  --auvora-color-success: #087F75;
   --auvora-color-success-bg: #ecfdf3;
   --auvora-color-success-border: #abefc6;
   --auvora-color-warning: #7a2e0e;
@@ -26,18 +26,18 @@
   --auvora-color-info: #175cd3;
   --auvora-color-info-bg: #eff8ff;
   --auvora-color-info-border: #b2ddff;
-  --auvora-color-background: #f7f4ef;
-  --auvora-color-background-subtle: #ebe6de;
+  --auvora-color-background: #F2F6F3;
+  --auvora-color-background-subtle: #DEE8E3;
   --auvora-color-surface: rgba(255, 255, 255, 0.72);
   --auvora-color-surface-solid: #ffffff;
   --auvora-color-border: #d6d3cd;
-  --auvora-color-text: #0b1220;
+  --auvora-color-text: #102D32;
   --auvora-color-text-muted: rgba(11, 18, 32, 0.65);
   --auvora-color-text-inverse: #ffffff;
   --auvora-color-hover: rgba(15, 110, 86, 0.08);
   --auvora-color-pressed: rgba(15, 110, 86, 0.14);
   --auvora-color-disabled: rgba(11, 18, 32, 0.38);
-  --auvora-color-focus: #0f6e56;
+  --auvora-color-focus: #087F75;
 
   /* Legacy aliases (existing screens) */
   --auvora-ink: var(--auvora-color-text);
@@ -71,10 +71,10 @@
 .auvora-theme-dark {
   color-scheme: dark;
 
-  --auvora-color-primary: #3dba9a;
-  --auvora-color-primary-hover: #52c9ab;
-  --auvora-color-primary-pressed: #2a9e82;
-  --auvora-color-primary-muted: #1a3d34;
+  --auvora-color-primary: #B9F4D7;
+  --auvora-color-primary-hover: #d2f9e4;
+  --auvora-color-primary-pressed: #087F75;
+  --auvora-color-primary-muted: #1a3d3a;
   --auvora-color-secondary: #9db0c0;
   --auvora-color-success: #3dba9a;
   --auvora-color-success-bg: #0f2a22;
@@ -88,14 +88,14 @@
   --auvora-color-info: #84caff;
   --auvora-color-info-bg: #10202a;
   --auvora-color-info-border: #1f4a5c;
-  --auvora-color-background: #0c1118;
-  --auvora-color-background-subtle: #121820;
+  --auvora-color-background: #102D32;
+  --auvora-color-background-subtle: #0c2428;
   --auvora-color-surface: rgba(22, 28, 36, 0.92);
   --auvora-color-surface-solid: #161c24;
   --auvora-color-border: #2a3340;
   --auvora-color-text: #e8e6e1;
   --auvora-color-text-muted: rgba(232, 230, 225, 0.68);
-  --auvora-color-text-inverse: #0b1220;
+  --auvora-color-text-inverse: #102D32;
   --auvora-color-hover: rgba(61, 186, 154, 0.12);
   --auvora-color-pressed: rgba(61, 186, 154, 0.2);
   --auvora-color-disabled: rgba(232, 230, 225, 0.38);
@@ -145,7 +145,7 @@
   --auvora-focus-ring: 0 0 0 2px var(--auvora-color-surface-solid), 0 0 0 4px var(--auvora-color-focus);
 }
 
-/* —— Base —— */
+/* â€”â€” Base â€”â€” */
 .auvora-surface {
   background: var(--auvora-color-background);
   color: var(--auvora-color-text);
@@ -230,7 +230,7 @@
   font-size: 0.875rem;
 }
 
-/* —— Layout shell —— */
+/* â€”â€” Layout shell â€”â€” */
 .auvora-shell,
 .auvora-app-shell {
   min-height: 100vh;
@@ -444,7 +444,7 @@
   }
 }
 
-/* —— Site nav (shared) —— */
+/* â€”â€” Site nav (shared) â€”â€” */
 .site-nav {
   display: flex;
   flex-wrap: wrap;
@@ -570,7 +570,7 @@
   }
 }
 
-/* —— Network / offline banner —— */
+/* â€”â€” Network / offline banner â€”â€” */
 .auvora-network-banner {
   display: flex;
   flex-wrap: wrap;
@@ -590,7 +590,7 @@
   border-style: dashed;
 }
 
-/* —— Touch / motion utilities —— */
+/* â€”â€” Touch / motion utilities â€”â€” */
 .auvora-touch-target {
   min-height: 2.75rem;
   min-width: 2.75rem;
@@ -626,7 +626,7 @@ html[data-high-contrast='true'] {
 }
 
 
-/* —— Buttons —— */
+/* â€”â€” Buttons â€”â€” */
 .auvora-btn {
   display: inline-flex;
   align-items: center;
@@ -749,7 +749,7 @@ html[data-high-contrast='true'] {
   cursor: pointer;
 }
 
-/* —— Forms —— */
+/* â€”â€” Forms â€”â€” */
 .auvora-label {
   display: inline-flex;
   align-items: baseline;
@@ -914,7 +914,7 @@ html[data-high-contrast='true'] {
   font-weight: 600;
 }
 
-/* —— Feedback —— */
+/* â€”â€” Feedback â€”â€” */
 .auvora-alert {
   padding: 0.875rem 1rem;
   border-radius: var(--auvora-radius-sm);
@@ -1150,7 +1150,7 @@ html[data-high-contrast='true'] {
   border-color: var(--auvora-color-warning-border);
 }
 
-/* —— Overlays —— */
+/* â€”â€” Overlays â€”â€” */
 .auvora-dialog-overlay {
   position: fixed;
   inset: 0;
@@ -1238,7 +1238,7 @@ html[data-high-contrast='true'] {
   max-width: 20rem;
 }
 
-/* —— Navigation widgets —— */
+/* â€”â€” Navigation widgets â€”â€” */
 .auvora-tabs__list {
   display: flex;
   gap: 0.25rem;
@@ -1298,7 +1298,7 @@ html[data-high-contrast='true'] {
   color: var(--auvora-color-text-muted);
 }
 
-/* —— Data —— */
+/* â€”â€” Data â€”â€” */
 .auvora-card,
 .panel,
 .form-card {
@@ -1427,7 +1427,7 @@ html[data-high-contrast='true'] {
   font-size: 0.9rem;
 }
 
-/* —— Page header / chat / metrics (existing) —— */
+/* â€”â€” Page header / chat / metrics (existing) â€”â€” */
 .auvora-page-header {
   margin-bottom: 1.5rem;
 }

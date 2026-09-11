@@ -480,7 +480,7 @@ ThemeMode themeModeFor(AppThemePreference pref) => switch (pref) {
     };
 
 Color accentColorFor(AccentColorPreference pref) => switch (pref) {
-      AccentColorPreference.lagoon => const Color(0xFF0E4F5C),
+      AccentColorPreference.lagoon => const Color(0xFF087F75),
       AccentColorPreference.slate => const Color(0xFF3D4F5F),
       AccentColorPreference.forest => const Color(0xFF1F6B4A),
     };

@@ -13,7 +13,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
-import { AppShell, ThemeToggle } from '@auvora/ui';
+import { AppShell, BrandLogo, ThemeToggle } from '@auvora/ui';
 import {
   APP_NAV_SECTIONS,
   isCurrentPath,
@@ -40,8 +40,9 @@ const NAV_ICONS = {
 function MarketingNav(): ReactElement {
   return (
     <header className="mh-nav">
-      <Link href="/" className="mh-nav__brand">
-        Auvora
+      <Link href="/" className="mh-nav__brand" aria-label="Auvora Wallet home">
+        <BrandLogo variant="primary" height={28} className="mh-nav__logo mh-nav__logo--light" />
+        <BrandLogo variant="reverse" height={28} className="mh-nav__logo mh-nav__logo--dark" />
       </Link>
       <nav className="mh-nav__links" aria-label="Primary">
         <Link href="/#security" className="mh-nav__link">
@@ -96,11 +97,22 @@ function AppSidebar({
   return (
     <aside className="ws-sidebar" aria-label="Wallet">
       <div className="ws-sidebar__brand">
-        <Link href="/dashboard" aria-label="Auvora">
-          <span className="ws-sidebar__wordmark">Auvora</span>
-          <span className="ws-sidebar__mark" aria-hidden>
-            A
-          </span>
+        <Link href="/dashboard" aria-label="Auvora Wallet">
+          <BrandLogo
+            variant="primary"
+            height={26}
+            className="ws-sidebar__logo ws-sidebar__logo--light"
+          />
+          <BrandLogo
+            variant="reverse"
+            height={26}
+            className="ws-sidebar__logo ws-sidebar__logo--dark"
+          />
+          <BrandLogo
+            variant="symbol"
+            height={28}
+            className="ws-sidebar__logo ws-sidebar__logo--compact"
+          />
         </Link>
       </div>
       <nav className="ws-sidebar__nav">

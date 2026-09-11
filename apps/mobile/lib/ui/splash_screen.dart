@@ -139,45 +139,24 @@ class _BrandMark extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 1.2),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.18),
-                Colors.white.withValues(alpha: 0.04),
-              ],
-            ),
-          ),
-          child: Center(
-            child: Text(
-              'A',
-              style: theme.textTheme.headlineMedium?.copyWith(
+        Image.asset(
+          'assets/brand/Auvora_Reverse.png',
+          height: 72,
+          fit: BoxFit.contain,
+          semanticLabel: 'Auvora Wallet',
+          errorBuilder: (_, __, ___) => Image.asset(
+            'assets/brand/Auvora_Symbol.png',
+            height: 64,
+            errorBuilder: (_, __, ___) => Text(
+              'Auvora',
+              style: theme.textTheme.displaySmall?.copyWith(
                 color: Colors.white,
-                fontSize: 28,
                 fontWeight: FontWeight.w700,
-                letterSpacing: -1,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 22),
-        Text(
-          'Auvora',
-          style: theme.textTheme.displaySmall?.copyWith(
-            color: Colors.white,
-            fontSize: 46,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -1.6,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           'Quiet custody for digital value',
           style: theme.textTheme.bodyLarge?.copyWith(

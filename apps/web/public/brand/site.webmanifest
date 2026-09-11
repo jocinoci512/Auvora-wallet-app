@@ -1,0 +1,21 @@
+{
+  "name": "Auvora Wallet",
+  "short_name": "Auvora",
+  "description": "Secure, non-custodial multi-chain wallet",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F6F3",
+  "theme_color": "#087F75",
+  "icons": [
+    {
+      "src": "/brand/Auvora_Icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/Auvora_Icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

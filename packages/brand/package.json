@@ -1,0 +1,17 @@
+{
+  "name": "@auvora/brand",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Official Auvora Professional Brand Kit source assets and tokens (safe metadata).",
+  "exports": {
+    "./tokens": "./tokens.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "source",
+    "email",
+    "tokens.ts",
+    "README.md"
+  ]
+}

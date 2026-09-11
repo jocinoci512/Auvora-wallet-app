@@ -6,6 +6,8 @@ export { Avatar } from './Avatar';
 export type { AvatarProps, AvatarSize } from './Avatar';
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeTone } from './Badge';
+export { BrandLogo } from './brand/BrandLogo';
+export type { BrandLogoVariant } from './brand/BrandLogo';
 export { Breadcrumbs } from './Breadcrumbs';
 export type { BreadcrumbItem, BreadcrumbsProps } from './Breadcrumbs';
 export { Button } from './Button';
