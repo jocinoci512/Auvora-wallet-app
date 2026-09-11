@@ -1,38 +1,8 @@
-# Auvora NestJS services (auth, wallet, …) — shared Docker image.
-# Config-as-code ALWAYS overrides the Railway dashboard Dockerfile path.
-#
-# Nest services (auth/wallet/market-data/connections):
-#   use THIS file (default /railway.toml) unless a dedicated file exists.
-#
-# Clean production Gateway (NEW service `gateway-prod` — do not reuse broken `gateway`):
-#   Config as Code path = /railway.gateway.toml
-#
-# Clean production Blockchain (NEW service `blockchain-prod`):
-#   Config as Code path = /railway.blockchain.toml
-#
-# Clean production Wallet (NEW service `wallet-prod`):
-#   Config as Code path = /railway.wallet.toml
-#
-# Temporary db-migrate MUST NOT use this file — it would build Dockerfile.service.
-# Use instead:
-#   Config as Code path = /railway.migrate.toml
-#
-# railway.toml does NOT support Docker buildArgs. Per Nest service, set Variables:
-#   SERVICE=<name>   e.g. auth          (required — image build fails if unset)
-#   PORT=<port>      e.g. 4001
-# See infrastructure/docker/README.md and docs/RAILWAY_SERVICE_MATRIX.md.
-#
-# Root Directory must be repo root (blank or "/"), never a subdirectory.
-# Shared healthcheckPath /health is correct for all Nest services.
-# Next.js apps must use a different config-as-code file / Dockerfile.next.
-
+﻿# One-shot synthetic acceptance runner ONLY.
+# Do not connect Nest services to this branch.
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "infrastructure/docker/Dockerfile.service"
+dockerfilePath = "infrastructure/docker/Dockerfile.acceptance"
 
 [deploy]
-startCommand = "node dist/main.js"
-healthcheckPath = "/health"
-healthcheckTimeout = 300
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+restartPolicyType = "NEVER"

@@ -39,8 +39,9 @@ let redisKeyOwned = false;
 let userCsrfToken = '';
 
 async function loadVaultCrypto() {
+  // Prefer local dist (Docker harness copies it under /app/packages/vault-crypto).
+  // Do not npm-install the monorepo package.json (it contains workspace: protocol).
   const candidates = [
-    '@auvora/vault-crypto',
     pathToFileURL(path.resolve(__dirname, '../../packages/vault-crypto/dist/index.js')).href,
     pathToFileURL(path.resolve('/app/packages/vault-crypto/dist/index.js')).href,
   ];
