@@ -56,17 +56,34 @@ async function loadVaultCrypto() {
 }
 
 async function loadBip39() {
+  const errors = [];
+  const tryImport = async (baseHref) => {
+    const mod = await import(baseHref);
+    const wordlistMod = await import(new URL('./wordlists/english.js', baseHref).href);
+    return { generateMnemonic: mod.generateMnemonic, wordlist: wordlistMod.wordlist };
+  };
+
   try {
     const mod = await import('@scure/bip39');
     const wordlist = (await import('@scure/bip39/wordlists/english.js')).wordlist;
     return { generateMnemonic: mod.generateMnemonic, wordlist };
-  } catch {
-    const root = path.resolve(__dirname, '../../apps/web/node_modules/@scure/bip39');
-    const mod = await import(pathToFileURL(path.join(root, 'index.js')).href);
-    const wordlist = (await import(pathToFileURL(path.join(root, 'wordlists/english.js')).href))
-      .wordlist;
-    return { generateMnemonic: mod.generateMnemonic, wordlist };
+  } catch (err) {
+    errors.push(`package:@scure/bip39: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  const candidates = [
+    path.resolve(__dirname, '../../node_modules/@scure/bip39/index.js'),
+    path.resolve('/app/node_modules/@scure/bip39/index.js'),
+    path.resolve(__dirname, '../../../node_modules/@scure/bip39/index.js'),
+  ];
+  for (const file of candidates) {
+    try {
+      return await tryImport(pathToFileURL(file).href);
+    } catch (err) {
+      errors.push(`${file}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  throw new Error(`bip39 load failed (${errors.length} attempts): ${errors[0] ?? 'unknown'}`);
 }
 
 function assertPass(label, ok, detail = '') {
