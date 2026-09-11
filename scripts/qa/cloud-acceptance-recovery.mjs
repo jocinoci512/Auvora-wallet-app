@@ -114,6 +114,21 @@ async function api(method, urlPath, { body, token, internal = false } = {}) {
   return { status: res.status, json, data: json?.data, ok: res.ok && json?.success === true };
 }
 
+function safeErrDetail(res) {
+  const msg = res?.json?.message || res?.json?.error || res?.json?.code || '';
+  const text = typeof msg === 'string' ? msg.slice(0, 120) : '';
+  return text ? `status=${res.status} err=${text}` : `status=${res.status}`;
+}
+
+function authInternalTarget() {
+  try {
+    const u = new URL(AUTH_INTERNAL_BASE);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return 'invalid-AUTH_INTERNAL_BASE';
+  }
+}
+
 async function extractVaultKeyWithPassword(
   ownerUserId,
   envelope,
@@ -230,6 +245,17 @@ async function main() {
     console.error('AUTH_INTERNAL_BASE is required (private auth URL)');
     process.exit(1);
   }
+  console.log(`[INFO] AUTH_INTERNAL target: ${authInternalTarget()}`);
+  const health = await fetch(`${AUTH_INTERNAL_BASE}/health`).catch((err) => ({
+    ok: false,
+    status: 0,
+    statusText: err instanceof Error ? err.message : String(err),
+  }));
+  assertPass(
+    'Auth private /health',
+    Boolean(health.ok) || health.status === 200,
+    `status=${health.status || 0}`,
+  );
 
   await activateRunnerKey();
 
@@ -277,7 +303,7 @@ async function main() {
     results.bootstrap = assertPass(
       'Acceptance bootstrap (sim+verify)',
       bootstrap.ok,
-      `status=${bootstrap.status}`,
+      safeErrDetail(bootstrap),
     );
 
     const fpA = `accept-a-${stamp}`;
