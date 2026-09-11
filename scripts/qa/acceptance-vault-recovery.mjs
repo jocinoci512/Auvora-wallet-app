@@ -159,7 +159,13 @@ async function approveRecovery(tokenA, requestId, wrapped) {
     `/api/v1/me/vault-recovery/requests/${encodeURIComponent(requestId)}/approve`,
     {
       token: tokenA,
-      body: wrapped,
+      // Auth ValidationPipe forbidNonWhitelisted — omit algorithmId
+      body: {
+        ciphertext: wrapped.ciphertext,
+        nonce: wrapped.nonce,
+        ephemeralPublicKey: wrapped.ephemeralPublicKey,
+        aad: wrapped.aad,
+      },
     },
   );
 }

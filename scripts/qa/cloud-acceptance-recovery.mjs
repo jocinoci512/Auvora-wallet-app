@@ -177,7 +177,16 @@ async function approveRecovery(tokenA, requestId, wrapped) {
   return api(
     'POST',
     `/api/v1/me/vault-recovery/requests/${encodeURIComponent(requestId)}/approve`,
-    { token: tokenA, body: wrapped },
+    {
+      token: tokenA,
+      // Auth ValidationPipe forbidNonWhitelisted — omit algorithmId
+      body: {
+        ciphertext: wrapped.ciphertext,
+        nonce: wrapped.nonce,
+        ephemeralPublicKey: wrapped.ephemeralPublicKey,
+        aad: wrapped.aad,
+      },
+    },
   );
 }
 
@@ -612,6 +621,26 @@ async function main() {
     console.log(`TEMP AUTH REVOKED: ${redisKeyOwned ? 'NO' : 'YES'}`);
   }
 
+  const required = [
+    'runnerAuth',
+    'register',
+    'userId',
+    'bootstrap',
+    'deviceA',
+    'vaultUpload',
+    'resetTokenMint',
+    'deny',
+    'expiryForce',
+    'wrongDeviceBlocked',
+    'replayFirst',
+    'replaySecondBlocked',
+    'approve',
+    'collect',
+    'cleanup',
+  ];
+  for (const key of required) {
+    if (!(key in results)) results[key] = false;
+  }
   const failed = Object.entries(results)
     .filter(([, v]) => !v)
     .map(([k]) => k);
