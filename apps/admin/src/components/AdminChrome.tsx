@@ -49,9 +49,8 @@ export function AuthScreen({
     <section className="admin-auth-screen">
       <div className="admin-auth-card">
         <div className="admin-auth-brand">
-          <BrandLogo variant="primary" height={40} alt="Auvora Admin" />
+          <BrandLogo variant="primary" height={36} alt="Auvora Admin" />
         </div>
-        <p className="admin-auth-kicker">Auvora Admin</p>
         <h1>{title}</h1>
         <p className="admin-auth-copy">{description}</p>
         {children}

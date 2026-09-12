@@ -41,6 +41,13 @@ function VerifyBody(): ReactElement {
     <AuthShell
       title="Verify email"
       lede="Confirm your email to activate sign-in for this Auvora account."
+      footer={
+        <div className="as-switch">
+          <p className="as-switch__primary">
+            <Link href="/auth/login">Continue to sign in</Link>
+          </p>
+        </div>
+      }
     >
       {busy ? (
         <p className="as-info" role="status">
@@ -57,9 +64,6 @@ function VerifyBody(): ReactElement {
           {info}
         </p>
       ) : null}
-      <p className="as-switch">
-        <Link href="/auth/login">Continue to sign in</Link>
-      </p>
     </AuthShell>
   );
 }

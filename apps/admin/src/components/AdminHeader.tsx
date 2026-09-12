@@ -33,7 +33,7 @@ export function AdminHeader(): ReactElement {
         >
           Menu
         </Button>
-        <div className="admin-header__who">
+        <div className="admin-header__who" title={operator?.email ?? undefined}>
           <span className="admin-header__name">
             {operator ? displayName(operator) : 'Administrator'}
           </span>

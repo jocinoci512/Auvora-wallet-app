@@ -46,7 +46,7 @@ export function humanizeAuthError(
     case 'duplicate':
       return 'An account with this email already exists. Sign in, or reset your password.';
     case 'invalid_credentials':
-      return 'Email or password is incorrect.';
+      return "We couldn't sign you in. Check your details and try again.";
     case 'unverified':
       return 'Verify your email before signing in. You can resend the verification message below.';
     case 'locked':

@@ -571,23 +571,24 @@ code {
 
 .admin-shell .admin-main,
 .admin-main {
-  max-width: min(1680px, 100%);
-  margin: 0;
+  max-width: min(1600px, 100%);
+  margin: 0 auto;
   min-width: 0;
   width: 100%;
-  padding: 1.35rem 1.75rem 3rem;
+  padding: 1.25rem 1.5rem 2.5rem;
+  box-sizing: border-box;
 }
 
 .admin-main .auvora-page-header__title {
-  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  font-size: clamp(1.4rem, 2vw, 1.75rem);
   letter-spacing: -0.03em;
 }
 
 .admin-main .auvora-page-header__description,
 .admin-main .page-subtitle {
-  font-size: 0.975rem;
+  font-size: 0.9rem;
   max-width: 48rem;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .admin-main .auvora-tabs__list {
@@ -622,10 +623,11 @@ code {
 
 .admin-header {
   display: grid;
-  grid-template-columns: minmax(14rem, 1.1fr) minmax(0, 2.2fr) auto;
-  gap: 1rem;
+  grid-template-columns: minmax(10rem, 0.9fr) minmax(0, 2.4fr) auto;
+  gap: 0.75rem;
   align-items: center;
-  padding: 0.85rem 1.35rem;
+  min-height: 56px;
+  padding: 0.55rem 1.1rem;
   border-bottom: 1px solid var(--auvora-color-border);
   background:
     linear-gradient(
@@ -639,7 +641,7 @@ code {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
@@ -654,17 +656,19 @@ code {
 }
 
 .admin-header__name {
-  font-weight: 650;
-  font-size: 0.98rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
   letter-spacing: -0.01em;
+  color: var(--auvora-color-text-muted);
 }
 
 .admin-header__email {
   color: var(--auvora-color-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.72rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0.9;
 }
 
 .admin-header__ops {
@@ -672,33 +676,33 @@ code {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   min-width: 0;
 }
 
 .admin-header__live {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .admin-header__retry {
-  min-height: 1.85rem;
-  padding-inline: 0.55rem;
-  font-size: 0.8rem;
+  min-height: 1.7rem;
+  padding-inline: 0.5rem;
+  font-size: 0.75rem;
 }
 
 .admin-header__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .admin-header__actions {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   justify-content: flex-end;
 }
 
@@ -707,12 +711,13 @@ code {
   align-items: center;
   border: 1px solid var(--auvora-color-border);
   border-radius: 999px;
-  padding: 0.28rem 0.7rem;
-  font-size: 0.78rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.6875rem;
   font-weight: 650;
   letter-spacing: 0.02em;
   background: var(--auvora-color-background-subtle);
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .admin-chip--role {
@@ -723,8 +728,8 @@ code {
 
 .admin-chip--env {
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  font-size: 0.65625rem;
 }
 
 .admin-chip--quiet {
@@ -733,29 +738,38 @@ code {
 }
 
 .admin-sidebar {
-  flex-basis: 16.5rem;
-  min-height: calc(100vh - 3.75rem);
-  padding: 1.1rem 0.9rem 2rem;
+  flex: 0 0 14.5rem;
+  flex-basis: 14.5rem;
+  width: 14.5rem;
+  min-height: calc(100vh - 3.5rem);
+  padding: 0.85rem 0.65rem 1.5rem;
   background: var(--auvora-color-surface-solid);
   border-right: 1px solid var(--auvora-color-border);
 }
 
 .admin-sidebar__brand {
-  margin: 0 0.65rem 1.15rem;
-  font-size: 0.72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0 0.45rem 0.85rem;
+}
+
+.admin-sidebar__brand-label {
+  margin: 0;
+  font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--auvora-color-text-muted);
 }
 
 .admin-sidebar__group {
-  margin-bottom: 0.95rem;
+  margin-bottom: 0.75rem;
 }
 
 .admin-sidebar__group-label {
-  margin: 0 0.65rem 0.35rem;
-  font-size: 0.68rem;
+  margin: 0 0.5rem 0.3rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -767,16 +781,16 @@ code {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.12rem;
+  gap: 0.08rem;
 }
 
 .admin-sidebar__nav a {
   display: block;
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
   border-radius: 8px;
   color: inherit;
   text-decoration: none;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
@@ -796,13 +810,13 @@ code {
 }
 
 .admin-sidebar__more {
-  margin: 1rem 0.65rem 0.4rem;
+  margin: 0.85rem 0.5rem 0.35rem;
   padding: 0;
   border: 0;
   background: none;
   color: var(--auvora-color-text-muted);
   font: inherit;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -811,29 +825,24 @@ code {
 }
 
 .admin-sidebar__nav--secondary a {
-  font-size: 0.84rem;
+  font-size: 0.8125rem;
   font-weight: 450;
   color: var(--auvora-color-text-muted);
 }
 
 .admin-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: 0.9rem;
-}
-
-@media (min-width: 1440px) {
-  .admin-kpi-grid {
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  }
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .admin-kpi {
   border: 1px solid var(--auvora-color-border);
   border-radius: 12px;
   background: var(--auvora-color-surface-solid);
-  padding: 1.05rem 1.15rem;
-  min-height: 6rem;
+  padding: 1rem 1.1rem;
+  min-height: 0;
+  min-width: 0;
 }
 
 button.admin-kpi {
@@ -882,34 +891,36 @@ button.admin-kpi {
 
 .admin-posture {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 0.75rem;
-  margin: 0 0 1.1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0 0 1rem;
 }
 
 .admin-posture__item {
   border: 1px solid var(--auvora-color-border);
   border-radius: 10px;
-  padding: 0.85rem 1rem;
-  background: var(--auvora-color-surface-solid);
+  padding: 0.7rem 0.85rem;
+  background: color-mix(in srgb, var(--auvora-color-surface-solid) 88%, var(--auvora-color-background-subtle));
+  min-width: 0;
 }
 
 .admin-posture__item strong {
   display: block;
-  font-size: 0.82rem;
-  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  margin-bottom: 0.15rem;
 }
 
 .admin-posture__item p {
   margin: 0;
   color: var(--auvora-color-text-muted);
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   line-height: 1.4;
 }
 
 .admin-kpi__label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.6875rem;
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -918,8 +929,8 @@ button.admin-kpi {
 
 .admin-kpi__value {
   display: block;
-  margin-top: 0.45rem;
-  font-size: clamp(1.45rem, 1.8vw, 1.85rem);
+  margin-top: 0.35rem;
+  font-size: clamp(1.35rem, 1.5vw, 1.75rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
@@ -927,8 +938,8 @@ button.admin-kpi {
 }
 
 .admin-kpi__hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.8125rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
   line-height: 1.4;
   color: var(--auvora-color-text-muted);
 }
@@ -1092,8 +1103,9 @@ button.admin-kpi {
     left: 0;
     bottom: 0;
     z-index: 40;
-    width: min(18rem, 86vw);
+    width: min(15rem, 86vw);
     flex: 0 0 auto;
+    flex-basis: auto;
     min-height: 100vh;
     transform: translateX(-105%);
     transition: transform 0.18s ease;
@@ -1108,7 +1120,11 @@ button.admin-kpi {
   }
 
   .admin-kpi-grid {
-    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-posture {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .admin-main {
@@ -1119,6 +1135,10 @@ button.admin-kpi {
 @media (max-width: 768px) {
   .admin-header {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-header__email {
+    display: none;
   }
 
   .admin-header__actions {
@@ -1141,6 +1161,10 @@ button.admin-kpi {
 
   .admin-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-posture {
+    grid-template-columns: 1fr;
   }
 
   .admin-confirm-form .auvora-dialog-actions,
@@ -1166,4 +1190,16 @@ button.admin-kpi {
 }
 
 
-.admin-auth-brand{margin-bottom:12px}.admin-sidebar__brand{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.admin-sidebar__brand-label{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--auvora-color-text-muted)}
+.admin-auth-brand {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 430px) {
+  .admin-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-header__ops {
+    gap: 0.25rem;
+  }
+}

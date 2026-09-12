@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useId, useState, type ReactElement, type ReactNode, type SVGProps } from 'react';
+import { BrandLogo } from '@auvora/ui';
 import { Reveal, useInView, usePrefersReducedMotion } from './motion';
 import { WalletPreview } from './WalletPreview';
 
@@ -509,11 +510,82 @@ export function MarketingHome(): ReactElement {
       </section>
 
       <footer className="mh-footer">
-        <Link href="/">Auvora</Link>
-        <Link href="/trust">Trust</Link>
-        <Link href="/legal/privacy">Privacy</Link>
-        <Link href="/legal/terms">Terms</Link>
-        <Link href="/status">Status</Link>
+        <div className="mh-footer__inner">
+          <div className="mh-footer__brand">
+            <Link href="/" className="mh-footer__logo" aria-label="Auvora Wallet home">
+              <BrandLogo
+                variant="primary"
+                height={32}
+                className="mh-footer__logo-img mh-footer__logo-img--light"
+              />
+              <BrandLogo
+                variant="reverse"
+                height={32}
+                className="mh-footer__logo-img mh-footer__logo-img--dark"
+              />
+            </Link>
+            <p className="mh-footer__statement">
+              Non-custodial wallet for digital assets — your keys stay on your devices.
+            </p>
+          </div>
+
+          <nav className="mh-footer__cols" aria-label="Footer">
+            <div className="mh-footer__col">
+              <p className="mh-footer__heading">Product</p>
+              <ul>
+                <li>
+                  <Link href="/wallets/onboarding">Wallet</Link>
+                </li>
+                <li>
+                  <Link href="/#security">Security</Link>
+                </li>
+                <li>
+                  <Link href="/settings/help">Help</Link>
+                </li>
+                <li>
+                  <Link href="/status">Status</Link>
+                </li>
+              </ul>
+            </div>
+            <div className="mh-footer__col">
+              <p className="mh-footer__heading">Company</p>
+              <ul>
+                <li>
+                  <Link href="/trust">Trust</Link>
+                </li>
+                <li>
+                  <Link href="/settings/about">About</Link>
+                </li>
+                <li>
+                  <Link href="/settings/feedback">Contact</Link>
+                </li>
+              </ul>
+            </div>
+            <div className="mh-footer__col">
+              <p className="mh-footer__heading">Legal</p>
+              <ul>
+                <li>
+                  <Link href="/legal/privacy">Privacy</Link>
+                </li>
+                <li>
+                  <Link href="/legal/terms">Terms</Link>
+                </li>
+                <li>
+                  <Link href="/account-deletion">Account deletion</Link>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+
+        <div className="mh-footer__bottom">
+          <p className="mh-footer__copy">© {new Date().getFullYear()} Auvora Wallet</p>
+          <p className="mh-footer__legal">
+            <Link href="/legal/privacy">Privacy</Link>
+            <Link href="/legal/terms">Terms</Link>
+            <Link href="/trust">Trust</Link>
+          </p>
+        </div>
       </footer>
     </main>
   );

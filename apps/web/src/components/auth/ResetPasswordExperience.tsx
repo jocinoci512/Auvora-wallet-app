@@ -44,11 +44,26 @@ function ResetForm(): ReactElement {
   }
 
   return (
-    <AuthShell title="Reset password" lede="Choose a new password for your Auvora account.">
+    <AuthShell
+      title="Reset password"
+      lede="Choose a new password for your Auvora account."
+      footer={
+        <div className="as-switch">
+          <p className="as-switch__primary">
+            Ready to continue? <Link href="/auth/login">Sign in</Link>
+          </p>
+          <ul className="as-switch__links">
+            <li>
+              <Link href="/auth/forgot-password">Request a new link</Link>
+            </li>
+          </ul>
+        </div>
+      }
+    >
       <form onSubmit={(e) => void onSubmit(e)}>
         <label className="as-field">
           <span>New password</span>
-          <div className="as-field__row">
+          <div className="as-field__password">
             <input
               type={show ? 'text' : 'password'}
               required
@@ -59,7 +74,7 @@ function ResetForm(): ReactElement {
             />
             <button
               type="button"
-              className="as-btn as-btn--ghost"
+              className="as-field__reveal"
               aria-pressed={show}
               aria-label={show ? 'Hide password' : 'Show password'}
               onClick={() => setShow((v) => !v)}
@@ -85,11 +100,6 @@ function ResetForm(): ReactElement {
           {busy ? 'Updating…' : 'Update password'}
         </button>
       </form>
-      <p className="as-switch">
-        <Link href="/auth/login">Sign in</Link>
-        {' · '}
-        <Link href="/auth/forgot-password">Request a new link</Link>
-      </p>
     </AuthShell>
   );
 }

@@ -122,11 +122,11 @@ export function AdminSidebar(): ReactElement {
         <div className="admin-sidebar__brand">
           <BrandLogo
             variant="primary"
-            height={28}
+            height={26}
             alt="Auvora Admin"
             className="admin-sidebar__logo"
           />
-          <p className="admin-sidebar__brand-label">Auvora Admin</p>
+          <p className="admin-sidebar__brand-label">Admin</p>
         </div>
         {NAV_GROUPS.map((group) => {
           const visible = group.items.filter(

@@ -33,6 +33,13 @@ export function ForgotPasswordExperience(): ReactElement {
     <AuthShell
       title="Forgot password"
       lede="We email a time-limited reset link for your Auvora account. Wallet keys are not involved."
+      footer={
+        <div className="as-switch">
+          <p className="as-switch__primary">
+            <Link href="/auth/login">Back to sign in</Link>
+          </p>
+        </div>
+      }
     >
       <form onSubmit={(e) => void onSubmit(e)}>
         <label className="as-field">
@@ -60,9 +67,6 @@ export function ForgotPasswordExperience(): ReactElement {
           {busy ? 'Sending…' : 'Send reset link'}
         </button>
       </form>
-      <p className="as-switch">
-        <Link href="/auth/login">Back to sign in</Link>
-      </p>
     </AuthShell>
   );
 }

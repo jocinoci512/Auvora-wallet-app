@@ -10,6 +10,13 @@
   --font-auvora-body: 'Manrope Variable', 'Segoe UI', system-ui, sans-serif;
   --font-auvora-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
   --font-auvora-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+
+  /* Layout content widths — prefer these over one-off max-widths */
+  --content-xs: 440px;
+  --content-sm: 560px;
+  --content-md: 720px;
+  --content-lg: 960px;
+  --content-xl: 1120px;
 }
 
 html,
@@ -32,7 +39,7 @@ html {
 
 main,
 .auvora-page {
-  max-width: min(960px, 100%);
+  max-width: min(var(--content-lg), 100%);
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
   padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
@@ -44,7 +51,7 @@ main,
 @media (min-width: 1600px) {
   main,
   .auvora-page {
-    max-width: 1120px;
+    max-width: var(--content-xl);
   }
 }
 
@@ -612,6 +619,3 @@ code {
   .ws-sidebar__logo--compact { display: block; }
 }
 .as__brand { margin-bottom: 18px; }
-.admin-auth-brand { margin-bottom: 12px; }
-.admin-sidebar__brand { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.admin-sidebar__brand-label { margin: 0; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--auvora-color-text-muted); }

@@ -313,8 +313,8 @@ export function AppChrome({ children }: { children: ReactNode }): ReactElement {
     return (
       <div className="as-chrome">
         <header className="as-chrome__bar">
-          <Link href="/" className="as-chrome__brand">
-            Auvora
+          <Link href="/" className="as-chrome__home" aria-label="Auvora home">
+            Home
           </Link>
           <ThemeToggle />
         </header>

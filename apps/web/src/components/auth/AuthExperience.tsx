@@ -36,7 +36,7 @@ function PasswordField({
   return (
     <label className="as-field">
       <span>{label}</span>
-      <div className="as-field__row">
+      <div className="as-field__password">
         <input
           type={show ? 'text' : 'password'}
           required
@@ -47,7 +47,7 @@ function PasswordField({
         />
         <button
           type="button"
-          className="as-btn as-btn--ghost"
+          className="as-field__reveal"
           aria-pressed={show}
           aria-label={show ? 'Hide password' : 'Show password'}
           onClick={() => setShow((v) => !v)}
@@ -136,8 +136,33 @@ function AuthForm({ mode }: { mode: 'login' | 'register' }): ReactElement {
       title={mode === 'login' ? 'Sign in' : 'Create account'}
       lede={
         mode === 'login'
-          ? 'Sign in to your Auvora account for identity, sessions, and preferences. This does not unlock wallet keys.'
-          : 'Create an Auvora account for identity and cross-device preferences. A wallet is separate, and keys stay on your devices.'
+          ? 'Sign in for identity, sessions, and preferences across Web and Android. This never unlocks wallet keys.'
+          : 'Create an account for identity and preferences. Your wallet stays separate, and keys remain on your devices.'
+      }
+      footer={
+        <div className="as-switch">
+          {mode === 'login' ? (
+            <>
+              <p className="as-switch__primary">
+                New here? <Link href="/auth/register">Create an account</Link>
+              </p>
+              <ul className="as-switch__links">
+                <li>
+                  <Link href="/auth/forgot-password">Forgot password?</Link>
+                </li>
+                <li>
+                  <button type="button" disabled={busy} onClick={() => void onResend()}>
+                    Resend verification email
+                  </button>
+                </li>
+              </ul>
+            </>
+          ) : (
+            <p className="as-switch__primary">
+              Already have an account? <Link href="/auth/login">Sign in</Link>
+            </p>
+          )}
+        </div>
       }
     >
       {banner ? (
@@ -194,28 +219,6 @@ function AuthForm({ mode }: { mode: 'login' | 'register' }): ReactElement {
           {busy ? 'Working…' : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
       </form>
-      <p className="as-switch">
-        {mode === 'login' ? (
-          <>
-            New here? <Link href="/auth/register">Create an account</Link>
-            {' · '}
-            <Link href="/auth/forgot-password">Forgot password</Link>
-            {' · '}
-            <button
-              type="button"
-              className="as-btn as-btn--ghost"
-              disabled={busy}
-              onClick={() => void onResend()}
-            >
-              Resend verification
-            </button>
-          </>
-        ) : (
-          <>
-            Already have an account? <Link href="/auth/login">Sign in</Link>
-          </>
-        )}
-      </p>
     </AuthShell>
   );
 }
