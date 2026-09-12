@@ -122,7 +122,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           ),
           _tile(
             'Price provider',
-            context.watch<PriceService>().priceSourceLabel,
+            context.watch<PriceService>().diagnosticsPriceSourceLabel,
           ),
           _tile(
             'Price freshness',

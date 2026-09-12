@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../engine/models.dart';
 import '../portfolio/portfolio_controller.dart';
 import '../release/release_config.dart';
 import '../state/wallet_controller.dart';
 import '../theme/aether_theme.dart';
 import '../wallet_engine/market_data_provider.dart';
 import '../wallet_engine/price_service.dart';
-import '../release/integration_config.dart';
 import 'home/home_shared.dart';
-import 'home/home_tab.dart';
 import 'receive_flow_screen.dart';
 import 'send_flow_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -191,25 +188,17 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
               OutlinedButton(
                 onPressed: () => showActionSheet(
                   context,
-                  title: 'Swap unavailable',
-                  body:
-                      'Swap stays unavailable until a production quote provider is wired. Preview simulators are not offered as live trading.',
+                  title: 'Swap — coming later',
+                  body: 'Swap will be available in a later release.',
                 ),
                 child: const Text('Swap'),
               ),
               OutlinedButton(
-                onPressed: IntegrationConfig.onRampPartnerCheckoutEnabled
-                    ? () => openDigitalAssetFlow(
-                          context,
-                          EngineOp.buy,
-                          initialFrom: asset.ticker,
-                        )
-                    : () => showActionSheet(
-                          context,
-                          title: 'Buy unavailable',
-                          body:
-                              'Buy stays unavailable until an on-ramp partner is configured for this build. No card is charged from this button.',
-                        ),
+                onPressed: () => showActionSheet(
+                  context,
+                  title: 'Buy — coming later',
+                  body: 'Buying crypto in-app will be available in a later release.',
+                ),
                 child: const Text('Buy'),
               ),
             ],

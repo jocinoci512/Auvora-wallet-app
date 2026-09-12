@@ -338,8 +338,8 @@ class IntelligenceCatalog {
       return const IntelligenceExplanation(
         id: 'net-degraded',
         kind: IntelligenceKind.network,
-        title: 'Network sync is slower than usual',
-        whatHappened: 'One or more preview network endpoints look busy or degraded.',
+        title: 'Balances may take a moment',
+        whatHappened: 'One or more networks are responding slowly.',
         whyItMatters: 'Figures may update late. Congestion can also raise fees on some networks.',
         whatYouCanDo:
             'Wait and refresh. Check Diagnostics if you are supporting this build. Non-urgent transfers can wait for quieter fees.',

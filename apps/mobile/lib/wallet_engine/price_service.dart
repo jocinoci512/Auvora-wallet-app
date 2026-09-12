@@ -45,19 +45,35 @@ class PriceService {
       activeProviderId != 'seeded-offline' &&
       activeProviderId != 'cached';
 
-  /// Human-readable active source for diagnostics / Home badges.
+  /// Customer-safe source label (no provider / demo / engineering jargon).
   String get priceSourceLabel {
     switch (activeProviderId) {
       case 'coingecko':
-        return 'CoinGecko (live)';
       case 'coincap':
-        return 'CoinCap (failover)';
       case 'alchemy-prices':
-        return 'Alchemy Prices (failover)';
+        return 'Live';
       case 'seeded-offline':
-        return 'Demo / seeded';
+        return 'Unavailable';
       case null:
-        return _cache.isEmpty ? 'Unavailable' : 'Cached last-known';
+        return _cache.isEmpty ? 'Unavailable' : 'Last known';
+      default:
+        return usingLiveProvider ? 'Live' : 'Last known';
+    }
+  }
+
+  /// Detailed source for Settings → Diagnostics only (never Home).
+  String get diagnosticsPriceSourceLabel {
+    switch (activeProviderId) {
+      case 'coingecko':
+        return 'CoinGecko';
+      case 'coincap':
+        return 'CoinCap';
+      case 'alchemy-prices':
+        return 'Alchemy Prices';
+      case 'seeded-offline':
+        return 'offline-fallback';
+      case null:
+        return _cache.isEmpty ? 'none' : 'cache';
       default:
         return activeProviderId!;
     }

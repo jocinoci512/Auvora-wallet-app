@@ -1188,7 +1188,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
           const SoftBanner(
             tone: BannerTone.warn,
             message:
-                'Live network fee is unavailable. Do not continue until Local QA RPC recovers.',
+                'Network fee is temporarily unavailable. Try again in a moment.',
           ),
         ],
         if (AuvoraQaLocalEvm.isActive && fee.isLive) ...[
@@ -1312,7 +1312,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
                   : AuvoraQaLocalEvm.isActive
                       ? 'Auvora Local EVM QA broadcast is ON. Signing submits only to the local QA chain. Mainnet stays OFF.'
                       : 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.')
-              : 'Live broadcast stays off. Do not sign unless you intend to complete a preview transfer.',
+              : 'Outgoing transfers are not sent to public networks in this release. Review carefully before you continue.',
         ),
         if (AuvoraQaLocalEvm.isActive && fee.isLive) ...[
           const SizedBox(height: 10),
@@ -1815,7 +1815,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         if (_result != null) ...[
           const SizedBox(height: 8),
           const SoftBanner(
-            message: 'Preview only — explorer links will open after live broadcast is enabled.',
+            message: 'Preview only — public explorer links open after network sending is enabled.',
           ),
         ],
       ],
@@ -1887,7 +1887,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         const SoftBanner(
           tone: BannerTone.warn,
           message:
-              'Do not send real funds based on this preview. Live broadcast is off until network signing is audited.',
+              'This transfer was not sent to a public network. Sending will be available in a later release.',
         ),
         if (context.watch<IntelligenceController>().pendingTip case final tip?) ...[
           const SizedBox(height: 12),
@@ -1909,7 +1909,7 @@ class _SendFlowScreenState extends State<SendFlowScreen> with WidgetsBindingObse
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () => Share.share(
-            'PREVIEW — not broadcast\nAuvora transfer preview\n${tx.amount} ${asset.ticker}\nTo: ${tx.to}\nRef: ${tx.hash}\nLive broadcast is OFF.',
+            'PREVIEW — not sent on-chain\nAuvora transfer preview\n${tx.amount} ${asset.ticker}\nTo: ${tx.to}\nRef: ${tx.hash}\nNetwork sending is not enabled in this release.',
             subject: 'Auvora transfer preview',
           ),
           icon: const Icon(Icons.ios_share_rounded),

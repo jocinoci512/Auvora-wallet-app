@@ -6,10 +6,10 @@ import 'network_env.dart';
 /// Secrets and partner keys live in [IntegrationConfig] (`--dart-define`), never here.
 abstract final class ReleaseConfig {
   static const String releaseChannel = 'alpha';
-  static const String marketingVersion = '1.0.0-alpha.4';
-  static const String buildLabel = 'Version 1.0 Alpha';
+  static const String marketingVersion = '1.0.0-alpha.5';
+  static const String buildLabel = 'Version 1.0';
   /// Must match pubspec `+N` for release guards / update policy.
-  static const int versionCode = 34;
+  static const int versionCode = 35;
 
   /// Live **mainnet** chain broadcast. Keep false — never enable for production funds.
   static const bool liveBroadcastEnabled = false;
@@ -78,23 +78,22 @@ abstract final class ReleaseConfig {
   static const DerivationMode derivationMode = DerivationMode.bip32Partial;
 
   static const String fundingBlockedMessage =
-      'Addresses use BIP32 / SLIP-0010 HD paths, but Receive funding stays '
-      'locked in Version 1.0 Alpha until off-device verification completes. '
-      'QR, copy, and share are disabled — do not send real funds yet.';
+      'Receive is temporarily unavailable on this build. Your keys stay on this device.';
 
+  /// Shown inside Send / transfer flows — not as a permanent Home banner.
   static const String broadcastPreviewMessage =
-      'Transfers stay on this device as a preview. Live broadcast is off '
-      '(kill switch) until network signing is audited.';
+      'Outgoing transfers are not broadcast to public networks in this release. '
+      'You can still review amounts and sign locally.';
 
   static String get broadcastStatusMessage {
     if (liveBroadcastEnabled) {
-      return 'Mainnet broadcast is ON — use only with audited adapters.';
+      return 'Network sending is enabled. Double-check the network and amount before you confirm.';
     }
     if (canBroadcastTestnet) {
-      return 'TESTNET / Local EVM QA broadcast is ON for allowlisted networks only. Mainnet broadcast remains OFF.';
+      return 'Test-network sending is enabled for this build. Public mainnet sending stays off.';
     }
     if (networkIsTestnet) {
-      return 'TESTNET mode is active. Broadcast stays off until TESTNET_BROADCAST_ENABLED=true.';
+      return 'Test-network mode is active. Sending stays off until enabled for this build.';
     }
     return broadcastPreviewMessage;
   }

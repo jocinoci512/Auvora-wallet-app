@@ -6,15 +6,12 @@ import '../../intelligence/intelligence_controller.dart';
 import '../../portfolio/models.dart';
 import '../../portfolio/portfolio_controller.dart';
 import '../../preferences/preferences_controller.dart';
-import '../../release/auvora_qa_local_evm.dart';
-import '../../release/integration_config.dart';
 import '../../release/release_config.dart';
 import '../../account/ui/vault_recovery_approval_sheet.dart';
 import '../../state/wallet_controller.dart';
 import '../../theme/aether_theme.dart';
 import '../../wallet_engine/price_service.dart';
 import '../asset_detail_screen.dart';
-import '../connections/connect_dapp_screen.dart';
 import '../engine/digital_asset_flow.dart';
 import '../intelligence/intelligence_tip.dart';
 import '../intelligence/learning_center_screen.dart';
@@ -149,7 +146,7 @@ class _MobileHome extends StatelessWidget {
         ),
         if (!portfolio.isEmptyPortfolio) ..._assetsPreview(context),
         ..._activityPreview(context),
-        const SliverToBoxAdapter(child: SizedBox(height: 36)),
+        const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
     );
   }
@@ -166,28 +163,7 @@ class _MobileHome extends StatelessWidget {
                   onReceive: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
                   ),
-                  onBuy: () {
-                    final buyLive = IntegrationConfig.onRampPartnerCheckoutEnabled &&
-                        (IntegrationConfig.moonPayConfigured ||
-                            IntegrationConfig.rampConfigured ||
-                            IntegrationConfig.transakConfigured);
-                    if (buyLive) {
-                      openDigitalAssetFlow(context, EngineOp.buy);
-                      return;
-                    }
-                    showDialog<void>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Buy'),
-                        content: const Text(
-                          'Buy stays unavailable until a configured on-ramp partner is live for this build.',
-                        ),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-                        ],
-                      ),
-                    );
-                  },
+                  onBuy: () {},
                 )
               : _PortfolioHero(
                   portfolio: portfolio,
@@ -253,7 +229,7 @@ class _MobileHome extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: _QuietEmpty(
               title: 'No moves yet',
-              body: 'Send, receive, or swap — each one will appear here with a clear status.',
+              body: 'Receive activity will appear here with a clear status.',
             ),
           ),
         )
@@ -616,7 +592,7 @@ class _StatusStack extends StatelessWidget {
       children.add(
         SoftBanner(
           tone: BannerTone.warn,
-          message: '${snap!.cacheAgeLabel}. Refreshing preview balances now — pull again if figures look stale.',
+          message: '${snap!.cacheAgeLabel}. Updating balances…',
           actionLabel: 'Refresh',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
@@ -627,7 +603,7 @@ class _StatusStack extends StatelessWidget {
       children.add(
         const SoftBanner(
           tone: BannerTone.warn,
-          message: 'Syncing balances… existing figures stay visible.',
+          message: 'Updating balances…',
         ),
       );
     }
@@ -635,22 +611,19 @@ class _StatusStack extends StatelessWidget {
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
         SoftBanner(
-          tone: BannerTone.error,
-          message:
-              'Live market prices are temporarily unavailable (${context.read<PriceService>().priceSourceLabel}). '
-              'Showing last known quotes — pull to refresh (periodic poll, not a live stream).',
+          tone: BannerTone.warn,
+          message: 'Prices are temporarily unavailable. Showing last known values when available.',
           actionLabel: 'Retry',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
     } else if (context.read<PriceService>().showingStaleOrDemo) {
+      // Soft hint only — never dominate Home with provider/demo jargon.
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
-      final prices = context.read<PriceService>();
       children.add(
         SoftBanner(
           tone: BannerTone.warn,
-          message:
-              'Prices: ${prices.priceSourceLabel}. Figures may be cached or demo — pull to refresh.',
+          message: 'Prices may be a few minutes old. Pull to refresh.',
           actionLabel: 'Refresh',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
@@ -662,7 +635,7 @@ class _StatusStack extends StatelessWidget {
         SoftBanner(
           tone: BannerTone.warn,
           message:
-              'Some networks failed to sync (${snap!.failedChains.join(', ')}). Showing last good values for those chains.',
+              'Some networks could not update. Showing last known balances for those networks.',
           actionLabel: 'Retry',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
@@ -673,17 +646,20 @@ class _StatusStack extends StatelessWidget {
         SoftBanner(
           tone: BannerTone.warn,
           message:
-              'Unable to refresh some balances. Network unavailable — last known values stay visible (not a confirmed zero).',
+              'Unable to refresh some balances. Last known values stay visible.',
           actionLabel: 'Retry',
           onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
     } else if (snap?.syncDelayed == true) {
+      // Proportionate notice — not a permanent red panel.
       if (children.isNotEmpty) children.add(const SizedBox(height: 8));
       children.add(
-        const SoftBanner(
+        SoftBanner(
           tone: BannerTone.warn,
-          message: 'Network sync is slower than usual. Figures may update shortly.',
+          message: 'Balances may take a moment to refresh.',
+          actionLabel: 'Refresh',
+          onAction: () => portfolio.refresh(address, soft: true),
         ),
       );
     }
@@ -796,7 +772,7 @@ class _PortfolioHero extends StatelessWidget {
               if (snap.isPreview) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Preview balances · HD addresses active · funding receive still locked',
+                  'Some network balances may still be updating.',
                   style: TextStyle(color: AetherColors.mutedFor(context), fontSize: 12),
                 ),
               ],
@@ -839,25 +815,21 @@ class _EmptyPortfolio extends StatelessWidget {
         Text('\$0.00', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
         Text(
-          fundingUnlocked ? 'Add funds to get started' : 'Explore Version 1.0 Alpha',
+          fundingUnlocked ? 'Add funds to get started' : 'Your wallet is ready',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 6),
         Text(
           fundingUnlocked
-              ? 'Your keys are secured on this device. Receive crypto or wait for Buy when an on-ramp is configured.'
-              : 'Your keys are secured on this device. Receive is locked in this build.',
+              ? 'Your keys stay on this device. Receive crypto to fund your wallet.'
+              : 'Your keys stay on this device. Receive is temporarily unavailable.',
           style: const TextStyle(color: AetherColors.muted, height: 1.45),
         ),
         const SizedBox(height: 18),
         if (fundingUnlocked) ...[
           FilledButton(onPressed: onReceive, child: const Text('Receive crypto')),
-          const SizedBox(height: 10),
-          OutlinedButton(onPressed: onBuy, child: const Text('Buy')),
         ] else ...[
-          FilledButton(onPressed: onBuy, child: const Text('Buy')),
-          const SizedBox(height: 10),
-          OutlinedButton(onPressed: onReceive, child: const Text('Receive (locked)')),
+          OutlinedButton(onPressed: onReceive, child: const Text('Receive')),
         ],
         if (displayAddress.isNotEmpty) ...[
           const SizedBox(height: 14),
@@ -874,151 +846,30 @@ class _EmptyPortfolio extends StatelessWidget {
 class _PrimaryActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final broadcastOn = ReleaseConfig.liveBroadcastEnabled;
-    final buyLive = IntegrationConfig.onRampPartnerCheckoutEnabled &&
-        (IntegrationConfig.moonPayConfigured ||
-            IntegrationConfig.rampConfigured ||
-            IntegrationConfig.transakConfigured);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // Swap / Buy / Sell stay off primary Home — deferred for Auvora 1.0.
+    // Mainnet send-gate copy lives in Send flow only — not a permanent Home banner.
+    return Row(
       children: [
-        SoftBanner(
-          tone: BannerTone.warn,
-          message: broadcastOn
-              ? 'Live broadcast is on. Double-check network and amount before you confirm.'
-              : ReleaseConfig.canBroadcastTestnet
-                  ? (AuvoraQaLocalEvm.isActive
-                      ? 'Auvora Local EVM QA broadcast is ON. Signing submits only to the local QA chain. Mainnet stays OFF.'
-                      : 'TESTNET broadcast is ON for this QA build. Signing submits to the selected testnet. Mainnet broadcast stays OFF.')
-                  : 'Send signs on this device. Live broadcast stays off until independent transaction safety review.',
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.arrow_upward_rounded,
+            label: 'Send',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SendFlowScreen()),
+            ),
+          ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.arrow_upward_rounded,
-                label: 'Send',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const SendFlowScreen()),
-                ),
-              ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.arrow_downward_rounded,
+            label: 'Receive',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.arrow_downward_rounded,
-                label: 'Receive',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const ReceiveFlowScreen()),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.swap_horiz_rounded,
-                label: 'Swap',
-                onTap: () => _showUnavailable(
-                  context,
-                  title: 'Swap',
-                  body:
-                      'Swap stays unavailable until a production quote provider is wired. Preview simulators are not offered as live trading.',
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.shopping_bag_outlined,
-                label: 'Buy',
-                onTap: buyLive
-                    ? () => openDigitalAssetFlow(context, EngineOp.buy)
-                    : () => _showUnavailable(
-                          context,
-                          title: 'Buy',
-                          body:
-                              'Buy stays unavailable until an on-ramp partner is configured for this build. No card is charged from this button.',
-                        ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: () => _showMoreActions(context),
-            child: const Text('Sell · Bridge · Stake'),
           ),
         ),
       ],
-    );
-  }
-
-  void _showUnavailable(BuildContext context, {required String title, required String body}) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('$title unavailable'),
-        content: Text(body, style: const TextStyle(height: 1.45)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-        ],
-      ),
-    );
-  }
-
-  void _showMoreActions(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) {
-        const more = <(IconData, String, EngineOp)>[
-          (Icons.sell_outlined, 'Sell', EngineOp.sell),
-          (Icons.hub_outlined, 'Bridge', EngineOp.bridge),
-          (Icons.savings_outlined, 'Stake', EngineOp.stake),
-        ];
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('More actions', style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              const SoftBanner(
-                message:
-                    'Sell, Bridge, Stake, and Connect run as on-device previews in Version 1.0 Alpha — no live broadcast or partner rails.',
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.add_link_rounded, color: AetherColors.lagoon),
-                title: const Text('Connect'),
-                subtitle: const Text('Pair a dApp with QR or WalletConnect URI (preview)'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const ConnectDappScreen()),
-                  );
-                },
-              ),
-              for (final a in more)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(a.$1, color: AetherColors.lagoon),
-                  title: Text('${a.$2} (preview)'),
-                  subtitle: Text('${a.$2} with clear fees and status tracking — preview only'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    openDigitalAssetFlow(context, a.$3);
-                  },
-                ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

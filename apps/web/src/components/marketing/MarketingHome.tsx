@@ -286,8 +286,8 @@ export function MarketingHome(): ReactElement {
             Everything you need to manage digital assets.
           </h2>
           <p className="mh-lede">
-            A focused set of tools for holding, sending, and connecting — designed for clarity and
-            control, not clutter.
+            A focused set of tools for holding, receiving, and connecting — designed for clarity and
+            control, not clutter. Live network sending stays off until enabled.
           </p>
         </Reveal>
         <div className="mh-features__grid">

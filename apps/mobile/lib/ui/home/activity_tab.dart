@@ -81,11 +81,6 @@ class ActivityTab extends StatelessWidget {
                       for (final type in [
                         TxType.send,
                         TxType.receive,
-                        TxType.swap,
-                        TxType.buy,
-                        TxType.sell,
-                        TxType.bridge,
-                        TxType.stake,
                       ]) ...[
                         FilterChip(
                           label: Text(type.label),
@@ -118,8 +113,8 @@ class ActivityTab extends StatelessWidget {
                     hasFilters
                         ? 'Try a different search or clear filters to see your full history.'
                         : ReleaseConfig.allowFundingAddresses
-                            ? 'Receive or buy crypto to start your history. Pending, completed, failed, and cancelled states will appear here.'
-                            : 'Preview sends, swaps, and buys appear here. Real funding receive stays locked in Version 1.0 Alpha — history shows on-device activity only.',
+                            ? 'Receive crypto to start your history. Pending, completed, failed, and cancelled states will appear here.'
+                            : 'Activity for this wallet will appear here when transfers are recorded on this device.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AetherColors.muted, height: 1.45),
                   ),

@@ -49,22 +49,18 @@ class AboutScreen extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Release notes'),
-            subtitle: const Text('What changed in Version 1.0 Alpha'),
+            subtitle: const Text('What changed in this release'),
             onTap: () => showActionSheet(
               context,
-              title: 'Version 1.0 Alpha',
+              title: ReleaseConfig.buildLabel,
               body:
-                  '• Version 1.0 Alpha packaging for internal testing\n'
-                  '• Receive funding locked — QR/copy/share disabled\n'
-                  '• Live broadcast kill switch off — preview sends only\n'
-                  '• Recovery: on-device activity persists across sync; CoinGecko→CoinCap→seeded price failover\n'
-                  '• Integrations: public RPC health probes; optional dart-define keys (never committed)\n'
-                  '• Stabilization: biometrics (FragmentActivity), HTTPS offline probe, stale price banners\n'
-                  '• Soft-gates: Buy partners / Sell / Bridge / Stake — partner onboarding or hosted checkout when enabled\n'
-                  '• Sync is foreground-only (resume, reconnect, pull-to-refresh) — no OS WorkManager yet\n'
-                  '• English only; other languages Coming Soon\n'
-                  '• Store-ready Android icons, splash, deep links, HTTPS-only network config\n'
-                  '• Security Center, Help, Diagnostics, Alpha feedback',
+                  '• Self-custody wallet with supported networks\n'
+                  '• Receive crypto to addresses on this device\n'
+                  '• Portfolio balances and market prices\n'
+                  '• Activity, backup, recovery, and security controls\n'
+                  '• Account deletion for Auvora cloud accounts\n'
+                  '• Sending to public networks is not enabled in this release\n'
+                  '• Buy, sell, swap, bridge, and staking come later',
             ),
           ),
           ListTile(
@@ -76,13 +72,13 @@ class AboutScreen extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Privacy policy'),
-            subtitle: const Text('Opens the hosted draft policy'),
+            subtitle: const Text('Opens the hosted privacy policy'),
             onTap: () => _open(context, ReleaseConfig.privacyPolicyUrl),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Terms of service'),
-            subtitle: const Text('Opens the hosted draft terms'),
+            subtitle: const Text('Opens the hosted terms of use'),
             onTap: () => _open(context, ReleaseConfig.termsOfServiceUrl),
           ),
           ListTile(

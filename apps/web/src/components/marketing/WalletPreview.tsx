@@ -60,9 +60,9 @@ export function WalletPreview({
             {formatted}
           </p>
           <div className="mh-device__verbs" role="presentation">
-            <span>Send</span>
             <span>Receive</span>
-            <span>Swap</span>
+            <span>Assets</span>
+            <span>Activity</span>
           </div>
           {interactive ? (
             <div className="mh-device__tabs" role="tablist" aria-label="Wallet preview">
@@ -111,16 +111,16 @@ export function WalletPreview({
             {interactive && tab === 'Activity' ? (
               <ul className="mh-device__activity">
                 <li>
-                  <strong>Sent ETH</strong>
-                  <span>−0.42 · 2h ago</span>
-                </li>
-                <li>
                   <strong>Received USDC</strong>
                   <span>+1,200 · Yesterday</span>
                 </li>
                 <li>
-                  <strong>Swapped SOL</strong>
-                  <span>→ USDC · 3d ago</span>
+                  <strong>Received ETH</strong>
+                  <span>+0.05 · 2d ago</span>
+                </li>
+                <li>
+                  <strong>Received SOL</strong>
+                  <span>+1.2 · 3d ago</span>
                 </li>
               </ul>
             ) : null}

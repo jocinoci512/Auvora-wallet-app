@@ -261,8 +261,20 @@ class SyncEngine {
         ? 0
         : latencyValues.reduce((a, b) => a + b) ~/ latencyValues.length;
 
-    final syncDelayed = _networkManager.hasDegradedEndpoints || failed.isNotEmpty;
-    final priceError = quotes.values.any((item) => item.stale);
+    // Treat sync as delayed only when multiple chains struggle — one slow RPC
+    // must not dominate the customer Home screen.
+    final degradedCount =
+        _networkManager.allStatuses.where((item) => item.state != EndpointState.healthy).length;
+    final probedCount = _networkManager.allStatuses.length;
+    final majorityDegraded =
+        probedCount > 0 && degradedCount >= ((probedCount + 1) ~/ 2);
+    final syncDelayed = majorityDegraded || failed.length >= 2;
+    // Price "error" means we could not obtain a live refresh — not that every
+    // cached quote is slightly stale. Seeded-offline alone must not paint Home red.
+    final priceError = quotes.isEmpty ||
+        (quotes.values.every((item) => item.stale) &&
+            (_priceService.activeProviderId == 'seeded-offline' ||
+                _priceService.activeProviderId == null));
 
     final durationMs = DateTime.now().difference(syncStarted).inMilliseconds;
     _diagnostics = WalletDiagnostics(

@@ -192,7 +192,7 @@ class TransactionDetailScreen extends StatelessWidget {
             const SoftBanner(
               tone: BannerTone.warn,
               message:
-                  'Explorer pages may not show this preview transfer. Live broadcast is off until signing is audited.',
+                  'This transfer may not appear on a public block explorer. Sending to public networks is not enabled in this release.',
             ),
             const SizedBox(height: 10),
           ],

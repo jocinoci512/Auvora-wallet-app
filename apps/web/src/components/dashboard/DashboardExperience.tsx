@@ -356,7 +356,7 @@ export function DashboardExperience(): ReactElement {
             </span>
             <span>
               <strong>Send</strong>
-              <small>Transfer from this wallet</small>
+              <small>Review transfer (preview; no broadcast)</small>
             </span>
           </Link>
           <Link href="/receive" className="wd-action">
