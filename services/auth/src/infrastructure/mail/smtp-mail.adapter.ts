@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import dns from 'node:dns';
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { ENV, type ServiceEnv } from '../../config/env.schema';
 import type { MailPort, SendMailInput } from '../../application/ports/mail.port';
 import { AUTH_EMAIL_SENDER_NAME } from './auth-email.templates';
@@ -24,7 +25,7 @@ export class SmtpMailAdapter implements MailPort {
     // the SMTP password is a Resend API key so the first attempt is immediate.
     this.preferResendHttps =
       env.SMTP_HOST === 'smtp.resend.com' && Boolean(env.SMTP_PASS?.startsWith('re_'));
-    this.transporter = (nodemailer.createTransport as any)({
+    this.transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
@@ -37,7 +38,7 @@ export class SmtpMailAdapter implements MailPort {
       // Defense-in-depth: never resolve local files or remote URLs from message content.
       disableFileAccess: true,
       disableUrlAccess: true,
-    });
+    } as SMTPTransport.Options);
   }
 
   async send(input: SendMailInput): Promise<void> {

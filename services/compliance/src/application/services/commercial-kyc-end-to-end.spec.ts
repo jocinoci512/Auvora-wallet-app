@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { KycLevel, VerificationStatus } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
-import { ForbiddenError, UnauthorizedError, ValidationError } from '../../domain';
+import { ForbiddenError, ValidationError } from '../../domain';
 import { KycService } from './kyc.service';
 import { CommercialKycProvider } from '../../infrastructure/providers/commercial-kyc.provider';
 import { loadEnv, type ServiceEnv } from '../../config/env.schema';
