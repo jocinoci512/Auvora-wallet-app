@@ -59,6 +59,7 @@ import {
   type NotificationsPublisherPort,
 } from '../../infrastructure/notifications/notifications-publisher.adapter';
 import type { AdminEventInput } from '../../domain';
+import { AccountDeletionService } from './account-deletion.service';
 
 export interface RequestContext {
   ipAddress?: string;
@@ -136,6 +137,7 @@ export class AuthService {
     @Inject(ANALYTICS_PUBLISHER) private readonly analytics: AnalyticsPublisherPort,
     @Inject(NOTIFICATIONS_PUBLISHER) private readonly notifications: NotificationsPublisherPort,
     @Inject(ADMIN_EVENT_PUBLISHER) private readonly adminEvents: AdminEventPublisherPort,
+    @Inject(AccountDeletionService) private readonly accountDeletion: AccountDeletionService,
   ) {}
 
   /** Fire-and-forget domain notification event — never blocks auth flows. */
@@ -253,7 +255,11 @@ export class AuthService {
       throw new UnauthorizedError('Invalid email or password');
     }
 
-    if (user.status === UserStatus.Suspended || user.status === UserStatus.Deactivated) {
+    if (
+      user.status === UserStatus.Suspended ||
+      user.status === UserStatus.Deactivated ||
+      user.status === UserStatus.Deleted
+    ) {
       throw new ForbiddenError('Account is not permitted to sign in');
     }
 
@@ -976,6 +982,78 @@ export class AuthService {
       userAgent: ctx.userAgent,
     });
     return this.toProfile(user);
+  }
+
+  /**
+   * Customer self-service account deletion (Play / privacy).
+   * Requires current password + typed confirmation. Does not remove on-device wallets.
+   */
+  async deleteMyAccount(
+    userId: string,
+    currentPassword: string,
+    confirmation: string,
+    ctx: RequestContext,
+  ): Promise<{
+    message: string;
+    deletedAt: string;
+    dataSummary: Awaited<ReturnType<AccountDeletionService['purgeEligibleCloudData']>>;
+  }> {
+    if (confirmation.trim().toUpperCase() !== 'DELETE') {
+      throw new ValidationError('Type DELETE to confirm account deletion');
+    }
+
+    const user = await this.requireActiveUser(userId);
+    if (user.status === UserStatus.Deleted || user.deletedAt) {
+      throw new NotFoundError('User not found');
+    }
+
+    const valid = await this.passwordHasher.verify(currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedError('Current password is incorrect');
+    }
+
+    await this.sessions.revokeAllForUser(userId);
+    await this.refreshTokens.revokeAllForUser(userId);
+    await this.devices.revokeAllForUser(userId);
+
+    const dataSummary = await this.accountDeletion.purgeEligibleCloudData(userId);
+
+    const tombstonePassword = await this.passwordHasher.hash(generateOpaqueToken());
+    const deleted = await this.users.anonymizeAndSoftDelete(userId, tombstonePassword);
+
+    await this.audit.create({
+      action: 'USER_SOFT_DELETED',
+      actorUserId: userId,
+      targetUserId: userId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: {
+        selfService: true,
+        anonymized: true,
+        vaultPurged: dataSummary.vaultPurged,
+        kycAction: dataSummary.kycAction,
+      },
+    });
+
+    this.emitAdminEvent({
+      type: 'ACCOUNT_STATUS_CHANGED',
+      service: 'auth',
+      userId,
+      severity: 'warning',
+      metadata: { status: 'DELETED', selfService: true },
+    });
+    this.emitNotificationEvent({
+      eventType: 'auth.account.deleted',
+      aggregateId: userId,
+      payload: { ownerUserId: userId, selfService: true },
+    });
+
+    return {
+      message:
+        'Your Auvora account has been deleted. Eligible cloud data was removed or anonymized. Public blockchain history is unchanged.',
+      deletedAt: (deleted.deletedAt ?? this.clock.now()).toISOString(),
+      dataSummary,
+    };
   }
 
   async adminRestore(

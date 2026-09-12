@@ -409,6 +409,29 @@ class AccountController extends ChangeNotifier {
     _set(status: AccountStatus.signedOut);
   }
 
+  /// Delete the Auvora cloud account (sessions, profile, eligible cloud data).
+  /// Leaves the on-device wallet intact — that is a separate action.
+  Future<bool> deleteAccount({
+    required String currentPassword,
+    required String confirmation,
+  }) async {
+    return _guard(() async {
+      final access = await _store.readAccessToken();
+      if (access == null || access.isEmpty) {
+        throw const AuthException(AuthErrorKind.forbidden, 'Sign in again to delete your account.');
+      }
+      await _client.deleteAccount(
+        accessToken: access,
+        currentPassword: currentPassword,
+        confirmation: confirmation,
+      );
+      await _store.clear();
+      _profile = null;
+      _info = 'Your Auvora account has been deleted.';
+      return false;
+    });
+  }
+
   Future<bool> _guard(Future<bool> Function() run) async {
     if (!isConfigured) {
       _error = 'Account backend is not configured for this build.';

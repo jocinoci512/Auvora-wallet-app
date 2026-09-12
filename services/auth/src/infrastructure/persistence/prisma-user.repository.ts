@@ -169,6 +169,31 @@ export class PrismaUserRepository implements UserRepositoryPort {
     return mapUser(user);
   }
 
+  async anonymizeAndSoftDelete(userId: string, passwordHash: string): Promise<AuthUser> {
+    const compactId = userId.replace(/-/g, '');
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: new Date(),
+        status: PrismaUserStatus.DELETED,
+        email: `deleted+${compactId}@deleted.invalid`,
+        username: `deleted_${compactId}`,
+        passwordHash,
+        firstName: null,
+        lastName: null,
+        phoneNumber: null,
+        avatarUrl: null,
+        country: null,
+        emailVerified: false,
+        mfaEnabled: false,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      },
+      include: userInclude,
+    });
+    return mapUser(user);
+  }
+
   async restore(userId: string): Promise<AuthUser> {
     const user = await this.prisma.user.update({
       where: { id: userId },

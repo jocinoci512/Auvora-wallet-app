@@ -7,15 +7,21 @@ export default function AccountDeletionPage(): ReactElement {
   return (
     <LegalShell
       title="Account and Data Deletion"
-      subtitle="How to request deletion of your Auvora account and associated personal data."
+      subtitle="How to delete your Auvora account and what happens to associated data."
       current="/account-deletion"
     >
       <section className="cx-panel">
         <h2>Overview</h2>
         <p>
-          At Auvora, we believe in user privacy and data ownership. You have the right to request
-          complete deletion of your Auvora user account, profile information, and associated
-          off-chain data at any time.
+          You can request deletion of your Auvora account at any time. Deleting the Auvora account
+          removes the account and eligible associated cloud data controlled by Auvora. It does{' '}
+          <strong>not</strong> erase public blockchain transaction history, because blockchain
+          records are not controlled by Auvora.
+        </p>
+        <p style={{ marginTop: '0.75rem', lineHeight: 1.6 }}>
+          Auvora is self-custodial and does not hold your private keys. Account deletion will not
+          silently destroy an on-chain wallet. Removing a wallet from a device is a separate action
+          inside the app.
         </p>
       </section>
 
@@ -23,96 +29,100 @@ export default function AccountDeletionPage(): ReactElement {
         <h2>Two Ways to Delete Your Account</h2>
         <div style={{ display: 'grid', gap: '1.5rem', marginTop: '1rem' }}>
           <div>
-            <h3>Option 1: Inside the Auvora Mobile App (Immediate)</h3>
-            <ol style={{ paddingLeft: '1.25rem', marginTop: '0.5rem', lineHeight: '1.6' }}>
+            <h3>Option 1: Inside the Auvora Mobile App</h3>
+            <ol style={{ paddingLeft: '1.25rem', marginTop: '0.5rem', lineHeight: 1.6 }}>
               <li>
-                Open the <strong>Auvora Wallet</strong> app on your Android or iOS device.
+                Open the <strong>Auvora Wallet</strong> app.
               </li>
               <li>
-                Navigate to <strong>Settings</strong> &rarr; <strong>Account</strong>.
+                Go to <strong>More</strong> &rarr; <strong>Account</strong> &rarr;{' '}
+                <strong>Account management</strong>.
               </li>
               <li>
-                Scroll to the <strong>Danger Zone</strong> section at the bottom.
+                Tap <strong>Delete Auvora account</strong>.
               </li>
               <li>
-                Tap <strong>Delete Account &amp; Data</strong>.
+                Review the self-custody and recovery warnings. If you have a wallet, ensure you can
+                independently recover it before continuing. Auvora will not display or transmit your
+                recovery phrase during deletion.
               </li>
               <li>
-                Confirm your biometric or passcode authorization. Your account session, profile
-                records, and encrypted backup references will be permanently deleted from our
-                servers.
+                Re-authenticate with your account password, type <strong>DELETE</strong> to confirm,
+                and complete device authentication when prompted.
               </li>
             </ol>
           </div>
 
           <div>
-            <h3>Option 2: Web Deletion Request (External)</h3>
-            <p style={{ marginTop: '0.5rem', lineHeight: '1.6' }}>
-              If you have uninstalled the app or cannot access your mobile device, you can submit an
-              account deletion request directly by emailing our data privacy team at{' '}
+            <h3>Option 2: External request (no app required)</h3>
+            <p style={{ marginTop: '0.5rem', lineHeight: 1.6 }}>
+              If you cannot use the app, email{' '}
               <a
-                href="mailto:privacy@auvorawallet.com"
+                href="mailto:privacy@auvorawallet.com?subject=Account%20Deletion%20Request"
                 style={{ color: 'var(--color-accent, #20808D)', textDecoration: 'underline' }}
               >
                 privacy@auvorawallet.com
               </a>{' '}
-              with the subject line <strong>&quot;Account Deletion Request&quot;</strong> from the
-              email address registered with your Auvora account.
-            </p>
-            <p style={{ marginTop: '0.5rem', lineHeight: '1.6' }}>
-              Requests submitted by email are processed and verified within 30 days.
+              from the email address registered to your Auvora account with the subject{' '}
+              <strong>&quot;Account Deletion Request&quot;</strong>. We verify ownership and process
+              the same deletion workflow used in-app. External requests are typically completed
+              within 30 days after verification.
             </p>
           </div>
         </div>
       </section>
 
       <section className="cx-panel">
-        <h2>What Is Deleted vs. What Cannot Be Deleted</h2>
+        <h2>What Is Deleted, Anonymized, or Retained</h2>
         <div style={{ display: 'grid', gap: '1rem', marginTop: '0.75rem' }}>
           <div style={{ borderLeft: '3px solid #20808D', paddingLeft: '1rem' }}>
-            <h3 style={{ color: 'var(--color-foreground, #fff)' }}>Data Deleted Permanently</h3>
-            <ul style={{ paddingLeft: '1.25rem', marginTop: '0.5rem', lineHeight: '1.5' }}>
-              <li>Auvora account profile (email address, display name, preferences).</li>
-              <li>Authentication tokens, active device sessions, and login audit records.</li>
-              <li>Encrypted cloud backup vaults stored on Auvora servers (if enabled).</li>
-              <li>Notification tokens, contact address book nicknames, and watchlists.</li>
+            <h3>Deleted or anonymized (Auvora-controlled)</h3>
+            <ul style={{ paddingLeft: '1.25rem', marginTop: '0.5rem', lineHeight: 1.5 }}>
+              <li>Account profile identifiers (email and username are anonymized / tombstoned).</li>
+              <li>Active sessions, refresh tokens, and device registrations.</li>
+              <li>Cloud encrypted wallet backup vault (when present and policy allows).</li>
+              <li>Notification preferences and MFA credentials tied to the account.</li>
+              <li>Unverified KYC drafts and temporary verification input.</li>
             </ul>
           </div>
 
           <div style={{ borderLeft: '3px solid #E59866', paddingLeft: '1rem' }}>
-            <h3 style={{ color: 'var(--color-foreground, #fff)' }}>
-              Data That Cannot Be Deleted (Public Blockchain)
-            </h3>
-            <p style={{ marginTop: '0.5rem', lineHeight: '1.5' }}>
-              Auvora is a <strong>non-custodial cryptocurrency wallet</strong>. Public blockchains
-              (such as Bitcoin, Ethereum, Solana, Polygon, BNB Smart Chain, and Tron) are
-              decentralized, immutable ledgers.
-            </p>
-            <p style={{ marginTop: '0.5rem', lineHeight: '1.5' }}>
-              Transactions that you broadcast to any public blockchain are permanent, public records
-              that cannot be modified, deleted, or removed by Auvora or any other party.
+            <h3>May be retained (compliance / security)</h3>
+            <ul style={{ paddingLeft: '1.25rem', marginTop: '0.5rem', lineHeight: 1.5 }}>
+              <li>
+                Verified or in-review KYC / identification records may be retained subject to
+                applicable legal or compliance requirements. Duration is not fixed on this page —
+                marked <strong>KYC RETENTION — LEGAL REVIEW REQUIRED</strong> until counsel confirms
+                policy.
+              </li>
+              <li>Security audit and login history needed to investigate abuse or fraud.</li>
+            </ul>
+          </div>
+
+          <div style={{ borderLeft: '3px solid #888', paddingLeft: '1rem' }}>
+            <h3>Cannot be deleted (public blockchain)</h3>
+            <p style={{ marginTop: '0.5rem', lineHeight: 1.5 }}>
+              Transactions broadcast to public networks (for example Bitcoin, Ethereum, Solana,
+              Polygon, BNB Smart Chain, and Tron) remain on those networks. Auvora cannot modify or
+              erase them.
             </p>
           </div>
         </div>
       </section>
 
       <section className="cx-panel">
-        <h2>Important: Backup Your Recovery Phrase</h2>
-        <p>
-          Because Auvora is self-custodial, deleting your Auvora cloud account does{' '}
-          <strong>not</strong> touch or delete your funds on the blockchain. Your cryptocurrency
-          balances are secured by your 12- or 24-word recovery phrase.
-        </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          Always ensure you have safely recorded your recovery phrase offline before deleting your
-          account or clearing local device storage.
+        <h2>After deletion</h2>
+        <p style={{ lineHeight: 1.6 }}>
+          A successfully deleted account cannot sign in again with the previous credentials.
+          On-device wallets are not automatically removed; use the separate “remove wallet from this
+          device” action if you want local keys cleared.
         </p>
       </section>
 
       <section className="cx-panel">
-        <h2>Questions &amp; Support</h2>
+        <h2>Questions</h2>
         <p>
-          For privacy inquiries or assistance with data deletion, contact{' '}
+          Contact{' '}
           <a
             href="mailto:privacy@auvorawallet.com"
             style={{ color: 'var(--color-accent, #20808D)', textDecoration: 'underline' }}

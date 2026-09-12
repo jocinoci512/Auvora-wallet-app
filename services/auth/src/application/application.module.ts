@@ -5,6 +5,7 @@ import { AdminAuthService } from './services/admin-auth.service';
 import { AdminSystemHealthService } from './services/admin-system-health.service';
 import { VaultDeviceRecoveryService } from './services/vault-device-recovery.service';
 import { AcceptanceAdminService } from './services/acceptance-admin.service';
+import { AccountDeletionService } from './services/account-deletion.service';
 
 @Module({
   imports: [InfrastructureModule],
@@ -14,6 +15,7 @@ import { AcceptanceAdminService } from './services/acceptance-admin.service';
     AdminSystemHealthService,
     VaultDeviceRecoveryService,
     AcceptanceAdminService,
+    AccountDeletionService,
   ],
   exports: [
     AuthService,
@@ -21,6 +23,7 @@ import { AcceptanceAdminService } from './services/acceptance-admin.service';
     AdminSystemHealthService,
     VaultDeviceRecoveryService,
     AcceptanceAdminService,
+    AccountDeletionService,
   ],
 })
 export class ApplicationModule {}

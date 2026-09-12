@@ -41,8 +41,8 @@
     "note": "No apps/mobile/windows target. Desktop companion is apps/web."
   },
   "versioning": {
-    "currentProductionVersionCode": 32,
-    "nextMinimumVersionCode": 33,
+    "currentProductionVersionCode": 33,
+    "nextMinimumVersionCode": 34,
     "versionNameStrategy": "semver[+build]: keep MAJOR.MINOR.PATCH; drop -alpha before public GA; versionCode always strictly increases for Store/superseding builds",
     "neverReuseVersionCode": true
   },

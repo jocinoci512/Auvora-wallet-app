@@ -394,7 +394,7 @@ describe('KycService', () => {
       });
     });
 
-    it('archives and tags statutory retention when approved KYC account requests deletion', async () => {
+    it('retains verified KYC pending legal policy without inventing a duration', async () => {
       const { service, prisma } = makeService();
       prisma.kycProfile.findUnique = jest.fn().mockResolvedValue({
         id: 'approved-prof-1',
@@ -404,20 +404,22 @@ describe('KycService', () => {
       });
       prisma.kycProfile.update = jest.fn().mockResolvedValue({});
 
-      const result = await service.executeAccountDeletionKycHook('approved-user-1', 1825);
-      expect(result.actionTaken).toBe('ARCHIVED_FOR_STATUTORY_RETENTION');
-      expect(result.retainedUntil).toBeDefined();
+      const result = await service.executeAccountDeletionKycHook('approved-user-1');
+      expect(result.actionTaken).toBe('RETAINED_PENDING_LEGAL_POLICY');
       expect(prisma.kycProfile.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'approved-prof-1' },
           data: expect.objectContaining({
             metadata: expect.objectContaining({
               statutoryRetentionRequired: true,
-              retentionPeriodDays: 1825,
+              retentionPolicyStatus: 'LEGAL_REVIEW_REQUIRED',
             }),
           }),
         }),
       );
+      const meta = (prisma.kycProfile.update as jest.Mock).mock.calls[0][0].data.metadata;
+      expect(meta.retentionPeriodDays).toBeUndefined();
+      expect(meta.retentionExpiresAt).toBeUndefined();
     });
   });
 });

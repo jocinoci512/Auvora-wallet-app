@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { JwtAccessClaims } from '@auvora/types';
 import { successResponse } from '@auvora/nest-common';
@@ -85,6 +85,12 @@ export class VaultController {
   @Get()
   async getVault(@CurrentUser() user: JwtAccessClaims) {
     const data = await this.vault.getForOwner(user.sub);
+    return successResponse(data);
+  }
+
+  @Delete()
+  async deleteVault(@CurrentUser() user: JwtAccessClaims) {
+    const data = await this.vault.deleteForOwner(user.sub);
     return successResponse(data);
   }
 

@@ -1348,13 +1348,9 @@ export class KycService {
     };
   }
 
-  async executeAccountDeletionKycHook(
-    ownerUserId: string,
-    statutoryRetentionDays = 1825,
-  ): Promise<{
-    actionTaken: 'PURGED_IMMEDIATELY' | 'ARCHIVED_FOR_STATUTORY_RETENTION';
+  async executeAccountDeletionKycHook(ownerUserId: string): Promise<{
+    actionTaken: 'PURGED_IMMEDIATELY' | 'RETAINED_PENDING_LEGAL_POLICY';
     ownerUserId: string;
-    retainedUntil?: string;
     details: string;
   }> {
     const profile = await this.prisma.kycProfile.findUnique({ where: { ownerUserId } });
@@ -1380,13 +1376,12 @@ export class KycService {
       };
     }
 
-    // Regulated account with verified KYC: cannot purge immediately under FinCEN / 5AMLD rules.
-    const retainUntilDate = new Date(Date.now() + statutoryRetentionDays * 86400 * 1000);
     const prevMeta =
       profile.metadata && typeof profile.metadata === 'object' && !Array.isArray(profile.metadata)
         ? (profile.metadata as Record<string, unknown>)
         : {};
 
+    // KYC RETENTION — LEGAL REVIEW REQUIRED. Do not invent a statutory duration.
     await this.prisma.kycProfile.update({
       where: { id: profile.id },
       data: {
@@ -1394,21 +1389,20 @@ export class KycService {
           ...prevMeta,
           accountDeletedAt: new Date().toISOString(),
           statutoryRetentionRequired: true,
-          retentionPeriodDays: statutoryRetentionDays,
-          retentionExpiresAt: retainUntilDate.toISOString(),
+          retentionPolicyStatus: 'LEGAL_REVIEW_REQUIRED',
         } as Prisma.InputJsonValue,
       },
     });
 
     this.logger.log(
-      `Verified KYC profile archived for statutory retention: user=${ownerUserId} retainedUntil=${retainUntilDate.toISOString()}`,
+      `Verified KYC profile retained pending legal retention policy: user=${ownerUserId}`,
     );
 
     return {
-      actionTaken: 'ARCHIVED_FOR_STATUTORY_RETENTION',
+      actionTaken: 'RETAINED_PENDING_LEGAL_POLICY',
       ownerUserId,
-      retainedUntil: retainUntilDate.toISOString(),
-      details: `Account deletion registered. Verified identification archived for statutory retention (${statutoryRetentionDays} days / BSA/AML recordkeeping).`,
+      details:
+        'Account deletion registered. Verified identification retained subject to applicable retention requirements; retention duration awaits legal confirmation (LEGAL_REVIEW_REQUIRED).',
     };
   }
 

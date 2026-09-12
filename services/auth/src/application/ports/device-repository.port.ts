@@ -28,5 +28,6 @@ export interface DeviceRepositoryPort {
   upsert(input: UpsertDeviceInput): Promise<DeviceRecord>;
   listByUserId(userId: string): Promise<DeviceRecord[]>;
   revoke(deviceId: string): Promise<void>;
+  revokeAllForUser(userId: string): Promise<number>;
   touch(deviceId: string): Promise<void>;
 }

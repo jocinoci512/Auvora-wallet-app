@@ -8,8 +8,9 @@ import type { Request } from 'express';
 import { successResponse } from '@auvora/nest-common';
 import { UpdateProfileDto } from '../dto/profile.dto';
 import { DeviceIdParamDto, SessionIdParamDto } from '../dto/admin.dto';
+import { DeleteMyAccountDto } from '../dto/delete-account.dto';
 
-const _meDtoRuntime = { UpdateProfileDto, DeviceIdParamDto, SessionIdParamDto };
+const _meDtoRuntime = { UpdateProfileDto, DeviceIdParamDto, SessionIdParamDto, DeleteMyAccountDto };
 void _meDtoRuntime;
 
 @ApiTags('me')
@@ -20,6 +21,21 @@ export class MeController {
   @Get()
   async getProfile(@CurrentUser() user: JwtAccessClaims) {
     const data = await this.authService.getProfile(user.sub);
+    return successResponse(data);
+  }
+
+  @Delete()
+  async deleteMyAccount(
+    @CurrentUser() user: JwtAccessClaims,
+    @Body() dto: DeleteMyAccountDto,
+    @Req() req: Request,
+  ) {
+    const data = await this.authService.deleteMyAccount(
+      user.sub,
+      dto.currentPassword,
+      dto.confirmation,
+      extractRequestContext(req),
+    );
     return successResponse(data);
   }
 

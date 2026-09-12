@@ -194,7 +194,10 @@ export default function AdminUsersPage(): ReactElement {
                   </td>
                   <td>{user.email}</td>
                   <td>
-                    <StatusBadge status={user.status} />
+                    <StatusBadge
+                      status={user.status}
+                      label={user.status === 'DELETED' ? 'Deleted (not active)' : undefined}
+                    />
                   </td>
                   <td>{user.roles.join(', ') || '—'}</td>
                   <td className="col-secondary">{formatWhen(user.createdAt)}</td>

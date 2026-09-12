@@ -396,6 +396,25 @@ class AuthApiClient {
     _decodeData(res);
   }
 
+  /// Permanently delete the signed-in Auvora cloud account (not logout / not local wallet wipe).
+  /// Requires current password and typed confirmation (`DELETE`).
+  Future<void> deleteAccount({
+    required String accessToken,
+    required String currentPassword,
+    required String confirmation,
+  }) async {
+    _ensureConfigured();
+    final res = await _send(() => _http.delete(
+          _endpoint('/api/v1/me'),
+          headers: _headers(bearer: accessToken),
+          body: jsonEncode({
+            'currentPassword': currentPassword,
+            'confirmation': confirmation,
+          }),
+        ));
+    _decodeData(res);
+  }
+
   Future<List<Map<String, dynamic>>> listNotifications(String bearer) async {
     _ensureConfigured();
     final res = await _send(() => _http.get(

@@ -68,6 +68,11 @@ export interface UserRepositoryPort {
   updatePassword(userId: string, passwordHash: string): Promise<void>;
   updateStatus(userId: string, status: UserStatus): Promise<AuthUser>;
   softDelete(userId: string): Promise<AuthUser>;
+  /**
+   * Customer self-deletion: tombstone status + anonymize PII so the email/username
+   * can be reused and the row is no longer an ordinary active customer.
+   */
+  anonymizeAndSoftDelete(userId: string, passwordHash: string): Promise<AuthUser>;
   restore(userId: string): Promise<AuthUser>;
   assignRoles(userId: string, roleNames: string[]): Promise<AuthUser>;
   toggleMfa(userId: string, enabled: boolean): Promise<AuthUser>;

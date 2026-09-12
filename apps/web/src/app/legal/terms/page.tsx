@@ -12,6 +12,14 @@ export default function TermsPage(): ReactElement {
       current="/legal/terms"
     >
       <section className="cx-panel">
+        <h2>Eligibility</h2>
+        <p>
+          Auvora Wallet is intended for adults. You must be at least 18 years old (or the age of
+          majority in your jurisdiction, if higher) to create an account or use account-linked
+          features. Do not use Auvora if you are under 18.
+        </p>
+      </section>
+      <section className="cx-panel">
         <h2>You control your assets</h2>
         <p>
           Auvora helps you view balances, prepare transactions, and connect to networks. When you

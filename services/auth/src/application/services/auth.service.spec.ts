@@ -1,3 +1,17 @@
+jest.mock(
+  '@auvora/database',
+  () => ({
+    PrismaService: class PrismaService {},
+    VerificationStatus: {
+      APPROVED: 'APPROVED',
+      IN_REVIEW: 'IN_REVIEW',
+      DRAFT: 'DRAFT',
+    },
+    Prisma: {},
+  }),
+  { virtual: true },
+);
+
 import { UserStatus } from '@auvora/types';
 import { AuthService } from './auth.service';
 import { ForbiddenError, UnauthorizedError, ValidationError } from '../../domain';
@@ -31,6 +45,7 @@ function createAuthService(deps: {
   analytics?: Record<string, jest.Mock>;
   notifications?: Record<string, jest.Mock>;
   adminEvents?: Record<string, jest.Mock>;
+  accountDeletion?: Record<string, jest.Mock>;
 }): AuthService {
   const users = {
     findByEmail: jest.fn(),
@@ -47,6 +62,7 @@ function createAuthService(deps: {
     resetFailedLogin: jest.fn(),
     updateLastLogin: jest.fn(),
     recordFailedLogin: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
     ...deps.users,
   };
 
@@ -62,6 +78,7 @@ function createAuthService(deps: {
     (deps.devices ?? {
       upsert: jest.fn().mockResolvedValue({ id: 'device-1' }),
       findByFingerprint: jest.fn().mockResolvedValue(null),
+      revokeAllForUser: jest.fn().mockResolvedValue(0),
     }) as never,
     (deps.refreshTokens ?? {
       create: jest.fn().mockResolvedValue({ id: 'rt-1' }),
@@ -90,6 +107,15 @@ function createAuthService(deps: {
     (deps.analytics ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
     (deps.notifications ?? { publishEvent: jest.fn().mockResolvedValue(undefined) }) as never,
     (deps.adminEvents ?? { publish: jest.fn().mockResolvedValue(undefined) }) as never,
+    (deps.accountDeletion ?? {
+      purgeEligibleCloudData: jest.fn().mockResolvedValue({
+        vaultPurged: false,
+        vaultRecoveryRequestsPurged: 0,
+        mfaCleared: true,
+        notificationPreferencesDeleted: false,
+        kycAction: 'NONE',
+      }),
+    }) as never,
   );
 }
 

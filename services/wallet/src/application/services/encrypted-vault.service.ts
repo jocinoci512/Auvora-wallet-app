@@ -182,4 +182,15 @@ export class EncryptedVaultService {
     if (!blob) throw new NotFoundError('Encrypted vault not found');
     return blob;
   }
+
+  /** Permanently remove the encrypted cloud vault for this owner (account deletion). */
+  async deleteForOwner(ownerUserId: string): Promise<{ deleted: boolean }> {
+    const result = await this.prisma.encryptedVaultBlob.deleteMany({
+      where: { ownerUserId },
+    });
+    if (result.count > 0) {
+      this.logger.log(`Vault blob purged for user ${ownerUserId}`);
+    }
+    return { deleted: result.count > 0 };
+  }
 }

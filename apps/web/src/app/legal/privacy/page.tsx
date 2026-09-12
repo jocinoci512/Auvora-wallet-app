@@ -168,32 +168,43 @@ export default function PrivacyPolicyPage(): ReactElement {
         <h2>5. Account Deletion &amp; Data Retention Policy</h2>
         <p>
           You have the right to request deletion of your Auvora account and associated personal data
-          at any time:
+          at any time. Use the in-app path (More → Account → Delete Auvora account), follow{' '}
+          <Link href="/account-deletion">Account and Data Deletion</Link>, or email
+          privacy@auvorawallet.com. Deleting an Auvora account removes the account and eligible
+          cloud data. It does not erase public blockchain history. On-device wallets are not removed
+          automatically.
         </p>
         <ul className="cx-list">
           <li>
             <div>
-              <strong>Immediate Deletion for Unverified Accounts</strong>
+              <strong>Eligible cloud data</strong>
               <p className="cx-meta">
-                For accounts that have not completed formal regulatory identity verification,
-                account deletion immediately purges all user profile information, authentication
-                sessions, draft records, and device links.
+                Sessions, devices, notification preferences, profile identifiers (anonymized), MFA
+                credentials, and cloud encrypted vault backups (when present) are removed or
+                tombstoned as part of account deletion. Unverified KYC drafts are purged.
               </p>
             </div>
           </li>
           <li>
             <div>
-              <strong>
-                Configurable Retention &amp; Audit Records (Subject to Legal Confirmation)
-              </strong>
+              <strong>KYC RETENTION — LEGAL REVIEW REQUIRED</strong>
               <p className="cx-meta">
-                Where an account has completed identity verification for high-value transactions,
-                applicable AML/CTF regulations require retention of identification records and audit
-                logs. Raw ID document images and audit logs are managed under distinct, configurable
-                retention policies. Formal statutory retention durations remain subject to final
-                confirmation by legal counsel prior to public launch. During any applicable
-                retention period, records remain encrypted, access-controlled, and strictly isolated
-                from operational use.
+                Where an account has completed or is in review for identity verification, applicable
+                AML/CTF rules may require retention of identification records and related audit
+                material. Auvora does not publish an invented retention duration on this page.
+                Formal statutory retention durations remain subject to confirmation by legal
+                counsel. During any applicable retention period, records remain encrypted,
+                access-controlled, and isolated from ordinary customer operations.
+              </p>
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Self-custody &amp; encrypted vault</strong>
+              <p className="cx-meta">
+                Auvora does not hold private keys. Cloud vault backups are client-encrypted
+                ciphertext only. Account deletion purges eligible cloud vault ciphertext; it does
+                not grant Auvora access to recovery phrases.
               </p>
             </div>
           </li>

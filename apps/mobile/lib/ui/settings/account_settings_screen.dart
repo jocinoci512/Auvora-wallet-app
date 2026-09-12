@@ -168,11 +168,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             child: const Text('Add wallet'),
           ),
           const SizedBox(height: 32),
-          Text('Account & data deletion', style: Theme.of(context).textTheme.titleMedium),
+          Text('Account management', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           const Text(
-            'You can delete your Auvora cloud account and server-held profile data at any time. '
-            'Because Auvora is non-custodial, transactions recorded on public blockchains are immutable and cannot be deleted.',
+            'Deleting your Auvora account removes your Auvora account and eligible associated cloud data. '
+            'It does not erase public blockchain transaction history — blockchain records are not controlled by Auvora.\n\n'
+            'This is separate from signing out or removing a wallet from this device.',
             style: TextStyle(color: AetherColors.muted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 12),
@@ -202,27 +203,51 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final account = context.read<AccountController>();
     final wallet = context.read<WalletController>();
 
-    final confirm = await showDialog<bool>(
+    if (!account.isSignedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to delete your Auvora account.')),
+      );
+      return;
+    }
+
+    final proceed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Auvora account?'),
-        content: const Text(
-          'This will permanently delete your Auvora account, email profile, and cloud vault backups from Auvora servers.\n\n'
-          'Your on-device wallet keys will remain unless removed separately. Public blockchain history cannot be deleted.\n\n'
-          'Make sure you have saved your recovery phrase before proceeding.',
+        content: SingleChildScrollView(
+          child: Text(
+            'Auvora does not hold your private keys.\n\n'
+            'Deleting your Auvora account may remove:\n'
+            '• profile and account settings\n'
+            '• sessions and device registrations\n'
+            '• notification preferences\n'
+            '• cloud encrypted wallet backup (if any)\n'
+            '• KYC / account records subject to applicable retention requirements\n\n'
+            'This does not delete public blockchain history and does not automatically erase '
+            'the wallet stored on this device.\n\n'
+            '${wallet.wallet != null ? 'Before continuing, make sure you can independently recover your self-custody wallet (for example with your recovery phrase stored offline). Auvora will not show or transmit your recovery phrase during this process.\n\n' : ''}'
+            'Some records required by law or compliance may be retained until legal retention policy is confirmed — Auvora does not claim immediate deletion of those records.',
+            style: const TextStyle(height: 1.4),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AetherColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete account'),
+            child: const Text('Continue'),
           ),
         ],
       ),
     );
+    if (proceed != true || !context.mounted) return;
 
-    if (confirm != true || !context.mounted) return;
+    final credentials = await showDialog<({String password, String confirmation})>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const _DeleteAccountConfirmDialog(),
+    );
+    if (credentials == null || !context.mounted) return;
 
     final okAuth = await authenticateConnectionsAction(
       context,
@@ -231,14 +256,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
     if (!okAuth || !context.mounted) return;
 
-    await account.signOut();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Auvora account signed out and deletion request submitted.'),
+    final ok = await account.deleteAccount(
+      currentPassword: credentials.password,
+      confirmation: credentials.confirmation,
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok || account.info != null
+              ? (account.info ?? 'Your Auvora account has been deleted.')
+              : (account.error ?? 'Could not delete account. Check your password and try again.'),
         ),
-      );
-    }
+      ),
+    );
   }
 
   Future<void> _confirmDelete(
@@ -472,5 +503,76 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
     if (ok == true) await onSave(ctrl.text);
     ctrl.dispose();
+  }
+}
+
+class _DeleteAccountConfirmDialog extends StatefulWidget {
+  const _DeleteAccountConfirmDialog();
+
+  @override
+  State<_DeleteAccountConfirmDialog> createState() => _DeleteAccountConfirmDialogState();
+}
+
+class _DeleteAccountConfirmDialogState extends State<_DeleteAccountConfirmDialog> {
+  final _password = TextEditingController();
+  final _confirmation = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    _confirmation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canSubmit =
+        _password.text.isNotEmpty && _confirmation.text.trim().toUpperCase() == 'DELETE';
+    return AlertDialog(
+      title: const Text('Confirm deletion'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Enter your account password, then type DELETE to confirm. '
+              'This permanently deletes your Auvora cloud account.',
+              style: TextStyle(height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _password,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              decoration: const InputDecoration(labelText: 'Current password'),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _confirmation,
+              decoration: const InputDecoration(
+                labelText: 'Type DELETE to confirm',
+              ),
+              textCapitalization: TextCapitalization.characters,
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AetherColors.danger),
+          onPressed: canSubmit
+              ? () => Navigator.pop(context, (
+                    password: _password.text,
+                    confirmation: _confirmation.text.trim(),
+                  ))
+              : null,
+          child: const Text('Delete account'),
+        ),
+      ],
+    );
   }
 }
