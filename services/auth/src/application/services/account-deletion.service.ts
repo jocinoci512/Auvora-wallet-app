@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Prisma, PrismaService, VerificationStatus } from '@auvora/database';
+import { PrismaService, VerificationStatus, type Prisma } from '@auvora/database';
 
 export type AccountDeletionDataSummary = {
   vaultPurged: boolean;
