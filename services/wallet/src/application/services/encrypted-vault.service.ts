@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Prisma, PrismaService } from '@auvora/database';
+import { PrismaService, type Prisma } from '@auvora/database';
 import { assertNoPlaintextSecrets, VAULT_ALGORITHM_ID } from '@auvora/vault-crypto';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../domain';
 

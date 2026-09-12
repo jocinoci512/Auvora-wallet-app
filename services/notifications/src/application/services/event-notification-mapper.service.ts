@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
-  NotificationCategory,
   NotificationChannel,
-  NotificationPriority,
   PrismaService,
+  type NotificationCategory,
+  type NotificationPriority,
 } from '@auvora/database';
 import { NotificationService } from './notification.service';
 

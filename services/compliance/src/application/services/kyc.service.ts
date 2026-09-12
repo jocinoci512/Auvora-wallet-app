@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DocumentStatus,
-  DocumentType,
   KycLevel,
   KycSubjectType,
   PrismaService,
   VerificationStatus,
+  type DocumentType,
   type Prisma,
   type RiskBand,
 } from '@auvora/database';
@@ -105,7 +105,11 @@ export class KycService {
     details?: Record<string, unknown>;
   }): Promise<void> {
     try {
-      await (this.prisma as any).complianceAuditRecord?.create({
+      await (
+        this.prisma as PrismaService & {
+          complianceAuditRecord?: { create: (args: { data: unknown }) => Promise<unknown> };
+        }
+      ).complianceAuditRecord?.create({
         data: {
           action: input.action,
           actorUserId: input.actorUserId,
