@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../crypto/hd_derivation.dart';
-import '../portfolio/models.dart';
 import '../release/network_env.dart';
 import '../state/wallet_controller.dart';
 import 'account_controller.dart';
