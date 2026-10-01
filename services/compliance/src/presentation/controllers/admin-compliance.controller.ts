@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ComplianceRuleAction, type CaseStatus, type VerificationStatus } from '@auvora/database';
 import type { JwtAccessClaims } from '@auvora/types';
@@ -16,11 +16,9 @@ import {
   ADMIN_PORTAL_ROLES,
   ROLE_ADMIN,
   ROLE_SUPER_ADMIN,
-  UnauthorizedError,
-  ForbiddenError,
 } from '../../domain';
 import { successResponse } from '@auvora/nest-common';
-import { Permissions, Public, Roles } from '../decorators/auth.decorators';
+import { Permissions, Roles } from '../decorators/auth.decorators';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import {
   IsEnum,
