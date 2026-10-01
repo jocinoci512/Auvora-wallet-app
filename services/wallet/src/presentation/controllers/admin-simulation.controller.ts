@@ -23,6 +23,19 @@ import {
   UserIdParamDto,
 } from '../dto/admin-simulation.dto';
 
+const _dtoRuntime = {
+  AdminListReviewsQueryDto,
+  AdminReasonDto,
+  AssetCodeParamDto,
+  CreateSimulationTransactionDto,
+  ReviewDecisionDto,
+  ReviewIdParamDto,
+  SimulationPresetParamDto,
+  UpsertSimulationBalanceDto,
+  UserIdParamDto,
+};
+void _dtoRuntime;
+
 @ApiTags('admin-simulation')
 @ApiBearerAuth()
 @Roles(...ADMIN_PORTAL_ROLES)
